@@ -213,9 +213,10 @@ function initStoreFlags(){DEPT.forEach(function(sid){var k=String(sid);if(!STORE
 function isD(s){var sf=STORE_FLAGS[String(s)];return sf?sf.dept:false}
 var IT=[{k:"rb",l:"BDG",fl:"TURNOVER TARGET",c:"#c9a96e"},{k:"rd",l:"Digital",fl:"DIGITAL TARGET",c:"#8b7ec8"},{k:"rs",l:"SY",fl:"SHOPPER YIELD",c:"#5ba4cf"},{k:"rp",l:"Privilege",fl:"PRIVILEGE",c:"#5bb98c"},{k:"rsa",l:"SAS",fl:"SAS TARGET",c:"#d4a94e"},{k:"rdc",l:"DCC",fl:"DCC TARGET",c:"#cf5b5b"},{k:"rcs",l:"CS",fl:"CUSTOMER SVC",c:"#c95ba4"},{k:"ra",l:"Articoli",fl:"ITEMS",c:"#cf8b4e"},{k:"vi",l:"Visual",fl:"VISUAL IN STORE",c:"#4eafaf"},{k:"pq",l:"QTY",fl:"QTY (DEPT)",c:"#9b6ec9"}];
 var CS={EUR:"\u20ac",GBP:"\u00a3",CHF:"CHF ",USD:"$",HKD:"HK$",SGD:"S$",SEK:"kr ",MOP:"MOP ",HUF:"Ft ",DKK:"kr "};
-function fc(v,c,d){d=d===undefined?0:d;if(!v&&v!==0)return(CS[c]||c+" ")+"0";return(CS[c]||c+" ")+Math.abs(Number(v)).toFixed(d).replace(/\B(?=(\d{3})+(?!\d))/g,".")}
+function fc(v,c,d){d=d===undefined?0:d;if(!v&&v!==0)return(CS[c]||c+" ")+"0";var n=Math.abs(Number(v)).toFixed(d);var parts=n.split(".");var intPart=parts[0].replace(/\B(?=(\d{3})+(?!\d))/g,".");var decPart=parts.length>1&&d>0?","+parts[1]:"";return(CS[c]||c+" ")+intPart+decPart}
 function fcEUR(v){return"\u20ac"+Math.round(Number(v)||0).toLocaleString("it-IT")}
-function fPct(v){return(Number(v||0)*100).toFixed(2)+"%"}
+function fPct(v){var n=(Number(v||0)*100).toFixed(2);return n.replace(".",",")+"%"}
+function fDec(v,d){d=d===undefined?2:d;return Number(v||0).toFixed(d).replace(".",",")}
 function esc(s){if(!s)return"";return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
 
 // === AGGIUNTE: manual overrides per employee, ADDED to normal calc, bypass rules/malattia ===
@@ -362,7 +363,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='4.7'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='4.8'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=2,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -788,10 +789,30 @@ var STORE_FLAGS={}; // {storeId: {dept:bool, noSas:bool, noDig:bool, digType:"cl
 initStoreFlags(); // seed from DEPT list
 
 // Get digital min % for a store (from store flag digType)
+function resetDigMob(sid){
+  if(STORE_FLAGS[sid])delete STORE_FLAGS[sid].digMinMob;
+  var inp=document.querySelector('input[data-digmob="'+sid+'"]');
+  if(inp){inp.value='';inp.style.borderColor='#d5d0c8';}
+  markDirty();autoSave();rC();rA();
+}
+
+function toggleDigMob(){
+  var b=document.getElementById("digMobBody");
+  var a=document.getElementById("digMobArr");
+  if(!b||!a)return;
+  var show=b.style.display==="none";
+  b.style.display=show?"block":"none";
+  a.textContent=show?"▾":"▸";
+}
+
 function getDigMin(si){
   var sf=STORE_FLAGS[String(si)];
   var dt=(sf&&sf.digType)?sf.digType:"classic";
-  return dt==="mobility"?PARAMS.digMinMobility:PARAMS.digMinClassic;
+  if(dt==="mobility"){
+    // Usa valore per-store se configurato, altrimenti fallback al globale
+    return(sf&&sf.digMinMob!=null&&sf.digMinMob>0)?sf.digMinMob:PARAMS.digMinMobility;
+  }
+  return PARAMS.digMinClassic;
 }
 
 // Get effective job for an employee, applying store flags
@@ -1479,7 +1500,7 @@ function saveAllPDFsZip(){
 }
 
 function secHd(n,t,p,hideB){return'<div class="lt-section"><div class="lt-sec-head"><div><span class="lt-sec-num">'+n+')</span><span class="lt-sec-title">'+esc(t)+"</span></div>"+(hideB?"":"<span class=\"lt-sec-badge\" style=\""+(p?"background:#d4edda;color:#1b5e29":"background:#f8d7da;color:#721c24")+"\">"+(p?"\u2713":"\u2717")+"</span>")+"</div><div class=\"lt-sec-body\">"}
-function secPd(l,v,c,p){return'<div class="lt-row" style="border-top:1px solid #e5e1db;padding-top:6px;margin-top:4px"><span class="lt-row-label" style="font-weight:700">'+esc(l)+'</span><span class="lt-row-val" style="font-weight:800;color:'+(p?"#2d7a3a":"#b0a99f")+'"><span class="lt-row-cur">'+c+"</span>"+v.toLocaleString()+"</span></div>"}
+function secPd(l,v,c,p){return'<div class="lt-row" style="border-top:1px solid #e5e1db;padding-top:6px;margin-top:4px"><span class="lt-row-label" style="font-weight:700">'+esc(l)+'</span><span class="lt-row-val" style="font-weight:800;color:'+(p?"#2d7a3a":"#b0a99f")+'"><span class="lt-row-cur">'+c+"</span>"+v.toLocaleString("it-IT")+"</span></div>"}
 function ltRow(l,v){return'<div class="lt-row"><span class="lt-row-label">'+esc(l)+'</span><span class="lt-row-val">'+v+"</span></div>"}
 
 function buildLetterUSA(e){
@@ -1579,7 +1600,7 @@ function buildLetter(e){
   // KPI Sprint (consuntivo only)
   if(!isP){var vv=D.v[e.m]||{};
     if(tg.sy||tg.cr){h+='<div class="lt-kpi"><div class="lt-kpi-head"><span>KPI SPRINT</span><span style="text-align:right">TARGET</span><span style="text-align:right">PY</span><span style="text-align:right">RESULT</span><span></span></div>';
-      if(tg.sy)h+='<div class="lt-kpi-row"><span>SY</span><span style="text-align:right">'+Number(tg.sy||0).toFixed(2)+'</span><span style="text-align:right;color:#b0a99f">\u2014</span><span style="text-align:right;font-weight:600">'+Number(cn.sy||0).toFixed(2)+"</span><span>"+((cn.sy||0)>=(tg.sy||0)&&tg.sy>0?"\u2705":"\u274c")+"</span></div>";
+      if(tg.sy)h+='<div class="lt-kpi-row"><span>SY</span><span style="text-align:right">'+fDec(tg.sy)+'</span><span style="text-align:right;color:#b0a99f">\u2014</span><span style="text-align:right;font-weight:600">'+fDec(cn.sy)+"</span><span>"+((cn.sy||0)>=(tg.sy||0)&&tg.sy>0?"\u2705":"\u274c")+"</span></div>";
       if(tg.cr)h+='<div class="lt-kpi-row"><span>CR</span><span style="text-align:right">'+fPct(tg.cr)+'</span><span style="text-align:right;color:#b0a99f">\u2014</span><span style="text-align:right;font-weight:600">'+fPct(cn.cr)+"</span><span>"+((cn.cr||0)>=(tg.cr||0)?"\u2705":"\u274c")+"</span></div>";
       if(vv.pe)h+='<div class="lt-kpi-row" style="background:#faf9f7"><span style="font-size:10px">CR Excellence</span><span style="text-align:right;font-size:10px">'+fPct(vv.pe)+'</span><span style="text-align:right;color:#b0a99f">\u2014</span><span style="text-align:right;font-weight:600;font-size:10px">'+fPct(cn.cr)+"</span><span>"+((cn.cr||0)>=vv.pe?"\u2705":"\u274c")+"</span></div>";
       h+="</div>"}}
@@ -1590,18 +1611,18 @@ function buildLetter(e){
 
   var sN=0;var pdLabel=isP?"INCENTIVE MAX":tr(e,"inc_paid","INCENTIVE PAID");
   if(isOn(e.j,"rb")){sN++;var val=getVal(e,"rb"),p=val>0,vS=Math.round(val*sm);h+=secHd(sN,tr(e,"turnover","TURNOVER TARGET"),p,isP);
-    if(!isP||tg.to)h+=ltRow(tr(e,"target","TARGET"),'<span class="lt-row-cur">'+cu+"</span>"+Math.round(tg.to||0).toLocaleString());
+    if(!isP||tg.to)h+=ltRow(tr(e,"target","TARGET"),'<span class="lt-row-cur">'+cu+"</span>"+Math.round(tg.to||0).toLocaleString("it-IT"));
     h+=ltRow(dp?"INCENTIVE MAX":tr(e,"incentive","INCENTIVE"),'<span class="lt-row-cur">'+cu+"</span>"+e.ib);
-    if(!isP){h+=ltRow(tr(e,"balance","FINAL BALANCE"),'<span class="lt-row-cur">'+cu+"</span>"+Math.round(cn.sc+(cn.es||0)).toLocaleString());
-      if(surplus>0)h+='<div style="font-size:9px;color:#a09a92;padding:2px 0;font-style:italic">Surplus (+'+Math.round(surplus).toLocaleString()+")</div>"}
+    if(!isP){h+=ltRow(tr(e,"balance","FINAL BALANCE"),'<span class="lt-row-cur">'+cu+"</span>"+Math.round(cn.sc+(cn.es||0)).toLocaleString("it-IT"));
+      if(surplus>0)h+='<div style="font-size:9px;color:#a09a92;padding:2px 0;font-style:italic">Surplus (+'+Math.round(surplus).toLocaleString("it-IT")+")</div>"}
     h+=secPd(pdLabel,vS,cu,p);if(!isP)h+='<div style="font-size:9px;color:#8a8680;margin-top:4px">Store: '+pctStore+"%</div>";h+="</div></div>"}
   if(isOn(e.j,"pq")){sN++;var val=getVal(e,"pq"),p=val>0,vS=Math.round(val*sm);h+=secHd(sN,"QTY",p,isP);if(!isP||tg.qt)h+=ltRow("TARGET","QTY "+(tg.qt||0));h+=ltRow("MAX",'<span class="lt-row-cur">'+cu+"</span>"+Math.round(e.ib*PARAMS.qtyPct));if(!isP)h+=ltRow("RESULT","QTY "+(cn.qc||0));h+=secPd(pdLabel,vS,cu,p);h+="</div></div>"}
-  if(isOn(e.j,"rd")){sN++;var val=getVal(e,"rd"),p=val>0,vS=Math.round(val*sm);var digThr=getDigMin(e.si);h+=secHd(sN,tr(e,"digital","DIGITAL TARGET"),p,isP);h+=ltRow("TARGET",(digThr*100).toFixed(2)+"%");h+=ltRow("INCENTIVE MAX",'<span class="lt-row-cur">'+cu+"</span>"+Math.round(e.ib*PARAMS.digPct));if(!isP)h+=ltRow("RESULT",(cn.pd*100).toFixed(2)+"%");h+=secPd(pdLabel,vS,cu,p);h+="</div></div>"}
+  if(isOn(e.j,"rd")){sN++;var val=getVal(e,"rd"),p=val>0,vS=Math.round(val*sm);var digThr=getDigMin(e.si);h+=secHd(sN,tr(e,"digital","DIGITAL TARGET"),p,isP);h+=ltRow("TARGET",fPct(digThr));h+=ltRow("INCENTIVE MAX",'<span class="lt-row-cur">'+cu+"</span>"+Math.round(e.ib*PARAMS.digPct));if(!isP)h+=ltRow("RESULT",fPct(cn.pd));h+=secPd(pdLabel,vS,cu,p);h+="</div></div>"}
   if(isOn(e.j,"rp")){sN++;var val=getVal(e,"rp"),p=val>0,vS=Math.round(val*sm);var _rlP=e.rl||e.ib||0;h+=secHd(sN,tr(e,"privilege","PRIVILEGE"),p,isP);if(!isP||tg.pr)h+=ltRow("TARGET",fPct(tg.pr));h+=ltRow("FORMULA",(PARAMS.privPct*100)+"% RLM");h+=ltRow("INCENTIVE MAX",'<span class="lt-row-cur">'+cu+"</span>"+Math.round(_rlP*PARAMS.privPct));if(!isP)h+=ltRow("RESULT",fPct(cn.nf));h+=secPd(pdLabel,vS,cu,p);h+="</div></div>"}
-  if(isOn(e.j,"rs")){sN++;var val=getVal(e,"rs"),p=val>0,vS=Math.round(val*sm);var _rlS=e.rl||e.ib||0;h+=secHd(sN,"SY TARGET",p,isP);if(!isP||tg.sy)h+=ltRow("TARGET",Number(tg.sy||0).toFixed(2));h+=ltRow("FORMULA",(PARAMS.syPct*100)+"% RLM");h+=ltRow("INCENTIVE MAX",'<span class="lt-row-cur">'+cu+"</span>"+Math.round(_rlS*PARAMS.syPct));if(!isP)h+=ltRow("RESULT",Number(cn.sy||0).toFixed(2));h+=secPd(pdLabel,vS,cu,p);h+="</div></div>"}
+  if(isOn(e.j,"rs")){sN++;var val=getVal(e,"rs"),p=val>0,vS=Math.round(val*sm);var _rlS=e.rl||e.ib||0;h+=secHd(sN,"SY TARGET",p,isP);if(!isP||tg.sy)h+=ltRow("TARGET",fDec(tg.sy));h+=ltRow("FORMULA",(PARAMS.syPct*100)+"% RLM");h+=ltRow("INCENTIVE MAX",'<span class="lt-row-cur">'+cu+"</span>"+Math.round(_rlS*PARAMS.syPct));if(!isP)h+=ltRow("RESULT",fDec(cn.sy));h+=secPd(pdLabel,vS,cu,p);h+="</div></div>"}
   if(isOn(e.j,"rsa")){sN++;var val=getVal(e,"rsa"),p=val>0,vS=Math.round(val*sm);h+=secHd(sN,"SAS TARGET",p,isP);h+=ltRow("FORMULA","\u20ac"+PARAMS.sasRate+"/SAS, max \u20ac"+PARAMS.sasMax);if(!isP)h+=ltRow("SAS ON TARGET",String(cn.s4||0));h+=secPd(pdLabel,vS,cu,p);h+="</div></div>"}
-  if(isOn(e.j,"ra")){sN++;var val=getVal(e,"ra"),p=val>0,vS=Math.round(val*sm);var acCnt=cn.ac||0;h+=secHd(sN,tr(e,"articles","ITEMS"),isP?true:p,isP);h+=ltRow("FORMULA",(PARAMS.artPct*100)+"% "+tr(e,"turnover","BDG")+" x N. "+tr(e,"items","CAT"));if(isP){h+=ltRow("INCENTIVE MAX","Da definire in base ai risultati")}else{if(acCnt>0)h+=ltRow(tr(e,"items","CATEGORIES")+" ON TARGET",String(acCnt));if(acCnt>0)h+=ltRow("INCENTIVE MAX",'<span class="lt-row-cur">'+cu+"</span>"+Math.round(e.ib*PARAMS.artPct*acCnt));h+=secPd(pdLabel,vS,cu,p)}h+="</div></div>"}
-  if(isOn(e.j,"rdc")){sN++;var val=getVal(e,"rdc"),p=val>0,vS=Math.round(val*sm);h+=secHd(sN,"DCC TARGET",p,isP);h+=ltRow("FORMULA",(PARAMS.dccRate*100).toFixed(1)+"% max \u20ac"+PARAMS.dccMax);if(!isP)h+=ltRow("DCC VALUE",'<span class="lt-row-cur">'+cu+"</span>"+(cn.dv||0).toLocaleString());h+=secPd(pdLabel,vS,cu,p);h+="</div></div>"}
+  if(isOn(e.j,"ra")){sN++;var val=getVal(e,"ra"),p=val>0,vS=Math.round(val*sm);var acCnt=cn.ac||0;h+=secHd(sN,tr(e,"articles","ITEMS"),isP?true:p,isP);h+=ltRow("FORMULA",(PARAMS.artPct*100)+"% "+tr(e,"turnover","BDG")+" x N. "+tr(e,"items","CAT"));if(isP){/* nessuna stima in preventivo */}else{if(acCnt>0)h+=ltRow(tr(e,"items","CATEGORIES")+" ON TARGET",String(acCnt));if(acCnt>0)h+=ltRow("INCENTIVE MAX",'<span class="lt-row-cur">'+cu+"</span>"+Math.round(e.ib*PARAMS.artPct*acCnt));h+=secPd(pdLabel,vS,cu,p)}h+="</div></div>"}
+  if(isOn(e.j,"rdc")){sN++;var val=getVal(e,"rdc"),p=val>0,vS=Math.round(val*sm);h+=secHd(sN,"DCC TARGET",p,isP);h+=ltRow("FORMULA",(PARAMS.dccRate*100).toFixed(1)+"% max \u20ac"+PARAMS.dccMax);if(!isP)h+=ltRow("DCC VALUE",'<span class="lt-row-cur">'+cu+"</span>"+(cn.dv||0).toLocaleString("it-IT"));h+=secPd(pdLabel,vS,cu,p);h+="</div></div>"}
   var viVal=getVal(e,"vi");if(viVal>0){sN++;h+=secHd(sN,"EXTRA BDG VISUAL IN STORE",true,isP);h+=secPd(pdLabel,Math.round(viVal*sm),cu,true);h+="</div></div>"}
 
   // AGGIUNTE section in letter (if any)
@@ -1613,7 +1634,7 @@ function buildLetter(e){
   if(!isP&&e.ml>0&&sm<1)h+='<div style="background:#fff3cd;border:1px solid #c9a96e;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:#856404"><b>'+e.ml+" gg</b> \u2192 "+(sm*100)+"%</div>";
   h+="</div>";
 
-  var totalLabel=isP?"MAXIMUM POTENTIAL BONUS":esc(tr(e,"earned","THIS MONTH YOU HAVE EARNED THE"));
+  var totalLabel=isP?(lang==="ITALIANO"?"MASSIMO PREMIO POTENZIALE":"MAXIMUM POTENTIAL BONUS"):esc(tr(e,"earned","THIS MONTH YOU HAVE EARNED THE"));
   if(tc>0){h+='<div class="lt-total"><div><div class="lt-total-label">'+totalLabel+'</div><div class="lt-total-pct">'+pctSal+esc(tr(e,"over_sal","% OVER SALARY"))+"</div></div><div class=\"lt-total-val\">"+fc(tc,cu)+"</div></div>"}
   else{h+='<div class="lt-total"><div><div class="lt-total-label" style="color:#cf5b5b">NO INCENTIVE</div></div><div class="lt-total-val" style="color:#6b6560">'+fc(0,cu)+"</div></div>"}
   h+='<div class="lt-footer"><div style="font-weight:600;margin-bottom:6px">'+esc(tr(e,"rules","THE DELIVERED INCENTIVES FOLLOW THE RULE"))+'</div><div style="white-space:pre-wrap">'+esc(getDiscl(e))+"</div></div></div>";
@@ -2194,7 +2215,7 @@ function buildSeasonalDeptLetter(e){
   var sN=0;
   sN++;
   h+=secHd(sN,tr(e,"turnover","TURNOVER TARGET"),true,isP);
-  h+=ltRow(T.bdg_monthly,'<span class="lt-row-cur">'+cu+'</span>'+Math.round(e.ib||0).toLocaleString());
+  h+=ltRow(T.bdg_monthly,'<span class="lt-row-cur">'+cu+'</span>'+Math.round(e.ib||0).toLocaleString("it-IT"));
   h+=ltRow(T.period_mult,"× 6");
   h+=secPd(pdLabel,bdg6,cu,true);
   h+="</div></div>";
@@ -3025,6 +3046,29 @@ function rT(){try{
   h+=pRow("bdg100","Soglia 100%","",PARAMS.bdg100*100,"%",0.01)+pRow("bdg60","Soglia ridotto","",PARAMS.bdg60*100,"%",0.01)+pRow("bdg60mult","Molt. ridotto","",PARAMS.bdg60mult*100,"%",0.01);
   h+='<div style="font-size:11px;font-weight:700;color:#8b7ec8;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">Digital</div>';
   h+=pRow("digMinClassic","% min Digital Classico","Soglia digitale per store classici",PARAMS.digMinClassic*100,"%",0.01)+pRow("digMinMobility","% min Digital Mobilit\u00e0","Soglia digitale per store mobilit\u00e0",PARAMS.digMinMobility*100,"%",0.01)+pRow("digPct","Premio (% BDG)","",PARAMS.digPct*100,"%",0.01);
+  // Sezione negozi mobilità con % target per-store
+  var mobStores=Object.keys(STORE_FLAGS).filter(function(sid){return STORE_FLAGS[sid]&&STORE_FLAGS[sid].digType==="mobility";});
+  if(mobStores.length>0){
+    h+='<div style="margin-top:10px;border:1px solid #e5e1db;border-radius:6px;overflow:hidden">';
+    h+='<div id="digMobHdr" style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:#f5f2ee;cursor:pointer" onclick="toggleDigMob()">';
+    h+='<span style="font-size:11px;font-weight:700;color:#8b7ec8">% Target Digital Mobilità per Negozio</span>';
+    h+='<span id="digMobArr" style="color:#8b7ec8;font-size:12px">▸</span></div>';
+    h+='<div id="digMobBody" style="display:none;padding:10px 14px">';
+    h+='<div style="font-size:10px;color:#8a8680;margin-bottom:10px">Soglia individuale per negozio. Se non impostata usa il valore globale Mobilità ('+fPct(PARAMS.digMinMobility)+').</div>';
+    mobStores.sort().forEach(function(sid){
+      var sf=STORE_FLAGS[sid];
+      var storeName=function(){var n="";E.forEach(function(e){if(String(e.si)===sid&&e.s){n=e.s;}}); return n||("Store "+sid);}();
+      var curVal=sf.digMinMob!=null?sf.digMinMob*100:null;
+      h+='<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f0ece8">';
+      h+='<div style="flex:1;font-size:11px;color:#4e4b48;font-weight:600">'+sid+' '+esc(storeName)+'</div>';
+      h+='<div style="display:flex;align-items:center;gap:4px">';
+      h+='<input type="number" data-digmob="'+sid+'" value="'+(curVal!=null?curVal.toFixed(2):"")+'" placeholder="'+fPct(PARAMS.digMinMobility)+'" min="0" max="100" step="0.5" style="width:80px;padding:4px 8px;border:1px solid #d5d0c8;border-radius:4px;font-size:11px;text-align:right;font-family:inherit">';
+      h+='<span style="font-size:11px;color:#6b6560">%</span>';
+      h+='<button onclick="resetDigMob(\''+sid+'\')" style="font-size:10px;color:#cf5b5b;border:none;background:none;cursor:pointer;padding:2px 4px" title="Ripristina valore globale">✕</button>';
+      h+='</div></div>';
+    });
+    h+='</div></div>';
+  }
   h+='<div style="font-size:11px;font-weight:700;color:#5ba4cf;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">SY</div>';
   h+=pRow("syPct","% RLM","",PARAMS.syPct*100,"%",0.01);
   h+='<div style="font-size:11px;font-weight:700;color:#5bb98c;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">Privilege</div>';
@@ -3080,6 +3124,23 @@ function rT(){try{
   // KPI variants toggle
   var togKPI=document.getElementById("toggleKPI");if(togKPI)togKPI.onclick=function(){var rows=document.querySelectorAll(".kpi-variant");var show=rows.length>0&&rows[0].style.display==="none";rows.forEach(function(r){r.style.display=show?"":"none"});togKPI.textContent=show?"Nascondi varianti \u25b2":"Mostra varianti \u25bc"};
   document.getElementById("sick0").onchange=function(){SICK_0=parseInt(this.value)||2;markDirty();rC();rA();rT()};
+  // Binding % digital mobilità per-store
+  document.querySelectorAll("input[data-digmob]").forEach(function(inp){
+    inp.onchange=function(){
+      var sid=inp.getAttribute("data-digmob");
+      var v=parseFloat(inp.value);
+      if(!STORE_FLAGS[sid])STORE_FLAGS[sid]={digType:"mobility"};
+      if(!isNaN(v)&&v>0){
+        STORE_FLAGS[sid].digMinMob=Math.round(v*100)/10000;
+        inp.style.borderColor="#2d7a3a";
+      } else {
+        delete STORE_FLAGS[sid].digMinMob;
+        inp.style.borderColor="#d5d0c8";
+      }
+      markDirty();autoSave();rC();rA();
+    };
+  });
+
   document.querySelectorAll("input[data-pk]").forEach(function(inp){inp.onchange=function(){
     var pk=inp.getAttribute("data-pk"),v=parseFloat(inp.value);if(isNaN(v))return;
     if(["bdg100","bdg60","bdg60mult","digMinClassic","digMinMobility","digPct","syPct","privPct","dccRate","qtyPct"].indexOf(pk)>=0)v=v/100;
@@ -4342,7 +4403,7 @@ function loadTargetExcel(file){
           for(var ci=0;ci<headers.length;ci++){
             var h=headers[ci];
             if(h==="store_id"||h.indexOf("store_id")>=0) cSid=ci;
-            else if(h==="sub_target"||h.indexOf("sub_target")>=0||h.indexOf("subscription")>=0) cSub=ci;
+            else if(h==="sub_target") cSub=ci; else if(cSub<0&&(h.indexOf("subscription")>=0||h.indexOf("fidelity")>=0)) cSub=ci;
             else if(h==="retail_month"||h.indexOf("retail_month")>=0) cMonth=ci;
           }
           if(cSid<0) cSid=2; // fallback colonna C
@@ -4415,7 +4476,7 @@ function loadTargetExcel(file){
       var cSY=findH(0,"sy");if(cSY<0)cSY=findHPartial(0,"shopper","sy");
       var cCR=findH(0,"cr");if(cCR<0)cCR=findHPartial(0,"conversion","cr");
       var cForex=findH(0,"forex");if(cForex<0)cForex=findHPartial(0,"forex","fx");
-      var cSub=findHPartial(0,"sub_target","subscription","fidelity");
+      var cSub=findH(0,"sub_target");if(cSub<0)cSub=findHPartial(0,"subscription","fidelity");
       var cQTY=findHPartial(0,"target qty","qty");
       var cMonth=findHPartial(0,"retail_month","month");
 
@@ -5045,7 +5106,7 @@ function rSources(){try{
     // Mensile rules summary
     sh+='<div style="font-size:10px;color:#6b6560;line-height:1.8">';
     sh+="<b>BDG:</b> 100% a &ge;"+(PARAMS.bdg100*100)+"% | "+(PARAMS.bdg60mult*100)+"% a &ge;"+(PARAMS.bdg60*100)+"%";
-    sh+=" &nbsp;&#183;&nbsp; <b>Digital:</b> "+(PARAMS.digPct*100)+"% BDG se &ge;"+(PARAMS.digMinClassic*100)+"% (classico) / "+(PARAMS.digMinMobility*100)+"% (mobility)";
+    sh+=" &nbsp;&#183;&nbsp; <b>Digital:</b> "+(PARAMS.digPct*100)+"% BDG se &ge;"+(PARAMS.digMinClassic*100)+"% (classico) / "+(PARAMS.digMinMobility*100)+"% (mobility)";var mobCount=Object.keys(STORE_FLAGS).filter(function(s){return STORE_FLAGS[s]&&STORE_FLAGS[s].digType==="mobility"&&STORE_FLAGS[s].digMinMob>0;}).length;if(mobCount>0)sh+=" <span style='color:#8b7ec8'>("+mobCount+" store con % personalizzata)</span>";
     sh+=" &nbsp;&#183;&nbsp; <b>SY:</b> "+(PARAMS.syPct*100)+"%";
     sh+=" &nbsp;&#183;&nbsp; <b>Privilege:</b> "+(PARAMS.privPct*100)+"%<br>";
     sh+="<b>SAS:</b> &euro;"+PARAMS.sasRate+" max &euro;"+PARAMS.sasMax;
