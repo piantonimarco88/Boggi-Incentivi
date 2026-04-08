@@ -109,6 +109,7 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 /* Save bar */
 .save-bar{position:fixed;bottom:0;left:0;right:0;background:#2c2925;padding:10px 24px;display:flex;justify-content:flex-end;align-items:center;gap:12px;z-index:100;box-shadow:0 -2px 12px rgba(0,0,0,.15);transform:translateY(100%);transition:transform .25s ease}
 .save-bar.show{transform:translateY(0)}
+.save-bar.show~* .cnt,.save-bar.show+.cnt{padding-bottom:60px}
 .save-bar .save-msg{font-size:12px;color:#a09a92}
 .save-btn{padding:8px 24px;border-radius:6px;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
 .save-btn-primary{background:#c9a96e;color:#2c2925}.save-btn-primary:hover{background:#d4b87d}
@@ -138,7 +139,7 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
       <button onclick="saveSession()" style="font-size:9px;padding:2px 8px;background:#4a7c59;color:#fff;border:1px solid #3a6349;border-radius:4px;cursor:pointer" title="Salva tutto lo stato corrente in un file">&#128190; Salva</button>
       <button onclick="document.getElementById('loadSessionFile').click()" style="font-size:9px;padding:2px 8px;background:#5b6abf;color:#fff;border:1px solid #4a59a0;border-radius:4px;cursor:pointer" title="Carica stato da file salvato in precedenza">&#128194; Carica</button>
       <input type="file" id="loadSessionFile" accept=".json" style="display:none" onchange="loadSession(this)">
-      <span style="font-size:9px;opacity:.25">v4.6</span>
+      <span id="appVerBadge" style="font-size:9px;opacity:.4">v4.6</span>
     </div>
   </div>
   <!-- MODE SELECTOR: centered -->
@@ -422,6 +423,9 @@ RL.forEach(function(r){if(!TC[r]){TC[r]={};KP.forEach(function(k){
   else if(k==="QTY Dept")TC[r][k]=isDept})}});
 
 // AutoSave: persist full state to localStorage
+// Aggiorna badge versione con APP_VERSION
+(function(){var b=document.getElementById("appVerBadge");if(b&&typeof APP_VERSION!=="undefined")b.textContent="v"+APP_VERSION;})();
+
 function autoSave(){
   try{
     var state={
@@ -512,7 +516,7 @@ function loadSession(input){
 
 // Save/Dirty
 var _origTC=JSON.stringify(TC),_origS50=SICK_50,_origS0=SICK_0,_origP=JSON.stringify(PARAMS),_origUSA=JSON.stringify(USA_P),_origMonth=CFG_MONTH,_origYear=CFG_YEAR,_origPdfPath=CFG_PDF_PATH,_origSeason=CFG_SEASON,_origSF=JSON.stringify(STORE_FLAGS),_origSeasCfg=JSON.stringify(SEAS_CFG),_origPrizeMode=PRIZE_MODE,_origSeasonPeriod=SEASON_PERIOD;
-function markDirty(){document.getElementById("saveBar").className="save-bar"+((JSON.stringify(TC)!==_origTC||SICK_50!==_origS50||SICK_0!==_origS0||JSON.stringify(PARAMS)!==_origP||JSON.stringify(USA_P)!==_origUSA||CFG_MONTH!==_origMonth||CFG_YEAR!==_origYear||CFG_PDF_PATH!==_origPdfPath||CFG_SEASON!==_origSeason||JSON.stringify(STORE_FLAGS)!==_origSF||JSON.stringify(SEAS_CFG)!==_origSeasCfg||PRIZE_MODE!==_origPrizeMode||SEASON_PERIOD!==_origSeasonPeriod)?" show":"")}
+function markDirty(){var dirty=JSON.stringify(TC)!==_origTC||SICK_50!==_origS50||SICK_0!==_origS0||JSON.stringify(PARAMS)!==_origP||JSON.stringify(USA_P)!==_origUSA||CFG_MONTH!==_origMonth||CFG_YEAR!==_origYear||CFG_PDF_PATH!==_origPdfPath||CFG_SEASON!==_origSeason||JSON.stringify(STORE_FLAGS)!==_origSF||JSON.stringify(SEAS_CFG)!==_origSeasCfg||PRIZE_MODE!==_origPrizeMode||SEASON_PERIOD!==_origSeasonPeriod;document.getElementById("saveBar").className="save-bar"+(dirty?" show":"");var cnt=document.querySelector(".cnt");if(cnt)cnt.style.paddingBottom=dirty?"60px":""}
 function saveConfig(){
   var cfg={tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,seas_cfg:SEAS_CFG,agg:AGG,vl:VL,usa_p:USA_P,store_flags:STORE_FLAGS,cfg_month:CFG_MONTH,cfg_year:CFG_YEAR,cfg_pdf_path:CFG_PDF_PATH,cfg_season:CFG_SEASON,saved:new Date().toISOString()};
   var blob=new Blob([JSON.stringify(cfg,null,2)],{type:"application/json"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="boggi_config_"+getPdfSubfolder().base+".json";a.click();
@@ -1278,7 +1282,7 @@ function exportExcelUSA(){
 function rL(){
   var h='<div class="exp-bar no-print">';
   h+='<button class="exp-btn primary" onclick="printLetterOnly()">&#128424; Stampa / PDF</button>';
-  h+='<button class="exp-btn" onclick="saveAllPDFs()" style="border-color:#c9a96e;color:#c9a96e">&#128190; Salva Tutti i PDF</button>';
+  h+='<button class="exp-btn" onclick="saveAllPDFsFolder()" style="border-color:#2d7a3a;color:#2d7a3a" title="Salva PDF in cartella (Chrome/Edge)">&#128194; Salva in Cartella PC</button>';
   h+='<button class="exp-btn" onclick="saveAllPDFsZip()" style="border-color:#5b6abf;color:#5b6abf">&#128230; Scarica ZIP</button>';
   h+='</div>';
   var searchPool=PRIZE_MODE==="seasonal"?E.filter(function(e){return isSMVSM(e);}):E;
@@ -1666,6 +1670,7 @@ var SEAS_TR={
     var_pct:"VAR.%",
     incentive:"INCENTIVO",
     kpi_total:"INCENTIVO RAGGIUNGIBILE PER KPI'S",
+    kpi_total_prev:"INCENTIVO KPI MASSIMO POTENZIALE",
     boost_section:"SEZIONE BOOST",
     store_budget:"Store Budget",
     inventory:"Inventory",
@@ -1685,6 +1690,7 @@ var SEAS_TR={
     qty_target:"TARGET QTY",
     qty_result:"RISULTATO QTY",
     max_bonus:"MASSIMO BONUS POTENZIALE",
+    max_seas:"MASSIMO INCENTIVO RAGGIUNGIBILE",
     seas_bonus:"BONUS SEASONAL MATURATO",
     pct_salary:"% sulla retribuzione mensile",
     incentive_paid:"INCENTIVO EROGATO",
@@ -1713,6 +1719,7 @@ var SEAS_TR={
     var_pct:"VAR.%",
     incentive:"INCENTIVE",
     kpi_total:"KPI INCENTIVE ACHIEVED",
+    kpi_total_prev:"MAXIMUM POTENTIAL KPI INCENTIVE",
     boost_section:"BOOST SECTION",
     store_budget:"Store Budget",
     inventory:"Inventory",
@@ -1732,6 +1739,7 @@ var SEAS_TR={
     qty_target:"QTY TARGET",
     qty_result:"QTY RESULT",
     max_bonus:"MAXIMUM POTENTIAL BONUS",
+    max_seas:"MAXIMUM ACHIEVABLE INCENTIVE",
     seas_bonus:"SEASONAL BONUS EARNED",
     pct_salary:"% of monthly salary",
     incentive_paid:"INCENTIVE PAID",
@@ -1760,6 +1768,7 @@ var SEAS_TR={
     var_pct:"VAR.%",
     incentive:"INCITATION",
     kpi_total:"INCITATION KPI ATTEIGNABLE",
+    kpi_total_prev:"INCITATION KPI POTENTIEL MAXIMUM",
     boost_section:"SECTION BOOST",
     store_budget:"Budget Magasin",
     inventory:"Inventaire",
@@ -1779,6 +1788,7 @@ var SEAS_TR={
     qty_target:"OBJECTIF QTY",
     qty_result:"RÉSULTAT QTY",
     max_bonus:"BONUS POTENTIEL MAXIMUM",
+    max_seas:"INCITATION MAXIMALE ATTEIGNABLE",
     seas_bonus:"BONUS SEASONAL ACQUIS",
     pct_salary:"% du salaire mensuel",
     incentive_paid:"INCITATION ACCORDÉE",
@@ -1807,6 +1817,7 @@ var SEAS_TR={
     var_pct:"VAR.%",
     incentive:"ANREIZ",
     kpi_total:"ERREICHTER KPI-ANREIZ",
+    kpi_total_prev:"MAXIMALER KPI-ANREIZ",
     boost_section:"BOOST-ABSCHNITT",
     store_budget:"Store Budget",
     inventory:"Inventar",
@@ -1826,6 +1837,7 @@ var SEAS_TR={
     qty_target:"QTY ZIEL",
     qty_result:"QTY ERGEBNIS",
     max_bonus:"MAXIMALER BONUS",
+    max_seas:"MAXIMAL ERREICHBARER ANREIZ",
     seas_bonus:"VERDIENTER SAISONALER BONUS",
     pct_salary:"% des Monatsgehalts",
     incentive_paid:"BEZAHLTER ANREIZ",
@@ -1854,6 +1866,7 @@ var SEAS_TR={
     var_pct:"VAR.%",
     incentive:"INCENTIVO",
     kpi_total:"INCENTIVO KPI ALCANZABLE",
+    kpi_total_prev:"INCENTIVO KPI POTENCIAL MÁXIMO",
     boost_section:"SECCIÓN BOOST",
     store_budget:"Presupuesto Tienda",
     inventory:"Inventario",
@@ -1873,6 +1886,7 @@ var SEAS_TR={
     qty_target:"OBJETIVO QTY",
     qty_result:"RESULTADO QTY",
     max_bonus:"BONO POTENCIAL MÁXIMO",
+    max_seas:"INCENTIVO MÁXIMO ALCANZABLE",
     seas_bonus:"BONO SEASONAL OBTENIDO",
     pct_salary:"% sobre salario mensual",
     incentive_paid:"INCENTIVO PAGADO",
@@ -1979,8 +1993,12 @@ function buildSeasonalLetter(e){
     var kpiLabel=({sy:T.sy_label,sr:T.sr_label,sas:T.sas_label,acc:T.acc_label})[kdef.k]||kdef.label;
     var sid=String(e.si);
     var cn=D.cs&&D.cs[sid]?D.cs[sid]:{};
-    var seas_sy=auto?auto.seas_sy:0, seas_pr=auto?auto.seas_pr:0;
-    var seas_sas=auto?auto.seas_sas:(SEAS_CFG.sasMaxHours||4);
+    var sid=String(e.si);
+    var stgLet=SEAS_TARGETS&&SEAS_TARGETS[sid]?SEAS_TARGETS[sid]:{};
+    // In preventivo leggi target da SEAS_TARGETS; in consuntivo usa auto
+    var seas_sy=auto?auto.seas_sy:(stgLet.sy||0);
+    var seas_pr=auto?auto.seas_pr:(stgLet.pr||0);
+    var seas_sas=auto?auto.seas_sas:(stgLet.sas||SEAS_CFG.sasMaxHours||4);
     var risultatoStr="—", varPctStr="—";
     if(!isP){
       if(kdef.k==="sy"){var r=cn.sy!==undefined?fDec(cn.sy,2):"—";risultatoStr=r;varPctStr=seas_sy>0?fDec(((cn.sy||0)/seas_sy-1)*100,1)+"%":"—";}
@@ -1990,7 +2008,7 @@ function buildSeasonalLetter(e){
     }
     h+='<div class="lt-kpi-row" style="grid-template-columns:'+kpiCols+';background:'+(achieved?"#f0fbf5":"#fff")+'">';
     h+='<span style="font-weight:600;color:#2c2925">'+esc(kpiLabel)+'</span>';
-    h+='<span style="text-align:right;font-size:10px;color:#6b6560">'+(({sy:fDec(seas_sy||0,2),sr:fDec((seas_pr||0)*100,2)+"%",sas:"< "+fDec(seas_sas,0)+"h",acc:"99%"})[kdef.k]||"—")+'</span>';
+    h+='<span style="text-align:right;font-size:10px;color:#6b6560">'+(({sy:(seas_sy>0?fDec(seas_sy,2):"\u2014"),sr:(seas_pr>0?fDec(seas_pr*100,2)+"%":"\u2014"),sas:"< "+fDec(seas_sas,0)+"h",acc:"99%"})[kdef.k]||"\u2014")+'</span>';
     h+='<span style="text-align:right;color:#5b6abf;font-weight:700">'+fDec((kdef.weight*100),0)+'%</span>';
     if(!isP){
       h+='<span style="text-align:right;font-weight:600;color:#2c2925">'+esc(risultatoStr)+'</span>';
@@ -2002,7 +2020,7 @@ function buildSeasonalLetter(e){
 
   // KPI total row
   h+='<div style="padding:8px 14px;background:#2c2925;display:flex;justify-content:space-between;align-items:center">';
-  h+='<span style="font-size:10px;font-weight:700;color:#c9a96e;text-transform:uppercase;letter-spacing:1px">'+T.kpi_total+'</span>';
+  h+='<span style="font-size:10px;font-weight:700;color:#c9a96e;text-transform:uppercase;letter-spacing:1px">'+(isP?(T.kpi_total_prev||T.kpi_total):T.kpi_total)+'</span>';
   h+='<span style="font-size:16px;font-weight:800;color:#c9a96e">'+fc(kpiIncentive,cu)+'</span>';
   h+='</div>';
   h+='</div>';
@@ -2023,9 +2041,11 @@ function buildSeasonalLetter(e){
   var storeTgt=stg2.to||tg2.to||0;
   var storeCons=(cn2.sc||0)+(cn2.es||0);
   var storeVarPct=storeTgt>0?((storeCons/storeTgt-1)*100):0;
+  // In preventivo mostra il target fatturato importato (se disponibile)
+  var storeTgtDisplay=isP?(storeTgt>0?fc(storeTgt,cu):T.target):(fc(storeTgt,cu));
   h+='<div class="lt-kpi-row" style="grid-template-columns:'+boostCols+'">';
   h+='<span style="font-weight:600">'+T.store_budget+'</span>';
-  h+='<span style="text-align:right;font-size:10px;color:#6b6560">'+(isP?T.target:fc(storeTgt,cu))+'</span>';
+  h+='<span style="text-align:right;font-size:10px;color:#6b6560">'+storeTgtDisplay+'</span>';
   if(!isP){
     h+='<span style="text-align:right;font-size:10px;color:#2c2925">'+fc(storeCons,cu)+'</span>';
     h+='<span style="text-align:right;font-size:10px;font-weight:700;color:'+(storeVarPct>=0?'#2d7a3a':'#cf5b5b')+'">'+fDec(storeVarPct,2)+'%</span>';
@@ -2041,9 +2061,19 @@ function buildSeasonalLetter(e){
     var esub=cn2.es||0; var fat=cn2.sc||0;
     invPctRaw=fat>0?(esub/fat*100):null;
   }
+  // Soglia inventario: prendi il valore "from" della riga con coeff=1 dalla tabella molt_inventario
+  var invThr=null;
+  if(SEAS_CFG&&SEAS_CFG.molt_inventario){
+    var invBdgRows=SEAS_CFG.molt_inventario.filter(function(r){return r.coeff===1&&isFinite(r.from);});
+    if(invBdgRows.length>0){
+      // Prendi il valore from più basso tra le righe con coeff=1 (soglia minima per ottenere coeff 1)
+      invThr=invBdgRows.reduce(function(min,r){return r.from<min?r.from:min;},invBdgRows[0].from);
+    }
+  }
+  var invThrDisplay=isP?(invThr!==null?("\u2265 "+fDec(invThr*100,2)+"%"):T.target):"\u2264 -0,15%";
   h+='<div class="lt-kpi-row" style="grid-template-columns:'+boostCols+';background:#faf9f7">';
   h+='<span style="font-weight:600">'+T.inventory+'</span>';
-  h+='<span style="text-align:right;font-size:10px;color:#6b6560">'+(isP?T.target:"\u2264 -0,15%")+'</span>';
+  h+='<span style="text-align:right;font-size:10px;color:#6b6560">'+invThrDisplay+'</span>';
   if(!isP){
     var invDisplay=invPctRaw!==null?fDec(invPctRaw*100,2)+"%":"—";
     var invOk=invPctRaw!==null&&invPctRaw>=-0.0015;
@@ -2110,7 +2140,7 @@ function buildSeasonalLetter(e){
 
   // Total bar
   h+='<div class="lt-total">';
-  h+='<div><div class="lt-total-label">'+T.seas_earned+'</div>';
+  h+='<div><div class="lt-total-label">'+(isP?(T.max_seas||T.max_bonus):T.seas_earned)+'</div>';
   h+='<div class="lt-total-pct">'+fc(kpiIncentive,cu)+' \u00d7 '+fDec(boostCombined,2)+' = '+fc(seasonal,cu)+'</div></div>';
   h+='<div class="lt-total-val">'+fc(seasonal,cu)+'</div>';
   h+='</div>';
@@ -2149,6 +2179,33 @@ function canProduceLetter(){
     if(allOne)missing.push("Cambi Valuta (valute non-EUR con cambio a 1)");
   }
   return missing;
+}
+
+// Funzione usata dal wrapper .exe per generare PDF isolati
+// Restituisce HTML completo (con CSS) della lettera del dipendente E[i]
+// Pool di dipendenti per cui generare lettere (rispetta i toggle attivi)
+function getLetterPool(){
+  if(PRIZE_MODE==="seasonal")return E.filter(function(e){return isSMVSM(e);});
+  return E;
+}
+function getLetterCount(){return getLetterPool().length;}
+function getLetterMatricola(i){var pool=getLetterPool();return pool[i]?pool[i].m:null;}
+
+function getLetterHtmlForPrint(i){
+  var pool=getLetterPool();
+  var e=pool[i];
+  if(!e)return null;
+  var isSeasonal=PRIZE_MODE==="seasonal";
+  var letterHtml=isSeasonal?buildSeasonalLetterAuto(e):(isUSA(e.si,e)?buildLetterUSA(e):buildLetter(e));
+  var css=document.querySelector("style")?document.querySelector("style").textContent:"";
+  return "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><style>"+
+    css+
+    "*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}"+
+    "html,body{margin:0;padding:0;background:#fff;font-family:\'DM Sans\',sans-serif;font-size:13px}"+
+    "@page{size:A4;margin:10mm}"+
+    "</style>"+
+    "<link href=\"https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap\" rel=\"stylesheet\">"+
+    "</head><body>"+letterHtml+"</body></html>";
 }
 
 function sL(mm){
@@ -2205,6 +2262,9 @@ function buildSeasonalDeptLetter(e){
   });
   h+='</div>';
 
+  var stgDept=SEAS_TARGETS&&SEAS_TARGETS[sid]?SEAS_TARGETS[sid]:{};
+  var cnDept=D.cs&&D.cs[sid]?D.cs[sid]:{};
+
   if(isP){
     h+='<div style="font-size:12px;font-weight:700;color:#856404;margin-bottom:16px;background:#fff3cd;padding:10px 14px;border-radius:6px">'+T.forecast_intro+esc(CFG_SEASON+' '+CFG_YEAR)+'</div>';
   } else {
@@ -2217,16 +2277,18 @@ function buildSeasonalDeptLetter(e){
   h+=secHd(sN,tr(e,"turnover","TURNOVER TARGET"),true,isP);
   h+=ltRow(T.bdg_monthly,'<span class="lt-row-cur">'+cu+'</span>'+Math.round(e.ib||0).toLocaleString("it-IT"));
   h+=ltRow(T.period_mult,"× 6");
+  // In preventivo mostra target fatturato se disponibile
+  if(isP&&(stgDept.to||0)>0) h+=ltRow(tr(e,"target","TARGET FATTURATO SEMESTRALE"),'<span class="lt-row-cur">'+cu+'</span>'+Math.round(stgDept.to).toLocaleString("it-IT"));
   h+=secPd(pdLabel,bdg6,cu,true);
   h+="</div></div>";
 
   // Sezione 2: QTY (50% BDG×6)
   sN++;
   h+=secHd(sN,"QTY",true,isP);
-  var stgDept=SEAS_TARGETS&&SEAS_TARGETS[sid]?SEAS_TARGETS[sid]:{};
-  var cnDept=D.cs&&D.cs[sid]?D.cs[sid]:{};
-  if(!isP&&(stgDept.qt||0)>0) h+=ltRow(T.qty_target,""+stgDept.qt);
-  if(!isP&&(cnDept.qc||0)>0) h+=ltRow(T.qty_result,""+cnDept.qc);
+  // In preventivo mostra target QTY se disponibile
+  if(isP&&(stgDept.qt||0)>0) h+=ltRow(T.qty_target,""+stgDept.qt.toLocaleString("it-IT"));
+  if(!isP&&(stgDept.qt||0)>0) h+=ltRow(T.qty_target,""+stgDept.qt.toLocaleString("it-IT"));
+  if(!isP&&(cnDept.qc||0)>0) h+=ltRow(T.qty_result,""+cnDept.qc.toLocaleString("it-IT"));
   h+=ltRow(tr(e,"incentive","FORMULA"),T.qty_formula);
   h+=secPd(pdLabel,qty6,cu,true);
   h+="</div></div>";
@@ -2348,8 +2410,12 @@ function buildMidSeasonLetter(e){
     var earnedAmt=achieved?kpiAmt:0;
     var kpiLabel=({sy:T.sy_label,sr:T.sr_label,sas:T.sas_label,acc:T.acc_label})[kdef.k]||kdef.label;
 
-    var seas_sy=auto?auto.seas_sy:0, seas_pr=auto?auto.seas_pr:0;
-    var seas_sas=auto?auto.seas_sas:(SEAS_CFG.sasMaxHours||4);
+    var sid=String(e.si);
+    var stgLet=SEAS_TARGETS&&SEAS_TARGETS[sid]?SEAS_TARGETS[sid]:{};
+    // In preventivo leggi target da SEAS_TARGETS; in consuntivo usa auto
+    var seas_sy=auto?auto.seas_sy:(stgLet.sy||0);
+    var seas_pr=auto?auto.seas_pr:(stgLet.pr||0);
+    var seas_sas=auto?auto.seas_sas:(stgLet.sas||SEAS_CFG.sasMaxHours||4);
     var risultatoStr="—", varPctStr="—";
     if(!isP){
       if(kdef.k==="sy"){var rv=cn2.sy!==undefined?fDec(cn2.sy,2):"—";risultatoStr=rv;varPctStr=seas_sy>0?fDec(((cn2.sy||0)/seas_sy-1)*100,1)+"%":"—";}
@@ -2374,7 +2440,7 @@ function buildMidSeasonLetter(e){
 
   // KPI total row
   h+='<div style="padding:8px 14px;background:#2c2925;display:flex;justify-content:space-between;align-items:center">';
-  h+='<span style="font-size:10px;font-weight:700;color:#c9a96e;text-transform:uppercase;letter-spacing:1px">'+T.kpi_total+'</span>';
+  h+='<span style="font-size:10px;font-weight:700;color:#c9a96e;text-transform:uppercase;letter-spacing:1px">'+(isP?(T.kpi_total_prev||T.kpi_total):T.kpi_total)+'</span>';
   h+='<span style="font-size:16px;font-weight:800;color:#c9a96e">'+fc(kpiEarned,cu)+'</span>';
   h+='</div>';
   h+='</div>'; // close lt-kpi
@@ -3944,7 +4010,7 @@ function loadAnagraficaExcel(file){
         var matricola;
         if(eid){
           var eidNum=parseInt(String(eid).replace(/[^0-9]/g,""));
-          if(!isNaN(eidNum)&&eidNum>0)matricola="A"+String(eidNum).padStart(7,"0");
+          if(!isNaN(eidNum)&&eidNum>0)matricola=String(eid).trim(); // usa matricola originale senza aggiungere A
           else{errors.push({row:ri+1,name:fullName,reason:"ID non valido: "+eid});continue}
         }else{
           matricola="X"+String(ri).padStart(7,"0");
@@ -4343,80 +4409,91 @@ function loadTargetExcel(file){
         // Formato B - fidelity (target_fidelity): intestazione con store_id, sub_target
 
         // Cerca riga intestazione
+        // Cerca riga header nelle prime 6 righe
+        // Criteri: contiene "store id", "store_id", o keywords target
         var hdrRow=-1, headers=[];
         for(var i=0;i<Math.min(6,json0.length);i++){
           var r=json0[i]; if(!r) continue;
           var hdr=r.map(function(c){return String(c==null?"":c).toLowerCase().trim();});
-          if(hdr.some(function(h){return h.indexOf("etichette")>=0||h.indexOf("store_id")>=0||h.indexOf("store id")>=0||h.indexOf("store id")>=0||h.indexOf("target pezzi")>=0||h.indexOf("pezzi")>=0})){
+          if(hdr.some(function(h){return h.indexOf("store")>=0||h.indexOf("etichette")>=0||h.indexOf("retail_year")>=0})){
             hdrRow=i; headers=hdr; break;
           }
         }
 
+        if(hdrRow<0){
+          alert("Formato file seasonal non riconosciuto: nessuna riga header trovata nelle prime 6 righe.");
+          return;
+        }
+
         var imported=0, seasFormat="unknown";
 
-        // ── Formato C: QTY dept store pivot ──
-        // Col 0=Store Id, Col 1=Store Description, Col 2=Target pezzi
-        var isQtyFmt=hdrRow>=0&&headers.some(function(h){return h.indexOf("pezzi")>=0||h.indexOf("qty")>=0||h.indexOf("target pezzi")>=0});
-
-        if(isQtyFmt){
-          seasFormat="seas_qty_dept";
-          // rileva colonne dinamicamente
-          var cQtySid=-1, cQtyVal=-1;
+        // Helper: cerca colonna per keyword nel titolo (case-insensitive, substring)
+        function fSeasCol(){
+          var args=arguments;
           for(var ci=0;ci<headers.length;ci++){
-            var hh=headers[ci];
-            if(hh.indexOf("store id")>=0||hh.indexOf("store_id")>=0) cQtySid=ci;
-            else if(hh.indexOf("pezzi")>=0||hh.indexOf("qty")>=0) cQtyVal=ci;
+            var h=headers[ci]; if(!h) continue;
+            for(var ai=0;ai<args.length;ai++){if(h.indexOf(args[ai])>=0)return ci;}
           }
-          if(cQtySid<0) cQtySid=0; // fallback col A
-          if(cQtyVal<0) cQtyVal=2; // fallback col C
+          return -1;
+        }
+
+        // Identifica colonna store ID
+        var cSeasSid=fSeasCol("store id","store_id");
+        if(cSeasSid<0) cSeasSid=0; // fallback prima colonna
+
+        // Identifica tipo file dalle colonne presenti
+        var cSalesCol=fSeasCol("gross_sales","gross sales","sales_lc","sales after");
+        var cSyCol=fSeasCol("sy gross","sy_gross","sy vat","shopper yield","sy ");
+        var cSubCol=-1;
+        // sub_target: match esatto prima, poi fallback a "subscription"
+        for(var ci=0;ci<headers.length;ci++){if(headers[ci]==="sub_target"){cSubCol=ci;break;}}
+        if(cSubCol<0) cSubCol=fSeasCol("subscription","fidelity");
+        var cQtyCol=fSeasCol("target qty","qty 2026","qty","pezzi");
+        var cCrCol=fSeasCol("conversion rate","cr_","cr ");
+
+        // Determina formato
+        if(cSalesCol>=0||cSyCol>=0){
+          // ── Formato PIVOT: fatturato + SY ──
+          seasFormat="seas_pivot";
           for(var ri=hdrRow+1;ri<json0.length;ri++){
             var row=json0[ri]; if(!row) continue;
-            var sid=row[cQtySid]; if(!sid) continue;
+            var sid=row[cSeasSid]; if(!sid) continue;
+            sid=String(parseInt(sid));
+            if(sid==="NaN"||sid==="0") continue;
+            // Ignora riga "Totale complessivo" o simili
+            if(isNaN(parseInt(row[cSeasSid]))) continue;
+            var bdgTo=cSalesCol>=0?parseFloat(row[cSalesCol]):0;
+            var sy=cSyCol>=0&&row[cSyCol]!=null?parseFloat(row[cSyCol]):null;
+            var cr=cCrCol>=0&&row[cCrCol]!=null?parseFloat(row[cCrCol]):null;
+            if(!SEAS_TARGETS[sid]) SEAS_TARGETS[sid]={to:0,pr:null,sy:null,cr:null,sas:SEAS_CFG.sasMaxHours||4,acc:0.99,qt:0};
+            if(bdgTo>0) SEAS_TARGETS[sid].to=Math.round(bdgTo*100)/100;
+            if(sy!==null&&!isNaN(sy)) SEAS_TARGETS[sid].sy=Math.round(sy*1000000)/1000000;
+            if(cr!==null&&!isNaN(cr)) SEAS_TARGETS[sid].cr=Math.round(cr*1000000)/1000000;
+            imported++;
+          }
+        } else if(cQtyCol>=0){
+          // ── Formato QTY dept store ──
+          seasFormat="seas_qty_dept";
+          for(var ri=hdrRow+1;ri<json0.length;ri++){
+            var row=json0[ri]; if(!row) continue;
+            var sid=row[cSeasSid]; if(!sid) continue;
             sid=String(parseInt(sid)); if(sid==="NaN"||sid==="0") continue;
-            var qtVal=parseInt(row[cQtyVal]);
+            var qtVal=parseInt(row[cQtyCol]);
             if(isNaN(qtVal)||qtVal<=0) continue;
             if(!SEAS_TARGETS[sid]) SEAS_TARGETS[sid]={to:0,pr:null,sy:null,sas:SEAS_CFG.sasMaxHours||4,acc:0.99,qt:0};
             SEAS_TARGETS[sid].qt=qtVal;
             imported++;
           }
-        } else if(hdrRow>=0 && headers[0] && headers[0].indexOf("etichette")>=0){
-          // ── Formato A: tabella pivot ──
-          // Col 0=StoreID, Col 1=Fatturato, Col 4=CR (Conversion Rate — non è subscription), Col 5=SY
-          seasFormat="seas_pivot";
-          for(var ri=hdrRow+1;ri<json0.length;ri++){
-            var row=json0[ri]; if(!row) continue;
-            var sid=row[0]; if(!sid) continue;
-            sid=String(parseInt(sid)); if(sid==="NaN"||sid==="0") continue;
-            var bdgTo=parseFloat(row[1])||0;
-            var crTgt=(row[4]!=null&&!isNaN(parseFloat(row[4])))?parseFloat(row[4]):null; // col E = index 4
-            var sy=(row[5]!=null&&!isNaN(parseFloat(row[5])))?parseFloat(row[5]):null;    // col F = index 5
-            if(!SEAS_TARGETS[sid]) SEAS_TARGETS[sid]={to:0,pr:null,sy:null,cr:null,sas:SEAS_CFG.sasMaxHours||4,acc:0.99,qt:0};
-            if(bdgTo>0) SEAS_TARGETS[sid].to=Math.round(bdgTo*100)/100;
-            if(crTgt!==null) SEAS_TARGETS[sid].cr=Math.round(crTgt*1000000)/1000000;
-            if(sy!==null) SEAS_TARGETS[sid].sy=Math.round(sy*1000000)/1000000;
-            imported++;
-          }
-        } else if(hdrRow>=0){
-          // ── Formato B: fidelity/subscription per negozio ──
-          // Colonne: retail_year, retail_month, store_id (C=idx2), employee_id, %Subscription, sub_target (F=idx5)
-          var cSid=-1, cSub=-1, cMonth=-1;
-          for(var ci=0;ci<headers.length;ci++){
-            var h=headers[ci];
-            if(h==="store_id"||h.indexOf("store_id")>=0) cSid=ci;
-            else if(h==="sub_target") cSub=ci; else if(cSub<0&&(h.indexOf("subscription")>=0||h.indexOf("fidelity")>=0)) cSub=ci;
-            else if(h==="retail_month"||h.indexOf("retail_month")>=0) cMonth=ci;
-          }
-          if(cSid<0) cSid=2; // fallback colonna C
-          if(cSub<0) cSub=5; // fallback colonna F
+        } else if(cSubCol>=0){
+          // ── Formato FIDELITY: sub_target per store ──
           seasFormat="seas_fidelity";
-          // Prendi un solo valore per store (il primo non-null), tutti i dipendenti dello stesso store hanno lo stesso target
           var seenStores={};
           for(var ri=hdrRow+1;ri<json0.length;ri++){
             var row=json0[ri]; if(!row) continue;
-            var sid=row[cSid]; if(!sid) continue;
+            var sid=row[cSeasSid]; if(!sid) continue;
             sid=String(parseInt(sid)); if(sid==="NaN"||sid==="0") continue;
-            if(seenStores[sid]) continue; // già acquisito per questo store
-            var subVal=parseFloat(row[cSub]);
+            if(seenStores[sid]) continue;
+            var subVal=parseFloat(row[cSubCol]);
             if(isNaN(subVal)||subVal<=0) continue;
             if(!SEAS_TARGETS[sid]) SEAS_TARGETS[sid]={to:0,pr:null,sy:null,sas:SEAS_CFG.sasMaxHours||4,acc:0.99,qt:0};
             SEAS_TARGETS[sid].pr=Math.round(subVal*1000000)/1000000;
@@ -4424,7 +4501,8 @@ function loadTargetExcel(file){
             imported++;
           }
         } else {
-          alert("Formato file seasonal non riconosciuto.\nAssicurati di caricare:\n• File pivot KPI target (colonna A = Store ID, B = Fatturato, E = CR, F = SY)\n• File target fidelity (colonne: store_id, sub_target)\n• File target QTY dept (colonna A = Store Id, C = Target pezzi)");
+          var colsFound=headers.filter(function(h){return h;}).join(", ");
+          alert("Formato file seasonal non riconosciuto.\n\nColonne trovate: "+colsFound+"\n\nFile supportati:\n• Target KPI: deve avere colonna con 'store' e 'gross_sales' o 'SY'\n• Target QTY: deve avere colonna con 'store' e 'qty'\n• Target Fidelity: deve avere colonne 'store_id' e 'sub_target'");
           return;
         }
 
@@ -4782,7 +4860,7 @@ function loadResultsExcel(file){
         for(var ri=dataStart;ri<json.length;ri++){
           var row=json[ri];if(!row)continue;var matr=row[cMatr];if(!matr)continue;
           matr=String(matr).trim().toUpperCase();
-          if(matr.charAt(0)!=="A")matr="A"+matr.replace(/[^0-9]/g,"").padStart(7,"0");
+          // matr rimane invariata — usa la matricola originale dal file
           var days=0;
           if(cIll>=0)days+=parseNum(row[cIll]);if(cInj>=0)days+=parseNum(row[cInj]);if(cMat>=0)days+=parseNum(row[cMat]);
           days=Math.round(days);var found=false;
