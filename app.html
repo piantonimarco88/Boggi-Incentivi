@@ -364,7 +364,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='4.8'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='4.9'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=2,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -375,7 +375,7 @@ var MONTH_NAMES={
 };
 function getMonthName(lang){var map={"ITALIANO":"IT","INGLESE":"EN","FRANCESE":"FR","TEDESCO":"DE","SPAGNOLO":"ES"};return(MONTH_NAMES[map[lang]||"EN"]||MONTH_NAMES.EN)[CFG_MONTH]||""}
 function getMonthYearLabel(){if(PRIZE_MODE==="seasonal")return CFG_SEASON+" "+CFG_YEAR;return MONTH_NAMES.IT[CFG_MONTH]+" "+CFG_YEAR}
-function getPdfSubfolder(){if(PRIZE_MODE==="seasonal"){var yr2=String(CFG_YEAR).slice(-2);var base=CFG_SEASON+yr2+"_"+CFG_YEAR;return{prev:base+"/Preventivo",cons:base+"/Consuntivo",base:base};}return{prev:MONTH_NAMES.IT[CFG_MONTH]+"_"+CFG_YEAR+"/Preventivo",cons:MONTH_NAMES.IT[CFG_MONTH]+"_"+CFG_YEAR+"/Consuntivo",base:MONTH_NAMES.IT[CFG_MONTH]+"_"+CFG_YEAR};}
+function getPdfSubfolder(){if(PRIZE_MODE==="seasonal"){var yr2=String(CFG_YEAR).slice(-2);var base=CFG_SEASON+yr2+"_"+CFG_YEAR;if(SEASON_PERIOD==="mid")return{prev:base+"/Mid-Season/Preventivo",cons:base+"/Mid-Season/Consuntivo",base:base+"/Mid-Season"};return{prev:base+"/Preventivo",cons:base+"/Consuntivo",base:base};}return{prev:MONTH_NAMES.IT[CFG_MONTH]+"_"+CFG_YEAR+"/Preventivo",cons:MONTH_NAMES.IT[CFG_MONTH]+"_"+CFG_YEAR+"/Consuntivo",base:MONTH_NAMES.IT[CFG_MONTH]+"_"+CFG_YEAR};}
 function updateHeader(){var el=document.getElementById("hdrPeriod");if(el)el.textContent=getMonthYearLabel();}
 function updateHeaderCount(){
   var hs=document.getElementById("hs");
@@ -1677,6 +1677,8 @@ var SEAS_TR={
     boost_mult:"MOLTIPLICATORE SEZIONE BOOST",
     seas_earned:"INCENTIVO SEASONAL RAGGIUNGIBILE",
     mid_max:"MAX EROGABILE AL MID SEASON CHECKPOINT",
+    mid_potential:"INCENTIVO MID-SEASON RAGGIUNGIBILE",
+    mid_earned:"INCENTIVO MID-SEASON MATURATO",
     tab_from:"DA",tab_to:"A",tab_mult:"MOLT",tab_band:"FASCIA",
     sy_label:"MASSIMIZZA / Shopper Yield",
     sr_label:"FIDELIZZA / Subscription Rate",
@@ -1726,6 +1728,8 @@ var SEAS_TR={
     boost_mult:"BOOST MULTIPLIER",
     seas_earned:"SEASONAL INCENTIVE EARNED",
     mid_max:"MAX PAYABLE AT MID SEASON CHECKPOINT",
+    mid_potential:"MID-SEASON POTENTIAL INCENTIVE",
+    mid_earned:"MID-SEASON INCENTIVE EARNED",
     tab_from:"FROM",tab_to:"TO",tab_mult:"MULT",tab_band:"BAND",
     sy_label:"MAXIMISE / Shopper Yield",
     sr_label:"LOYALTY / Subscription Rate",
@@ -1775,6 +1779,8 @@ var SEAS_TR={
     boost_mult:"MULTIPLICATEUR SECTION BOOST",
     seas_earned:"INCITATION SEASONAL ATTEIGNABLE",
     mid_max:"MAX PAYABLE AU MID SEASON CHECKPOINT",
+    mid_potential:"INCITATION MID-SEASON POTENTIELLE",
+    mid_earned:"INCITATION MID-SEASON ACQUISE",
     tab_from:"DE",tab_to:"À",tab_mult:"MULT",tab_band:"TRANCHE",
     sy_label:"MAXIMISER / Shopper Yield",
     sr_label:"FIDÉLISER / Subscription Rate",
@@ -1824,6 +1830,8 @@ var SEAS_TR={
     boost_mult:"BOOST-MULTIPLIKATOR",
     seas_earned:"ERREICHTER SAISONALER ANREIZ",
     mid_max:"MAX ZAHLBAR BEI MID SEASON CHECKPOINT",
+    mid_potential:"POTENZIELLE MID-SEASON-PRÄMIE",
+    mid_earned:"VERDIENTE MID-SEASON-PRÄMIE",
     tab_from:"VON",tab_to:"BIS",tab_mult:"MULT",tab_band:"STUFE",
     sy_label:"MAXIMIEREN / Shopper Yield",
     sr_label:"BINDEN / Subscription Rate",
@@ -1873,6 +1881,8 @@ var SEAS_TR={
     boost_mult:"MULTIPLICADOR SECCIÓN BOOST",
     seas_earned:"INCENTIVO SEASONAL ALCANZABLE",
     mid_max:"MÁX PAGABLE EN MID SEASON CHECKPOINT",
+    mid_potential:"INCENTIVO MID-SEASON POTENCIAL",
+    mid_earned:"INCENTIVO MID-SEASON OBTENIDO",
     tab_from:"DESDE",tab_to:"HASTA",tab_mult:"MULT",tab_band:"TRAMO",
     sy_label:"MAXIMIZAR / Shopper Yield",
     sr_label:"FIDELIZAR / Subscription Rate",
@@ -2184,9 +2194,29 @@ function canProduceLetter(){
 // Funzione usata dal wrapper .exe per generare PDF isolati
 // Restituisce HTML completo (con CSS) della lettera del dipendente E[i]
 // Pool di dipendenti per cui generare lettere (rispetta i toggle attivi)
+// Ritorna il filename PDF esatto per il dipendente i-esimo nel pool
+// Deve corrispondere esattamente alla colonna FILENAME del tracciato lettere (.znf)
+function getLetterFilename(i){
+  var pool=getLetterPool();
+  var e=pool[i];
+  if(!e)return null;
+  var isSeasItalia=PRIZE_MODE==="seasonal"&&REGION==="italia";
+  var mm=String(CFG_MONTH).padStart(2,"0");
+  var stagione=CFG_SEASON+String(CFG_YEAR).slice(-2);
+  if(PRIZE_MODE==="seasonal"){
+    if(SEASON_PERIOD==="mid")return e.m+"_"+stagione+"_MID.pdf";
+    if(isSeasItalia)return e.m+"_"+stagione+".pdf";
+    return e.m+"_"+stagione+".pdf";
+  }
+  return e.m+"_"+mm+"_"+CFG_YEAR+".pdf";
+}
+
 function getLetterPool(){
-  if(PRIZE_MODE==="seasonal")return E.filter(function(e){return isSMVSM(e);});
-  return E;
+  if(PRIZE_MODE==="seasonal")return E.filter(function(e){
+    return isSMVSM(e)&&!(SEAS&&SEAS[e.m]&&SEAS[e.m].excluded);
+  });
+  // Mensile: escludi eventuali sospesi
+  return E.filter(function(e){return !(SEAS&&SEAS[e.m]&&SEAS[e.m].excluded);});
 }
 function getLetterCount(){return getLetterPool().length;}
 function getLetterMatricola(i){var pool=getLetterPool();return pool[i]?pool[i].m:null;}
@@ -2459,7 +2489,7 @@ function buildMidSeasonLetter(e){
   var storeVarPct=storeTgt>0?((storeCons/storeTgt-1)*100):0;
   h+='<div class="lt-kpi-row" style="grid-template-columns:'+sbarCols+'">';
   h+='<span style="font-weight:600">'+(T.store_budget||"Store Budget")+'</span>';
-  h+='<span style="text-align:right;font-size:10px;color:#6b6560">'+(isP?T.target:fc(storeTgt,cu))+'</span>';
+  h+='<span style="text-align:right;font-size:10px;color:#6b6560">'+(isP?(storeTgt>0?fc(storeTgt,cu):T.target):fc(storeTgt,cu))+'</span>';
   if(!isP){
     h+='<span style="text-align:right;font-size:10px;color:#2c2925">'+fc(storeCons,cu)+'</span>';
     h+='<span style="text-align:right;font-size:10px;font-weight:700;color:'+(fatOk?'#2d7a3a':'#cf5b5b')+'">'+fDec(storeVarPct,2)+'%</span>';
@@ -2472,7 +2502,7 @@ function buildMidSeasonLetter(e){
   var crRes=crActual!==null?crActual:(cn2.cr||null);
   h+='<div class="lt-kpi-row" style="grid-template-columns:'+sbarCols+';background:#faf9f7">';
   h+='<span style="font-weight:600">Conversion Rate</span>';
-  h+='<span style="text-align:right;font-size:10px;color:#6b6560">'+(isP?T.target:(crTgt!==null?fDec(crTgt*100,2)+'%':'—'))+'</span>';
+  h+='<span style="text-align:right;font-size:10px;color:#6b6560">'+(crTgt!==null?fDec(crTgt*100,2)+'%':(isP?T.target:'—'))+'</span>';
   if(!isP){
     h+='<span style="text-align:right;font-size:10px;color:#2c2925">'+(crRes!==null?fDec(crRes*100,2)+'%':'—')+'</span>';
     var crVarPct=(crTgt&&crRes)?fDec((crRes/crTgt-1)*100,2)+'%':'—';
@@ -2496,7 +2526,7 @@ function buildMidSeasonLetter(e){
 
   // Total bar
   h+='<div class="lt-total">';
-  h+='<div><div class="lt-total-label">MID-SEASON EARNED</div>';
+  h+='<div><div class="lt-total-label">'+(isP?(T.mid_potential||'MID-SEASON POTENTIAL'):(T.mid_earned||'MID-SEASON EARNED'))+'</div>';
   if(!isP) h+='<div class="lt-total-pct">'+(sbarOk?'Sbarramento superato':'Sbarramento non superato')+'</div>';
   h+='</div>';
   h+='<div class="lt-total-val">'+fc(kpiEarned,cu)+'</div>';
@@ -3436,7 +3466,12 @@ function rCSeasMid(){
       if(!SEAS[m])SEAS[m]={};
       SEAS[m].excluded=!SEAS[m].excluded;
       autoSave();
+      // Preserva posizione scroll
+      var sw=document.querySelector(".scroll-wrap");
+      var st=sw?sw.scrollTop:0;
       rCSeasMid();
+      var sw2=document.querySelector(".scroll-wrap");
+      if(sw2)sw2.scrollTop=st;
     };
   });
 }
@@ -3659,7 +3694,12 @@ function rCSeasonal(){
       if(!SEAS[m])SEAS[m]={};
       SEAS[m].excluded=!SEAS[m].excluded;
       autoSave();
+      // Preserva posizione scroll
+      var sw=document.querySelector(".scroll-wrap");
+      var st=sw?sw.scrollTop:0;
       rCSeasonal();
+      var sw2=document.querySelector(".scroll-wrap");
+      if(sw2)sw2.scrollTop=st;
     };
   });
 }
@@ -3923,8 +3963,8 @@ function loadAnagraficaExcel(file){
             itErrors.push({row:ri+1,name:fullName,reason:"Centro di costo '"+cdcRaw+"' non numerico \u2014 escluso (sede/ufficio)"});
             continue;
           }
-          if(cdcNum>6500){
-            itErrors.push({row:ri+1,name:fullName,reason:"Centro di costo "+cdcNum+" > 6500 \u2014 escluso"});
+          if(cdcNum>(PRIZE_MODE==="seasonal"?4999:6500)){
+            itErrors.push({row:ri+1,name:fullName,reason:"Centro di costo "+cdcNum+" escluso"+(PRIZE_MODE==="seasonal"?" (seasonal: solo store \u2264 4999)":"")});
             continue;
           }
           var cdcDesc=String(row[ZC.cdcDesc]||"").trim();
@@ -4449,7 +4489,7 @@ function loadTargetExcel(file){
         for(var ci=0;ci<headers.length;ci++){if(headers[ci]==="sub_target"){cSubCol=ci;break;}}
         if(cSubCol<0) cSubCol=fSeasCol("subscription","fidelity");
         var cQtyCol=fSeasCol("target qty","qty 2026","qty","pezzi");
-        var cCrCol=fSeasCol("conversion rate","cr_","cr ");
+        var cCrCol=fSeasCol("conversion rate","cr_","cr ","_cr","(cr)","\tcr","cr\t","cr,");if(cCrCol<0){for(var ci2=0;ci2<headers.length;ci2++){if(headers[ci2]==="cr"){cCrCol=ci2;break;}}}
 
         // Determina formato
         if(cSalesCol>=0||cSyCol>=0){
@@ -5486,13 +5526,15 @@ function exportTracciatoLettere(){
   var folder=MODE==="preventivo"?"preventivo":"consuntivo";
   var mm=String(CFG_MONTH).padStart(2,"0");
   var hrzModel=isSeasItalia?"HRZ_MODEL=COMUPER1":"HRZ_MODEL=COMUPERS";
-  var rows=[];
+  var lines=[];
   E.forEach(function(e){
+    // Escludi dipendenti con premio sospeso
+    if(SEAS&&SEAS[e.m]&&SEAS[e.m].excluded)return;
     var matrNum=e.m.replace(/^[A-Za-z]+/,"");
     var filename=isSeasItalia
       ?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+".pdf")
       :(e.m+"_"+mm+"_"+CFG_YEAR+".pdf");
-    rows.push([
+    var cols=[
       "FILENAME="+filename,
       hrzModel,
       "CFISC=00803620152",
@@ -5502,12 +5544,17 @@ function exportTracciatoLettere(){
       "IDEMPLOY="+matrNum,
       "ANNO="+CFG_YEAR,
       "MESE="+mm
-    ]);
+    ];
+    lines.push(cols.join(";"));
   });
-  var ws=XLSX.utils.aoa_to_sheet(rows);
-  var wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,"TRACCIATO PER LETTERE");
-  XLSX.writeFile(wb,"tracciato_lettere_"+folder+"_"+getPdfSubfolder().base+".xlsx");
+  // Genera CSV con estensione .znf per Zucchetti
+  var csvContent=lines.join("\n");
+  var blob=new Blob([csvContent],{type:"text/plain;charset=utf-8"});
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="attribute_file.znf";
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 // Export Tracciato Pagamenti for Zucchetti import
@@ -5521,6 +5568,8 @@ function exportTracciatoPagamenti(){
   if(isSeasItalia){
     // Seasonal Italia: una sola riga per dipendente — PREMIO SEMESTRALE cod 695
     E.forEach(function(e){
+      // Escludi dipendenti con premio sospeso
+      if(SEAS&&SEAS[e.m]&&SEAS[e.m].excluded)return;
       var matrNum=e.m.replace(/^[A-Za-z]+/,"");
       var val=calcSeasonal(e);
       var rounded=Math.round(val*100)/100;
@@ -5586,10 +5635,14 @@ function exportTracciatoPagamenti(){
     });
   });
   } // end else mensile
-  var ws=XLSX.utils.aoa_to_sheet(rows);
-  var wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,"TRACCIATO PAGAMENTI");
-  XLSX.writeFile(wb,"tracciato_pagamenti_"+getPdfSubfolder().base+".xlsx");
+  // Genera .txt (tab-separated) per Zucchetti
+  var txtLines=rows.map(function(r){return r.join(";");});
+  var blob=new Blob([txtLines.join("\n")],{type:"text/plain;charset=utf-8"});
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="tracciato_pagamento_incentivi.txt";
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 // Generate PowerShell script for Outlook COM sending
