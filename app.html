@@ -364,7 +364,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='5.1'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='5.2'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=2,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -4104,6 +4104,11 @@ function loadAnagraficaExcel(file){
           cu:cuInfo.cu,ex:cuInfo.ex,
           mp:email,mf:fc?fc.toLowerCase().replace(/ /g,".")+"@boggi.com":""
         };
+        // Mid-season internazionale: escludi dept store (premio solo a fine stagione)
+        if(PRIZE_MODE==="seasonal"&&SEASON_PERIOD==="mid"&&isD(cdc)){
+          errors.push({row:ri+1,name:fullName,reason:"Dept store ("+cdc+") escluso dal Mid-Season — premio solo a fine stagione"});
+          continue;
+        }
         imported.push(emp);
       }
 
@@ -4502,6 +4507,8 @@ function loadTargetExcel(file){
             if(sid==="NaN"||sid==="0") continue;
             // Ignora riga "Totale complessivo" o simili
             if(isNaN(parseInt(row[cSeasSid]))) continue;
+            // Mid-season: escludi negozi dept (non hanno premio mid-season)
+            if(SEASON_PERIOD==="mid"&&isD(sid)){continue;}
             var bdgTo=cSalesCol>=0?parseFloat(row[cSalesCol]):0;
             var sy=cSyCol>=0&&row[cSyCol]!=null?parseFloat(row[cSyCol]):null;
             var cr=cCrCol>=0&&row[cCrCol]!=null?parseFloat(row[cCrCol]):null;
@@ -4518,6 +4525,7 @@ function loadTargetExcel(file){
             var row=json0[ri]; if(!row) continue;
             var sid=row[cSeasSid]; if(!sid) continue;
             sid=String(parseInt(sid)); if(sid==="NaN"||sid==="0") continue;
+            if(SEASON_PERIOD==="mid"&&isD(sid)){continue;}
             var qtVal=parseInt(row[cQtyCol]);
             if(isNaN(qtVal)||qtVal<=0) continue;
             if(!SEAS_TARGETS[sid]) SEAS_TARGETS[sid]={to:0,pr:null,sy:null,sas:SEAS_CFG.sasMaxHours||4,acc:0.99,qt:0};
