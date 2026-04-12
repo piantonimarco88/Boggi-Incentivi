@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Boggi Milano - Sistema Incentivazione V5.4</title>
+<title>Boggi Milano - Sistema Incentivazione V5.5</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -346,6 +346,7 @@ var FC_TARGETS={}; // {store_id:{to_eur,sy_cy,sy_ly}}
 var FC_RESULTS={}; // {store_id:{sc_eur,sy_cy,sy_ly}}
 var FC_SYLY={};   // {store_id:{sales_ly,footfall_ly,sy_ly}} — dati LY per calcolo SY LY area
 var FC_STORE_FLAGS={}; // {store_id:{excl_fatt:bool, excl_sy:bool}}
+var AGG_FCVM={};       // {matricola: importo aggiunta manuale FC+VM}
 var FCVM_PARAMS={soglia100:0.995,soglia60:0.95,pct60:0.60};
 
 function calcFcVmPremio(matr){
@@ -400,8 +401,25 @@ function calcFcVmPremio(matr){
     else if(pct>=FCVM_PARAMS.soglia60&&syOk===null){esito="partial_nosy";premioLC=0;}
     else{esito="none";premioLC=0;}
   }else{esito="preventivo";premioLC=emp.ib;}
-  var exRate=getFcVmExRate(emp.cu);var premioEur=Math.round(premioLC*exRate*100)/100;
-  return{premio:premioLC,premio_eur:premioEur,esito:esito,pct:pct,totTarget:totTarget,totCons:totCons,syOk:syOk,syLyArea:syLyArea,syAreaCy:syAreaCy,hasSyLy:hasSyLy,hasSyCy:hasSyCy,syAreaAvg:syAreaAvg,stores:detail};
+  var exRate=getFcVmExRate(emp.cu);  // ── Premi BDG singoli negozi ─────────────────────────────────
+  var bdgPrize=0,bdgPrizeEur=0,bdgDetail=[];
+  if(emp.bdg_stores&&emp.bdg_stores.length){
+    emp.bdg_stores.forEach(function(b){
+      var tg=FC_TARGETS[b.sid]||{};
+      var cn=isCons?(FC_RESULTS[b.sid]||{}):{};
+      var to=tg.to_eur||0;
+      var sc=isCons?(cn.sc_eur||0):0;
+      var earned=isCons?(sc>to&&to>0):false;
+      var prize=isCons?(earned?b.ib:0):b.ib;
+      var prizeEur=Math.round(prize*exRate*100)/100;
+      bdgPrize+=prize; bdgPrizeEur+=prizeEur;
+      bdgDetail.push({sid:b.sid,s:b.s,to:to,sc:sc,ib:b.ib,earned:earned,prize:prize,prizeEur:prizeEur});
+    });
+  }
+  var premioEur=Math.round(premioLC*exRate*100)/100;
+  var totalPremioLC=premioLC+bdgPrize;
+  var totalPremioEur=Math.round(totalPremioLC*exRate*100)/100;
+  return{premio:premioLC,premio_eur:premioEur,esito:esito,pct:pct,totTarget:totTarget,totCons:totCons,syOk:syOk,syLyArea:syLyArea,syAreaCy:syAreaCy,hasSyLy:hasSyLy,hasSyCy:hasSyCy,syAreaAvg:syAreaAvg,stores:detail,bdgPrize:bdgPrize,bdgPrizeEur:bdgPrizeEur,bdgDetail:bdgDetail,totalPremioLC:totalPremioLC,totalPremioEur:totalPremioEur,hasBdg:bdgDetail.length>0};
 }
 function getFcVmPool(){return Object.values(FC_EMP);}
 
@@ -445,7 +463,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='5.4'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='5.5'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=2,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -2928,6 +2946,7 @@ rA();
 // ==== TAB 5: AGGIUNTE (editable manual adjustments) ====
 var aggFilter="";
 function rAgg(){
+  if(PRIZE_MODE==="fcvm"){rAggFcvm();return;}
   var h='<div style="font-size:12px;color:#6b6560;margin-bottom:14px"><b>Aggiunte manuali</b> \u2014 Importi inseriti qui si <b>sommano</b> ai premi calcolati e <b>non risentono</b> di regole, policy o malattia.</div>';
   h+='<div class="flt" style="margin-bottom:12px"><input placeholder="Cerca matricola, nome..." id="aggQ" value="'+esc(aggFilter)+'" style="padding:8px 12px;border-radius:6px;border:1px solid #d5d0c8;font-size:12px;flex:1;min-width:200px"></div>';
   
@@ -4550,7 +4569,7 @@ function resetEverything(){
   });
   SEAS={};
   // FC+VM
-  FC_EMP={};FC_MAP={};FC_TARGETS={};FC_RESULTS={};FC_SYLY={};FC_STORE_FLAGS={};
+  FC_EMP={};FC_MAP={};FC_TARGETS={};FC_RESULTS={};FC_SYLY={};FC_STORE_FLAGS={};AGG_FCVM={};
   // Svuota DOM di tutti i pannelli immediatamente (evita dati residui visibili)
   ["p0","p1","p2","p3","p4","p5","p6","p7"].forEach(function(id){
     var el=document.getElementById(id);
@@ -5877,7 +5896,7 @@ function rCFcvm(){
   function thS(label){return'<th>'+label+'</th>';}
   h+='<div class="scroll-wrap"><table id="ctbl"><thead><tr>';
   h+=thS('Matr.')+thS('Cognome')+thS('Nome')+thS('Ruolo')+thS('Val.')+thS('N.Store');
-  h+=thS('Target EUR')+thS('Max Premio')+(!isP?thS('Consuntivo EUR'):'')+thS('% Area')+thS('SY LY')+thS('SY CY')+thS('Premio LC')+thS('Premio EUR')+thS('Esito');
+  h+=thS('Target EUR')+thS('Max Premio')+(!isP?thS('Consuntivo EUR'):'')+thS('% Area')+thS('SY LY')+thS('SY CY')+thS('Premio LC')+thS('Premio EUR')+thS('BDG')+thS('Esito');
   h+='</tr></thead><tbody>';
 
   fl.forEach(function(emp,i){
@@ -5894,7 +5913,10 @@ function rCFcvm(){
     h+='<td style="font-size:9px;color:#a09a92">'+esc(emp.cu||'EUR')+'</td>';
     h+='<td style="text-align:center;color:#8a8680">'+nStores+'</td>';
     h+='<td style="text-align:right">'+fc(r.totTarget,'EUR')+'</td>';
-    h+='<td style="text-align:right;font-weight:700;color:#c9a96e">'+fc(emp.ib,emp.cu||'EUR')+'</td>';
+    var maxBdg=(emp.bdg_stores||[]).reduce(function(s,b){return s+b.ib;},0);
+    var maxTot=emp.ib+maxBdg;
+    var aggFcvm=AGG_FCVM[emp.m]||0;
+    h+='<td style="text-align:right;font-weight:700;color:#c9a96e">'+fc(maxTot,emp.cu||'EUR')+(aggFcvm>0?'<span style="font-size:8px;color:#c9a96e;margin-left:2px">+'+fc(aggFcvm,emp.cu||'EUR')+'</span>':'')+'</td>';
     if(!isP)h+='<td style="text-align:right">'+fc(r.totCons,'EUR')+'</td>';
     h+='<td style="text-align:right;font-weight:700;color:'+(pc===null?'#a09a92':pc>=FCVM_PARAMS.soglia100?'#2d7a3a':pc>=FCVM_PARAMS.soglia60?'#cf8b4e':'#cf5b5b')+'">'+(pc===null?'\u2014':fPct(pc))+'</td>';
     // SY LY (aggregato area da FC_SYLY)
@@ -5905,8 +5927,19 @@ function rCFcvm(){
     var syCyDisp=isP?'\u2014':(r.syAreaCy!=null?('<span style="color:'+syCyColor+';font-weight:700">'+fDec(r.syAreaCy,2)+'</span>'):'\u2014');
     h+='<td style="text-align:center;font-size:10px;color:#6b6560">'+syLyDisp+'</td>';
     h+='<td style="text-align:center;font-size:10px">'+syCyDisp+'</td>';
-    h+='<td style="text-align:right;font-weight:700;color:'+ec+'">'+fc(r.premio,emp.cu||'EUR')+'</td>';
-    h+='<td style="text-align:right;font-weight:700;color:'+ec+'">'+fc(r.premio_eur,'EUR')+'</td>';
+    var showTotal=r.hasBdg&&r.bdgPrize>0;
+    var aggFcvmEur=Math.round((AGG_FCVM[emp.m]||0)*getFcVmExRate(emp.cu)*100)/100;
+    var finalLC=(showTotal?r.totalPremioLC:r.premio)+(AGG_FCVM[emp.m]||0);
+    var finalEur=(showTotal?r.totalPremioEur:r.premio_eur)+aggFcvmEur;
+    h+='<td style="text-align:right;font-weight:700;color:'+ec+'">'+fc(finalLC,emp.cu||'EUR')+'</td>';
+    h+='<td style="text-align:right;font-weight:700;color:'+ec+'">'+fc(finalEur,'EUR')+'</td>';
+    // Colonna BDG: somma premi singoli negozi
+    if(r.hasBdg){
+      var nBdgEarned=r.bdgDetail.filter(function(b){return b.earned||!isP;}).length;
+      h+='<td style="text-align:center;font-size:9px;color:#5b6abf">'+nBdgEarned+'/'+r.bdgDetail.length+'<br><span style="font-weight:700">'+fc(r.bdgPrize,emp.cu||'EUR')+'</span></td>';
+    } else {
+      h+='<td style="text-align:center;color:#a09a92">—</td>';
+    }
     h+='<td style="text-align:center;font-weight:700;color:'+ec+'">'+el+'</td>';
     // Selezione lingua
     h+='<td onclick="event.stopPropagation()"><select style="font-size:9px;padding:2px 4px;border:1px solid #d5d0c8;border-radius:3px;font-family:inherit" data-fcmatr="'+esc(emp.m)+'" onchange="setFcVmLang(this);event.stopPropagation()">';
@@ -6013,11 +6046,11 @@ function buildFcVmLetter(emp){
   var lang=emp.lang||'INGLESE';
   var r=calcFcVmPremio(emp.m);
   var TR={
-    ITALIANO:{g:'Ciao',role:'FUNZIONE',matr:'MATRICOLA',cogn:'COGNOME',nome:'NOME',max:'PREMIO MASSIMALE',area:'LA TUA AREA',store:'NEGOZIO',tgt:'TARGET EUR',tot:'TOTALE AREA',sycy:'SY ANNO CORRENTE',syly:'SY ANNO PRECEDENTE',cons:'CONSUNTIVO EUR',pct_lbl:'% AREA',why_full:'Obiettivo pieno raggiunto: area ≥',why_partial:'Obiettivo ridotto: area ≥',why_partial_nosy:'Soglia raggiunta ma SY LY non disponibile',why_none:'Obiettivo non raggiunto: area <',cons:'REAL EUR',pct_lbl:'% ZONA',why_full:'Objetivo alcanzado: zona ≥',why_partial:'Objetivo parcial: zona ≥',why_partial_nosy:'Umbral alcanzado sin SY LY disponible',why_none:'Objetivo no alcanzado: zona <',prize:'INCENTIVO',full:'OBIETTIVO RAGGIUNTO',partial:'OBIETTIVO PARZIALMENTE RAGGIUNTO',none:'OBIETTIVO NON RAGGIUNTO',prev:'MASSIMO INCENTIVO RAGGIUNGIBILE',r1:'Premio pieno: area \u2265'+fPct(FCVM_PARAMS.soglia100)+' del target',r2:'Premio ridotto ('+fPct(FCVM_PARAMS.pct60)+'): area \u2265'+fPct(FCVM_PARAMS.soglia60)+' e SY anno corrente > anno precedente',discl:DISCL.ITALIANO||''},
-    INGLESE:{g:'Hi',role:'FUNCTION',matr:'ID',cogn:'SURNAME',nome:'FIRST NAME',max:'MAXIMUM INCENTIVE',area:'YOUR AREA',store:'STORE',tgt:'TARGET EUR',tot:'AREA TOTAL',sycy:'SY CURRENT YEAR',syly:'SY LAST YEAR',cons:'ACTUAL EUR',pct_lbl:'% AREA',why_full:'Full target achieved: area ≥',why_partial:'Partial target: area ≥',why_partial_nosy:'Threshold reached but SY LY unavailable',why_none:'Target not achieved: area <',prize:'INCENTIVE',full:'TARGET ACHIEVED',partial:'TARGET PARTIALLY ACHIEVED',none:'TARGET NOT ACHIEVED',prev:'MAXIMUM ACHIEVABLE INCENTIVE',r1:'Full incentive: area \u2265'+fPct(FCVM_PARAMS.soglia100)+' of target',r2:'Partial incentive ('+fPct(FCVM_PARAMS.pct60)+'): area \u2265'+fPct(FCVM_PARAMS.soglia60)+' and SY improving vs prior year',discl:DISCL.INGLESE||''},
-    FRANCESE:{g:'Bonjour',role:'FONCTION',matr:'MATRICULE',cogn:'NOM',nome:'PR\u00c9NOM',max:'PRIME MAXIMUM',area:'VOTRE ZONE',store:'MAGASIN',tgt:'OBJECTIF EUR',tot:'TOTAL ZONE',sycy:'SY ANN\u00c9E EN COURS',syly:'SY ANN\u00c9E DERNI\u00c8RE',cons:'RÉEL EUR',pct_lbl:'% ZONE',why_full:'Objectif atteint: zone ≥',why_partial:'Objectif partiel: zone ≥',why_partial_nosy:'Seuil atteint mais SY LY indisponible',why_none:'Objectif non atteint: zone <',prize:'INCITATION',full:'OBJECTIF ATTEINT',partial:'OBJECTIF PARTIELLEMENT ATTEINT',none:'OBJECTIF NON ATTEINT',prev:'INCITATION MAXIMALE ATTEIGNABLE',r1:'Prime compl\u00e8te: zone \u2265'+fPct(FCVM_PARAMS.soglia100)+' de l\'objectif',r2:'Prime partielle ('+fPct(FCVM_PARAMS.pct60)+'): zone \u2265'+fPct(FCVM_PARAMS.soglia60)+' et SY en am\u00e9lioration',discl:DISCL.FRANCESE||''},
-    TEDESCO:{g:'Hallo',role:'FUNKTION',matr:'PERSONALNR.',cogn:'NACHNAME',nome:'VORNAME',max:'MAXIMALER ANREIZ',area:'DEIN BEREICH',store:'STORE',tgt:'ZIEL EUR',tot:'BEREICH GESAMT',sycy:'SY AKTUELLES JAHR',syly:'SY VORJAHR',prize:'PR\u00c4MIE',full:'ZIEL ERREICHT',partial:'ZIEL TEILWEISE ERREICHT',none:'ZIEL NICHT ERREICHT',prev:'MAXIMAL ERREICHBARE PR\u00c4MIE',r1:'Voller Anreiz: Bereich \u2265'+fPct(FCVM_PARAMS.soglia100)+' des Ziels',r2:'Teilweiser Anreiz ('+fPct(FCVM_PARAMS.pct60)+'): Bereich \u2265'+fPct(FCVM_PARAMS.soglia60)+' und SY steigend',discl:DISCL.TEDESCO||''},
-    SPAGNOLO:{g:'Hola',role:'FUNCI\u00d3N',matr:'MATR\u00cdCULA',cogn:'APELLIDO',nome:'NOMBRE',max:'INCENTIVO M\u00c1XIMO',area:'TU ZONA',store:'TIENDA',tgt:'OBJETIVO EUR',tot:'TOTAL ZONA',sycy:'SY A\u00d1O ACTUAL',syly:'SY A\u00d1O ANTERIOR',prize:'INCENTIVO',full:'OBJETIVO ALCANZADO',partial:'OBJETIVO PARCIALMENTE ALCANZADO',none:'OBJETIVO NO ALCANZADO',prev:'M\u00c1XIMO INCENTIVO ALCANZABLE',r1:'Premio completo: zona \u2265'+fPct(FCVM_PARAMS.soglia100)+' del objetivo',r2:'Premio parcial ('+fPct(FCVM_PARAMS.pct60)+'): zona \u2265'+fPct(FCVM_PARAMS.soglia60)+' y SY mejorando',discl:DISCL.SPAGNOLO||''}
+    ITALIANO:{g:'Ciao',role:'FUNZIONE',matr:'MATRICOLA',cogn:'COGNOME',nome:'NOME',max:'PREMIO MASSIMALE',bdg_title:'PREMI SINGOLI NEGOZI (BDG)',bdg_store:'NEGOZIO',bdg_tgt:'TARGET EUR',bdg_cons:'CONSUNTIVO EUR',bdg_prize:'PREMIO',bdg_total:'TOTALE INCENTIVO',area:'LA TUA AREA',store:'NEGOZIO',tgt:'TARGET EUR',tot:'TOTALE AREA',sycy:'SY ANNO CORRENTE',syly:'SY ANNO PRECEDENTE',cons:'CONSUNTIVO EUR',pct_lbl:'% AREA',why_full:'Obiettivo pieno raggiunto: area ≥',why_partial:'Obiettivo ridotto: area ≥',why_partial_nosy:'Soglia raggiunta ma SY LY non disponibile',why_none:'Obiettivo non raggiunto: area <',cons:'REAL EUR',pct_lbl:'% ZONA',why_full:'Objetivo alcanzado: zona ≥',why_partial:'Objetivo parcial: zona ≥',why_partial_nosy:'Umbral alcanzado sin SY LY disponible',why_none:'Objetivo no alcanzado: zona <',prize:'INCENTIVO',full:'OBIETTIVO RAGGIUNTO',partial:'OBIETTIVO PARZIALMENTE RAGGIUNTO',none:'OBIETTIVO NON RAGGIUNTO',prev:'MASSIMO INCENTIVO RAGGIUNGIBILE',r1:'Premio pieno: area \u2265'+fPct(FCVM_PARAMS.soglia100)+' del target',r2:'Premio ridotto ('+fPct(FCVM_PARAMS.pct60)+'): area \u2265'+fPct(FCVM_PARAMS.soglia60)+' e SY anno corrente > anno precedente',discl:DISCL.ITALIANO||''},
+    INGLESE:{g:'Hi',role:'FUNCTION',matr:'ID',cogn:'SURNAME',nome:'FIRST NAME',max:'MAXIMUM INCENTIVE',bdg_title:'INDIVIDUAL STORE INCENTIVE (BDG)',bdg_store:'STORE',bdg_tgt:'TARGET EUR',bdg_cons:'ACTUAL EUR',bdg_prize:'INCENTIVE',bdg_total:'TOTAL INCENTIVE',area:'YOUR AREA',store:'STORE',tgt:'TARGET EUR',tot:'AREA TOTAL',sycy:'SY CURRENT YEAR',syly:'SY LAST YEAR',cons:'ACTUAL EUR',pct_lbl:'% AREA',why_full:'Full target achieved: area ≥',why_partial:'Partial target: area ≥',why_partial_nosy:'Threshold reached but SY LY unavailable',why_none:'Target not achieved: area <',prize:'INCENTIVE',full:'TARGET ACHIEVED',partial:'TARGET PARTIALLY ACHIEVED',none:'TARGET NOT ACHIEVED',prev:'MAXIMUM ACHIEVABLE INCENTIVE',r1:'Full incentive: area \u2265'+fPct(FCVM_PARAMS.soglia100)+' of target',r2:'Partial incentive ('+fPct(FCVM_PARAMS.pct60)+'): area \u2265'+fPct(FCVM_PARAMS.soglia60)+' and SY improving vs prior year',discl:DISCL.INGLESE||''},
+    FRANCESE:{g:'Bonjour',role:'FONCTION',matr:'MATRICULE',cogn:'NOM',nome:'PR\u00c9NOM',max:'PRIME MAXIMUM',bdg_title:'PRIMES MAGASINS INDIVIDUELS (BDG)',bdg_store:'MAGASIN',bdg_tgt:'OBJECTIF EUR',bdg_cons:'R\u00c9EL EUR',bdg_prize:'PRIME',bdg_total:'INCITATION TOTALE',area:'VOTRE ZONE',store:'MAGASIN',tgt:'OBJECTIF EUR',tot:'TOTAL ZONE',sycy:'SY ANN\u00c9E EN COURS',syly:'SY ANN\u00c9E DERNI\u00c8RE',cons:'RÉEL EUR',pct_lbl:'% ZONE',why_full:'Objectif atteint: zone ≥',why_partial:'Objectif partiel: zone ≥',why_partial_nosy:'Seuil atteint mais SY LY indisponible',why_none:'Objectif non atteint: zone <',prize:'INCITATION',full:'OBJECTIF ATTEINT',partial:'OBJECTIF PARTIELLEMENT ATTEINT',none:'OBJECTIF NON ATTEINT',prev:'INCITATION MAXIMALE ATTEIGNABLE',r1:'Prime compl\u00e8te: zone \u2265'+fPct(FCVM_PARAMS.soglia100)+' de l\'objectif',r2:'Prime partielle ('+fPct(FCVM_PARAMS.pct60)+'): zone \u2265'+fPct(FCVM_PARAMS.soglia60)+' et SY en am\u00e9lioration',discl:DISCL.FRANCESE||''},
+    TEDESCO:{g:'Hallo',role:'FUNKTION',matr:'PERSONALNR.',cogn:'NACHNAME',nome:'VORNAME',max:'MAXIMALER ANREIZ',bdg_title:'EINZELNE STORE-PR\u00c4MIEN (BDG)',bdg_store:'STORE',bdg_tgt:'ZIEL EUR',bdg_cons:'IST EUR',bdg_prize:'PR\u00c4MIE',bdg_total:'GESAMTANREIZ',area:'DEIN BEREICH',store:'STORE',tgt:'ZIEL EUR',tot:'BEREICH GESAMT',sycy:'SY AKTUELLES JAHR',syly:'SY VORJAHR',prize:'PR\u00c4MIE',full:'ZIEL ERREICHT',partial:'ZIEL TEILWEISE ERREICHT',none:'ZIEL NICHT ERREICHT',prev:'MAXIMAL ERREICHBARE PR\u00c4MIE',r1:'Voller Anreiz: Bereich \u2265'+fPct(FCVM_PARAMS.soglia100)+' des Ziels',r2:'Teilweiser Anreiz ('+fPct(FCVM_PARAMS.pct60)+'): Bereich \u2265'+fPct(FCVM_PARAMS.soglia60)+' und SY steigend',discl:DISCL.TEDESCO||''},
+    SPAGNOLO:{g:'Hola',role:'FUNCI\u00d3N',matr:'MATR\u00cdCULA',cogn:'APELLIDO',nome:'NOMBRE',max:'INCENTIVO M\u00c1XIMO',bdg_title:'INCENTIVOS TIENDAS INDIVIDUALES (BDG)',bdg_store:'TIENDA',bdg_tgt:'OBJETIVO EUR',bdg_cons:'REAL EUR',bdg_prize:'INCENTIVO',bdg_total:'INCENTIVO TOTAL',area:'TU ZONA',store:'TIENDA',tgt:'OBJETIVO EUR',tot:'TOTAL ZONA',sycy:'SY A\u00d1O ACTUAL',syly:'SY A\u00d1O ANTERIOR',prize:'INCENTIVO',full:'OBJETIVO ALCANZADO',partial:'OBJETIVO PARCIALMENTE ALCANZADO',none:'OBJETIVO NO ALCANZADO',prev:'M\u00c1XIMO INCENTIVO ALCANZABLE',r1:'Premio completo: zona \u2265'+fPct(FCVM_PARAMS.soglia100)+' del objetivo',r2:'Premio parcial ('+fPct(FCVM_PARAMS.pct60)+'): zona \u2265'+fPct(FCVM_PARAMS.soglia60)+' y SY mejorando',discl:DISCL.SPAGNOLO||''}
   };
   var T=TR[lang]||TR.INGLESE;
   var ec={full:'#2d7a3a',partial:'#cf8b4e',none:'#cf5b5b',preventivo:'#c9a96e'}[r.esito]||'#6b6560';
@@ -6034,7 +6067,9 @@ function buildFcVmLetter(emp){
   h+='<div class="lt-body">';
   h+='<div class="lt-greeting">'+T.g+' '+esc(emp.n)+',</div>';
   h+='<div class="lt-info" style="grid-template-columns:1fr 1fr 1fr">';
-  [[T.matr||'MATRICOLA',String(emp.m)],[T.cogn||'COGNOME',emp.c],[T.nome||'NOME',emp.n],[T.role,emp.j==='FC'?'Field Coach':'Visual Merchandiser'],[T.max,fc(emp.ib,cu)]].forEach(function(p){
+  var maxBdgLetter=(emp.bdg_stores||[]).reduce(function(s,b){return s+b.ib;},0);
+  var maxTotLetter=emp.ib+maxBdgLetter;
+  [[T.matr||'MATRICOLA',String(emp.m)],[T.cogn||'COGNOME',emp.c],[T.nome||'NOME',emp.n],[T.role,emp.j==='FC'?'Field Coach':'Visual Merchandiser'],[T.max,fc(maxTotLetter,cu)]].forEach(function(p){
     h+='<div class="lt-info-item"><div class="lt-info-label">'+esc(p[0])+'</div><div class="lt-info-val">'+esc(p[1])+'</div></div>';
   });
   h+='</div>';
@@ -6128,12 +6163,56 @@ function buildFcVmLetter(emp){
     if(whyStr)h+='<div style="padding:8px 16px;font-size:10px;color:#4e4b48;background:#faf9f7;line-height:1.6">'+whyStr+'</div>';
     h+='</div>';
   }
+
+  // ── Sezione BDG (solo se VM con negozi singoli) ──────────────────
+  if(r.hasBdg){
+    var gridBdg=isP?'1fr 120px 100px':'1fr 120px 120px 80px 100px';
+    h+='<div style="margin-top:14px;border:1px solid #c7d2fe;border-radius:6px;overflow:hidden">';
+    h+='<div style="background:#3d4a6b;padding:8px 14px"><span style="font-size:10px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:1px">'+(T.bdg_title||'INDIVIDUAL STORE INCENTIVE')+'</span></div>';
+    h+='<div style="padding:0">';
+    // Header
+    h+='<div style="display:grid;grid-template-columns:'+gridBdg+';background:#5b6abf;padding:6px 14px">';
+    h+='<span style="font-size:9px;font-weight:700;color:#fff">'+(T.bdg_store||'STORE')+'</span>';
+    h+='<span style="text-align:right;font-size:9px;font-weight:700;color:#fff">'+(T.bdg_tgt||'TARGET EUR')+'</span>';
+    if(!isP)h+='<span style="text-align:right;font-size:9px;font-weight:700;color:#fff">'+(T.bdg_cons||'ACTUAL EUR')+'</span><span style="text-align:center;font-size:9px;font-weight:700;color:#fff">OK?</span>';
+    h+='<span style="text-align:right;font-size:9px;font-weight:700;color:#fff">'+(T.bdg_prize||'INCENTIVE')+'</span>';
+    h+='</div>';
+    // Righe negozi BDG
+    r.bdgDetail.forEach(function(b,i){
+      var bg=i%2===0?'#f8f9ff':'#fff';
+      var earnedColor=isP?'#5b6abf':(b.earned?'#2d7a3a':'#cf5b5b');
+      h+='<div style="display:grid;grid-template-columns:'+gridBdg+';padding:5px 14px;background:'+bg+';border-bottom:1px solid #e5e1db">';
+      h+='<span style="font-size:10px;font-weight:600">'+esc(b.s||b.sid)+'</span>';
+      h+='<span style="text-align:right;font-size:10px">'+fc(b.to,'EUR')+'</span>';
+      if(!isP){
+        h+='<span style="text-align:right;font-size:10px">'+fc(b.sc,'EUR')+'</span>';
+        h+='<span style="text-align:center;font-size:12px">'+(b.earned?'<span style="color:#2d7a3a">&#10003;</span>':'<span style="color:#cf5b5b">&#10005;</span>')+'</span>';
+      }
+      h+='<span style="text-align:right;font-size:10px;font-weight:700;color:'+earnedColor+'">'+fc(b.prize,cu)+'</span>';
+      h+='</div>';
+    });
+    // Totale BDG
+    h+='<div style="display:grid;grid-template-columns:'+gridBdg+';padding:6px 14px;background:#3d4a6b">';
+    h+='<span style="font-size:10px;font-weight:700;color:#c7d2fe">SUBTOTAL BDG</span>';
+    h+='<span></span>';
+    if(!isP)h+='<span></span><span></span>';
+    h+='<span style="text-align:right;font-size:11px;font-weight:800;color:#fff">'+fc(r.bdgPrize,cu)+'</span>';
+    h+='</div></div></div>';
+  }
   h+='</div>'; // close lt-body
 
   // ── BARRA FINALE: una sola riga premio ───────────────────────────────────
-  h+='<div class="lt-total">';
-  h+='<div class="lt-total-label">'+(isP?T.prev:T.prize)+'</div>';
-  h+='<div class="lt-total-val" style="color:#c9a96e">'+fc(r.premio,cu)+'</div>';
+    // Aggiunta manuale
+  var aggManuale=AGG_FCVM[emp.m]||0;
+  if(aggManuale>0){
+    h+='<div style="padding:8px 32px;display:flex;justify-content:space-between;align-items:center;background:#fef9ef;border-top:1px solid #e5d9b6">';
+    h+='<span style="font-size:10px;color:#856404;font-weight:600">AGGIUNTA MANUALE</span>';
+    h+='<span style="font-size:12px;font-weight:700;color:#c9a96e">+'+fc(aggManuale,cu)+'</span>';
+    h+='</div>';
+  }
+h+='<div class="lt-total">';
+  h+='<div class="lt-total-label">'+(isP?(T.max||'MAXIMUM INCENTIVE'):(r.hasBdg?(T.bdg_total||'TOTAL INCENTIVE'):T.prize))+'</div>';
+  h+='<div class="lt-total-val" style="color:#c9a96e">'+fc(isP?maxTotLetter+aggManuale:(r.hasBdg?r.totalPremioLC:r.premio)+aggManuale,cu)+'</div>';
   h+='</div>';
 
   // Footer disclaimer
@@ -6156,7 +6235,7 @@ function rAFcvm(){
   pool.forEach(function(emp){
     var r=calcFcVmPremio(emp.m);
     var exR=getFcVmExRate(emp.cu);
-    totEur+=r.premio_eur;
+    var aggFcvmRow=AGG_FCVM[emp.m]||0;var aggFcvmEurRow=Math.round(aggFcvmRow*getFcVmExRate(emp.cu)*100)/100;totEur+=(r.hasBdg?r.totalPremioEur:r.premio_eur)+aggFcvmEurRow;
     totTargetEur+=r.totTarget;
     totConsEur+=(!isP?r.totCons:r.totTarget);
     if(r.esito==='full')nFull++;
@@ -6221,7 +6300,7 @@ function rAFcvm(){
       var el2={full:'✓ Pieno',partial:fPct(FCVM_PARAMS.pct60),partial_nosy:'Soglia/—SY',none:'✗',preventivo:'Max'}[r.esito]||r.esito;
       var pc=r.totTarget>0?r.pct:null;
       var bg=i%2===0?'#fff':'#faf9f7';
-      totTgt+=r.totTarget; totCns+=(!isP?r.totCons:r.totTarget); totPremEur+=r.premio_eur;
+      totTgt+=r.totTarget; totCns+=(!isP?r.totCons:r.totTarget); var aggRowEur2=Math.round((AGG_FCVM[row.m]||0)*getFcVmExRate(row.cu)*100)/100;totPremEur+=(r.hasBdg?r.totalPremioEur:r.premio_eur)+aggRowEur2;
       h+='<tr style="background:'+bg+'">';
       h+='<td style="padding:4px 10px;font-family:monospace;color:#8a8680">'+esc(String(row.m))+'</td>';
       h+='<td style="padding:4px 8px;font-weight:600">'+esc(row.c)+' '+esc(row.n)+'</td>';
@@ -6230,8 +6309,10 @@ function rAFcvm(){
       h+='<td style="padding:4px 8px;text-align:right;font-weight:700;color:'+(pc===null?'#a09a92':pc>=FCVM_PARAMS.soglia100?'#2d7a3a':pc>=FCVM_PARAMS.soglia60?'#cf8b4e':'#cf5b5b')+'">'+(pc!==null?fPct(pc):'—')+'</td>';
       h+='<td style="padding:4px 8px;text-align:right;color:#6b6560">'+(r.syLyArea!=null?fDec(r.syLyArea,2):'—')+'</td>';
       if(!isP)h+='<td style="padding:4px 8px;text-align:right;font-weight:600;color:'+(r.syAreaCy!=null?(r.syOk?'#2d7a3a':'#cf5b5b'):'#a09a92')+'">'+(r.syAreaCy!=null?fDec(r.syAreaCy,2):'—')+'</td>';
-      h+='<td style="padding:4px 8px;text-align:right;font-weight:700;color:'+ec2+'">'+fc(r.premio,row.cu||'EUR')+'</td>';
-      h+='<td style="padding:4px 8px;text-align:right;font-weight:700;color:'+ec2+'">'+fc(r.premio_eur,'EUR')+'</td>';
+      var finalRowLC=(r.hasBdg?r.totalPremioLC:r.premio)+(AGG_FCVM[row.m]||0);
+      var finalRowEur=(r.hasBdg?r.totalPremioEur:r.premio_eur)+Math.round((AGG_FCVM[row.m]||0)*getFcVmExRate(row.cu)*100)/100;
+      h+='<td style="padding:4px 8px;text-align:right;font-weight:700;color:'+ec2+'">'+fc(finalRowLC,row.cu||'EUR')+(AGG_FCVM[row.m]?'<span style="font-size:8px;color:#c9a96e"> +'+fc(AGG_FCVM[row.m],row.cu||'EUR')+'</span>':'')+'</td>';
+      h+='<td style="padding:4px 8px;text-align:right;font-weight:700;color:'+ec2+'">'+fc(finalRowEur,'EUR')+'</td>';
       h+='<td style="padding:4px 8px;text-align:center;font-weight:700;color:'+ec2+'">'+el2+'</td>';
       h+='</tr>';
     });
@@ -6342,7 +6423,7 @@ function loadFcVmAnagrafica(file){
 
     // Trova riga header
     var hdrRow=0;
-    var hdr={sid:-1,sname:-1,matr:-1,nome:-1,cogn:-1,ruolo:-1,valuta:-1,premio:-1};
+    var hdr={sid:-1,sname:-1,matr:-1,nome:-1,cogn:-1,ruolo:-1,valuta:-1,premio:-1,tipo:-1};
     for(var ri=0;ri<Math.min(5,json.length);ri++){
       var row=json[ri];if(!row)continue;
       var rowStr=row.map(function(c){return String(c||'').toLowerCase().trim();});
@@ -6356,6 +6437,7 @@ function loadFcVmAnagrafica(file){
         else if(h==='ruolo'||h==='role'||h==='funzione'){hdr.ruolo=ci;}
         else if(h==='valuta'||h==='currency'){hdr.valuta=ci;}
         else if(h.indexOf('premio')>=0||h.indexOf('max')>=0||h.indexOf('bonus')>=0||h.indexOf('incentiv')>=0){hdr.premio=ci;}
+        else if(h==='tipo'||h==='type'||h==='logica'||h==='logic'){hdr.tipo=ci;}
       });
       if(found){hdrRow=ri;break;}
     }
@@ -6411,18 +6493,37 @@ function loadFcVmAnagrafica(file){
       // Store name
       var sname=hdr.sname>=0?String(row[hdr.sname]||'').trim().toUpperCase():(sid);
 
-      // Registra dipendente (solo prima volta — premio non si somma)
+      // Tipo negozio: AREA (default) o BDG (singolo negozio)
+      var tipo=hdr.tipo>=0?String(row[hdr.tipo]||'AREA').trim().toUpperCase():'AREA';
+      if(tipo!=='BDG')tipo='AREA';
+
+      // Registra dipendente (solo prima volta per AREA — premio non si somma)
       if(!FC_EMP[matr]){
-        var empObj={m:matr,c:cogn,n:nome,j:ruolo,cu:cu,ex:ex,ib:premio,lang:'INGLESE'};
+        var empObj={m:matr,c:cogn,n:nome,j:ruolo,cu:cu,ex:ex,ib:0,lang:'INGLESE',bdg_stores:[]};
         FC_EMP[matr]=empObj;
         importedList.push(empObj);
         imported++;
       }
+      // Premio AREA: preso dalla prima riga AREA (non sommato)
+      if(tipo==='AREA'&&FC_EMP[matr].ib===0&&premio>0){
+        FC_EMP[matr].ib=premio;
+      }
+      // Premio BDG: aggiunto come entry separata per singolo store
+      if(tipo==='BDG'){
+        var already=FC_EMP[matr].bdg_stores.some(function(b){return b.sid===sid;});
+        if(!already&&premio>0)FC_EMP[matr].bdg_stores.push({sid:sid,ib:premio,s:sname});
+      }
 
-      // Mapping negozio → FC/VM
-      if(!FC_MAP[sid])FC_MAP[sid]={fc:null,vm:null,s:sname};
-      if(ruolo==='FC')FC_MAP[sid].fc=matr;
-      else FC_MAP[sid].vm=matr;
+      // Mapping negozio → FC/VM (solo per negozi AREA)
+      if(tipo==='AREA'){
+        if(!FC_MAP[sid])FC_MAP[sid]={fc:null,vm:null,s:sname,tipo:'AREA'};
+        if(ruolo==='FC')FC_MAP[sid].fc=matr;
+        else FC_MAP[sid].vm=matr;
+      } else {
+        // BDG store: registrato separatamente, non entra in FC_MAP come area store
+        if(!FC_MAP[sid])FC_MAP[sid]={fc:null,vm:null,s:sname,tipo:'BDG'};
+        if(ruolo==='VM')FC_MAP[sid].vm=matr;
+      }
     }
 
     // Report
@@ -6807,6 +6908,69 @@ function toggleFcVmStoreFlag(input){
 function clearFcVmFlags(){
   FC_STORE_FLAGS={};
   rC();rA();rStoresFcvm();autoSave();
+}
+
+// ── Tab Aggiunte FC+VM ───────────────────────────────────────────────────
+function rAggFcvm(){
+  var pool=getFcVmPool();
+  var h='<div style="font-size:12px;color:#6b6560;margin-bottom:14px"><b>Aggiunte manuali FC+VM</b> — Importi inseriti qui si <b>sommano</b> al premio calcolato automaticamente. Non soggetti a soglie o regole.</div>';
+
+  if(!pool.length){
+    h+='<div class="wg" style="text-align:center;padding:30px;color:#a09a92"><div style="font-size:28px;margin-bottom:10px">&#128084;</div><div>Carica prima l\u2019anagrafica FC+VM.</div></div>';
+    document.getElementById("p5").innerHTML=h;
+    return;
+  }
+
+  pool.sort(function(a,b){return(a.j+a.c).localeCompare(b.j+b.c);});
+
+  var nWithAgg=pool.filter(function(e){return (AGG_FCVM[e.m]||0)>0;}).length;
+  h+='<div style="font-size:10px;color:#8a8680;margin-bottom:8px">'+nWithAgg+' dipendenti con aggiunta attiva · '+pool.length+' totali</div>';
+
+  h+='<div class="scroll-wrap"><table style="font-size:10px;width:100%;border-collapse:collapse"><thead><tr style="background:#eae7e1">';
+  h+='<th style="padding:6px;cursor:default">Matr.</th>';
+  h+='<th style="padding:6px;cursor:default">Cognome</th>';
+  h+='<th style="padding:6px;cursor:default">Nome</th>';
+  h+='<th style="padding:6px;cursor:default">Ruolo</th>';
+  h+='<th style="padding:6px;cursor:default">Valuta</th>';
+  h+='<th style="padding:6px;text-align:right;cursor:default">Premio Auto</th>';
+  h+='<th style="padding:6px;text-align:right;cursor:default;min-width:100px">Aggiunta Manuale</th>';
+  h+='<th style="padding:6px;text-align:right;cursor:default">Totale</th>';
+  h+='</tr></thead><tbody>';
+
+  pool.forEach(function(emp,i){
+    var r=calcFcVmPremio(emp.m);
+    var auto_lc=(r.hasBdg?r.totalPremioLC:r.premio);
+    var agg=AGG_FCVM[emp.m]||0;
+    var tot=auto_lc+agg;
+    var cu=emp.cu||'EUR';
+    var bg=agg>0?'#fef9ef':(i%2===0?'#fff':'#faf9f7');
+    h+='<tr style="background:'+bg+'">';
+    h+='<td style="padding:4px 6px;font-family:monospace;font-size:10px">'+esc(String(emp.m))+'</td>';
+    h+='<td style="padding:4px 6px">'+esc(emp.c)+'</td>';
+    h+='<td style="padding:4px 6px">'+esc(emp.n)+'</td>';
+    h+='<td style="padding:4px 6px"><span class="bg" style="background:'+(emp.j==='FC'?'#5b6abf':'#5bb98c')+';color:#fff">'+esc(emp.j)+'</span></td>';
+    h+='<td style="padding:4px 6px;font-size:9px;color:#a09a92">'+esc(cu)+'</td>';
+    h+='<td style="padding:4px 6px;text-align:right;color:#6b6560">'+fc(auto_lc,cu)+'</td>';
+    h+='<td style="padding:2px"><input type="number" data-fcvagg="'+esc(String(emp.m))+'" value="'+(agg||'')+'" step="1" min="0" placeholder="0" style="width:100%;padding:3px;border:1px solid '+(agg>0?'#c9a96e':'#e5e1db')+';border-radius:3px;font-size:10px;text-align:right;font-family:inherit;background:'+(agg>0?'#fef9ef':'#fff')+'"></td>';
+    h+='<td style="padding:4px 6px;text-align:right;font-weight:700;color:'+(agg>0?'#c9a96e':'#8a8680')+'">'+fc(tot,cu)+'</td>';
+    h+='</tr>';
+  });
+  h+='</tbody></table></div>';
+  h+='<div class="wb" style="margin-top:16px"><div style="font-size:11px;font-weight:700;color:#856404;margin-bottom:4px">&#8505; Come funzionano le Aggiunte FC+VM</div><div style="font-size:11px;color:#856404;line-height:1.5">I valori inseriti qui vengono <b>sommati</b> al premio FC+VM calcolato automaticamente (area + eventuali premi BDG). Non sono soggetti a soglie di fatturato o condizioni SY. Compaiono nella lettera come voce separata.</div></div>';
+
+  document.getElementById("p5").innerHTML=h;
+
+  // Bindings
+  document.querySelectorAll("#p5 input[data-fcvagg]").forEach(function(inp){
+    inp.onchange=function(){
+      var m=inp.getAttribute("data-fcvagg");
+      var v=parseFloat(inp.value)||0;
+      if(v>0)AGG_FCVM[m]=v;
+      else delete AGG_FCVM[m];
+      rAggFcvm();
+      autoSave();
+    };
+  });
 }
 
 function clearFcVmData(){
