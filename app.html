@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Boggi Milano - Sistema Incentivazione V5.3</title>
+<title>Boggi Milano - Sistema Incentivazione V5.4</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -151,8 +151,8 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
         <span style="font-size:12px">📅</span> Mensile
       </button>
       <!-- FC + VM: locked -->
-      <button id="modeFcVm" disabled title="Disponibile in una versione futura" style="display:flex;align-items:center;gap:5px;padding:6px 14px;border-radius:7px;border:1px solid #4e4b48;background:transparent;color:#6b6560;font-size:11px;font-weight:600;cursor:not-allowed;font-family:inherit;opacity:.6">
-        <span style="font-size:10px">🔒</span> FC + VM
+      <button id="modeFcVm" onclick="setPrizeMode('fcvm')" style="display:flex;align-items:center;gap:5px;padding:6px 14px;border-radius:7px;border:1px solid #4e4b48;background:transparent;color:#6b6560;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s">
+        <span style="font-size:10px">👔</span> FC + VM
       </button>
       <!-- SEASONAL BONUS: active -->
       <button id="modeSeasonal" onclick="setPrizeMode('seasonal')" style="display:flex;align-items:center;gap:5px;padding:6px 14px;border-radius:7px;border:1px solid #4e4b48;background:transparent;color:#6b6560;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s">
@@ -338,6 +338,87 @@ var SEAS_CFG = {
 var SEAS = {};
 var SEAS_TARGETS={"1001":{"to":7370501.24,"pr":0.251024,"sy":103.227506,"sas":4,"acc":0.99},"1002":{"to":1515582.67,"pr":0.34493,"sy":114.771346,"sas":4,"acc":0.99},"1004":{"to":664061.6,"pr":0.270325,"sy":81.038743,"sas":4,"acc":0.99},"1006":{"to":1445975.43,"pr":0.215066,"sy":68.52298,"sas":4,"acc":0.99},"1008":{"to":781428.8,"pr":0.2742,"sy":94.652746,"sas":4,"acc":0.99},"1010":{"to":740459.1,"pr":0.282119,"sy":76.894335,"sas":4,"acc":0.99},"1012":{"to":411097.5,"pr":0.165475,"sy":49.645346,"sas":4,"acc":0.99},"1014":{"to":850250.31,"pr":0.268891,"sy":75.883079,"sas":4,"acc":0.99},"1015":{"to":2844896.38,"pr":0.36115,"sy":114.487805,"sas":4,"acc":0.99},"1017":{"to":847915.76,"pr":0.261838,"sy":75.658321,"sas":4,"acc":0.99},"1020":{"to":795252.7,"pr":0.28971,"sy":101.071901,"sas":4,"acc":0.99},"1022":{"to":1518753.07,"pr":0.216728,"sy":77.393889,"sas":4,"acc":0.99},"1024":{"to":442995.64,"pr":0.217497,"sy":60.768221,"sas":4,"acc":0.99},"1025":{"to":845948.99,"pr":0.245227,"sy":76.276368,"sas":4,"acc":0.99},"1026":{"to":804501.49,"pr":0.20503,"sy":68.290306,"sas":4,"acc":0.99},"1027":{"to":678116.39,"pr":0.29137,"sy":86.325546,"sas":4,"acc":0.99},"1029":{"to":2977008.3,"pr":0.242601,"sy":122.305259,"sas":4,"acc":0.99},"1030":{"to":693398.02,"pr":0.176844,"sy":59.822462,"sas":4,"acc":0.99},"1031":{"to":1361970.01,"pr":0.291608,"sy":99.35089,"sas":4,"acc":0.99},"1032":{"to":1550799.23,"pr":0.250297,"sy":92.216694,"sas":4,"acc":0.99},"1033":{"to":637540.71,"pr":0.276873,"sy":82.191963,"sas":4,"acc":0.99},"1034":{"to":881152.43,"pr":0.193181,"sy":63.132485,"sas":4,"acc":0.99},"1035":{"to":546400.98,"pr":0.281271,"sy":80.006109,"sas":4,"acc":0.99},"1036":{"to":1352294.47,"pr":0.203622,"sy":68.25753,"sas":4,"acc":0.99},"1037":{"to":631823.89,"pr":0.341447,"sy":108.696919,"sas":4,"acc":0.99},"1038":{"to":663264.65,"pr":0.261078,"sy":86.72455,"sas":4,"acc":0.99},"1039":{"to":1047072.72,"pr":0.325814,"sy":94.304182,"sas":4,"acc":0.99},"1040":{"to":391438.22,"pr":0.278649,"sy":68.230336,"sas":4,"acc":0.99},"1041":{"to":1009159.49,"pr":0.263981,"sy":90.964268,"sas":4,"acc":0.99},"1042":{"to":702525.82,"pr":0.237548,"sy":68.192762,"sas":4,"acc":0.99},"1043":{"to":596987.45,"pr":0.127479,"sy":44.101768,"sas":4,"acc":0.99},"1044":{"to":883862.82,"pr":0.201469,"sy":69.931722,"sas":4,"acc":0.99},"1045":{"to":1762687.78,"pr":0.120445,"sy":51.4387,"sas":4,"acc":0.99},"1046":{"to":623305.0,"pr":0.234586,"sy":80.912776,"sas":4,"acc":0.99},"1047":{"to":797918.04,"pr":0.295534,"sy":96.885187,"sas":4,"acc":0.99},"1048":{"to":747632.29,"pr":0.203335,"sy":68.50821,"sas":4,"acc":0.99},"1050":{"to":3220127.63,"pr":0.246617,"sy":102.469331,"sas":4,"acc":0.99},"1101":{"to":2090757.24,"pr":0.20427,"sy":92.134616,"sas":4,"acc":0.99},"1102":{"to":2853814.44,"pr":0.211077,"sy":84.767566,"sas":4,"acc":0.99},"1103":{"to":280484.48,"pr":0.15702,"sy":54.574455,"sas":4,"acc":0.99},"1104":{"to":2103561.25,"pr":0.223252,"sy":99.760691,"sas":4,"acc":0.99},"1105":{"to":3420143.94,"pr":0.227753,"sy":89.436181,"sas":4,"acc":0.99},"1106":{"to":1691435.26,"pr":0.245172,"sy":89.881243,"sas":4,"acc":0.99},"1107":{"to":1126117.04,"pr":0.27579,"sy":103.833076,"sas":4,"acc":0.99},"1109":{"to":1837770.9,"pr":0.22735,"sy":108.374917,"sas":4,"acc":0.99},"1110":{"to":1300222.19,"pr":0.246706,"sy":95.937487,"sas":4,"acc":0.99},"1113":{"to":846892.4,"pr":0.145549,"sy":52.694126,"sas":4,"acc":0.99},"1114":{"to":11502285.03,"pr":0.110016,"sy":596.058647,"sas":4,"acc":0.99},"1115":{"to":856034.53,"pr":0.277568,"sy":86.468753,"sas":4,"acc":0.99},"1116":{"to":1751913.16,"pr":0.244847,"sy":100.3014,"sas":4,"acc":0.99},"1117":{"to":1576504.61,"pr":0.2582,"sy":105.834236,"sas":4,"acc":0.99},"1118":{"to":1302751.06,"pr":0.237214,"sy":80.482981,"sas":4,"acc":0.99},"1120":{"to":1242671.75,"pr":0.193919,"sy":73.958857,"sas":4,"acc":0.99},"1121":{"to":1594647.28,"pr":0.198684,"sy":72.541649,"sas":4,"acc":0.99},"1123":{"to":7611036.76,"pr":0.175775,"sy":812.572226,"sas":4,"acc":0.99},"1125":{"to":496911781.88,"pr":0.205428,"sy":32539.835876,"sas":4,"acc":0.99},"1131":{"to":533398.35,"pr":0.100185,"sy":27.424396,"sas":4,"acc":0.99},"1133":{"to":932296.5,"pr":0.195876,"sy":74.272295,"sas":4,"acc":0.99},"1135":{"to":822254.05,"pr":0.14511,"sy":53.738146,"sas":4,"acc":0.99},"1137":{"to":645036.87,"pr":0.168292,"sy":50.000599,"sas":4,"acc":0.99},"1138":{"to":517834.08,"pr":0.172734,"sy":49.771521,"sas":4,"acc":0.99},"1148":{"to":1709905.42,"pr":0.403511,"sy":174.818246,"sas":4,"acc":0.99},"1149":{"to":1697540.36,"pr":0.212442,"sy":71.106573,"sas":4,"acc":0.99},"1152":{"to":2036556.54,"pr":0.159702,"sy":62.235991,"sas":4,"acc":0.99},"1155":{"to":1188687.14,"pr":0.120826,"sy":98.846951,"sas":4,"acc":0.99},"1158":{"to":535269.17,"pr":0.246025,"sy":80.559278,"sas":4,"acc":0.99},"1159":{"to":490366.09,"pr":0.148384,"sy":46.463083,"sas":4,"acc":0.99},"1160":{"to":860955.03,"pr":0.168005,"sy":50.778534,"sas":4,"acc":0.99},"1161":{"to":1165086.41,"pr":0.242796,"sy":74.858893,"sas":4,"acc":0.99},"1162":{"to":121648683.64,"pr":0.15711,"sy":8445.550766,"sas":4,"acc":0.99},"1163":{"to":86004543.42,"pr":0.42287,"sy":22589.258331,"sas":4,"acc":0.99},"1165":{"to":1371668.46,"pr":0.205348,"sy":81.606357,"sas":4,"acc":0.99},"1167":{"to":137213790.82,"pr":0.10969,"sy":5477.084758,"sas":4,"acc":0.99},"1168":{"to":375894.01,"pr":0.181821,"sy":54.450892,"sas":4,"acc":0.99},"1169":{"to":138576782.56,"pr":0.121953,"sy":5453.329146,"sas":4,"acc":0.99},"1170":{"to":128160725.47,"pr":0.146413,"sy":6801.15737,"sas":4,"acc":0.99},"1171":{"to":1338351.59,"pr":0.213714,"sy":80.016981,"sas":4,"acc":0.99},"1172":{"to":1953741.31,"pr":0.118227,"sy":114.803625,"sas":4,"acc":0.99},"1173":{"to":219504641.46,"pr":0.097576,"sy":4985.662337,"sas":4,"acc":0.99},"1174":{"to":68636696.51,"pr":0.087257,"sy":4244.523355,"sas":4,"acc":0.99},"1177":{"to":3368612.88,"pr":0.139386,"sy":58.162846,"sas":4,"acc":0.99},"1178":{"to":492211.31,"pr":0.146445,"sy":45.382477,"sas":4,"acc":0.99},"1180":{"to":76396911.65,"pr":0.095159,"sy":4086.493497,"sas":4,"acc":0.99},"1181":{"to":54516839.22,"pr":0.083887,"sy":3077.550662,"sas":4,"acc":0.99},"1182":{"to":125826096.82,"pr":0.133609,"sy":5510.173957,"sas":4,"acc":0.99},"1184":{"to":57664981.76,"pr":0.081931,"sy":3285.508728,"sas":4,"acc":0.99},"1185":{"to":1042871.27,"pr":0.10267,"sy":37.463783,"sas":4,"acc":0.99},"1186":{"to":754234.83,"pr":0.15449,"sy":48.189218,"sas":4,"acc":0.99},"1187":{"to":297357.43,"pr":0.01,"sy":3.081424,"sas":4,"acc":0.99},"1188":{"to":326079.29,"pr":0.01,"sy":2.929733,"sas":4,"acc":0.99},"1189":{"to":365856.33,"pr":0.01,"sy":3.184128,"sas":4,"acc":0.99},"1190":{"to":323578.02,"pr":0.01,"sy":2.751514,"sas":4,"acc":0.99},"1191":{"to":631943.35,"pr":0.01,"sy":3.699903,"sas":4,"acc":0.99},"1192":{"to":392074.4,"pr":null,"sy":null,"sas":4,"acc":0.99},"1194":{"to":271740.8,"pr":0.01,"sy":2.848436,"sas":4,"acc":0.99},"1195":{"to":2757528.93,"pr":0.180222,"sy":69.4575,"sas":4,"acc":0.99},"1197":{"to":344150.44,"pr":0.01,"sy":3.441504,"sas":4,"acc":0.99},"1198":{"to":680674.49,"pr":0.01,"sy":8.648977,"sas":4,"acc":0.99},"1199":{"to":71026585.75,"pr":0.123914,"sy":4903.158946,"sas":4,"acc":0.99},"1300":{"to":92445540.39,"pr":0.116895,"sy":4452.601638,"sas":4,"acc":0.99},"1302":{"to":33261541.54,"pr":0.06278,"sy":1973.693266,"sas":4,"acc":0.99},"1303":{"to":258305.02,"pr":0.01,"sy":3.093473,"sas":4,"acc":0.99},"1304":{"to":274200.57,"pr":null,"sy":null,"sas":4,"acc":0.99},"1305":{"to":356221.19,"pr":0.01,"sy":3.078835,"sas":4,"acc":0.99},"1306":{"to":57436620.7,"pr":0.119038,"sy":5608.79334,"sas":4,"acc":0.99},"1308":{"to":42075304.69,"pr":0.06031,"sy":1863.124753,"sas":4,"acc":0.99},"1309":{"to":800733.57,"pr":0.174367,"sy":57.481181,"sas":4,"acc":0.99},"1310":{"to":2850543.94,"pr":null,"sy":null,"sas":4,"acc":0.99},"1312":{"to":358700.22,"pr":0.01,"sy":4.071512,"sas":4,"acc":0.99},"1313":{"to":21248930.49,"pr":0.079845,"sy":4058.901747,"sas":4,"acc":0.99},"1314":{"to":23024963.87,"pr":0.05905,"sy":1824.998552,"sas":4,"acc":0.99},"1315":{"to":42369120.21,"pr":0.083672,"sy":2787.024055,"sas":4,"acc":0.99},"1316":{"to":11120650.13,"pr":0.0697,"sy":2246.70127,"sas":4,"acc":0.99},"1318":{"to":575547.56,"pr":0.012613,"sy":3.990955,"sas":4,"acc":0.99},"1319":{"to":4965920.79,"pr":0.01499,"sy":64.731227,"sas":4,"acc":0.99},"1320":{"to":0.0,"pr":null,"sy":null,"sas":4,"acc":0.99},"1321":{"to":1247472.64,"pr":0.152573,"sy":70.232668,"sas":4,"acc":0.99},"1322":{"to":2871098.39,"pr":0.152818,"sy":79.255187,"sas":4,"acc":0.99},"1323":{"to":1866293.76,"pr":0.15254,"sy":70.799323,"sas":4,"acc":0.99},"1326":{"to":169000.0,"pr":null,"sy":null,"sas":4,"acc":0.99},"1327":{"to":257773.01,"pr":null,"sy":null,"sas":4,"acc":0.99},"1328":{"to":394000.0,"pr":null,"sy":null,"sas":4,"acc":0.99},"1329":{"to":166005.51,"pr":null,"sy":null,"sas":4,"acc":0.99},"1331":{"to":567203.42,"pr":0.162939,"sy":362.430297,"sas":4,"acc":0.99},"1332":{"to":302205.67,"pr":0.162939,"sy":482.756655,"sas":4,"acc":0.99},"1333":{"to":247778.17,"pr":0.162939,"sy":395.811767,"sas":4,"acc":0.99},"1334":{"to":193011.45,"pr":0.162047,"sy":411.538268,"sas":4,"acc":0.99},"1335":{"to":214754.48,"pr":0.162939,"sy":343.058278,"sas":4,"acc":0.99},"1336":{"to":152659.34,"pr":0.162047,"sy":325.499664,"sas":4,"acc":0.99},"1337":{"to":228718.96,"pr":0.162939,"sy":365.365744,"sas":4,"acc":0.99},"1338":{"to":276759.79,"pr":null,"sy":null,"sas":4,"acc":0.99},"1339":{"to":111000.0,"pr":null,"sy":null,"sas":4,"acc":0.99},"1344":{"to":229152.53,"pr":0.01,"sy":6.902185,"sas":4,"acc":0.99},"1501":{"to":281492.75,"pr":0.121441,"sy":32.081425,"sas":4,"acc":0.99},"1507":{"to":425514.34,"pr":0.199172,"sy":51.546913,"sas":4,"acc":0.99},"1508":{"to":142418.79,"pr":0.126342,"sy":26.110005,"sas":4,"acc":0.99},"1510":{"to":59725.93,"pr":0.139678,"sy":39.350842,"sas":4,"acc":0.99},"1601":{"to":1525229.45,"pr":0.201305,"sy":66.947972,"sas":4,"acc":0.99},"1602":{"to":688037.29,"pr":0.171188,"sy":49.44141,"sas":4,"acc":0.99},"2001":{"to":914055.26,"pr":0.113544,"sy":25.816027,"sas":4,"acc":0.99},"2002":{"to":1483380.82,"pr":0.108803,"sy":27.858471,"sas":4,"acc":0.99},"2004":{"to":947960.05,"pr":0.13782,"sy":37.042209,"sas":4,"acc":0.99},"2005":{"to":509424.27,"pr":0.085107,"sy":18.316368,"sas":4,"acc":0.99},"2006":{"to":956278.99,"pr":0.081906,"sy":21.679259,"sas":4,"acc":0.99},"2007":{"to":528815.77,"pr":0.094508,"sy":23.447843,"sas":4,"acc":0.99},"2009":{"to":682525.33,"pr":0.099888,"sy":33.699664,"sas":4,"acc":0.99},"2102":{"to":0.0,"pr":null,"sy":null,"sas":4,"acc":0.99},"2103":{"to":706093.45,"pr":0.119382,"sy":32.002661,"sas":4,"acc":0.99},"3001":{"to":3252841.54,"pr":0.332217,"sy":97.08454,"sas":4,"acc":0.99},"3002":{"to":1299774.24,"pr":0.374469,"sy":76.611052,"sas":4,"acc":0.99},"3005":{"to":1220535.05,"pr":0.183523,"sy":43.646877,"sas":4,"acc":0.99},"3006":{"to":2984692.24,"pr":0.110556,"sy":30.143112,"sas":4,"acc":0.99},"3008":{"to":1934407.53,"pr":0.118697,"sy":30.247466,"sas":4,"acc":0.99},"3009":{"to":911790.12,"pr":0.169433,"sy":39.924391,"sas":4,"acc":0.99},"3010":{"to":1435857.12,"pr":0.105939,"sy":23.384651,"sas":4,"acc":0.99},"3011":{"to":1413368.46,"pr":0.100735,"sy":22.642294,"sas":4,"acc":0.99},"3012":{"to":1720647.06,"pr":0.108161,"sy":23.115931,"sas":4,"acc":0.99},"3013":{"to":488601.76,"pr":0.397268,"sy":81.845073,"sas":4,"acc":0.99},"3014":{"to":784310.03,"pr":0.10046,"sy":23.833079,"sas":4,"acc":0.99},"3015":{"to":964436.85,"pr":0.090083,"sy":18.95696,"sas":4,"acc":0.99},"3016":{"to":853560.91,"pr":0.086094,"sy":21.543861,"sas":4,"acc":0.99},"3017":{"to":540118.28,"pr":0.263299,"sy":49.293717,"sas":4,"acc":0.99},"3101":{"to":1241077.57,"pr":0.115585,"sy":36.436396,"sas":4,"acc":0.99},"3102":{"to":1443361.17,"pr":0.135053,"sy":41.97857,"sas":4,"acc":0.99},"3104":{"to":1551610.92,"pr":0.116516,"sy":31.170323,"sas":4,"acc":0.99},"3105":{"to":1220105.76,"pr":0.114511,"sy":34.794244,"sas":4,"acc":0.99},"3108":{"to":852910.59,"pr":0.069078,"sy":14.619683,"sas":4,"acc":0.99},"3112":{"to":762447.92,"pr":0.126943,"sy":30.048799,"sas":4,"acc":0.99},"3113":{"to":702750.71,"pr":0.122581,"sy":33.234501,"sas":4,"acc":0.99},"3114":{"to":0.0,"pr":null,"sy":null,"sas":4,"acc":0.99},"3115":{"to":79170905.54,"pr":0.133929,"sy":4138.684859,"sas":4,"acc":0.99},"3116":{"to":84893328.1,"pr":0.122817,"sy":3214.036207,"sas":4,"acc":0.99},"3118":{"to":100096422.17,"pr":0.136986,"sy":4694.234019,"sas":4,"acc":0.99},"3119":{"to":556336.1,"pr":0.148801,"sy":37.852565,"sas":4,"acc":0.99},"3120":{"to":1814377.58,"pr":0.105366,"sy":23.66897,"sas":4,"acc":0.99},"3121":{"to":56862537.98,"pr":0.149631,"sy":3830.891113,"sas":4,"acc":0.99},"3123":{"to":488555.25,"pr":0.120607,"sy":32.39327,"sas":4,"acc":0.99},"3124":{"to":403054.66,"pr":0.026915,"sy":5.537606,"sas":4,"acc":0.99},"3125":{"to":685521.71,"pr":0.099354,"sy":23.940003,"sas":4,"acc":0.99},"4001":{"to":995576.56,"pr":0.278033,"sy":38.611105,"sas":4,"acc":0.99},"5002":{"to":922288.35,"pr":0.186537,"sy":78.307266,"sas":4,"acc":0.99},"5004":{"to":601930.2,"pr":0.219748,"sy":92.434082,"sas":4,"acc":0.99},"5006":{"to":505023.0,"pr":0.171475,"sy":73.638267,"sas":4,"acc":0.99},"5013":{"to":0.0,"pr":null,"sy":null,"sas":4,"acc":0.99},"5019":{"to":828699.33,"pr":0.254116,"sy":153.488234,"sas":4,"acc":0.99},"6001":{"to":749432.18,"pr":0.120336,"sy":29.991354,"sas":4,"acc":0.99},"6005":{"to":668689.49,"pr":0.189629,"sy":44.586109,"sas":4,"acc":0.99}}; // seasonal KPI targets per store, importabili da file
 
+
+// ── FC+VM DATA ─────────────────────────────────────────────────────
+var FC_EMP={};     // {matricola:{m,c,n,j,cu,ex,ib,lang}}
+var FC_MAP={};     // {store_id:{fc:"matr",vm:"matr"}}
+var FC_TARGETS={}; // {store_id:{to_eur,sy_cy,sy_ly}}
+var FC_RESULTS={}; // {store_id:{sc_eur,sy_cy,sy_ly}}
+var FC_SYLY={};   // {store_id:{sales_ly,footfall_ly,sy_ly}} — dati LY per calcolo SY LY area
+var FC_STORE_FLAGS={}; // {store_id:{excl_fatt:bool, excl_sy:bool}}
+var FCVM_PARAMS={soglia100:0.995,soglia60:0.95,pct60:0.60};
+
+function calcFcVmPremio(matr){
+  var emp=FC_EMP[matr];
+  if(!emp)return{premio:0,premio_eur:0,esito:"no_data",stores:[],totTarget:0,totCons:0,pct:0,syOk:false,totSyCy:0,totSyLy:0};
+  var isCons=MODE==="consuntivo";
+  var stores=[];
+  Object.keys(FC_MAP).forEach(function(sid){
+    var mp=FC_MAP[sid];
+    if(emp.j==="FC"&&mp.fc===matr)stores.push(sid);
+    if(emp.j==="VM"&&mp.vm===matr)stores.push(sid);
+  });
+  if(!stores.length)return{premio:0,premio_eur:0,esito:"no_stores",stores:[],totTarget:0,totCons:0,pct:0,syOk:false,totSyCy:0,totSyLy:0};
+  var totTarget=0,totCons=0,detail=[];
+  // Aggregati SY LY (da FC_SYLY)
+  var totSalesLy=0,totFootfallLy=0,hasSyLy=false;
+  // Aggregati SY CY (da FC_RESULTS in consuntivo)
+  var totSalesCy=0,totFootfallCy=0,hasSyCy=false;
+  stores.forEach(function(sid){
+    var tg=FC_TARGETS[sid]||{};
+    var cn=isCons?(FC_RESULTS[sid]||{}):{};
+    var ly=FC_SYLY[sid]||{};
+    var flg=FC_STORE_FLAGS[sid]||{};
+    var to=(!flg.excl_fatt)?(tg.to_eur||0):0;
+    var sc=(!flg.excl_fatt)?(isCons?(cn.sc_eur||0):to):0;
+    totTarget+=to; totCons+=sc;
+    // SY LY aggregata (esclusa se excl_sy)
+    if(!flg.excl_sy&&ly.sales_ly!=null&&ly.footfall_ly!=null&&ly.footfall_ly>0){
+      totSalesLy+=ly.sales_ly; totFootfallLy+=ly.footfall_ly; hasSyLy=true;
+    }
+    // SY CY aggregata (esclusa se excl_sy)
+    if(!flg.excl_sy&&isCons&&cn.sc_eur!=null&&cn.footfall_cy!=null&&cn.footfall_cy>0){
+      totSalesCy+=cn.sc_eur; totFootfallCy+=cn.footfall_cy; hasSyCy=true;
+    }
+    detail.push({sid:sid,to:to,sc:sc,exclFatt:!!flg.excl_fatt,exclSy:!!flg.excl_sy});
+  });
+  var pct=totTarget>0?totCons/totTarget:0;
+  // SY LY area = totSalesLy/totFootfallLy
+  var syLyArea=hasSyLy&&totFootfallLy>0?Math.round(totSalesLy/totFootfallLy*1000)/1000:null;
+  // SY CY area = totSalesCy/totFootfallCy
+  var syAreaCy=hasSyCy&&totFootfallCy>0?Math.round(totSalesCy/totFootfallCy*1000)/1000:null;
+  var syAreaAvg=null;
+  // syOk: null se LY mancante, altrimenti confronto CY vs LY
+  var syOk=null;
+  if(syLyArea!=null&&syAreaCy!=null){syOk=syAreaCy>syLyArea;}
+  var esito,premioLC=0;
+  if(isCons){
+    if(pct>=FCVM_PARAMS.soglia100){esito="full";premioLC=emp.ib;}
+    // Premio ridotto: solo se dati SY LY disponibili e SY migliorata
+    else if(pct>=FCVM_PARAMS.soglia60&&syOk===true){esito="partial";premioLC=Math.round(emp.ib*FCVM_PARAMS.pct60*100)/100;}
+    // Se SY non disponibile e soglia ridotta raggiunta: esito "partial_nosy" (solo fatturato)
+    else if(pct>=FCVM_PARAMS.soglia60&&syOk===null){esito="partial_nosy";premioLC=0;}
+    else{esito="none";premioLC=0;}
+  }else{esito="preventivo";premioLC=emp.ib;}
+  var exRate=getFcVmExRate(emp.cu);var premioEur=Math.round(premioLC*exRate*100)/100;
+  return{premio:premioLC,premio_eur:premioEur,esito:esito,pct:pct,totTarget:totTarget,totCons:totCons,syOk:syOk,syLyArea:syLyArea,syAreaCy:syAreaCy,hasSyLy:hasSyLy,hasSyCy:hasSyCy,syAreaAvg:syAreaAvg,stores:detail};
+}
+function getFcVmPool(){return Object.values(FC_EMP);}
+
+function getFcVmExRate(cu){
+  if(!cu||cu==='EUR')return 1;
+  // Cerca in ENTE_CU (keyed per store, ma ha cu+ex)
+  var ex=null;
+  Object.values(ENTE_CU||{}).forEach(function(v){if(v&&v.cu===cu&&v.ex)ex=v.ex;});
+  if(ex)return ex;
+  // Cerca in VL
+  var vlObj=VL||{};
+  Object.values(vlObj).forEach(function(v){if(v&&v.cu===cu&&v.ex)ex=v.ex;});
+  if(ex)return ex;
+  // Cerca in D.vl
+  Object.values((D&&D.vl)||{}).forEach(function(v){if(v&&v.cu===cu&&v.ex)ex=v.ex;});
+  return ex||1;
+}
 var RL=[
   "SM","VSM","SSA","SSAP","SA","JSA","SCS",
   "SM DEPT","VSM DEPT","SSA DEPT","SSAP DEPT","SA DEPT","JSA DEPT","SCS DEPT",
@@ -364,7 +445,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='5.3'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='5.4'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=2,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -375,15 +456,17 @@ var MONTH_NAMES={
 };
 function getMonthName(lang){var map={"ITALIANO":"IT","INGLESE":"EN","FRANCESE":"FR","TEDESCO":"DE","SPAGNOLO":"ES"};return(MONTH_NAMES[map[lang]||"EN"]||MONTH_NAMES.EN)[CFG_MONTH]||""}
 function getMonthYearLabel(){if(PRIZE_MODE==="seasonal")return CFG_SEASON+" "+CFG_YEAR;return MONTH_NAMES.IT[CFG_MONTH]+" "+CFG_YEAR}
-function getPdfSubfolder(){if(PRIZE_MODE==="seasonal"){var yr2=String(CFG_YEAR).slice(-2);var base=CFG_SEASON+yr2+"_"+CFG_YEAR;if(SEASON_PERIOD==="mid")return{prev:base+"/Mid-Season/Preventivo",cons:base+"/Mid-Season/Consuntivo",base:base+"/Mid-Season"};return{prev:base+"/Preventivo",cons:base+"/Consuntivo",base:base};}return{prev:MONTH_NAMES.IT[CFG_MONTH]+"_"+CFG_YEAR+"/Preventivo",cons:MONTH_NAMES.IT[CFG_MONTH]+"_"+CFG_YEAR+"/Consuntivo",base:MONTH_NAMES.IT[CFG_MONTH]+"_"+CFG_YEAR};}
+function getPdfSubfolder(){if(PRIZE_MODE==="fcvm"){var mensileBase=MONTH_NAMES.IT[CFG_MONTH]+"_"+CFG_YEAR;var base=mensileBase+"/FCVM";return{prev:base+"/Preventivo",cons:base+"/Consuntivo",base:base};}if(PRIZE_MODE==="seasonal"){var yr2=String(CFG_YEAR).slice(-2);var base=CFG_SEASON+yr2+"_"+CFG_YEAR;if(SEASON_PERIOD==="mid")return{prev:base+"/Mid-Season/Preventivo",cons:base+"/Mid-Season/Consuntivo",base:base+"/Mid-Season"};return{prev:base+"/Preventivo",cons:base+"/Consuntivo",base:base};}return{prev:MONTH_NAMES.IT[CFG_MONTH]+"_"+CFG_YEAR+"/Preventivo",cons:MONTH_NAMES.IT[CFG_MONTH]+"_"+CFG_YEAR+"/Consuntivo",base:MONTH_NAMES.IT[CFG_MONTH]+"_"+CFG_YEAR};}
 function updateHeader(){var el=document.getElementById("hdrPeriod");if(el)el.textContent=getMonthYearLabel();}
 function updateHeaderCount(){
   var hs=document.getElementById("hs");
   if(!hs)return;
-  // Conta negozi unici da E (tutti i dipendenti) + negozi standard da D.s
+  if(PRIZE_MODE==="fcvm"){
+    hs.textContent=Object.keys(FC_EMP).length+' dipendenti · '+Object.keys(FC_MAP).length+' negozi';
+    return;
+  }
   var siSet={};E.forEach(function(e){siSet[String(e.si)]=1;});
-  var storeCount=Object.keys(siSet).length;
-  hs.textContent=E.length+" dipendenti \u00b7 "+storeCount+" negozi";
+  hs.textContent=E.length+' dipendenti · '+Object.keys(siSet).length+' negozi';
 }
 
 // Restore config from autosaved state if available
@@ -1073,6 +1156,7 @@ function seasKpiLabel(k){
 function rC(){
   applyStoreFlags();
   rebuildFilters();
+  if(PRIZE_MODE==="fcvm"){rCFcvm();return;}
   if(PRIZE_MODE==="seasonal"){rCSeasonal();return;}
   var mL=MODE==="preventivo"?'<span style="background:#fff3cd;color:#856404;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700">\u26a0 PREVENTIVO</span>':'';
   mL+=' <button class="exp-btn" onclick="exportExcel()" style="font-size:10px;padding:4px 12px">&#128202; Export Excel</button>';
@@ -1280,7 +1364,8 @@ function exportExcelUSA(){
 
 // ==== TAB 1: LETTERA + SAVE ALL PDFs ====
 function rL(){
-  var h='<div class="exp-bar no-print">';
+  if(PRIZE_MODE==="fcvm"){rLFcvm();return;}
+  var h='<div class="exp-bar no-print">'; 
   h+='<button class="exp-btn primary" onclick="printLetterOnly()">&#128424; Stampa / PDF</button>';
   h+='<button class="exp-btn" onclick="saveAllPDFsFolder()" style="border-color:#2d7a3a;color:#2d7a3a" title="Salva PDF in cartella (Chrome/Edge)">&#128194; Salva in Cartella PC</button>';
   h+='<button class="exp-btn" onclick="saveAllPDFsZip()" style="border-color:#5b6abf;color:#5b6abf">&#128230; Scarica ZIP</button>';
@@ -2197,6 +2282,7 @@ function canProduceLetter(){
 // Ritorna il filename PDF esatto per il dipendente i-esimo nel pool
 // Deve corrispondere esattamente alla colonna FILENAME del tracciato lettere (.znf)
 function getLetterFilename(i){
+  if(PRIZE_MODE==="fcvm"){var p=getFcVmPool(),e=p[i];if(!e)return null;return e.m+"_FCVM_"+String(CFG_MONTH).padStart(2,"0")+"_"+CFG_YEAR+".pdf";}
   var pool=getLetterPool();
   var e=pool[i];
   if(!e)return null;
@@ -2212,6 +2298,7 @@ function getLetterFilename(i){
 }
 
 function getLetterPool(){
+  if(PRIZE_MODE==="fcvm")return getFcVmPool();
   if(PRIZE_MODE==="seasonal")return E.filter(function(e){
     return isSMVSM(e)&&!(SEAS&&SEAS[e.m]&&SEAS[e.m].excluded);
   });
@@ -2764,6 +2851,7 @@ function rASeasonal(){
 // ==== TAB 2: ANALISI ====
 var aG="role",aSort={col:"t",dir:-1};
 function rA(){
+  if(PRIZE_MODE==="fcvm"){rAFcvm();return;}
   if(PRIZE_MODE==="seasonal"){rASeasonal();return;}
   var gr={},kpiStats={};IT.forEach(function(it){kpiStats[it.k]={eligible:0,achieved:0,total:0}});
   var totalMl=0,mlCount=0,ml50=0,ml0=0;
@@ -2925,6 +3013,51 @@ function rAgg(){
 
 // ==== TAB 3: CONFIGURAZIONE ====
 function rT(){try{
+  // FC+VM mode: show only FCVM parameters + Periodo/Output
+  if(PRIZE_MODE==="fcvm"){
+    var h='<div style="font-size:12px;color:#6b6560;margin-bottom:14px"><b>Modifiche immediate.</b> Salva per esportare.</div>';
+    h+='<div style="margin-bottom:16px"><button class="exp-btn primary" onclick="saveConfig()" style="margin-right:8px">&#128190; Salva Configurazione</button><label class="exp-btn" style="cursor:pointer;display:inline-block">&#128194; Carica Configurazione<input type="file" accept=".json" onchange="loadConfig(event)" style="display:none"></label></div>';
+    // Periodo e Output
+    h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">&#128197; Periodo e Output</div>';
+    h+='<div class="cfg-row"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">Mese</span></div>';
+    h+='<div style="display:flex;align-items:center;gap:4px"><select id="cfgMonth2" class="cfg-input" style="width:130px;padding:4px 6px">';
+    for(var mm=1;mm<=12;mm++){h+='<option value="'+mm+'"'+(CFG_MONTH===mm?' selected':'')+'>'+MONTH_NAMES.IT[mm]+'</option>';}
+    h+='</select></div></div>';
+    h+='<div class="cfg-row"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">Anno</span></div>';
+    h+='<div style="display:flex;align-items:center;gap:4px"><input class="cfg-input" style="width:75px" type="number" id="cfgYearFcvm" value="'+CFG_YEAR+'" min="2024" max="2030" step="1"></div></div>';
+    h+='<div class="cfg-row" style="border-top:1px solid #e5e1db;padding-top:8px;margin-top:4px"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">Percorso base PDF</span><span style="font-size:9px;color:#a09a92">I PDF verranno salvati in: percorso/'+getPdfSubfolder().prev+'/ e /'+getPdfSubfolder().cons+'/</span></div>';
+    h+='<div style="display:flex;align-items:center;gap:4px"><input class="cfg-input" style="width:260px" type="text" id="cfgPdfPathFcvm" value="'+esc(CFG_PDF_PATH)+'" placeholder="C:\\Boggi\\Incentivi\\"></div></div></div>';
+    // Parametri FC+VM
+    h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">&#128084; FC + VM &mdash; Parametri Calcolo Premio</div>';
+    h+='<div style="font-size:10px;color:#8a8680;margin-bottom:12px">Soglie e percentuali per il calcolo del premio FC e VM. Il fatturato area è sempre in EUR.</div>';
+    h+='<div class="cfg-row"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">Soglia premio pieno</span><span style="font-size:9px;color:#a09a92">% minima del target area per erogare il 100% del premio massimale (default 99,5%)</span></div>';
+    h+='<div style="display:flex;align-items:center;gap:4px"><input class="cfg-input" style="width:75px" type="number" id="fcvm_soglia100" value="'+(FCVM_PARAMS.soglia100*100).toFixed(1)+'" step="0.1" min="50" max="100"><span style="font-size:10px;color:#8a8680">%</span></div></div>';
+    h+='<div class="cfg-row"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">Soglia premio ridotto</span><span style="font-size:9px;color:#a09a92">% minima per erogare il premio ridotto (richiede anche SY CY > SY LY, default 95%)</span></div>';
+    h+='<div style="display:flex;align-items:center;gap:4px"><input class="cfg-input" style="width:75px" type="number" id="fcvm_soglia60" value="'+(FCVM_PARAMS.soglia60*100).toFixed(1)+'" step="0.1" min="50" max="99"><span style="font-size:10px;color:#8a8680">%</span></div></div>';
+    h+='<div class="cfg-row"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">% Premio ridotto</span><span style="font-size:9px;color:#a09a92">Percentuale del massimale erogata quando si raggiunge solo la soglia ridotta (default 60%)</span></div>';
+    h+='<div style="display:flex;align-items:center;gap:4px"><input class="cfg-input" style="width:75px" type="number" id="fcvm_pct60" value="'+(FCVM_PARAMS.pct60*100).toFixed(1)+'" step="1" min="1" max="99"><span style="font-size:10px;color:#8a8680">%</span></div></div>';
+    h+='<div style="font-size:10px;color:#8a8680;margin-top:12px;padding:8px 12px;background:#faf9f7;border-radius:5px;border:1px solid #e5e1db">';
+    h+='<b>Logica premio:</b><br>';
+    h+='&#9679; Area ≥ '+fPct(FCVM_PARAMS.soglia100)+' del target → <b>Premio pieno (100% del massimale)</b><br>';
+    h+='&#9679; Area ≥ '+fPct(FCVM_PARAMS.soglia60)+' + SY CY > SY LY → <b>Premio ridotto ('+fPct(FCVM_PARAMS.pct60)+' del massimale)</b><br>';
+    h+='&#9679; Altrimenti → <b>Nessun premio</b>';
+    h+='</div></div>';
+    document.getElementById("p3").innerHTML=h;
+    // Bindings
+    var selM=document.getElementById("cfgMonth2");
+    if(selM)selM.onchange=function(){CFG_MONTH=parseInt(this.value);markDirty();updateHeader();rC();rA();rT();};
+    var inpY=document.getElementById("cfgYearFcvm");
+    if(inpY)inpY.onchange=function(){CFG_YEAR=parseInt(this.value)||2026;markDirty();updateHeader();rT();};
+    var inpPdf=document.getElementById("cfgPdfPathFcvm");
+    if(inpPdf)inpPdf.onchange=function(){CFG_PDF_PATH=this.value.trim();markDirty();};
+    var inp100=document.getElementById("fcvm_soglia100");
+    if(inp100)inp100.onchange=function(){FCVM_PARAMS.soglia100=Math.max(0.5,Math.min(1,parseFloat(this.value)/100));markDirty();rC();rT();};
+    var inp60=document.getElementById("fcvm_soglia60");
+    if(inp60)inp60.onchange=function(){FCVM_PARAMS.soglia60=Math.max(0.5,Math.min(0.999,parseFloat(this.value)/100));markDirty();rC();rT();};
+    var inpPct=document.getElementById("fcvm_pct60");
+    if(inpPct)inpPct.onchange=function(){FCVM_PARAMS.pct60=Math.max(0.01,Math.min(0.99,parseFloat(this.value)/100));markDirty();rC();rT();};
+    return;
+  }
   // In seasonal mode, show only Periodo/Output + Seasonal Config
   if(PRIZE_MODE==="seasonal"){
     var h='<div style="font-size:12px;color:#6b6560;margin-bottom:14px"><b>Modifiche immediate.</b> Salva per esportare.</div>';
@@ -4402,33 +4535,47 @@ function scanExcelFile(file,phase){
 }
 
 // === RESET ALL DATA ===
-function resetAllData(){
-  var isSeas=PRIZE_MODE==="seasonal";
-  var what=isSeas
-    ? "\u2022 Anagrafica dipendenti\n\u2022 Target seasonal (SEAS_TARGETS: Fatturato, SY, Privilege, QTY Dept)\n\u2022 Consuntivi seasonal (D.cs)"
-    : "\u2022 Anagrafica dipendenti\n\u2022 Target mensili (Fatturato, SY, CR, Privilege, QTY)\n\u2022 Dati consuntivo mensile";
-  if(!confirm("Vuoi svuotare i dati della modalit\u00e0 "+( isSeas?"SEASONAL BONUS":"MENSILE")+"?\n\nVerranno cancellati:\n"+what+"\n\u2022 Aggiunte e Visual In Store\n\u2022 Stato salvato in localStorage\n\nLa configurazione (parametri, KPI, flag negozi) viene mantenuta.\n\nContinuare?"))return;
-  // Anagrafica sempre resettata
+
+// ── resetEverything: azzera TUTTI i dati di tutte le modalità ─────────────
+function resetEverything(){
+  // Mensile / Internazionale
   E.length=0;D.e=E;
   D.s={};D.v={};D.usa={};
+  D.t={};D.c={};
   VL={};AGG={};LOAD_RESULTS={};
-  if(isSeas){
-    // Reset solo strutture seasonal
-    D.cs={};
-    var stKeys=Object.keys(SEAS_TARGETS);
-    stKeys.forEach(function(k){
-      // Azzera i valori caricati da file ma mantieni la struttura embedded (sas/acc)
-      SEAS_TARGETS[k]={to:0,pr:null,sy:null,sas:SEAS_CFG.sasMaxHours||4,acc:0.99,qt:0};
-    });
-  } else {
-    // Reset solo strutture mensili
-    D.t={};D.c={};
-  }
+  // Seasonal
+  D.cs={};
+  Object.keys(SEAS_TARGETS).forEach(function(k){
+    SEAS_TARGETS[k]={to:0,pr:null,sy:null,sas:SEAS_CFG.sasMaxHours||4,acc:0.99,qt:0};
+  });
+  SEAS={};
+  // FC+VM
+  FC_EMP={};FC_MAP={};FC_TARGETS={};FC_RESULTS={};FC_SYLY={};FC_STORE_FLAGS={};
+  // Svuota DOM di tutti i pannelli immediatamente (evita dati residui visibili)
+  ["p0","p1","p2","p3","p4","p5","p6","p7"].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el)el.innerHTML="";
+  });
+  // Stato UI
   var hs=document.getElementById("hs");
-  if(hs)hs.textContent="0 dipendenti \u00b7 0 negozi";
-  try{localStorage.removeItem("boggi_state")}catch(ex){}
-  rC();rA();rSources();rDist();rAgg();rT();
-  alert("Dati "+( isSeas?"Seasonal Bonus":"mensili")+" svuotati.\nRicarica anagrafica e "+(isSeas?"target/risultati seasonal":"target per "+getMonthYearLabel())+".");
+  if(hs)hs.textContent="0 dipendenti · 0 negozi";
+  try{localStorage.removeItem("boggi_state");}catch(ex){}
+  window._pendingImportUSA=null;
+  window._pendingNewStoresUSA=null;
+}
+function resetAllData(){
+  if(!confirm("Vuoi svuotare TUTTI i dati (tutte le modalità)?\n\nVerranno cancellati:\n• Anagrafica dipendenti\n• Dati mensili, seasonal e FC+VM\n• Stato in localStorage\n\nLa configurazione viene mantenuta.\n\nContinuare?"))return;
+  resetEverything();
+  // Forza re-render di tutti i pannelli indipendentemente dal tab attivo
+  try{rC();}catch(ex){}
+  try{rA();}catch(ex){}
+  try{rSources();}catch(ex){}
+  try{if(typeof rDist==="function")rDist();}catch(ex){}
+  try{if(typeof rAgg==="function")rAgg();}catch(ex){}
+  try{rT();}catch(ex){}
+  try{if(typeof rStores==="function")rStores();}catch(ex){}
+  try{rL();}catch(ex){}
+  alert("✅ Tutti i dati svuotati.");
 }
 
 // === TARGET EXCEL LOADER ===
@@ -5026,6 +5173,7 @@ function loadResultsExcel(file){
 
 
 function rSources(){try{
+  if(PRIZE_MODE==="fcvm"){document.getElementById("p4").innerHTML=rSourcesFcvm();return;}
   var isP=MODE==="preventivo",sh="";
   var isSeasonal=PRIZE_MODE==="seasonal";
 
@@ -5285,6 +5433,7 @@ rSources();
 // ==== TAB 7: NEGOZI (Store Settings) ====
 var storeFilter="";
 function rStores(){
+  if(PRIZE_MODE==="fcvm"){rStoresFcvm();return;}
   var h='<div style="font-size:12px;color:#6b6560;margin-bottom:14px"><b>Impostazioni Negozi</b> \u2014 I toggle si applicano a <b>tutti i dipendenti</b> dello store e modificano il ruolo effettivo usato nei calcoli.</div>';
   h+='<div style="display:flex;gap:16px;margin-bottom:12px;align-items:center;flex-wrap:wrap">';
   h+='<input placeholder="Cerca store..." id="storeQ" value="'+esc(storeFilter)+'" style="padding:8px 12px;border-radius:6px;border:1px solid #d5d0c8;font-size:12px;flex:1;min-width:200px">';
@@ -5682,5 +5831,1037 @@ function exportPowerShell(){
 }
 
 </script>
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// FC + VM — UI, lettera, fonti dati
+// ═══════════════════════════════════════════════════════════════════════
+
+function rCFcvm(){
+  var isP=MODE==="preventivo";
+  var pool=getFcVmPool();
+
+  // Barra azioni (stile identico a rC mensile)
+  var mL=isP?'<span style="background:#fff3cd;color:#856404;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700">\u26a0 PREVENTIVO</span>':'';
+  mL+=' <button class="exp-btn" onclick="exportFcVmExcel()" style="font-size:10px;padding:4px 12px">&#128196; Export Excel</button>';
+
+  if(!pool.length){
+    var h=mL+'<div class="wg" style="text-align:center;padding:40px;color:#a09a92">';
+    h+='<div style="font-size:32px;margin-bottom:12px">&#128084;</div>';
+    h+='<div style="font-weight:700;font-size:14px;margin-bottom:8px">Nessun dato FC+VM caricato</div>';
+    h+='<div style="font-size:11px">Vai al tab <b>Fonti Dati</b> per caricare l\'anagrafica FC+VM.</div></div>';
+    document.getElementById("p0").innerHTML=h;
+    return;
+  }
+
+  // Filtri
+  var _fcvmF=window._fcvmF||{j:'ALL',q:''};window._fcvmF=_fcvmF;
+  var uJ=['ALL','FC','VM'];
+  var fl=pool.filter(function(e){
+    if(_fcvmF.j!=='ALL'&&e.j!==_fcvmF.j)return false;
+    if(_fcvmF.q){var q=_fcvmF.q.toLowerCase();
+      return(e.c&&e.c.toLowerCase().indexOf(q)>=0)||(e.n&&e.n.toLowerCase().indexOf(q)>=0)||(e.m&&e.m.toLowerCase().indexOf(q)>=0);}
+    return true;
+  });
+  fl.sort(function(a,b){return(a.j+a.c).localeCompare(b.j+b.c);});
+
+  var totEur=0;
+  fl.forEach(function(emp){totEur+=calcFcVmPremio(emp.m).premio_eur;});
+
+  var h=mL+'<div class="flt"><input placeholder="Cerca..." id="fcvmQ" value="'+esc(_fcvmF.q||'')+'">';
+  h+='<select id="fcvmJ">';
+  uJ.forEach(function(j){h+='<option value="'+j+'"'+(_fcvmF.j===j?' selected':'')+'>'+( j==='ALL'?'FC + VM':j)+'</option>';});
+  h+='</select>';
+  h+='<span style="margin-left:auto;font-size:10px;color:#8a8680">'+fl.length+' dip. \u00b7 Tot: '+fc(Math.round(totEur),'EUR')+'</span></div>';
+
+  // Tabella
+  function thS(label){return'<th>'+label+'</th>';}
+  h+='<div class="scroll-wrap"><table id="ctbl"><thead><tr>';
+  h+=thS('Matr.')+thS('Cognome')+thS('Nome')+thS('Ruolo')+thS('Val.')+thS('N.Store');
+  h+=thS('Target EUR')+thS('Max Premio')+(!isP?thS('Consuntivo EUR'):'')+thS('% Area')+thS('SY LY')+thS('SY CY')+thS('Premio LC')+thS('Premio EUR')+thS('Esito');
+  h+='</tr></thead><tbody>';
+
+  fl.forEach(function(emp,i){
+    var r=calcFcVmPremio(emp.m);
+    var ec={full:'#2d7a3a',partial:'#cf8b4e',none:'#cf5b5b',preventivo:'#c9a96e',no_data:'#a09a92',no_stores:'#cf5b5b'}[r.esito]||'#a09a92';
+    var el={full:'\u2713 Pieno',partial:fPct(FCVM_PARAMS.pct60),none:'\u2717',preventivo:'\u2014',no_data:'\u2014',no_stores:'Nessun negozio'}[r.esito]||r.esito;
+    var nStores=Object.keys(FC_MAP).filter(function(sid){var mp=FC_MAP[sid];return emp.j==='FC'?mp.fc===emp.m:mp.vm===emp.m;}).length;
+    var pc=r.totTarget>0?r.pct:null;
+    h+='<tr class="ck" data-m="'+esc(emp.m)+'">';
+    h+='<td class="mn">'+esc(emp.m)+'</td>';
+    h+='<td>'+esc(emp.c)+'</td>';
+    h+='<td>'+esc(emp.n)+'</td>';
+    h+='<td><span class="bg" style="background:'+(emp.j==='FC'?'#5b6abf':'#5bb98c')+';color:#fff">'+esc(emp.j)+'</span></td>';
+    h+='<td style="font-size:9px;color:#a09a92">'+esc(emp.cu||'EUR')+'</td>';
+    h+='<td style="text-align:center;color:#8a8680">'+nStores+'</td>';
+    h+='<td style="text-align:right">'+fc(r.totTarget,'EUR')+'</td>';
+    h+='<td style="text-align:right;font-weight:700;color:#c9a96e">'+fc(emp.ib,emp.cu||'EUR')+'</td>';
+    if(!isP)h+='<td style="text-align:right">'+fc(r.totCons,'EUR')+'</td>';
+    h+='<td style="text-align:right;font-weight:700;color:'+(pc===null?'#a09a92':pc>=FCVM_PARAMS.soglia100?'#2d7a3a':pc>=FCVM_PARAMS.soglia60?'#cf8b4e':'#cf5b5b')+'">'+(pc===null?'\u2014':fPct(pc))+'</td>';
+    // SY LY (aggregato area da FC_SYLY)
+    var syLyDisp=r.syLyArea!=null?fDec(r.syLyArea,2):'\u2014';
+    // SY CY (aggregato area da FC_RESULTS in consuntivo)
+    var syCyOk=r.syAreaCy!=null&&r.syLyArea!=null&&r.syAreaCy>r.syLyArea;
+    var syCyColor=r.syAreaCy==null?'#a09a92':(syCyOk?'#2d7a3a':'#cf5b5b');
+    var syCyDisp=isP?'\u2014':(r.syAreaCy!=null?('<span style="color:'+syCyColor+';font-weight:700">'+fDec(r.syAreaCy,2)+'</span>'):'\u2014');
+    h+='<td style="text-align:center;font-size:10px;color:#6b6560">'+syLyDisp+'</td>';
+    h+='<td style="text-align:center;font-size:10px">'+syCyDisp+'</td>';
+    h+='<td style="text-align:right;font-weight:700;color:'+ec+'">'+fc(r.premio,emp.cu||'EUR')+'</td>';
+    h+='<td style="text-align:right;font-weight:700;color:'+ec+'">'+fc(r.premio_eur,'EUR')+'</td>';
+    h+='<td style="text-align:center;font-weight:700;color:'+ec+'">'+el+'</td>';
+    // Selezione lingua
+    h+='<td onclick="event.stopPropagation()"><select style="font-size:9px;padding:2px 4px;border:1px solid #d5d0c8;border-radius:3px;font-family:inherit" data-fcmatr="'+esc(emp.m)+'" onchange="setFcVmLang(this);event.stopPropagation()">';
+    ['ITALIANO','INGLESE','FRANCESE','TEDESCO','SPAGNOLO'].forEach(function(l){
+      h+='<option value="'+l+'"'+(emp.lang===l?' selected':'')+'>'+l.substring(0,3)+'</option>';
+    });
+    h+='</select></td>';
+    h+='</tr>';
+  });
+  h+='</tbody></table></div><div id="fcvmDetail"></div>';
+
+  updateHeaderCount();
+  updateHeaderCount();
+  document.getElementById("p0").innerHTML=h;
+
+  // Bindings
+  document.querySelectorAll('.fcvm-row').forEach(function(tr){
+    tr.onclick=function(){sLFcvm(this.getAttribute('data-m'));};
+  });
+  // Usa event delegation sulla tabella per click su righe ck
+  var tbl=document.getElementById('ctbl');
+  if(tbl){tbl.onclick=function(ev){var tr=ev.target.closest('tr.ck');if(tr){var m=tr.getAttribute('data-m');if(m)sLFcvm(m);}};}
+
+  var qEl=document.getElementById('fcvmQ');
+  if(qEl){qEl.oninput=function(){_fcvmF.q=this.value;rCFcvm();var el2=document.getElementById('fcvmQ');if(el2){el2.focus();}};}
+  var jEl=document.getElementById('fcvmJ');
+  if(jEl){jEl.onchange=function(){_fcvmF.j=this.value;rCFcvm();};}
+}
+
+function setFcVmLang(sel){
+  var m=sel.getAttribute('data-fcmatr');
+  if(FC_EMP[m])FC_EMP[m].lang=sel.value;
+  autoSave();
+}
+
+// ── Tab Lettera ───────────────────────────────────────────────
+function rLFcvm(){
+  var h='<div class="exp-bar no-print">';
+  h+='<button class="exp-btn primary" onclick="printLetterOnly()">&#128424; Stampa / PDF</button>';
+  h+='<button class="exp-btn" onclick="saveAllPDFsFolder()" style="border-color:#2d7a3a;color:#2d7a3a" title="Salva PDF in cartella (Chrome/Edge)">&#128194; Salva in Cartella PC</button>';
+  h+='<button class="exp-btn" onclick="saveAllPDFsZip()" style="border-color:#5b6abf;color:#5b6abf">&#128230; Scarica ZIP</button>';
+  h+='</div>';
+  h+='<input placeholder="Cerca FC/VM..." id="lq" style="width:100%;padding:10px 14px;border-radius:6px;border:1px solid #d5d0c8;font-size:13px;font-family:inherit;background:#fff;margin-bottom:6px" class="no-print">';
+  h+='<div id="lr" class="no-print"></div><div id="lc"></div>';
+  document.getElementById("p1").innerHTML=h;
+  // Render lista iniziale (tutti)
+  _renderFcVmList('');
+  // Binding ricerca
+  var inp=document.getElementById('lq');
+  if(inp){
+    inp.oninput=function(){_renderFcVmList(this.value);};
+    inp.focus();
+  }
+}
+
+// Funzione globale — accessibile dall'event handler anche dopo che rLFcvm() è uscita dallo scope
+function _renderFcVmList(filter){
+  var pool=getFcVmPool();
+  pool.sort(function(a,b){return(a.j+a.c).localeCompare(b.j+b.c);});
+  var q=String(filter||'').toLowerCase().trim();
+  var filtered=pool.filter(function(emp){
+    if(!q)return true;
+    var c=String(emp.c||'').toLowerCase();
+    var n=String(emp.n||'').toLowerCase();
+    var m=String(emp.m||'').toLowerCase();
+    return c.indexOf(q)>=0||n.indexOf(q)>=0||m.indexOf(q)>=0;
+  });
+  var h2='';
+  filtered.forEach(function(emp){
+    h2+='<div class="ck" data-m="'+esc(String(emp.m))+'" style="display:flex;align-items:center;gap:10px;padding:6px 12px;cursor:pointer;border-radius:4px;margin-bottom:2px;background:#fff;border:1px solid #e5e1db">';
+    h2+='<span style="font-family:monospace;font-size:10px;color:#8a8680">'+esc(String(emp.m))+'</span>';
+    h2+='<span class="bg" style="background:'+(emp.j==='FC'?'#5b6abf':'#5bb98c')+';color:#fff">'+esc(emp.j)+'</span>';
+    h2+='<span style="font-size:12px;font-weight:600">'+esc(emp.c)+' '+esc(emp.n)+'</span>';
+    h2+='</div>';
+  });
+  if(!filtered.length)h2='<div style="padding:12px;color:#a09a92;font-size:11px">Nessun risultato</div>';
+  var lr=document.getElementById('lr');
+  if(lr){
+    lr.innerHTML=h2;
+    // Bind click su ogni riga
+    lr.querySelectorAll('.ck[data-m]').forEach(function(el){
+      el.onclick=function(){
+        var m=this.getAttribute('data-m');
+        var lc=document.getElementById('lc');
+        if(lc&&FC_EMP[m])lc.innerHTML=buildFcVmLetter(FC_EMP[m]);
+      };
+    });
+  }
+}
+
+function sLFcvm(matr){
+  // Se siamo nel tab Calcolo Premi, mostra preview lettera in fcvmDetail
+  var det=document.getElementById('fcvmDetail');
+  if(det&&FC_EMP[matr]){det.innerHTML=buildFcVmLetter(FC_EMP[matr]);det.scrollIntoView({behavior:'smooth',block:'start'});return;}
+  // Altrimenti tab Lettera
+  var lc=document.getElementById('lc');
+  if(lc&&FC_EMP[matr])lc.innerHTML=buildFcVmLetter(FC_EMP[matr]);
+}
+
+// ── Builder lettera ───────────────────────────────────────────
+function buildFcVmLetter(emp){
+  var isP=MODE==="preventivo";
+  var cu=emp.cu||'EUR';
+  var lang=emp.lang||'INGLESE';
+  var r=calcFcVmPremio(emp.m);
+  var TR={
+    ITALIANO:{g:'Ciao',role:'FUNZIONE',matr:'MATRICOLA',cogn:'COGNOME',nome:'NOME',max:'PREMIO MASSIMALE',area:'LA TUA AREA',store:'NEGOZIO',tgt:'TARGET EUR',tot:'TOTALE AREA',sycy:'SY ANNO CORRENTE',syly:'SY ANNO PRECEDENTE',cons:'CONSUNTIVO EUR',pct_lbl:'% AREA',why_full:'Obiettivo pieno raggiunto: area ≥',why_partial:'Obiettivo ridotto: area ≥',why_partial_nosy:'Soglia raggiunta ma SY LY non disponibile',why_none:'Obiettivo non raggiunto: area <',cons:'REAL EUR',pct_lbl:'% ZONA',why_full:'Objetivo alcanzado: zona ≥',why_partial:'Objetivo parcial: zona ≥',why_partial_nosy:'Umbral alcanzado sin SY LY disponible',why_none:'Objetivo no alcanzado: zona <',prize:'INCENTIVO',full:'OBIETTIVO RAGGIUNTO',partial:'OBIETTIVO PARZIALMENTE RAGGIUNTO',none:'OBIETTIVO NON RAGGIUNTO',prev:'MASSIMO INCENTIVO RAGGIUNGIBILE',r1:'Premio pieno: area \u2265'+fPct(FCVM_PARAMS.soglia100)+' del target',r2:'Premio ridotto ('+fPct(FCVM_PARAMS.pct60)+'): area \u2265'+fPct(FCVM_PARAMS.soglia60)+' e SY anno corrente > anno precedente',discl:DISCL.ITALIANO||''},
+    INGLESE:{g:'Hi',role:'FUNCTION',matr:'ID',cogn:'SURNAME',nome:'FIRST NAME',max:'MAXIMUM INCENTIVE',area:'YOUR AREA',store:'STORE',tgt:'TARGET EUR',tot:'AREA TOTAL',sycy:'SY CURRENT YEAR',syly:'SY LAST YEAR',cons:'ACTUAL EUR',pct_lbl:'% AREA',why_full:'Full target achieved: area ≥',why_partial:'Partial target: area ≥',why_partial_nosy:'Threshold reached but SY LY unavailable',why_none:'Target not achieved: area <',prize:'INCENTIVE',full:'TARGET ACHIEVED',partial:'TARGET PARTIALLY ACHIEVED',none:'TARGET NOT ACHIEVED',prev:'MAXIMUM ACHIEVABLE INCENTIVE',r1:'Full incentive: area \u2265'+fPct(FCVM_PARAMS.soglia100)+' of target',r2:'Partial incentive ('+fPct(FCVM_PARAMS.pct60)+'): area \u2265'+fPct(FCVM_PARAMS.soglia60)+' and SY improving vs prior year',discl:DISCL.INGLESE||''},
+    FRANCESE:{g:'Bonjour',role:'FONCTION',matr:'MATRICULE',cogn:'NOM',nome:'PR\u00c9NOM',max:'PRIME MAXIMUM',area:'VOTRE ZONE',store:'MAGASIN',tgt:'OBJECTIF EUR',tot:'TOTAL ZONE',sycy:'SY ANN\u00c9E EN COURS',syly:'SY ANN\u00c9E DERNI\u00c8RE',cons:'RÉEL EUR',pct_lbl:'% ZONE',why_full:'Objectif atteint: zone ≥',why_partial:'Objectif partiel: zone ≥',why_partial_nosy:'Seuil atteint mais SY LY indisponible',why_none:'Objectif non atteint: zone <',prize:'INCITATION',full:'OBJECTIF ATTEINT',partial:'OBJECTIF PARTIELLEMENT ATTEINT',none:'OBJECTIF NON ATTEINT',prev:'INCITATION MAXIMALE ATTEIGNABLE',r1:'Prime compl\u00e8te: zone \u2265'+fPct(FCVM_PARAMS.soglia100)+' de l\'objectif',r2:'Prime partielle ('+fPct(FCVM_PARAMS.pct60)+'): zone \u2265'+fPct(FCVM_PARAMS.soglia60)+' et SY en am\u00e9lioration',discl:DISCL.FRANCESE||''},
+    TEDESCO:{g:'Hallo',role:'FUNKTION',matr:'PERSONALNR.',cogn:'NACHNAME',nome:'VORNAME',max:'MAXIMALER ANREIZ',area:'DEIN BEREICH',store:'STORE',tgt:'ZIEL EUR',tot:'BEREICH GESAMT',sycy:'SY AKTUELLES JAHR',syly:'SY VORJAHR',prize:'PR\u00c4MIE',full:'ZIEL ERREICHT',partial:'ZIEL TEILWEISE ERREICHT',none:'ZIEL NICHT ERREICHT',prev:'MAXIMAL ERREICHBARE PR\u00c4MIE',r1:'Voller Anreiz: Bereich \u2265'+fPct(FCVM_PARAMS.soglia100)+' des Ziels',r2:'Teilweiser Anreiz ('+fPct(FCVM_PARAMS.pct60)+'): Bereich \u2265'+fPct(FCVM_PARAMS.soglia60)+' und SY steigend',discl:DISCL.TEDESCO||''},
+    SPAGNOLO:{g:'Hola',role:'FUNCI\u00d3N',matr:'MATR\u00cdCULA',cogn:'APELLIDO',nome:'NOMBRE',max:'INCENTIVO M\u00c1XIMO',area:'TU ZONA',store:'TIENDA',tgt:'OBJETIVO EUR',tot:'TOTAL ZONA',sycy:'SY A\u00d1O ACTUAL',syly:'SY A\u00d1O ANTERIOR',prize:'INCENTIVO',full:'OBJETIVO ALCANZADO',partial:'OBJETIVO PARCIALMENTE ALCANZADO',none:'OBJETIVO NO ALCANZADO',prev:'M\u00c1XIMO INCENTIVO ALCANZABLE',r1:'Premio completo: zona \u2265'+fPct(FCVM_PARAMS.soglia100)+' del objetivo',r2:'Premio parcial ('+fPct(FCVM_PARAMS.pct60)+'): zona \u2265'+fPct(FCVM_PARAMS.soglia60)+' y SY mejorando',discl:DISCL.SPAGNOLO||''}
+  };
+  var T=TR[lang]||TR.INGLESE;
+  var ec={full:'#2d7a3a',partial:'#cf8b4e',none:'#cf5b5b',preventivo:'#c9a96e'}[r.esito]||'#6b6560';
+  var el=isP?T.prev:({full:T.full,partial:T.partial,none:T.none}[r.esito]||'\u2014');
+
+  var h='<div class="lt">';
+
+  // Header
+  h+='<div class="lt-top"><div class="lt-logo">Boggi Milano</div>';
+  h+='<div style="text-align:right"><div style="font-size:13px;color:#c9a96e;font-weight:700;letter-spacing:2px">FC + VM INCENTIVE PLAN</div>';
+  h+='<div style="font-size:11px;color:#8a8680">'+MONTH_NAMES.IT[CFG_MONTH]+' '+CFG_YEAR+(isP?' \u2014 PREVENTIVO':'')+'</div></div></div>';
+
+  // Greeting + info box
+  h+='<div class="lt-body">';
+  h+='<div class="lt-greeting">'+T.g+' '+esc(emp.n)+',</div>';
+  h+='<div class="lt-info" style="grid-template-columns:1fr 1fr 1fr">';
+  [[T.matr||'MATRICOLA',String(emp.m)],[T.cogn||'COGNOME',emp.c],[T.nome||'NOME',emp.n],[T.role,emp.j==='FC'?'Field Coach':'Visual Merchandiser'],[T.max,fc(emp.ib,cu)]].forEach(function(p){
+    h+='<div class="lt-info-item"><div class="lt-info-label">'+esc(p[0])+'</div><div class="lt-info-val">'+esc(p[1])+'</div></div>';
+  });
+  h+='</div>';
+
+  // Regole incentivo
+  h+='<div style="background:#faf9f7;border:1px solid #e5e1db;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:10px;color:#4e4b48">';
+  h+='<div style="font-weight:700;color:#2c2925;margin-bottom:6px;font-size:11px">INCENTIVE RULES</div>';
+  h+='<div style="margin-bottom:3px">\u2022 '+esc(T.r1)+'</div>';
+  h+='<div>\u2022 '+esc(T.r2)+'</div></div>';
+
+  var syLyVal=r.syLyArea;
+  if(syLyVal!==null||(!isP&&r.syAreaCy!=null)||isP){
+    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px">';
+    // SY CY — in preventivo mostra —, in consuntivo mostra valore reale
+    var syCyVal=isP?null:r.syAreaCy;
+    var syCyColor=syCyVal==null?'#a09a92':(r.syOk===true?'#2d7a3a':'#cf5b5b');
+    h+='<div style="background:#faf9f7;border:1px solid #e5e1db;border-radius:6px;padding:12px 16px">';
+    h+='<div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#a09a92;margin-bottom:4px">'+T.sycy+'</div>';
+    h+='<div style="font-size:20px;font-weight:800;color:'+syCyColor+'">'+(syCyVal!=null?fDec(syCyVal,2):'\u2014')+'</div>';
+    h+='</div>';
+    // SY LY — dato reale da FC_SYLY (sales_ly/footfall_ly aggregato area)
+    h+='<div style="background:#faf9f7;border:1px solid #e5e1db;border-radius:6px;padding:12px 16px">';
+    h+='<div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#a09a92;margin-bottom:4px">'+T.syly+'</div>';
+    h+='<div style="font-size:20px;font-weight:800;color:#2c2925">'+(syLyVal!=null?fDec(syLyVal,2):'\u2014')+'</div>';
+    h+='</div></div>';
+  }
+  // ── TABELLA NEGOZI (store_id + nome store + target EUR) ──────────────────
+  h+='<div class="lt-kpi" style="margin-top:16px">';
+  var gridCols=isP?'80px 1fr 140px':'80px 1fr 140px 140px 80px';
+  h+='<div class="lt-kpi-head" style="background:#2c2925;color:#c9a96e;grid-template-columns:'+gridCols+';padding:8px 14px">';
+  h+='<span>STORE ID</span><span>'+T.store+'</span><span style="text-align:right">'+T.tgt+'</span>';
+  if(!isP)h+='<span style="text-align:right">'+(T.cons||'ACTUAL EUR')+'</span><span style="text-align:right">'+(T.pct_lbl||'%')+'</span>';
+  h+='</div>';
+
+  r.stores.forEach(function(s,i){
+    var sid=String(s.sid);
+    var mapEntry=FC_MAP[sid]||{};
+    var sname=mapEntry.s||sid;
+    var bg=i%2===0?'#fff':'#faf9f7';
+    var stCn=isP?s.to:(FC_RESULTS[sid]?FC_RESULTS[sid].sc_eur||0:0);
+    var stPct=s.to>0?stCn/s.to:null;
+    var stPctColor=stPct===null?'#a09a92':stPct>=FCVM_PARAMS.soglia100?'#2d7a3a':stPct>=FCVM_PARAMS.soglia60?'#c9a96e':'#cf5b5b';
+    h+='<div class="lt-kpi-row" style="grid-template-columns:'+gridCols+';background:'+bg+'">';
+    h+='<span style="font-size:10px;color:#8a8680;font-family:monospace">'+esc(sid)+'</span>';
+    h+='<span style="font-size:10px;font-weight:600">'+esc(sname)+'</span>';
+    h+='<span style="text-align:right;font-size:10px">'+fc(s.to,'EUR')+'</span>';
+    if(!isP){
+      h+='<span style="text-align:right;font-size:10px;font-weight:600">'+fc(stCn,'EUR')+'</span>';
+      h+='<span style="text-align:right;font-size:10px;font-weight:700;color:'+stPctColor+'">'+(stPct!==null?fPct(stPct):'—')+'</span>';
+    }
+    h+='</div>';
+  });
+
+  // Riga totale area
+  h+='<div style="padding:8px 14px;background:#3d3a36;display:grid;grid-template-columns:'+gridCols+';align-items:center">';
+  h+='<span></span>';
+  h+='<span style="font-size:10px;font-weight:700;color:#c9a96e;text-transform:uppercase;letter-spacing:1px">'+T.tot+'</span>';
+  h+='<span style="text-align:right;font-size:12px;font-weight:800;color:#c9a96e">'+fc(r.totTarget,'EUR')+'</span>';
+  if(!isP){
+    var areaPct=r.totTarget>0?r.totCons/r.totTarget:null;
+    var areaPctColor=areaPct===null?'#a09a92':areaPct>=FCVM_PARAMS.soglia100?'#5bb98c':areaPct>=FCVM_PARAMS.soglia60?'#c9a96e':'#e07b4e';
+    h+='<span style="text-align:right;font-size:12px;font-weight:800;color:#f5f4f1">'+fc(r.totCons,'EUR')+'</span>';
+    h+='<span style="text-align:right;font-size:13px;font-weight:800;color:'+areaPctColor+'">'+(areaPct!==null?fPct(areaPct):'—')+'</span>';
+  }
+  h+='</div></div>';
+
+  // ── SY BOX (dato reale aggregato — no medie) ──────────────────────────────
+  // syLyArea = totSalesLy/totFootfallLy aggregato sull'area (da FC_SYLY)
+  // ── Box esito (solo consuntivo) ────────────────────────────────────────
+  if(!isP){
+    var esitoColor={full:'#2d7a3a',partial:'#cf8b4e',partial_nosy:'#856404',none:'#cf5b5b'}[r.esito]||'#6b6560';
+    var pctStr=r.totTarget>0?fPct(r.pct):'—';
+    var whyStr='';
+    if(r.esito==='full'){
+      whyStr=esc((T.why_full||'Full target')+' ≥'+fPct(FCVM_PARAMS.soglia100)+' ('+pctStr+')');
+    } else if(r.esito==='partial'){
+      var syLyStr=r.syLyArea!=null?fDec(r.syLyArea,2):'—';
+      var syCyStr=r.syAreaCy!=null?fDec(r.syAreaCy,2):'—';
+      whyStr=esc((T.why_partial||'Partial target')+' ≥'+fPct(FCVM_PARAMS.soglia60)+' ('+pctStr+') — SY CY ('+syCyStr+') > SY LY ('+syLyStr+')');
+    } else if(r.esito==='partial_nosy'){
+      whyStr=esc((T.why_partial_nosy||'Threshold reached, SY LY unavailable')+' ('+pctStr+')');
+    } else if(r.esito==='none'){
+      whyStr=esc((T.why_none||'Target not achieved')+' < '+fPct(FCVM_PARAMS.soglia60)+' ('+pctStr+')');
+    }
+    var pctPremio=r.esito==='full'?'100%':r.esito==='partial'?fPct(FCVM_PARAMS.pct60):r.esito==='partial_nosy'?'0%':'0%';
+    h+='<div style="margin-top:14px;border:1px solid '+esitoColor+';border-radius:6px;overflow:hidden">';
+    h+='<div style="background:'+esitoColor+';padding:8px 16px;display:flex;justify-content:space-between;align-items:center">';
+    h+='<span style="font-size:11px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:1px">'+el+'</span>';
+    h+='<span style="font-size:13px;font-weight:800;color:#fff">'+pctPremio+' '+fc(r.premio,cu)+'</span>';
+    h+='</div>';
+    if(whyStr)h+='<div style="padding:8px 16px;font-size:10px;color:#4e4b48;background:#faf9f7;line-height:1.6">'+whyStr+'</div>';
+    h+='</div>';
+  }
+  h+='</div>'; // close lt-body
+
+  // ── BARRA FINALE: una sola riga premio ───────────────────────────────────
+  h+='<div class="lt-total">';
+  h+='<div class="lt-total-label">'+(isP?T.prev:T.prize)+'</div>';
+  h+='<div class="lt-total-val" style="color:#c9a96e">'+fc(r.premio,cu)+'</div>';
+  h+='</div>';
+
+  // Footer disclaimer
+  h+='<div class="lt-footer">'+esc(T.discl)+'</div>';
+  h+='</div>'; // close .lt
+  return h;
+}
+
+// ── Tab Analisi ───────────────────────────────────────────────
+function rAFcvm(){
+  var pool=getFcVmPool();
+  var isP=MODE==='preventivo';
+  if(!pool.length){
+    document.getElementById('p2').innerHTML='<div class="wg" style="text-align:center;padding:40px;color:#a09a92"><div style="font-size:32px;margin-bottom:12px">&#128202;</div><div>Carica i dati FC+VM per vedere le analisi.</div></div>';
+    return;
+  }
+  var totEur=0,nFull=0,nPartial=0,nPartialNosy=0,nNone=0,nPrev=0;
+  var totTargetEur=0,totConsEur=0;
+  var fcData=[],vmData=[];
+  pool.forEach(function(emp){
+    var r=calcFcVmPremio(emp.m);
+    var exR=getFcVmExRate(emp.cu);
+    totEur+=r.premio_eur;
+    totTargetEur+=r.totTarget;
+    totConsEur+=(!isP?r.totCons:r.totTarget);
+    if(r.esito==='full')nFull++;
+    else if(r.esito==='partial')nPartial++;
+    else if(r.esito==='partial_nosy')nPartialNosy++;
+    else if(r.esito==='none')nNone++;
+    else nPrev++;
+    var row={m:emp.m,c:emp.c,n:emp.n,j:emp.j,cu:emp.cu,ib:emp.ib,r:r,exR:exR};
+    if(emp.j==='FC')fcData.push(row);else vmData.push(row);
+  });
+  var areaPct=totTargetEur>0?totConsEur/totTargetEur:null;
+
+  var h='<div class="wg" style="margin-bottom:16px"><div class="wg-title">&#128202; FC + VM — Riepilogo '+MONTH_NAMES.IT[CFG_MONTH]+' '+CFG_YEAR+(isP?' — PREVENTIVO':' — CONSUNTIVO')+'</div>';
+
+  // KPI cards
+  h+='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px">';
+  [{l:'Dipendenti',v:pool.length,c:'#5b6abf'},{l:'Premio pieno',v:nFull,c:'#2d7a3a'},{l:'Premio ridotto',v:nPartial,c:'#cf8b4e'},{l:'Soglia/no SY',v:nPartialNosy,c:'#856404'},{l:'Nessun premio',v:nNone,c:'#cf5b5b'}].forEach(function(s){
+    h+='<div style="background:#faf9f7;border:1px solid #e5e1db;border-radius:8px;padding:12px;text-align:center">';
+    h+='<div style="font-size:22px;font-weight:800;color:'+s.c+'">'+s.v+'</div>';
+    h+='<div style="font-size:10px;color:#8a8680;margin-top:3px">'+s.l+'</div></div>';
+  });
+  h+='</div>';
+
+  // Totali fatturato + premi
+  h+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">';
+  // Target area totale
+  h+='<div style="background:#2c2925;border-radius:8px;padding:14px">';
+  h+='<div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#a09a92;margin-bottom:4px">TARGET AREA TOT.</div>';
+  h+='<div style="font-size:18px;font-weight:800;color:#c9a96e">'+fc(Math.round(totTargetEur),'EUR')+'</div></div>';
+  // Consuntivo (o potenziale)
+  h+='<div style="background:#2c2925;border-radius:8px;padding:14px">';
+  h+='<div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#a09a92;margin-bottom:4px">'+(isP?'POTENZIALE':'CONSUNTIVO AREA TOT.')+'</div>';
+  var consColor=areaPct===null?'#a09a92':areaPct>=FCVM_PARAMS.soglia100?'#5bb98c':areaPct>=FCVM_PARAMS.soglia60?'#c9a96e':'#e07b4e';
+  h+='<div style="font-size:18px;font-weight:800;color:'+consColor+'">'+fc(Math.round(totConsEur),'EUR')+(areaPct!==null?' <span style="font-size:12px;color:'+consColor+';">('+fPct(areaPct)+')</span>':'')+'</div></div>';
+  // Totale premi
+  h+='<div style="background:#2c2925;border-radius:8px;padding:14px">';
+  h+='<div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#a09a92;margin-bottom:4px">TOTALE PREMI EUR</div>';
+  h+='<div style="font-size:18px;font-weight:800;color:#c9a96e">'+fc(Math.round(totEur),'EUR')+'</div></div>';
+  h+='</div>';
+  h+='</div>';
+
+  // Dettaglio per ruolo FC / VM
+  [{label:'&#128084; Field Coach',data:fcData},{label:'&#128241; Visual Merchandiser',data:vmData}].forEach(function(group){
+    if(!group.data.length)return;
+    h+='<div class="wg" style="margin-bottom:16px"><div class="wg-title">'+group.label+'</div>';
+    h+='<div class="scroll-wrap"><table style="width:100%;border-collapse:collapse;font-size:10px">';
+    h+='<thead><tr style="background:#2c2925;color:#c9a96e">';
+    h+='<th style="padding:6px 10px;text-align:left">Matricola</th><th style="text-align:left;padding:6px 8px">Cognome Nome</th>';
+    h+='<th style="text-align:right;padding:6px 8px">Target EUR</th>';
+    if(!isP)h+='<th style="text-align:right;padding:6px 8px">Cons. EUR</th>';
+    h+='<th style="text-align:right;padding:6px 8px">% Area</th>';
+    h+='<th style="text-align:right;padding:6px 8px">SY LY</th>';
+    if(!isP)h+='<th style="text-align:right;padding:6px 8px">SY CY</th>';
+    h+='<th style="text-align:right;padding:6px 8px">Premio LC</th>';
+    h+='<th style="text-align:right;padding:6px 8px">Premio EUR</th>';
+    h+='<th style="text-align:center;padding:6px 8px">Esito</th>';
+    h+='</tr></thead><tbody>';
+    var totTgt=0,totCns=0,totPremEur=0;
+    group.data.forEach(function(row,i){
+      var r=row.r;
+      var ec2={full:'#2d7a3a',partial:'#cf8b4e',partial_nosy:'#856404',none:'#cf5b5b',preventivo:'#c9a96e'}[r.esito]||'#a09a92';
+      var el2={full:'✓ Pieno',partial:fPct(FCVM_PARAMS.pct60),partial_nosy:'Soglia/—SY',none:'✗',preventivo:'Max'}[r.esito]||r.esito;
+      var pc=r.totTarget>0?r.pct:null;
+      var bg=i%2===0?'#fff':'#faf9f7';
+      totTgt+=r.totTarget; totCns+=(!isP?r.totCons:r.totTarget); totPremEur+=r.premio_eur;
+      h+='<tr style="background:'+bg+'">';
+      h+='<td style="padding:4px 10px;font-family:monospace;color:#8a8680">'+esc(String(row.m))+'</td>';
+      h+='<td style="padding:4px 8px;font-weight:600">'+esc(row.c)+' '+esc(row.n)+'</td>';
+      h+='<td style="padding:4px 8px;text-align:right">'+fc(r.totTarget,'EUR')+'</td>';
+      if(!isP)h+='<td style="padding:4px 8px;text-align:right">'+fc(r.totCons,'EUR')+'</td>';
+      h+='<td style="padding:4px 8px;text-align:right;font-weight:700;color:'+(pc===null?'#a09a92':pc>=FCVM_PARAMS.soglia100?'#2d7a3a':pc>=FCVM_PARAMS.soglia60?'#cf8b4e':'#cf5b5b')+'">'+(pc!==null?fPct(pc):'—')+'</td>';
+      h+='<td style="padding:4px 8px;text-align:right;color:#6b6560">'+(r.syLyArea!=null?fDec(r.syLyArea,2):'—')+'</td>';
+      if(!isP)h+='<td style="padding:4px 8px;text-align:right;font-weight:600;color:'+(r.syAreaCy!=null?(r.syOk?'#2d7a3a':'#cf5b5b'):'#a09a92')+'">'+(r.syAreaCy!=null?fDec(r.syAreaCy,2):'—')+'</td>';
+      h+='<td style="padding:4px 8px;text-align:right;font-weight:700;color:'+ec2+'">'+fc(r.premio,row.cu||'EUR')+'</td>';
+      h+='<td style="padding:4px 8px;text-align:right;font-weight:700;color:'+ec2+'">'+fc(r.premio_eur,'EUR')+'</td>';
+      h+='<td style="padding:4px 8px;text-align:center;font-weight:700;color:'+ec2+'">'+el2+'</td>';
+      h+='</tr>';
+    });
+    // Totale gruppo
+    h+='<tr style="background:#3d3a36">';
+    h+='<td colspan="2" style="padding:5px 10px;font-weight:700;color:#c9a96e;font-size:10px">TOTALE '+group.data.length+' dipendenti</td>';
+    h+='<td style="padding:5px 8px;text-align:right;font-weight:700;color:#f5f4f1">'+fc(Math.round(totTgt),'EUR')+'</td>';
+    if(!isP)h+='<td style="padding:5px 8px;text-align:right;font-weight:700;color:#f5f4f1">'+fc(Math.round(totCns),'EUR')+'</td>';
+    h+='<td></td><td></td>';
+    if(!isP)h+='<td></td>';
+    h+='<td colspan="2" style="padding:5px 8px;text-align:right;font-weight:800;color:#c9a96e">'+fc(Math.round(totPremEur),'EUR')+'</td>';
+    h+='<td></td></tr>';
+    h+='</tbody></table></div></div>';
+  });
+
+  document.getElementById('p2').innerHTML=h;
+}
+
+// ── Fonti Dati ────────────────────────────────────────────────
+function rSourcesFcvm(){
+  var isP=MODE==="preventivo";
+  var hasAnag=Object.keys(FC_EMP).length>0;
+  var hasMap=Object.keys(FC_MAP).length>0;
+  var hasTarget=Object.keys(FC_TARGETS).length>0;
+  var hasResults=Object.keys(FC_RESULTS).length>0;
+  var h='<div class="wg" style="margin-bottom:20px"><div class="wg-title">&#128229; Carica Dati FC + VM</div>';
+  h+='<div style="font-size:10px;color:#8a8680;margin-bottom:10px">Modalità <b>FC + VM — '+(isP?'PREVENTIVO':'CONSUNTIVO')+'</b></div>';
+  h+='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">';
+  h+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#5b6abf;color:#5b6abf">&#128101; Anagrafica FC/VM<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_anag" style="display:none" onchange="loadFcVmFile(this)"></label>';
+  // Mapping negozi: derivato automaticamente dall'anagrafica FC+VM
+  h+='<label class="exp-btn primary" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#127919; Target Fatturato<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_target" style="display:none" onchange="loadFcVmFile(this)"></label>';
+  h+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#9b6ec9;color:#9b6ec9">&#128200; SY LY (Fatt.+Traffico LY)<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_syly" style="display:none" onchange="loadFcVmFile(this)"></label>';
+  h+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#2d7a3a;color:#2d7a3a">&#128200; Risultati (Fatt.+Traffico CY)<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_results" style="display:none" onchange="loadFcVmFile(this)"></label>';
+  h+='<button onclick="clearFcVmData()" class="exp-btn" style="border-color:#cf5b5b;color:#cf5b5b">&#128465; Reset Dati</button>';
+  h+='</div>';
+  h+='<div style="font-size:9px;color:#a09a92;margin-top:8px;line-height:1.6">';
+  h+='<b>Anagrafica FC/VM:</b> store_id, nome store, matricola, nome, cognome, ruolo (FC/VM), valuta, premio massimale &mdash; una riga per store/dipendente. Il mapping negozi viene derivato automaticamente. &nbsp;&#183;&nbsp; ';
+  h+='<b>Target/Risultati:</b> store_id, fatturato EUR, SY CY, SY LY</div></div>';
+  // Completezza
+  var hasSyLyData=Object.keys(FC_SYLY).length>0;
+  var checks=[
+    {label:'Anagrafica FC/VM',ok:hasAnag},
+    {label:'Target Fatturato',ok:hasTarget},
+    {label:'SY LY (Fatt.+Traffico)',ok:hasSyLyData}
+  ];
+  if(!isP)checks=checks.concat([
+    {label:'Risultati (Fatt.+Traffico CY)',ok:hasResults},
+    {label:'SY CY calcolata',ok:hasResults&&Object.values(FC_RESULTS).some(function(r){return r.sy_cy!=null;})}
+  ]);
+  var nOk=checks.filter(function(c){return c.ok;}).length;
+  var pct=Math.round(nOk/checks.length*100);
+  var barColor=pct===100?'#2d7a3a':pct>=50?'#c9a96e':'#cf5b5b';
+  h+='<div class="wg"><div class="wg-title">&#9989; Completezza — FC + VM — '+(isP?'PREVENTIVO':'CONSUNTIVO')+'</div>';
+  h+='<div style="height:8px;background:#e5e1db;border-radius:4px;overflow:hidden;margin-bottom:12px">';
+  h+='<div style="height:100%;width:'+pct+'%;background:'+barColor+';border-radius:4px;transition:width .3s"></div></div>';
+  h+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
+  checks.forEach(function(c){
+    h+='<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:'+(c.ok?'#f0faf2':'#fef6f0')+';border-radius:5px;border:1px solid '+(c.ok?'#d4edda':'#f8d7da')+'">';
+    h+='<span style="font-size:12px">'+(c.ok?'\u2705':'\u274c')+'</span>';
+    h+='<span style="font-size:10px;font-weight:600">'+c.label+'</span></div>';
+  });
+  h+='</div></div>';
+  // Stato
+  if(hasAnag||hasMap||hasTarget||hasResults){
+    h+='<div class="wg"><div class="wg-title">Dati in memoria</div>';
+    [{icon:'&#128101;',label:'FC/VM caricati',v:Object.keys(FC_EMP).length,ok:hasAnag},
+     {icon:'&#128205;',label:'Negozi mappati (auto)',v:Object.keys(FC_MAP).length,ok:Object.keys(FC_MAP).length>0},
+     {icon:'&#127919;',label:'Store con target fatt.',v:Object.keys(FC_TARGETS).length,ok:hasTarget},
+     {icon:'&#128200;',label:'Store con SY LY',v:Object.keys(FC_SYLY).length,ok:hasSyLyData},
+     {icon:'&#128200;',label:'Store con risultati',v:Object.keys(FC_RESULTS).length,ok:hasResults}
+    ].forEach(function(s){
+      h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #f0ece8;font-size:11px">';
+      h+='<span>'+s.icon+' '+s.label+'</span><b style="color:'+(s.ok?'#2d7a3a':'#a09a92')+'">'+s.v+'</b></div>';
+    });
+    h+='</div>';
+  }
+    h+='<div id="scanResults"></div>';
+    h+='<div id="scanResults" style="margin-top:8px"></div>';
+  return h;
+}
+
+// ── Import Anagrafica FC+VM ────────────────────────────────────
+function loadFcVmFile(input){
+  var srcId=input.getAttribute('data-fcvmsrc');
+  var file=input.files[0];if(!file)return;
+  input.value='';
+  if(srcId==='fcvm_anag'){loadFcVmAnagrafica(file);return;}
+  if(srcId==='fcvm_target'){loadFcVmTarget(file);return;}
+  if(srcId==='fcvm_syly'){loadFcVmSyLy(file);return;}
+  if(srcId==='fcvm_results'){loadFcVmResults(file);return;}
+  alert('Sorgente non riconosciuta: '+srcId);
+}
+
+function loadFcVmAnagrafica(file){
+  var reader=new FileReader();
+  reader.onload=function(ev){setTimeout(function(){try{
+    var data=new Uint8Array(ev.target.result);
+    var wb=XLSX.read(data,{type:'array'});
+    // Trova il foglio migliore
+    var sheet=wb.SheetNames[0];
+    wb.SheetNames.forEach(function(sn){
+      var snl=sn.toLowerCase();
+      if(snl.indexOf('anag')>=0||snl.indexOf('fc')>=0||snl.indexOf('vm')>=0||snl.indexOf('testata')>=0)sheet=sn;
+    });
+    var ws=wb.Sheets[sheet];
+    var json=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+    if(json.length<2){alert('Foglio vuoto o non riconosciuto.');return;}
+
+    // Trova riga header
+    var hdrRow=0;
+    var hdr={sid:-1,sname:-1,matr:-1,nome:-1,cogn:-1,ruolo:-1,valuta:-1,premio:-1};
+    for(var ri=0;ri<Math.min(5,json.length);ri++){
+      var row=json[ri];if(!row)continue;
+      var rowStr=row.map(function(c){return String(c||'').toLowerCase().trim();});
+      var found=false;
+      rowStr.forEach(function(h,ci){
+        if(h.indexOf('store id')>=0||h==='store_id'||h==='storeid'){hdr.sid=ci;found=true;}
+        else if(h.indexOf('nome store')>=0||h.indexOf('store name')>=0||h.indexOf('nome_store')>=0){hdr.sname=ci;}
+        else if(h==='matricola'||h.indexOf('matr')>=0){hdr.matr=ci;}
+        else if(h==='nome'||h==='nome '||h==='name'||h==='first name'){hdr.nome=ci;}
+        else if(h==='cognome'||h==='surname'||h==='last name'){hdr.cogn=ci;}
+        else if(h==='ruolo'||h==='role'||h==='funzione'){hdr.ruolo=ci;}
+        else if(h==='valuta'||h==='currency'){hdr.valuta=ci;}
+        else if(h.indexOf('premio')>=0||h.indexOf('max')>=0||h.indexOf('bonus')>=0||h.indexOf('incentiv')>=0){hdr.premio=ci;}
+      });
+      if(found){hdrRow=ri;break;}
+    }
+    if(hdr.sid<0||hdr.matr<0){
+      alert('Colonne non riconosciute.\nCerco: Store ID, Matricola, Nome, Cognome, Ruolo, Valuta, Premio Max.');
+      return;
+    }
+
+    // Resetta strutture FC+VM
+    FC_EMP={};FC_MAP={};
+
+    var imported=0,errors=[],importedList=[];
+    var vl=VL||{};
+
+    for(var ri=hdrRow+1;ri<json.length;ri++){
+      var row=json[ri];if(!row)continue;
+
+      // Store ID
+      var rawSid=row[hdr.sid];
+      if(rawSid==null||String(rawSid).trim()==='')continue;
+      var sid=String(parseInt(rawSid));
+      if(sid==='NaN')continue;
+
+      // Matricola
+      var rawMatr=row[hdr.matr];
+      if(rawMatr==null||String(rawMatr).trim()==='')continue;
+      var matr=String(rawMatr).trim();
+
+      // Nome/Cognome
+      var nome=hdr.nome>=0?String(row[hdr.nome]||'').trim().toUpperCase():'';
+      var cogn=hdr.cogn>=0?String(row[hdr.cogn]||'').trim().toUpperCase():'';
+
+      // Ruolo
+      var ruolo=hdr.ruolo>=0?String(row[hdr.ruolo]||'').trim().toUpperCase():'FC';
+      if(ruolo!=='FC'&&ruolo!=='VM'){
+        errors.push('Riga '+(ri+1)+': ruolo "'+ruolo+'" non valido (FC o VM attesi)');
+        continue;
+      }
+
+      // Valuta e cambio
+      var cu=hdr.valuta>=0?String(row[hdr.valuta]||'EUR').trim().toUpperCase():'EUR';
+      var ex=1;
+      if(cu!=='EUR'){
+        // Cerca il cambio in VL (stessa struttura degli altri import)
+        Object.keys(vl).forEach(function(k){if(vl[k]&&vl[k].cu===cu)ex=vl[k].ex||1;});
+        // Fallback: cerca per codice valuta direttamente
+        if(ex===1&&D&&D.vl){Object.keys(D.vl).forEach(function(k){if(D.vl[k]&&D.vl[k].cu===cu)ex=D.vl[k].ex||1;});}
+      }
+
+      // Premio massimale — preso solo alla prima occorrenza della matricola
+      var premio=hdr.premio>=0?parseFloat(String(row[hdr.premio]||'0').replace(/[^0-9.,]/g,'').replace(',','.'))||0:0;
+
+      // Store name
+      var sname=hdr.sname>=0?String(row[hdr.sname]||'').trim().toUpperCase():(sid);
+
+      // Registra dipendente (solo prima volta — premio non si somma)
+      if(!FC_EMP[matr]){
+        var empObj={m:matr,c:cogn,n:nome,j:ruolo,cu:cu,ex:ex,ib:premio,lang:'INGLESE'};
+        FC_EMP[matr]=empObj;
+        importedList.push(empObj);
+        imported++;
+      }
+
+      // Mapping negozio → FC/VM
+      if(!FC_MAP[sid])FC_MAP[sid]={fc:null,vm:null,s:sname};
+      if(ruolo==='FC')FC_MAP[sid].fc=matr;
+      else FC_MAP[sid].vm=matr;
+    }
+
+    // Report
+    var nFC=Object.values(FC_EMP).filter(function(e){return e.j==='FC';}).length;
+    var nVM=Object.values(FC_EMP).filter(function(e){return e.j==='VM';}).length;
+    var nStores=Object.keys(FC_MAP).length;
+    // Salva pending per conferma
+    window._pendingFcVmEmp=FC_EMP;
+    window._pendingFcVmMap=FC_MAP;
+    window._pendingFcVmFile=file.name;
+    window._pendingFcVmErrors=errors;
+    window._pendingFcVmImportedList=importedList;
+
+    showFcVmImportReport(importedList, errors, file.name, nFC, nVM, nStores);
+  }catch(ex){alert('Errore lettura file:\n'+ex.message);}},50);};
+  reader.readAsArrayBuffer(file);
+}
+
+function showFcVmImportReport(importedList, errors, filename, nFC, nVM, nStores){
+  var h='<div class="wg" style="margin-top:16px"><div class="wg-title">&#128202; Report Importazione Anagrafica FC+VM</div>';
+  h+='<div style="font-size:10px;color:#8a8680;margin-bottom:8px">File: <b>'+esc(filename)+'</b></div>';
+  h+='<div style="display:flex;gap:16px;margin-bottom:12px">';
+  h+='<div style="background:#f0faf2;border:1px solid #d4edda;border-radius:6px;padding:10px 16px;flex:1;text-align:center"><div style="font-size:24px;font-weight:800;color:#2d7a3a">'+importedList.length+'</div><div style="font-size:10px;color:#6b6560">Importabili ('+nFC+' FC, '+nVM+' VM)</div></div>';
+  h+='<div style="background:'+(errors.length?'#fef6f0':'#f0faf2')+';border:1px solid '+(errors.length?'#f8d7da':'#d4edda')+';border-radius:6px;padding:10px 16px;flex:1;text-align:center"><div style="font-size:24px;font-weight:800;color:'+(errors.length?'#cf5b5b':'#2d7a3a')+'">'+errors.length+'</div><div style="font-size:10px;color:#6b6560">Righe escluse</div></div>';
+  h+='<div style="background:#f0f4ff;border:1px solid #c7d2fe;border-radius:6px;padding:10px 16px;flex:1;text-align:center"><div style="font-size:24px;font-weight:800;color:#5b6abf">'+nStores+'</div><div style="font-size:10px;color:#6b6560">Negozi mappati (auto)</div></div>';
+  h+='</div>';
+  if(errors.length){
+    h+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:#856404;margin-bottom:4px">Dettaglio esclusi:</div>';
+    h+='<div class="scroll-wrap" style="max-height:160px"><table style="font-size:9px;width:100%"><thead><tr style="background:#fef6f0"><th style="padding:4px">Riga</th><th style="padding:4px">Motivo</th></tr></thead><tbody>';
+    errors.forEach(function(er){h+='<tr><td style="padding:3px">'+esc(er.row)+'</td><td style="padding:3px;color:#cf5b5b">'+esc(er.reason)+'</td></tr>';});
+    h+='</tbody></table></div></div>';
+  }
+  if(importedList.length>0){
+    h+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:#2d7a3a;margin-bottom:4px">Anteprima (primi '+Math.min(20,importedList.length)+' di '+importedList.length+'):</div>';
+    h+='<div class="scroll-wrap" style="max-height:200px"><table style="font-size:9px;width:100%"><thead><tr style="background:#f0faf2">';
+    h+='<th style="padding:4px">Matricola</th><th style="padding:4px">Cognome</th><th style="padding:4px">Nome</th><th style="padding:4px">Ruolo</th><th style="padding:4px">Valuta</th><th style="padding:4px">Premio Max</th><th style="padding:4px">N.Store</th>';
+    h+='</tr></thead><tbody>';
+    importedList.slice(0,20).forEach(function(e){
+      var nS=Object.keys(window._pendingFcVmMap||{}).filter(function(sid){var mp=(window._pendingFcVmMap||{})[sid];return e.j==='FC'?mp.fc===e.m:mp.vm===e.m;}).length;
+      h+='<tr><td style="padding:3px;font-family:monospace">'+esc(String(e.m))+'</td><td style="padding:3px">'+esc(e.c)+'</td><td style="padding:3px">'+esc(e.n)+'</td>';
+      h+='<td style="padding:3px"><span class="bg" style="background:'+(e.j==='FC'?'#5b6abf':'#5bb98c')+';color:#fff">'+e.j+'</span></td>';
+      h+='<td style="padding:3px">'+esc(e.cu)+'</td><td style="padding:3px;text-align:right;font-weight:700">'+fc(e.ib,e.cu)+'</td><td style="padding:3px;text-align:center">'+nS+'</td></tr>';
+    });
+    if(importedList.length>20)h+='<tr><td colspan="7" style="padding:4px;text-align:center;color:#8a8680;font-style:italic">... e altri '+(importedList.length-20)+' dipendenti</td></tr>';
+    h+='</tbody></table></div></div>';
+    h+='<div style="display:flex;gap:8px;margin-bottom:8px">';
+    h+='<button class="exp-btn primary" onclick="applyFcVmAnagrafica()">&#10004; Applica '+importedList.length+' dipendenti</button>';
+    h+='<button class="exp-btn" onclick="downloadFcVmImportLog()">&#128190; Scarica Report</button>';
+    h+='</div>';
+  }
+  h+='</div>';
+  var el=document.getElementById('scanResults');
+  if(el)el.innerHTML=h;
+}
+
+function applyFcVmAnagrafica(){
+  var list=window._pendingFcVmImportedList||[];
+  var map=window._pendingFcVmMap||{};
+  if(!list.length){alert('Nessun dato da applicare.');return;}
+  FC_EMP={};FC_MAP={};FC_TARGETS={};FC_RESULTS={};
+  list.forEach(function(e){FC_EMP[e.m]=e;});
+  Object.keys(map).forEach(function(sid){FC_MAP[sid]=map[sid];});
+  // Aggiorna header contatore
+  updateHeaderCount();
+  rC();rA();rSources();autoSave();
+  alert('✅ Anagrafica FC+VM applicata: '+list.length+' dipendenti, '+Object.keys(FC_MAP).length+' negozi.');
+}
+
+function downloadFcVmImportLog(){
+  var list=window._pendingFcVmImportedList||[];
+  var errs=window._pendingFcVmErrors||[];
+  var lines=['REPORT IMPORTAZIONE ANAGRAFICA FC+VM','File: '+(window._pendingFcVmFile||''),'','IMPORTATI: '+list.length,'ESCLUSI: '+errs.length,'','=== IMPORTATI ===','MATRICOLA;COGNOME;NOME;RUOLO;VALUTA;PREMIO_MAX'];
+  list.forEach(function(e){lines.push([e.m,e.c,e.n,e.j,e.cu,e.ib].join(';'));});
+  if(errs.length){lines.push('','=== ESCLUSI ===','RIGA;MOTIVO');errs.forEach(function(er){lines.push(er.row+';'+er.reason);});}
+  var blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8;'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='report_import_fcvm_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+}
+
+// ── Reset dati ────────────────────────────────────────────────
+function loadFcVmTarget(file){
+  var reader=new FileReader();
+  reader.onload=function(ev){setTimeout(function(){try{
+    var data=new Uint8Array(ev.target.result);
+    var wb=XLSX.read(data,{type:'array'});
+    var sheet=wb.SheetNames[0];
+    wb.SheetNames.forEach(function(sn){var snl=sn.toLowerCase();if(snl.indexOf('target')>=0||snl.indexOf('aprile')>=0||snl.indexOf('marzo')>=0||snl.indexOf('maggio')>=0)sheet=sn;});
+    var ws=wb.Sheets[sheet];
+    var json=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
+    if(json.length<2){alert('Foglio vuoto.');return;}
+
+    // Trova header
+    var hdrRow=0,hdr={sid:-1,sales:-1,salesLC:-1};
+    for(var ri=0;ri<Math.min(5,json.length);ri++){
+      var row=json[ri];if(!row)continue;
+      var rowStr=row.map(function(c){return String(c||'').toLowerCase().trim();});
+      var found=false;
+      rowStr.forEach(function(h,ci){
+        if(h==='store_id'||h==='store id'||h==='storeid'||h==='etichette di riga'){hdr.sid=ci;found=true;}
+        // Gross sales EUR (NON _LC)
+        if((h==='gross_sales'||h==='gross sales'||h==='somma di gross_sales')&&h.indexOf('_lc')<0){hdr.sales=ci;}
+        if(h==='gross_sales_lc'||h==='somma di gross_sales_lc'){hdr.salesLC=ci;}
+      });
+      if(found){hdrRow=ri;break;}
+    }
+    if(hdr.sid<0){alert('Colonna Store ID non trovata. Colonne: '+(json[hdrRow]||[]).join(', '));return;}
+    // Usa EUR, fallback LC
+    var useFallback=hdr.sales<0&&hdr.salesLC>=0;
+    if(useFallback)hdr.sales=hdr.salesLC;
+    if(hdr.sales<0){alert('Colonna Gross Sales non trovata.');return;}
+
+    var imported=0;
+    for(var ri=hdrRow+1;ri<json.length;ri++){
+      var row=json[ri];if(!row)continue;
+      var rawSid=row[hdr.sid];if(rawSid==null)continue;
+      var sid=String(parseInt(rawSid));
+      if(sid==='NaN'||sid==='0'||isNaN(parseInt(rawSid)))continue;
+      var sales=parseFloat(row[hdr.sales])||0;
+      if(sales<=0)continue;
+      if(!FC_TARGETS[sid])FC_TARGETS[sid]={to_eur:0};
+      FC_TARGETS[sid].to_eur=Math.round(sales*100)/100;
+      imported++;
+    }
+    var msg='✅ Target FC+VM importato:\n• '+imported+' store caricati (solo Gross Sales EUR)';
+    if(useFallback)msg+='\n⚠ Usata colonna LC come fallback';
+    rC();rA();rSources();autoSave();
+    alert(msg);
+  }catch(ex){alert('Errore: '+ex.message);}},50);};
+  reader.readAsArrayBuffer(file);
+}
+
+// ── Import SY LY — fatturato + traffico LY per store ─────────────────
+function loadFcVmSyLy(file){
+  var reader=new FileReader();
+  reader.onload=function(ev){setTimeout(function(){try{
+    var data=new Uint8Array(ev.target.result);
+    var wb=XLSX.read(data,{type:'array'});
+    var sheet=wb.SheetNames[0];
+    var ws=wb.Sheets[sheet];
+    var json=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
+    if(json.length<2){alert('Foglio vuoto.');return;}
+
+    // Rileva header — supporta formato: Store Id, Gross Sales After Returns YYYY, Traffic Out YYYY
+    var hdrRow=0;
+    var hdr={sid:-1,sales:-1,footfall:-1};
+    for(var ri=0;ri<Math.min(5,json.length);ri++){
+      var row=json[ri];if(!row)continue;
+      var found=false;
+      row.forEach(function(cell,ci){
+        var h=String(cell||'').toLowerCase().trim();
+        // Store ID
+        if(h==='store id'||h==='store_id'||h==='storeid'){hdr.sid=ci;found=true;}
+        // Fatturato LY — "gross sales after returns YYYY" o varianti
+        if((h.indexOf('gross sales')>=0||h.indexOf('gross_sales')>=0||h.indexOf('fatturato')>=0||h.indexOf('sales')>=0)
+           &&h.indexOf('traffic')<0&&h.indexOf('traffico')<0&&h.indexOf('lc')<0
+           &&hdr.sales<0){hdr.sales=ci;}
+        // Traffico LY — "traffic out YYYY" o varianti
+        if(h.indexOf('traffic')>=0||h.indexOf('footfall')>=0||h.indexOf('traffico')>=0||h.indexOf('visits')>=0){hdr.footfall=ci;}
+      });
+      if(found){hdrRow=ri;break;}
+    }
+
+    if(hdr.sid<0){alert('Colonna Store ID non trovata. Colonne: '+(json[hdrRow]||[]).join(', '));return;}
+    if(hdr.sales<0){alert('Colonna Fatturato LY non trovata.');return;}
+    if(hdr.footfall<0){alert('Colonna Traffico LY non trovata.');return;}
+
+    // Aggrega per store_id (possono esserci più mesi)
+    var agg={};  // {sid: {sales_ly, footfall_ly}}
+    for(var ri=hdrRow+1;ri<json.length;ri++){
+      var row=json[ri];if(!row)continue;
+      var rawSid=row[hdr.sid];if(rawSid==null)continue;
+      var sid=String(parseInt(rawSid));
+      if(sid==='NaN'||sid==='0'||isNaN(parseInt(rawSid)))continue;
+      var sales=parseFloat(row[hdr.sales])||0;
+      var ff=parseFloat(row[hdr.footfall])||0;
+      if(sales<=0&&ff<=0)continue;
+      if(!agg[sid])agg[sid]={sales_ly:0,footfall_ly:0};
+      agg[sid].sales_ly+=sales;
+      agg[sid].footfall_ly+=ff;
+    }
+
+    // Popola FC_SYLY
+    var imported=0,noTraffic=0;
+    Object.keys(agg).forEach(function(sid){
+      var a=agg[sid];
+      FC_SYLY[sid]={
+        sales_ly:Math.round(a.sales_ly*100)/100,
+        footfall_ly:Math.round(a.footfall_ly),
+        sy_ly:a.footfall_ly>0?Math.round(a.sales_ly/a.footfall_ly*1000)/1000:null
+      };
+      if(a.footfall_ly<=0)noTraffic++;
+      imported++;
+    });
+
+    var msg='✅ SY LY importata:\n• '+imported+' store caricati\n• SY LY = Fatturato LY / Traffico LY (aggregato per area in calcolo)';
+    if(noTraffic>0)msg+='\n⚠ '+noTraffic+' store senza traffico — SY non usata per quelle aree';
+    rC();rA();rSources();autoSave();
+    alert(msg);
+  }catch(ex){alert('Errore: '+ex.message);}},50);};
+  reader.readAsArrayBuffer(file);
+}
+
+function loadFcVmResults(file){
+  var reader=new FileReader();
+  reader.onload=function(ev){setTimeout(function(){try{
+    var data=new Uint8Array(ev.target.result);
+    var wb=XLSX.read(data,{type:'array'});
+    var sheet=wb.SheetNames[0];
+    var ws=wb.Sheets[sheet];
+    var json=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
+    if(json.length<2){alert('Foglio vuoto.');return;}
+
+    // Rileva header — stesso formato del file SY LY ma anno corrente
+    var hdrRow=0,hdr={sid:-1,sales:-1,footfall:-1};
+    for(var ri=0;ri<Math.min(5,json.length);ri++){
+      var row=json[ri];if(!row)continue;
+      var found=false;
+      row.forEach(function(cell,ci){
+        var h=String(cell||'').toLowerCase().trim();
+        if(h==='store id'||h==='store_id'||h==='storeid'){hdr.sid=ci;found=true;}
+        if((h.indexOf('gross sales')>=0||h.indexOf('gross_sales')>=0||h.indexOf('sales')>=0||h.indexOf('fatturato')>=0)
+           &&h.indexOf('traffic')<0&&h.indexOf('lc')<0&&hdr.sales<0){hdr.sales=ci;}
+        if(h.indexOf('traffic')>=0||h.indexOf('footfall')>=0||h.indexOf('traffico')>=0){hdr.footfall=ci;}
+      });
+      if(found){hdrRow=ri;break;}
+    }
+    if(hdr.sid<0){alert('Colonna Store ID non trovata.');return;}
+    if(hdr.sales<0){alert('Colonna Gross Sales non trovata.');return;}
+    if(hdr.footfall<0){alert('Colonna Traffico non trovata.');return;}
+
+    // Aggrega per store_id (possono esserci più mesi)
+    var agg={};
+    for(var ri=hdrRow+1;ri<json.length;ri++){
+      var row=json[ri];if(!row)continue;
+      var rawSid=row[hdr.sid];if(rawSid==null)continue;
+      var sid=String(parseInt(rawSid));
+      if(sid==='NaN'||sid==='0'||isNaN(parseInt(rawSid)))continue;
+      var sales=parseFloat(row[hdr.sales])||0;
+      var ff=parseFloat(row[hdr.footfall])||0;
+      if(sales<=0&&ff<=0)continue;
+      if(!agg[sid])agg[sid]={sales:0,footfall:0};
+      agg[sid].sales+=sales;
+      agg[sid].footfall+=ff;
+    }
+
+    // Popola FC_RESULTS
+    var imported=0,noTraffic=0;
+    Object.keys(agg).forEach(function(sid){
+      var a=agg[sid];
+      var sy_cy=a.footfall>0?Math.round(a.sales/a.footfall*1000)/1000:null;
+      FC_RESULTS[sid]={
+        sc_eur:Math.round(a.sales*100)/100,
+        footfall_cy:Math.round(a.footfall),
+        sy_cy:sy_cy
+      };
+      if(a.footfall<=0)noTraffic++;
+      imported++;
+    });
+
+    var msg='✅ Risultati FC+VM importati:\n• '+imported+' store caricati\n• SY CY = Gross Sales / Traffico';
+    if(noTraffic>0)msg+='\n⚠ '+noTraffic+' store senza traffico';
+    rC();rA();rSources();autoSave();
+    alert(msg);
+  }catch(ex){alert('Errore: '+ex.message);}},50);};
+  reader.readAsArrayBuffer(file);
+}
+
+// ── Tab Negozi FC+VM ─────────────────────────────────────────────────────
+function rStoresFcvm(){
+  var panel=document.getElementById('p7');
+  if(!panel)return;
+
+  var hasAnag=Object.keys(FC_MAP).length>0;
+  if(!hasAnag){
+    panel.innerHTML='<div class="wg" style="text-align:center;padding:40px;color:#a09a92"><div style="font-size:32px;margin-bottom:12px">&#128205;</div><div>Carica prima l\'anagrafica FC+VM per vedere i negozi.</div></div>';
+    return;
+  }
+
+  // Costruisci lista negozi con etichetta L4L / NEW
+  var stores=Object.keys(FC_MAP).sort(function(a,b){return parseInt(a)-parseInt(b);});
+
+  var h='<div class="wg"><div class="wg-title">&#128205; Negozi FC+VM — Esclusioni Calcolo</div>';
+  h+='<div style="font-size:10px;color:#8a8680;margin-bottom:10px">';
+  h+='Usa i toggle per escludere un negozio dal calcolo fatturato e/o SY di area. ';
+  h+='<span style="background:#d4edda;color:#155724;padding:2px 6px;border-radius:3px;font-size:9px;font-weight:700">L4L</span> = presente sia in LY che CY. ';
+  h+='<span style="background:#cce5ff;color:#004085;padding:2px 6px;border-radius:3px;font-size:9px;font-weight:700">NEW</span> = solo CY (non in LY).</div>';
+
+  h+='<div class="scroll-wrap"><table style="width:100%;border-collapse:collapse;font-size:10px">';
+  h+='<thead><tr style="background:#2c2925;color:#c9a96e">';
+  h+='<th style="padding:6px 10px;text-align:center">STORE ID</th>';
+  h+='<th style="padding:6px 10px;text-align:left">NOME STORE</th>';
+  h+='<th style="padding:6px 10px;text-align:center">FIELD COACH</th>';
+  h+='<th style="padding:6px 10px;text-align:center">VISUAL MERCH.</th>';
+  h+='<th style="padding:6px 10px;text-align:center">STATO</th>';
+  h+='<th style="padding:6px 10px;text-align:center">ESCLUDI FATT.</th>';
+  h+='<th style="padding:6px 10px;text-align:center">ESCLUDI SY</th>';
+  h+='<th style="padding:6px 10px;text-align:center">ESCLUDI ENTRAMBI</th>';
+  h+='</tr></thead><tbody>';
+
+  stores.forEach(function(sid,i){
+    var mp=FC_MAP[sid]||{};
+    var fcEmp=mp.fc?FC_EMP[mp.fc]:null;
+    var vmEmp=mp.vm?FC_EMP[mp.vm]:null;
+    var sname=mp.s||sid;
+    var hasLy=!!(FC_SYLY[sid]&&FC_SYLY[sid].sales_ly!=null);
+    var hasCy=!!(FC_RESULTS[sid]&&FC_RESULTS[sid].sc_eur!=null)||!!(FC_TARGETS[sid]&&FC_TARGETS[sid].to_eur);
+    var label=hasLy?'L4L':'NEW';
+    var labelBg=hasLy?'#d4edda':'#cce5ff';
+    var labelColor=hasLy?'#155724':'#004085';
+    var flg=FC_STORE_FLAGS[sid]||{};
+    var bg=i%2===0?'#fff':'#faf9f7';
+    var excludedRow=flg.excl_fatt&&flg.excl_sy;
+
+    h+='<tr style="background:'+(excludedRow?'#fef6f0':bg)+';opacity:'+(excludedRow?'0.6':'1')+'">';
+    h+='<td style="padding:5px 10px;text-align:center;font-family:monospace;color:#8a8680">'+esc(sid)+'</td>';
+    h+='<td style="padding:5px 10px;font-weight:600">'+esc(sname)+'</td>';
+    // FC
+    h+='<td style="padding:5px 10px;text-align:center;font-size:10px;color:#4e4b48">';
+    if(fcEmp)h+=esc(fcEmp.c)+' '+esc(fcEmp.n);
+    else h+='<span style="color:#a09a92">\u2014</span>';
+    h+='</td>';
+    // VM
+    h+='<td style="padding:5px 10px;text-align:center;font-size:10px;color:#4e4b48">';
+    if(vmEmp)h+=esc(vmEmp.c)+' '+esc(vmEmp.n);
+    else h+='<span style="color:#a09a92">\u2014</span>';
+    h+='</td>';
+    // Stato L4L / NEW
+    h+='<td style="padding:5px 10px;text-align:center">';
+    h+='<span style="background:'+labelBg+';color:'+labelColor+';padding:2px 8px;border-radius:3px;font-size:9px;font-weight:700">'+label+'</span>';
+    h+='</td>';
+    // Toggle Escludi Fatturato
+    h+='<td style="padding:5px 10px;text-align:center">';
+    h+='<label class="ps-toggle" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px">';
+    h+='<input type="checkbox" '+(flg.excl_fatt?'checked':'')+' data-sid="'+esc(sid)+'" data-flag="excl_fatt" onchange="toggleFcVmStoreFlag(this)" style="display:none">';
+    h+='<span style="width:32px;height:18px;border-radius:9px;background:'+(flg.excl_fatt?'#2d7a3a':'#d5d0c8')+';position:relative;display:block;transition:background .2s">';
+    h+='<span style="width:14px;height:14px;border-radius:7px;background:#fff;position:absolute;top:2px;left:'+(flg.excl_fatt?'16px':'2px')+';transition:left .2s"></span></span></label>';
+    h+='</td>';
+    // Toggle Escludi SY
+    h+='<td style="padding:5px 10px;text-align:center">';
+    h+='<label class="ps-toggle" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px">';
+    h+='<input type="checkbox" '+(flg.excl_sy?'checked':'')+' data-sid="'+esc(sid)+'" data-flag="excl_sy" onchange="toggleFcVmStoreFlag(this)" style="display:none">';
+    h+='<span style="width:32px;height:18px;border-radius:9px;background:'+(flg.excl_sy?'#2d7a3a':'#d5d0c8')+';position:relative;display:block;transition:background .2s">';
+    h+='<span style="width:14px;height:14px;border-radius:7px;background:#fff;position:absolute;top:2px;left:'+(flg.excl_sy?'16px':'2px')+';transition:left .2s"></span></span></label>';
+    h+='</td>';
+    // Toggle Escludi Entrambi
+    h+='<td style="padding:5px 10px;text-align:center">';
+    var bothOn=!!(flg.excl_fatt&&flg.excl_sy);
+    h+='<label class="ps-toggle" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px">';
+    h+='<input type="checkbox" '+(bothOn?'checked':'')+' data-sid="'+esc(sid)+'" data-flag="excl_both" onchange="toggleFcVmStoreFlag(this)" style="display:none">';
+    h+='<span style="width:32px;height:18px;border-radius:9px;background:'+(bothOn?'#2d7a3a':'#d5d0c8')+';position:relative;display:block;transition:background .2s">';
+    h+='<span style="width:14px;height:14px;border-radius:7px;background:#fff;position:absolute;top:2px;left:'+(bothOn?'16px':'2px')+';transition:left .2s"></span></span></label>';
+    h+='</td>';
+    h+='</tr>';
+  });
+
+  h+='</tbody></table></div></div>';
+
+  // Summary esclusioni attive
+  var nExclFatt=Object.values(FC_STORE_FLAGS).filter(function(f){return f.excl_fatt;}).length;
+  var nExclSy=Object.values(FC_STORE_FLAGS).filter(function(f){return f.excl_sy;}).length;
+  if(nExclFatt>0||nExclSy>0){
+    h+='<div class="wg"><div class="wg-title">Esclusioni attive</div>';
+    h+='<div style="display:flex;gap:10px;flex-wrap:wrap">';
+    if(nExclFatt>0)h+='<div style="background:#fef6f0;border:1px solid #f8d7da;border-radius:5px;padding:6px 12px;font-size:10px;font-weight:600;color:#721c24">&#128196; '+nExclFatt+' store esclus'+(nExclFatt===1?'o':'i')+' da fatturato</div>';
+    if(nExclSy>0)h+='<div style="background:#fff3e0;border:1px solid #ffe0b2;border-radius:5px;padding:6px 12px;font-size:10px;font-weight:600;color:#e65100">&#128200; '+nExclSy+' store esclus'+(nExclSy===1?'o':'i')+' da SY</div>';
+    h+='<button onclick="clearFcVmFlags()" class="exp-btn" style="border-color:#cf5b5b;color:#cf5b5b;font-size:10px">&#8635; Reset esclusioni</button>';
+    h+='</div></div>';
+  }
+
+  panel.innerHTML=h;
+}
+
+function toggleFcVmStoreFlag(input){
+  var sid=input.getAttribute('data-sid');
+  var flag=input.getAttribute('data-flag');
+  if(!FC_STORE_FLAGS[sid])FC_STORE_FLAGS[sid]={excl_fatt:false,excl_sy:false};
+  if(flag==='excl_fatt')FC_STORE_FLAGS[sid].excl_fatt=input.checked;
+  else if(flag==='excl_sy')FC_STORE_FLAGS[sid].excl_sy=input.checked;
+  else if(flag==='excl_both'){FC_STORE_FLAGS[sid].excl_fatt=input.checked;FC_STORE_FLAGS[sid].excl_sy=input.checked;}
+  rC();rA();rStoresFcvm();autoSave();
+}
+
+function clearFcVmFlags(){
+  FC_STORE_FLAGS={};
+  rC();rA();rStoresFcvm();autoSave();
+}
+
+function clearFcVmData(){
+  if(!confirm("Vuoi svuotare TUTTI i dati (tutte le modalità)?\n\nVerranno cancellati:\n• Anagrafica dipendenti\n• Dati mensili, seasonal e FC+VM\n• Stato in localStorage\n\nLa configurazione viene mantenuta.\n\nContinuare?"))return;
+  resetEverything();
+  // Forza re-render di tutti i pannelli indipendentemente dal tab attivo
+  try{rC();}catch(ex){}
+  try{rA();}catch(ex){}
+  try{rSources();}catch(ex){}
+  try{if(typeof rDist==="function")rDist();}catch(ex){}
+  try{if(typeof rAgg==="function")rAgg();}catch(ex){}
+  try{rT();}catch(ex){}
+  try{if(typeof rStores==="function")rStores();}catch(ex){}
+  try{rL();}catch(ex){}
+  autoSave();
+  alert("✅ Tutti i dati svuotati.");
+}
+
+// ── Export Excel ──────────────────────────────────────────────
+function exportFcVmExcel(){
+  var pool=getFcVmPool();
+  if(!pool.length){alert('Nessun dato FC+VM.');return;}
+  var mm=String(CFG_MONTH).padStart(2,'0');
+  var rows=[['MATRICOLA','COGNOME','NOME','RUOLO','VALUTA','CAMBIO','PREMIO MAX LC',
+             'N.STORE','TARGET EUR','CONS EUR','% AREA','SY CY','SY LY','SY OK',
+             'PREMIO LC','PREMIO EUR','ESITO']];
+  pool.forEach(function(emp){
+    var r=calcFcVmPremio(emp.m);
+    var nS=Object.keys(FC_MAP).filter(function(sid){var mp=FC_MAP[sid];return emp.j==='FC'?mp.fc===emp.m:mp.vm===emp.m;}).length;
+    rows.push([emp.m,emp.c,emp.n,emp.j,emp.cu||'EUR',emp.ex||1,emp.ib,nS,
+               Math.round(r.totTarget*100)/100,Math.round(r.totCons*100)/100,
+               r.totTarget>0?Math.round(r.pct*10000)/100:0,
+               r.totSyCy||0,r.totSyLy||0,r.syOk?'SI':'NO',
+               r.premio,r.premio_eur,r.esito]);
+  });
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'FC VM');
+  XLSX.writeFile(wb,'FCVM_'+mm+'_'+CFG_YEAR+'.xlsx');
+}
+
+// ── getLetterHtmlForPrint patch ───────────────────────────────
+var _glhfp=getLetterHtmlForPrint;
+getLetterHtmlForPrint=function(i){
+  if(PRIZE_MODE==='fcvm'){
+    var pool=getFcVmPool(),e=pool[i];if(!e)return null;
+    var lh=buildFcVmLetter(e);
+    var css=document.querySelector('style')?document.querySelector('style').textContent:'';
+    return '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'+css+
+      '*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}'+
+      'html,body{margin:0;padding:0;background:#fff}@page{size:A4;margin:10mm}'+
+      '<'+'/style><'+'/head><body>'+lh+'<'+'/body><'+'/html>';
+  }
+  return _glhfp(i);
+};
+</script>
+
 </body>
 </html>
