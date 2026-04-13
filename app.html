@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Boggi Milano - Sistema Incentivazione V5.5</title>
+<title>Boggi Milano - Sistema Incentivazione V5.6</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -463,7 +463,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='5.5'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='5.6'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=2,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -1407,8 +1407,33 @@ function rL(){
 }
 
 function printLetterOnly(){
-  var lc=document.getElementById("lc");if(!lc.innerHTML.trim()){alert("Seleziona prima un dipendente.");return}
-  document.body.classList.add("print-letter");window.print();document.body.classList.remove("print-letter")}
+  var lc=document.getElementById("lc");
+  if(!lc||!lc.innerHTML.trim()){alert("Seleziona prima un dipendente.");return;}
+  // Usa il dipendente correntemente visualizzato
+  var pool=getLetterPool();
+  var html=null;
+  // Cerca il dipendente selezionato confrontando l'HTML con quello generato
+  for(var i=0;i<pool.length;i++){
+    var h=getLetterHtmlForPrint(i);
+    if(h){html=h;break;} // Fallback: primo disponibile — di solito è quello corretto
+  }
+  // Approccio migliore: ricostruisci l'HTML dalla lettera correntemente visualizzata
+  var css=document.querySelector("style")?document.querySelector("style").textContent:"";
+  var letterContent=lc.innerHTML;
+  html="<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><style>"+
+    css+
+    "*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}"+
+    "html,body{margin:0;padding:0;background:#fff;font-family:'DM Sans',sans-serif;font-size:13px}"+
+    "@page{size:A4;margin:10mm}"+
+    ".no-print{display:none!important}"+
+    "</style>"+
+    "<link href=\"https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap\" rel=\"stylesheet\">"+
+    "</head><body>"+letterContent+"</body></html>";
+  var w=window.open("","_blank","width=900,height=700");
+  if(!w){alert("Popup bloccato. Consenti i popup per questo sito.");return;}
+  w.document.write(html);
+  w.document.close();
+  w.onload=function(){w.focus();w.print();};}
 
 // Save ALL PDFs: opens a new window with all letters, user prints to PDF
 // Each page has the employee ID as filename hint
@@ -5896,7 +5921,7 @@ function rCFcvm(){
   function thS(label){return'<th>'+label+'</th>';}
   h+='<div class="scroll-wrap"><table id="ctbl"><thead><tr>';
   h+=thS('Matr.')+thS('Cognome')+thS('Nome')+thS('Ruolo')+thS('Val.')+thS('N.Store');
-  h+=thS('Target EUR')+thS('Max Premio')+(!isP?thS('Consuntivo EUR'):'')+thS('% Area')+thS('SY LY')+thS('SY CY')+thS('Premio LC')+thS('Premio EUR')+thS('BDG')+thS('Esito');
+  h+=thS('Target EUR')+thS('Max Premio')+(!isP?thS('Consuntivo EUR'):'')+thS('% Area')+thS('SY LY')+thS('SY CY')+thS('Premio LC')+thS('Premio EUR')+thS('BDG')+thS('Esito')+thS('Lingua');
   h+='</tr></thead><tbody>';
 
   fl.forEach(function(emp,i){
