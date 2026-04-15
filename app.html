@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Boggi Milano - Sistema Incentivazione V5.6</title>
+<title>Boggi Milano - Sistema Incentivazione V5.8</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -356,8 +356,11 @@ function calcFcVmPremio(matr){
   var stores=[];
   Object.keys(FC_MAP).forEach(function(sid){
     var mp=FC_MAP[sid];
-    if(emp.j==="FC"&&mp.fc===matr)stores.push(sid);
-    if(emp.j==="VM"&&mp.vm===matr)stores.push(sid);
+    if(mp.tipo==='BDG')return; // negozi BDG non entrano nel calcolo area
+    var fcArr=Array.isArray(mp.fc)?mp.fc:(mp.fc?[mp.fc]:[]);
+    var vmArr=Array.isArray(mp.vm)?mp.vm:(mp.vm?[mp.vm]:[]);
+    if(emp.j==="FC"&&fcArr.indexOf(matr)>=0)stores.push(sid);
+    if(emp.j==="VM"&&vmArr.indexOf(matr)>=0)stores.push(sid);
   });
   if(!stores.length)return{premio:0,premio_eur:0,esito:"no_stores",stores:[],totTarget:0,totCons:0,pct:0,syOk:false,totSyCy:0,totSyLy:0};
   var totTarget=0,totCons=0,detail=[];
@@ -463,7 +466,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='5.6'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='5.8'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=2,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -899,6 +902,14 @@ function resetDigMob(sid){
   var inp=document.querySelector('input[data-digmob="'+sid+'"]');
   if(inp){inp.value='';inp.style.borderColor='#d5d0c8';}
   markDirty();autoSave();rC();rA();
+}
+
+function setDigMobStd(sid){
+  if(!STORE_FLAGS[sid])STORE_FLAGS[sid]={digType:'mobility'};
+  STORE_FLAGS[sid].digMinMob=0.10;
+  var inp=document.querySelector('input[data-digmob="'+sid+'"]');
+  if(inp){inp.value='10.00';inp.style.borderColor='#8b7ec8';inp.style.background='#f5f0ff';}
+  markDirty();autoSave();rC();rA();rT();
 }
 
 function toggleDigMob(){
@@ -3325,19 +3336,23 @@ function rT(){try{
     h+='<div style="margin-top:10px;border:1px solid #e5e1db;border-radius:6px;overflow:hidden">';
     h+='<div id="digMobHdr" style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:#f5f2ee;cursor:pointer" onclick="toggleDigMob()">';
     h+='<span style="font-size:11px;font-weight:700;color:#8b7ec8">% Target Digital Mobilità per Negozio</span>';
-    h+='<span id="digMobArr" style="color:#8b7ec8;font-size:12px">▸</span></div>';
-    h+='<div id="digMobBody" style="display:none;padding:10px 14px">';
-    h+='<div style="font-size:10px;color:#8a8680;margin-bottom:10px">Soglia individuale per negozio. Se non impostata usa il valore globale Mobilità ('+fPct(PARAMS.digMinMobility)+').</div>';
+    h+='<span id="digMobArr" style="color:#8b7ec8;font-size:12px">▾</span></div>';
+    h+='<div id="digMobBody" style="display:block;padding:10px 14px">';
+    h+=''; // aperto di default per visibilità immediata
+    var MOB_STD=0.10;
+    h+='<div style="font-size:10px;color:#8a8680;margin-bottom:10px">Soglia % digitale individuale per negozio. Se non impostata usa il valore globale Mobilit\u00e0 ('+fPct(PARAMS.digMinMobility)+').</div>';
     mobStores.sort().forEach(function(sid){
       var sf=STORE_FLAGS[sid];
       var storeName=function(){var n="";E.forEach(function(e){if(String(e.si)===sid&&e.s){n=e.s;}}); return n||("Store "+sid);}();
       var curVal=sf.digMinMob!=null?sf.digMinMob*100:null;
+      var isStd=curVal!=null&&Math.abs(curVal-10)<0.01;
       h+='<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f0ece8">';
-      h+='<div style="flex:1;font-size:11px;color:#4e4b48;font-weight:600">'+sid+' '+esc(storeName)+'</div>';
-      h+='<div style="display:flex;align-items:center;gap:4px">';
-      h+='<input type="number" data-digmob="'+sid+'" value="'+(curVal!=null?curVal.toFixed(2):"")+'" placeholder="'+fPct(PARAMS.digMinMobility)+'" min="0" max="100" step="0.5" style="width:80px;padding:4px 8px;border:1px solid #d5d0c8;border-radius:4px;font-size:11px;text-align:right;font-family:inherit">';
+      var cleanName=storeName.replace(new RegExp('^'+sid+'\\s*'),'').trim();
+      h+='<div style="flex:1;font-size:11px;color:#4e4b48;font-weight:600">'+esc(sid)+' '+esc(cleanName)+'</div>';
+      h+='<div style="display:flex;align-items:center;gap:6px">';
+      h+='<input type="number" data-digmob="'+sid+'" value="'+(curVal!=null?curVal.toFixed(2):"")+'" placeholder="'+fPct(PARAMS.digMinMobility)+'" min="0" max="100" step="0.5" style="width:90px;padding:4px 8px;border:1px solid '+(curVal!=null?(isStd?'#8b7ec8':'#2d7a3a'):'#d5d0c8')+';border-radius:4px;font-size:11px;text-align:right;font-family:inherit;background:'+(curVal!=null?(isStd?'#f5f0ff':'#f0faf2'):'#fff')+'">';
       h+='<span style="font-size:11px;color:#6b6560">%</span>';
-      h+='<button onclick="resetDigMob(\''+sid+'\')" style="font-size:10px;color:#cf5b5b;border:none;background:none;cursor:pointer;padding:2px 4px" title="Ripristina valore globale">✕</button>';
+      h+='<button onclick="resetDigMob(\''+sid+'\')" style="font-size:10px;color:#cf5b5b;border:none;background:none;cursor:pointer;padding:2px 4px" title="Ripristina valore globale">\u2715</button>';
       h+='</div></div>';
     });
     h+='</div></div>';
@@ -3410,7 +3425,7 @@ function rT(){try{
         delete STORE_FLAGS[sid].digMinMob;
         inp.style.borderColor="#d5d0c8";
       }
-      markDirty();autoSave();rC();rA();
+      markDirty();autoSave();rC();rA();rL();
     };
   });
 
@@ -4108,7 +4123,7 @@ function loadAnagraficaExcel(file){
           // Data assunzione (Col H): deve essere <= cutoffDate
           var hireDateRaw=row[ZC.hire];
           var hireDate=parseHireDate(hireDateRaw);
-          if(hireDate&&hireDate>cutoffDate){
+          if(hireDate&&hireDate.toISOString().slice(0,10)>cutoffDate.toISOString().slice(0,10)){
             var hdStr=hireDate.toISOString().slice(0,10);
             itErrors.push({row:ri+1,name:fullName,reason:"Assunto il "+hdStr+" \u2014 dopo il limite "+cutoffStr+" (ultimo giorno del mese precedente a "+MONTH_NAMES.IT[CFG_MONTH]+" "+CFG_YEAR+")"});
             continue;
@@ -4206,7 +4221,7 @@ function loadAnagraficaExcel(file){
         // Hire date filter (Col P = 15)
         var hireDateRaw=row[15];
         var hireDate=parseHireDate(hireDateRaw);
-        if(hireDate&&hireDate>cutoffDate){
+        if(hireDate&&hireDate.toISOString().slice(0,10)>cutoffDate.toISOString().slice(0,10)){
           var hdStr=hireDate.toISOString().slice(0,10);
           errors.push({row:ri+1,name:fullName,reason:"Assunto il "+hdStr+" \u2014 dopo il limite "+cutoffStr+" (ultimo giorno del mese precedente a "+MONTH_NAMES.IT[CFG_MONTH]+" "+CFG_YEAR+")"});
           continue;
@@ -5611,7 +5626,7 @@ function rStores(){
     // Clean up: remove entry if all defaults
     var sf=STORE_FLAGS[sid];
     if(!sf.dept&&!sf.noSas&&!sf.noDig&&!sf.noSy&&!sf.noPriv&&(!sf.digType||sf.digType==="classic"))delete STORE_FLAGS[sid];
-    markDirty();rStores();rC();rA();autoSave();
+    markDirty();rStores();rC();rA();rT();autoSave();
     var sw2=document.querySelector("#p7 .scroll-wrap");if(sw2)sw2.scrollTop=scrollTop;
   }});
 }
@@ -5928,7 +5943,11 @@ function rCFcvm(){
     var r=calcFcVmPremio(emp.m);
     var ec={full:'#2d7a3a',partial:'#cf8b4e',none:'#cf5b5b',preventivo:'#c9a96e',no_data:'#a09a92',no_stores:'#cf5b5b'}[r.esito]||'#a09a92';
     var el={full:'\u2713 Pieno',partial:fPct(FCVM_PARAMS.pct60),none:'\u2717',preventivo:'\u2014',no_data:'\u2014',no_stores:'Nessun negozio'}[r.esito]||r.esito;
-    var nStores=Object.keys(FC_MAP).filter(function(sid){var mp=FC_MAP[sid];return emp.j==='FC'?mp.fc===emp.m:mp.vm===emp.m;}).length;
+    var nStores=Object.keys(FC_MAP).filter(function(sid){
+      var mp=FC_MAP[sid];if(mp.tipo==='BDG')return false;
+      var arr=Array.isArray(emp.j==='FC'?mp.fc:mp.vm)?(emp.j==='FC'?mp.fc:mp.vm):[(emp.j==='FC'?mp.fc:mp.vm)];
+      return arr.indexOf(emp.m)>=0;
+    }).length;
     var pc=r.totTarget>0?r.pct:null;
     h+='<tr class="ck" data-m="'+esc(emp.m)+'">';
     h+='<td class="mn">'+esc(emp.m)+'</td>';
@@ -6539,15 +6558,14 @@ function loadFcVmAnagrafica(file){
         if(!already&&premio>0)FC_EMP[matr].bdg_stores.push({sid:sid,ib:premio,s:sname});
       }
 
-      // Mapping negozio → FC/VM (solo per negozi AREA)
+      // Mapping negozio → FC/VM — array per supportare più persone per ruolo
       if(tipo==='AREA'){
-        if(!FC_MAP[sid])FC_MAP[sid]={fc:null,vm:null,s:sname,tipo:'AREA'};
-        if(ruolo==='FC')FC_MAP[sid].fc=matr;
-        else FC_MAP[sid].vm=matr;
+        if(!FC_MAP[sid])FC_MAP[sid]={fc:[],vm:[],s:sname,tipo:'AREA'};
+        if(ruolo==='FC'&&FC_MAP[sid].fc.indexOf(matr)<0)FC_MAP[sid].fc.push(matr);
+        else if(ruolo==='VM'&&FC_MAP[sid].vm.indexOf(matr)<0)FC_MAP[sid].vm.push(matr);
       } else {
-        // BDG store: registrato separatamente, non entra in FC_MAP come area store
-        if(!FC_MAP[sid])FC_MAP[sid]={fc:null,vm:null,s:sname,tipo:'BDG'};
-        if(ruolo==='VM')FC_MAP[sid].vm=matr;
+        if(!FC_MAP[sid])FC_MAP[sid]={fc:[],vm:[],s:sname,tipo:'BDG'};
+        if(ruolo==='VM'&&FC_MAP[sid].vm.indexOf(matr)<0)FC_MAP[sid].vm.push(matr);
       }
     }
 
@@ -6587,7 +6605,11 @@ function showFcVmImportReport(importedList, errors, filename, nFC, nVM, nStores)
     h+='<th style="padding:4px">Matricola</th><th style="padding:4px">Cognome</th><th style="padding:4px">Nome</th><th style="padding:4px">Ruolo</th><th style="padding:4px">Valuta</th><th style="padding:4px">Premio Max</th><th style="padding:4px">N.Store</th>';
     h+='</tr></thead><tbody>';
     importedList.slice(0,20).forEach(function(e){
-      var nS=Object.keys(window._pendingFcVmMap||{}).filter(function(sid){var mp=(window._pendingFcVmMap||{})[sid];return e.j==='FC'?mp.fc===e.m:mp.vm===e.m;}).length;
+      var nS=Object.keys(window._pendingFcVmMap||{}).filter(function(sid){
+        var mp=(window._pendingFcVmMap||{})[sid];if(!mp||mp.tipo==='BDG')return false;
+        var arrR=Array.isArray(e.j==='FC'?mp.fc:mp.vm)?(e.j==='FC'?mp.fc:mp.vm):[(e.j==='FC'?mp.fc:mp.vm)];
+        return arrR.indexOf(e.m)>=0;
+      }).length;
       h+='<tr><td style="padding:3px;font-family:monospace">'+esc(String(e.m))+'</td><td style="padding:3px">'+esc(e.c)+'</td><td style="padding:3px">'+esc(e.n)+'</td>';
       h+='<td style="padding:3px"><span class="bg" style="background:'+(e.j==='FC'?'#5b6abf':'#5bb98c')+';color:#fff">'+e.j+'</span></td>';
       h+='<td style="padding:3px">'+esc(e.cu)+'</td><td style="padding:3px;text-align:right;font-weight:700">'+fc(e.ib,e.cu)+'</td><td style="padding:3px;text-align:center">'+nS+'</td></tr>';
@@ -6849,8 +6871,11 @@ function rStoresFcvm(){
 
   stores.forEach(function(sid,i){
     var mp=FC_MAP[sid]||{};
-    var fcEmp=mp.fc?FC_EMP[mp.fc]:null;
-    var vmEmp=mp.vm?FC_EMP[mp.vm]:null;
+    var fcArr=Array.isArray(mp.fc)?mp.fc:(mp.fc?[mp.fc]:[]);
+    var vmArr=Array.isArray(mp.vm)?mp.vm:(mp.vm?[mp.vm]:[]);
+    // Mantieni retrocompatibilità: fcEmp = primo FC (per display semplice)
+    var fcEmp=fcArr.length>0?FC_EMP[fcArr[0]]:null;
+    var vmEmp=vmArr.length>0?FC_EMP[vmArr[0]]:null;
     var sname=mp.s||sid;
     var hasLy=!!(FC_SYLY[sid]&&FC_SYLY[sid].sales_ly!=null);
     var hasCy=!!(FC_RESULTS[sid]&&FC_RESULTS[sid].sc_eur!=null)||!!(FC_TARGETS[sid]&&FC_TARGETS[sid].to_eur);
@@ -6864,15 +6889,25 @@ function rStoresFcvm(){
     h+='<tr style="background:'+(excludedRow?'#fef6f0':bg)+';opacity:'+(excludedRow?'0.6':'1')+'">';
     h+='<td style="padding:5px 10px;text-align:center;font-family:monospace;color:#8a8680">'+esc(sid)+'</td>';
     h+='<td style="padding:5px 10px;font-weight:600">'+esc(sname)+'</td>';
-    // FC
+    // FC — può essere multiplo
     h+='<td style="padding:5px 10px;text-align:center;font-size:10px;color:#4e4b48">';
-    if(fcEmp)h+=esc(fcEmp.c)+' '+esc(fcEmp.n);
-    else h+='<span style="color:#a09a92">\u2014</span>';
+    if(fcArr.length>0){
+      fcArr.forEach(function(fm,fi){
+        var fe=FC_EMP[fm];if(!fe)return;
+        if(fi>0)h+='<br>';
+        h+=esc(fe.c)+' '+esc(fe.n);
+      });
+    } else h+='<span style="color:#a09a92">\u2014</span>';
     h+='</td>';
-    // VM
+    // VM — può essere multiplo
     h+='<td style="padding:5px 10px;text-align:center;font-size:10px;color:#4e4b48">';
-    if(vmEmp)h+=esc(vmEmp.c)+' '+esc(vmEmp.n);
-    else h+='<span style="color:#a09a92">\u2014</span>';
+    if(vmArr.length>0){
+      vmArr.forEach(function(vm,vi){
+        var ve=FC_EMP[vm];if(!ve)return;
+        if(vi>0)h+='<br>';
+        h+=esc(ve.c)+' '+esc(ve.n);
+      });
+    } else h+='<span style="color:#a09a92">\u2014</span>';
     h+='</td>';
     // Stato L4L / NEW
     h+='<td style="padding:5px 10px;text-align:center">';
@@ -6908,14 +6943,15 @@ function rStoresFcvm(){
   // Summary esclusioni attive
   var nExclFatt=Object.values(FC_STORE_FLAGS).filter(function(f){return f.excl_fatt;}).length;
   var nExclSy=Object.values(FC_STORE_FLAGS).filter(function(f){return f.excl_sy;}).length;
+  h+='<div class="wg" id="fcvm-excl-summary-wrap"><div class="wg-title">Esclusioni</div><div id="fcvm-excl-summary">';
   if(nExclFatt>0||nExclSy>0){
-    h+='<div class="wg"><div class="wg-title">Esclusioni attive</div>';
     h+='<div style="display:flex;gap:10px;flex-wrap:wrap">';
     if(nExclFatt>0)h+='<div style="background:#fef6f0;border:1px solid #f8d7da;border-radius:5px;padding:6px 12px;font-size:10px;font-weight:600;color:#721c24">&#128196; '+nExclFatt+' store esclus'+(nExclFatt===1?'o':'i')+' da fatturato</div>';
     if(nExclSy>0)h+='<div style="background:#fff3e0;border:1px solid #ffe0b2;border-radius:5px;padding:6px 12px;font-size:10px;font-weight:600;color:#e65100">&#128200; '+nExclSy+' store esclus'+(nExclSy===1?'o':'i')+' da SY</div>';
     h+='<button onclick="clearFcVmFlags()" class="exp-btn" style="border-color:#cf5b5b;color:#cf5b5b;font-size:10px">&#8635; Reset esclusioni</button>';
-    h+='</div></div>';
+    h+='</div>';
   }
+  h+='</div></div>';
 
   panel.innerHTML=h;
 }
@@ -6927,7 +6963,51 @@ function toggleFcVmStoreFlag(input){
   if(flag==='excl_fatt')FC_STORE_FLAGS[sid].excl_fatt=input.checked;
   else if(flag==='excl_sy')FC_STORE_FLAGS[sid].excl_sy=input.checked;
   else if(flag==='excl_both'){FC_STORE_FLAGS[sid].excl_fatt=input.checked;FC_STORE_FLAGS[sid].excl_sy=input.checked;}
-  rC();rA();rStoresFcvm();autoSave();
+
+  var flg=FC_STORE_FLAGS[sid]||{};
+
+  // Aggiorna SOLO i toggle della riga toccata — senza ricostruire il DOM
+  var row=input.closest('tr');
+  if(row){
+    // Aggiorna colore riga
+    var excludedRow=flg.excl_fatt&&flg.excl_sy;
+    row.style.opacity=excludedRow?'0.6':'1';
+    row.style.background=excludedRow?'#fef6f0':'';
+
+    // Aggiorna tutti e tre i toggle nella riga
+    row.querySelectorAll('input[type="checkbox"][data-flag]').forEach(function(cb){
+      var f=cb.getAttribute('data-flag');
+      var on=(f==='excl_fatt'&&flg.excl_fatt)||(f==='excl_sy'&&flg.excl_sy)||(f==='excl_both'&&flg.excl_fatt&&flg.excl_sy);
+      cb.checked=on;
+      // Aggiorna lo span (track del toggle)
+      var track=cb.nextElementSibling;
+      if(track){
+        track.style.background=on?'#2d7a3a':'#d5d0c8';
+        var thumb=track.firstElementChild;
+        if(thumb)thumb.style.left=on?'16px':'2px';
+      }
+    });
+  }
+
+  // Aggiorna il riepilogo esclusioni in fondo (se esiste)
+  var nExclFatt=Object.values(FC_STORE_FLAGS).filter(function(f){return f.excl_fatt;}).length;
+  var nExclSy=Object.values(FC_STORE_FLAGS).filter(function(f){return f.excl_sy;}).length;
+  var summaryEl=document.getElementById('fcvm-excl-summary');
+  if(summaryEl){
+    var sh='';
+    if(nExclFatt>0||nExclSy>0){
+      sh+='<div style="display:flex;gap:10px;flex-wrap:wrap">';
+      if(nExclFatt>0)sh+='<div style="background:#fef6f0;border:1px solid #f8d7da;border-radius:5px;padding:6px 12px;font-size:10px;font-weight:600;color:#721c24">&#128196; '+nExclFatt+' store esclus'+(nExclFatt===1?'o':'i')+' da fatturato</div>';
+      if(nExclSy>0)sh+='<div style="background:#fff3e0;border:1px solid #ffe0b2;border-radius:5px;padding:6px 12px;font-size:10px;font-weight:600;color:#e65100">&#128200; '+nExclSy+' store esclus'+(nExclSy===1?'o':'i')+' da SY</div>';
+      sh+='<button onclick="clearFcVmFlags()" class="exp-btn" style="border-color:#cf5b5b;color:#cf5b5b;font-size:10px">&#8635; Reset esclusioni</button>';
+      sh+='</div>';
+    }
+    summaryEl.innerHTML=sh;
+  }
+
+  // Aggiorna calcolo premi e analisi in background (senza toccare il DOM del tab negozi)
+  rC();rA();
+  autoSave();
 }
 
 function clearFcVmFlags(){
@@ -7024,7 +7104,11 @@ function exportFcVmExcel(){
              'PREMIO LC','PREMIO EUR','ESITO']];
   pool.forEach(function(emp){
     var r=calcFcVmPremio(emp.m);
-    var nS=Object.keys(FC_MAP).filter(function(sid){var mp=FC_MAP[sid];return emp.j==='FC'?mp.fc===emp.m:mp.vm===emp.m;}).length;
+    var nS=Object.keys(FC_MAP).filter(function(sid){
+      var mp=FC_MAP[sid];if(mp.tipo==='BDG')return false;
+      var arrE=Array.isArray(emp.j==='FC'?mp.fc:mp.vm)?(emp.j==='FC'?mp.fc:mp.vm):[(emp.j==='FC'?mp.fc:mp.vm)];
+      return arrE.indexOf(emp.m)>=0;
+    }).length;
     rows.push([emp.m,emp.c,emp.n,emp.j,emp.cu||'EUR',emp.ex||1,emp.ib,nS,
                Math.round(r.totTarget*100)/100,Math.round(r.totCons*100)/100,
                r.totTarget>0?Math.round(r.pct*10000)/100:0,
