@@ -29,14 +29,17 @@ function buildSnapshotForHistory(){
     };
     (E||[]).forEach(function(e){
       var t=0;try{t=calcE(e)||0}catch(ex){}
+      var t_eur=0;try{t_eur=(typeof calcEUR==="function"?calcEUR(e):t)||0}catch(ex){t_eur=t;}
       var emp={
         m:e.m, c:e.c, n:e.n,
         s:e.s, si:e.si,
         j:e.j, f:e.f,
         cu:e.cu||"EUR",
+        ex:(typeof e.ex==="number"?e.ex:1),
         ml:e.ml||0,
         ps:e.ps==="SI",
         tl:t,
+        tl_eur:t_eur,
         agg:(typeof aggTotal==="function"?aggTotal(e.m):0)
       };
       // KPI breakdown (solo valori non-zero, per compattezza)

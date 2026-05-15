@@ -135,16 +135,29 @@ function renderConfrontoUI(container, snapshots){
     var rows=Object.keys(byMatr).map(function(k){return byMatr[k];})
       .sort(function(a,b){return (a.c||"").localeCompare(b.c||"");});
 
-    // Aggregati (solo per dipendenti con entrambi i valori, per equita`)
-    var totPrev=0,totCons=0,nWithBoth=0,nOnlyPrev=0,nOnlyCons=0;
+    // Helper: ritorna il totale in EUR per un employee dello snapshot.
+    // Preferisce tl_eur (presente in snapshot v2+); fallback per snapshot
+    // vecchi: tl * ex (se ex e` salvato) altrimenti tl raw (con warning visivo).
+    function eurOf(emp){
+      if(!emp)return null;
+      if(typeof emp.tl_eur==="number")return emp.tl_eur;
+      if(typeof emp.tl==="number" && typeof emp.ex==="number")return emp.tl*emp.ex;
+      if(typeof emp.tl==="number" && (emp.cu==="EUR"||!emp.cu))return emp.tl;
+      return null; // impossibile convertire
+    }
+
+    // Aggregati in EUR (corretti) e nelle valute miste (legacy, solo per debug).
+    var totPrev=0,totCons=0,nWithBoth=0,nOnlyPrev=0,nOnlyCons=0,nUnconverted=0;
     rows.forEach(function(r){
-      var hasP=r.prev && typeof r.prev.tl==="number";
-      var hasC=r.cons && typeof r.cons.tl==="number";
-      if(hasP)totPrev+=r.prev.tl;
-      if(hasC)totCons+=r.cons.tl;
+      var pE=eurOf(r.prev), cE=eurOf(r.cons);
+      var hasP=pE!==null, hasC=cE!==null;
+      if(hasP)totPrev+=pE;
+      if(hasC)totCons+=cE;
       if(hasP&&hasC)nWithBoth++;
       else if(hasP)nOnlyPrev++;
       else if(hasC)nOnlyCons++;
+      // Conta dipendenti per i quali la conversione e` mancante
+      if((r.prev && eurOf(r.prev)===null) || (r.cons && eurOf(r.cons)===null)) nUnconverted++;
     });
     var deltaEur=totCons-totPrev;
     var deltaPct=totPrev>0?(deltaEur/totPrev):0;
@@ -167,11 +180,12 @@ function renderConfrontoUI(container, snapshots){
     html+=card("Accuratezza", (accuracy*100).toFixed(1)+"%", "#c9a96e", "100% = previsto perfetto");
     html+='</div>';
 
-    if(nOnlyPrev>0 || nOnlyCons>0){
+    if(nOnlyPrev>0 || nOnlyCons>0 || nUnconverted>0){
       html+='<div style="font-size:11px;color:#8a8680;margin-bottom:8px">'
         +nWithBoth+' dipendenti con dati su entrambi'
         +(nOnlyPrev>0?' · '+nOnlyPrev+' solo preventivo':'')
         +(nOnlyCons>0?' · '+nOnlyCons+' solo consuntivo':'')
+        +(nUnconverted>0?' · <span style="color:#c9a96e">'+nUnconverted+' senza tasso di cambio (snapshot pre-v8.25)</span>':'')
         +'</div>';
     }
 
@@ -195,16 +209,24 @@ function renderConfrontoUI(container, snapshots){
       ["Matr.","Cognome","Nome","Ruolo","Store"].forEach(function(c){
         html+='<th style="padding:6px 8px;text-align:left;border:1px solid #444;white-space:nowrap">'+c+'</th>';
       });
-      html+='<th style="padding:6px 8px;text-align:right;border:1px solid #444">Preventivo</th>';
-      html+='<th style="padding:6px 8px;text-align:right;border:1px solid #444">Consuntivo</th>';
-      html+='<th style="padding:6px 8px;text-align:right;border:1px solid #444">Δ €</th>';
+      html+='<th style="padding:6px 8px;text-align:right;border:1px solid #444" title="Premio nella valuta locale del dipendente">Preventivo</th>';
+      html+='<th style="padding:6px 8px;text-align:right;border:1px solid #444" title="Premio nella valuta locale del dipendente">Consuntivo</th>';
+      html+='<th style="padding:6px 8px;text-align:right;border:1px solid #444" title="Differenza nella valuta locale">Δ loc</th>';
+      html+='<th style="padding:6px 8px;text-align:right;border:1px solid #444 ;background:#262320" title="Preventivo convertito in EUR">Prev €</th>';
+      html+='<th style="padding:6px 8px;text-align:right;border:1px solid #444 ;background:#262320" title="Consuntivo convertito in EUR">Cons €</th>';
+      html+='<th style="padding:6px 8px;text-align:right;border:1px solid #444 ;background:#262320" title="Differenza in EUR (confrontabile cross-valuta)">Δ €</th>';
       html+='<th style="padding:6px 8px;text-align:right;border:1px solid #444">Δ %</th>';
       html+='</tr></thead><tbody id="cfTbody">';
       rows.forEach(function(r){
+        // Valori nella valuta locale (per visualizzazione "tradizionale")
         var vp=(r.prev && typeof r.prev.tl==="number")?r.prev.tl:null;
         var vc=(r.cons && typeof r.cons.tl==="number")?r.cons.tl:null;
+        var dLoc=null;
+        if(vp!==null && vc!==null) dLoc=vc-vp;
+        // Valori convertiti in EUR (per aggregati e confronti cross-valuta)
+        var vpE=eurOf(r.prev), vcE=eurOf(r.cons);
         var dE=null, dP=null;
-        if(vp!==null && vc!==null){ dE=vc-vp; dP=vp>0?(dE/vp):null; }
+        if(vpE!==null && vcE!==null){ dE=vcE-vpE; dP=vpE>0?(dE/vpE):null; }
         var search=((r.m||"")+" "+(r.c||"")+" "+(r.n||"")).toLowerCase();
         var dEnum=dE!==null?dE:0, dPnum=dP!==null?dP:0;
         var dataAttr='data-search="'+esc(search)+'" data-de="'+dEnum+'" data-dp="'+dPnum+'" data-hasdiff="'+(dE!==null&&Math.abs(dE)>0.01?"1":"0")+'"';
@@ -214,14 +236,24 @@ function renderConfrontoUI(container, snapshots){
         html+='<td style="padding:5px 8px;border:1px solid #2c2925;color:#f5f4f1">'+esc(r.n)+'</td>';
         html+='<td style="padding:5px 8px;border:1px solid #2c2925;color:#8a8680;font-size:10px">'+esc(r.j)+'</td>';
         html+='<td style="padding:5px 8px;border:1px solid #2c2925;color:#8a8680;font-size:10px">'+esc(r.s)+'</td>';
+        // Colonne valuta locale
         html+='<td style="padding:5px 8px;border:1px solid #2c2925;text-align:right;font-family:monospace;color:'+(vp!==null && vp>0?"#c9a96e":"#6b6560")+'">'+(vp===null?"—":fc(vp,r.cu))+'</td>';
         html+='<td style="padding:5px 8px;border:1px solid #2c2925;text-align:right;font-family:monospace;color:'+(vc!==null && vc>0?"#5bb98c":"#6b6560")+'">'+(vc===null?"—":fc(vc,r.cu))+'</td>';
-        if(dE===null){
+        if(dLoc===null){
           html+='<td style="padding:5px 8px;border:1px solid #2c2925;text-align:right;color:#4a4744">—</td>';
+        } else {
+          var dLocColor=dLoc>0.01?"#5bb98c":(dLoc<-0.01?"#cf5b5b":"#8a8680");
+          html+='<td style="padding:5px 8px;border:1px solid #2c2925;text-align:right;font-family:monospace;color:'+dLocColor+'">'+(dLoc>0?"+":"")+fc(dLoc,r.cu)+'</td>';
+        }
+        // Colonne EUR (sfondo lievemente diverso per distinguerle)
+        html+='<td style="padding:5px 8px;border:1px solid #2c2925;background:#1f1d1b;text-align:right;font-family:monospace;color:'+(vpE!==null && vpE>0?"#c9a96e":"#6b6560")+'">'+(vpE===null?"—":fcEUR(vpE))+'</td>';
+        html+='<td style="padding:5px 8px;border:1px solid #2c2925;background:#1f1d1b;text-align:right;font-family:monospace;color:'+(vcE!==null && vcE>0?"#5bb98c":"#6b6560")+'">'+(vcE===null?"—":fcEUR(vcE))+'</td>';
+        if(dE===null){
+          html+='<td style="padding:5px 8px;border:1px solid #2c2925;background:#1f1d1b;text-align:right;color:#4a4744">—</td>';
           html+='<td style="padding:5px 8px;border:1px solid #2c2925;text-align:right;color:#4a4744">—</td>';
         } else {
           var dColor2=dE>0.01?"#5bb98c":(dE<-0.01?"#cf5b5b":"#8a8680");
-          html+='<td style="padding:5px 8px;border:1px solid #2c2925;text-align:right;font-family:monospace;color:'+dColor2+'">'+(dE>0?"+":"")+fc(dE,r.cu)+'</td>';
+          html+='<td style="padding:5px 8px;border:1px solid #2c2925;background:#1f1d1b;text-align:right;font-family:monospace;color:'+dColor2+'">'+(dE>0?"+":"")+fcEUR(dE)+'</td>';
           html+='<td style="padding:5px 8px;border:1px solid #2c2925;text-align:right;font-family:monospace;color:'+dColor2+'">'+(dP===null?"—":((dP>0?"+":"")+(dP*100).toFixed(1)+"%"))+'</td>';
         }
         html+='</tr>';
