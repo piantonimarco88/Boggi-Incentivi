@@ -197,56 +197,7 @@ function initStoreFlags(){DEPT.forEach(function(sid){var k=String(sid);if(!STORE
 function isD(s){var sf=STORE_FLAGS[String(s)];return sf?sf.dept:false}
 /*BUNDLE_INSERT:10-formatters*/
 /*BUNDLE_INSERT:20-aggiunte*/
-// === MODE ===
-var MODE="consuntivo";
-var REGION="international";// "international" or "italia"
-function setMode(m){MODE=m;document.getElementById("modeP").className="gbtn"+(m==="preventivo"?" on":"");document.getElementById("modeC").className="gbtn"+(m==="consuntivo"?" on":"");rC();rA();rSources();if(typeof rDist==="function")rDist();autoSave()}
-function setRegion(r){REGION=r;document.getElementById("regInt").className="gbtn"+(r==="international"?" on":"");document.getElementById("regIt").className="gbtn"+(r==="italia"?" on":"");rC();rA();rSources();rT();if(typeof rDist==="function")rDist();autoSave()}
-var PRIZE_MODE="mensile"; // mensile | fcvm | seasonal
-var SEASON_PERIOD="semestrale";  // mid | semestrale
-
-function setPrizeMode(m){
-  PRIZE_MODE=m;
-  // Update button styles
-  var modes=["mensile","fcvm","seasonal"];
-  var ids=["modeMensile","modeFcVm","modeSeasonal"];
-  ids.forEach(function(id,i){
-    var btn=document.getElementById(id);
-    if(!btn)return;
-    var active=modes[i]===m;
-    btn.style.background=active?"#c9a96e":"transparent";
-    btn.style.color=active?"#2c2925":"#6b6560";
-    btn.style.borderColor=active?"#c9a96e":"#4e4b48";
-    btn.style.fontWeight=active?"700":"600";
-    btn.disabled=false;
-    btn.style.opacity="1";
-    btn.style.cursor="pointer";
-  });
-  // Show/hide seasonal period toggle
-  var periodRow = document.getElementById("seasonPeriodRow");
-  if(periodRow) periodRow.style.display = (m === "seasonal") ? "flex" : "none";
-  // Refresh all affected tabs
-  rC();
-  if(typeof rA==="function")rA();
-  rT();
-  rSources();
-  if(typeof rStores==="function")rStores();
-  rL();
-  updateAggiunteTabVisibility();
-  autoSave();
-}
-
-function setSeasonPeriod(p){
-  SEASON_PERIOD=p;
-  var btnTotale=document.getElementById("seasonTotale");
-  var btnMid=document.getElementById("seasonMidSeason");
-  if(btnTotale) btnTotale.className="gbtn"+(p==="semestrale"?" on":"");
-  if(btnMid)    btnMid.className="gbtn"+(p==="mid"?" on":"");
-  // Refresh seasonal view + sources (completeness checks change between mid/totale)
-  if(PRIZE_MODE==="seasonal"){ rC(); rSources(); }
-  autoSave();
-}
-
+/*BUNDLE_INSERT:30-modes*/
 // === DISCLAIMERS ===
 var DISCL={
 "INGLESE":"The final amount will be subject to terms and conditions, management unquestionable decision and subject ultimately to your attendance as it influences directly the results actually achieved. Your participation in will end if payment of the bonus award becomes unreasonable or inappropriate due to collective bargaining, statutory provisions or other reasons or if the Company is no longer in a position to make such payments. If your employment terminates by reason of voluntary resignation, you have no entitlement to a bonus payment and no bonus payment will be made. If your employment terminates by reason of Cause, you have no entitlement to a bonus payment and no payment will be made. \u201cCause\u201d shall mean termination of your employment by reason of gross or serious misconduct, material breach of contract, fraud, breach of confidentiality or for any reason entitling the company summarily to terminate your employment. If your employment terminates during your probation period you have no entitlement to a bonus payment and no payment will be made.\nBonus will be included in your payslip for the month following the commercial weeks taken into account.",
