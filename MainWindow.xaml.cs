@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -42,6 +45,16 @@ namespace BoggiIncentivi
         private string _pendingStatePayload;
         private readonly object _stateLock = new object();
         private const int StateSaveDebounceMs = 500;
+
+        // ── MINI-LOG AZIONI RECENTI (#19) ──────────────────────────────────────
+        // Coda delle ultime N azioni *completate* (non transitori).
+        // Visualizzate in TxtRecentLog (inline, ultime 3) e TxtRecentLogFull (tooltip, tutte).
+        private readonly Queue<(DateTime ts, string msg)> _recentActions = new();
+        private readonly object _recentLock = new object();
+        private const int RecentActionsMax = 10;
+        private const int RecentActionsInline = 3;
+        // Regex per riconoscere i progress-counter tipo "PDF 5/100…"
+        private static readonly Regex ProgressCounterRe = new Regex(@"\b\d+/\d+\b", RegexOptions.Compiled);
 
         public MainWindow()
         {
@@ -113,10 +126,65 @@ namespace BoggiIncentivi
             }
         }
 
-        // Helper status bar — thread-safe
+        // Helper status bar — thread-safe.
+        // Aggiorna sia TxtStatusBar (ultimo evento, sinistra) sia, se il messaggio
+        // rappresenta una *azione completata*, il mini-log a destra (#19).
         private void SetStatus(string text)
         {
             Dispatcher.Invoke(() => TxtStatusBar.Text = text);
+            if (!IsTransientStatus(text))
+                AppendRecentAction(text);
+        }
+
+        // ── MINI-LOG (#19): euristica e gestione coda ─────────────────────────
+        // Un messaggio e` "transitorio" (NON entra nel mini-log) se:
+        //   - termina con "..." o "…" (es. "Salvataggio...", "Generazione PDF...")
+        //   - contiene un progress-counter tipo "5/100" (es. "PDF 12/45")
+        //   - e` vuoto/null
+        // Tutti gli altri sono considerati "azioni completate" (es. "Salvato: foo.pdf",
+        // "Email inviata: x@y.it", "Aggiornato — v8.22", "Errore mail: ...").
+        private static bool IsTransientStatus(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return true;
+            var t = text.TrimEnd();
+            if (t.EndsWith("...", StringComparison.Ordinal)) return true;
+            if (t.EndsWith("…", StringComparison.Ordinal))   return true;
+            if (ProgressCounterRe.IsMatch(t)) return true;
+            return false;
+        }
+
+        // Accoda una azione completata e rinfresca TxtRecentLog + TxtRecentLogFull.
+        private void AppendRecentAction(string msg)
+        {
+            string inlineText;
+            string tooltipText;
+            lock (_recentLock)
+            {
+                _recentActions.Enqueue((DateTime.Now, msg));
+                while (_recentActions.Count > RecentActionsMax) _recentActions.Dequeue();
+
+                // Inline: ultime N in ordine cronologico (la piu` recente a destra)
+                var all = _recentActions.ToArray();
+                var inlineEntries = all.Skip(Math.Max(0, all.Length - RecentActionsInline));
+                inlineText = string.Join("  |  ", inlineEntries.Select(e =>
+                    e.ts.ToString("HH:mm") + " → " + TruncateForInline(e.msg, 36)));
+
+                // Tooltip: tutte, dalla piu` recente alla piu` vecchia, una per riga
+                tooltipText = string.Join("\n", all.Reverse().Select(e =>
+                    "[" + e.ts.ToString("HH:mm:ss") + "]  " + e.msg));
+            }
+            Dispatcher.Invoke(() =>
+            {
+                TxtRecentLog.Text = inlineText;
+                TxtRecentLogFull.Text = tooltipText;
+            });
+        }
+
+        // Tronca un messaggio per la visualizzazione inline (con ellipsis).
+        private static string TruncateForInline(string s, int maxLen)
+        {
+            if (string.IsNullOrEmpty(s) || s.Length <= maxLen) return s;
+            return s.Substring(0, maxLen - 1) + "…";
         }
 
         // ── AUTO-UPDATE ────────────────────────────────────────────────────────

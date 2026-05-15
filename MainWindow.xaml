@@ -185,11 +185,29 @@
                            Foreground="#6b6560"
                            FontSize="10"/>
 
+                <!-- Mini-log azioni recenti (#19): ultime 3 azioni completate inline,
+                     cronologia completa nel ToolTip al hover. -->
                 <TextBlock DockPanel.Dock="Right"
+                           x:Name="TxtRecentLog"
                            Text=""
-                           Foreground="#4a4744"
+                           Foreground="#6b6560"
                            FontSize="9"
-                           HorizontalAlignment="Right"/>
+                           HorizontalAlignment="Right"
+                           TextTrimming="CharacterEllipsis"
+                           MaxWidth="700">
+                    <TextBlock.ToolTip>
+                        <ToolTip x:Name="TipRecentLog"
+                                 Background="#1e1c1a"
+                                 Foreground="#a09a92"
+                                 BorderBrush="#555"
+                                 FontSize="10"
+                                 Padding="8,6">
+                            <TextBlock x:Name="TxtRecentLogFull"
+                                       Text="Nessuna azione registrata."
+                                       LineHeight="14"/>
+                        </ToolTip>
+                    </TextBlock.ToolTip>
+                </TextBlock>
 
             </DockPanel>
 
