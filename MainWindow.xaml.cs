@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
@@ -38,6 +40,14 @@ namespace BoggiIncentivi
         private static readonly string LocalHtmlWrite = Path.Combine(AppDataDir, "app.html");
         // State persistence: %LOCALAPPDATA%\BoggiIncentivi\state.json (sostituisce localStorage["boggi_state"])
         private static readonly string StatePath = Path.Combine(AppDataRoot, "state.json");
+        // Audit log invii email (#8): %LOCALAPPDATA%\BoggiIncentivi\audit_log.jsonl
+        // JSON Lines (una riga JSON per record), append-only, UTF-8 senza BOM.
+        // Contiene PII (matricola, email, nomi) -> escluso da git via .gitignore.
+        private static readonly string AuditLogPath = Path.Combine(AppDataRoot, "audit_log.jsonl");
+        private static readonly Encoding Utf8NoBom = new UTF8Encoding(false);
+        private static readonly object _auditLock = new object();
+        // Regex per estrarre matricola dal nome PDF (formato: {matr}_{periodo}.pdf)
+        private static readonly Regex PdfNameRe = new Regex(@"^(\d+)_(.+)\.pdf$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly HttpClient Http  = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
 
         // ── STATE PERSISTENCE: debounce + payload pendente ─────────────────────
@@ -459,6 +469,8 @@ namespace BoggiIncentivi
             thread.Start();
             thread.Join();
             if (comEx != null) throw comEx;
+            // Audit (#8): finestra Outlook aperta correttamente. L'utente dovra` cliccare "Invia".
+            LogEmailEvent("displayed", to, subject, pdfPath);
         }
 
         private void OpenOutlookMail(string to, string subject, string body, string pdfBase64, string pdfName)
@@ -504,6 +516,73 @@ namespace BoggiIncentivi
             thread.Start();
             thread.Join();
             if (comEx != null) throw comEx;
+            // Audit (#8): mail consegnata a Outlook (Send() ritornato senza eccezioni).
+            LogEmailEvent("sent", to, subject, pdfPath);
+        }
+
+        // ── AUDIT LOG INVII EMAIL (#8) ─────────────────────────────────────────
+        // Registra ogni interazione di invio in audit_log.jsonl. Una riga JSON per evento.
+        // eventType:
+        //   - "sent":      mail.Send() chiamato direttamente (SendOutlookMailDirect)
+        //   - "displayed": mail.Display(false) chiamato (l'utente decide se inviare)
+        //
+        // Limitazione nota: il campo "importo" non e` disponibile perche` non viene
+        // passato nei postMessage attuali. Resta null finche` non estendiamo il bridge
+        // JS->C# con un parametro extra (TODO).
+        private void LogEmailEvent(string eventType, string to, string subject, string pdfPath)
+        {
+            try
+            {
+                var pdfName = pdfPath != null ? Path.GetFileName(pdfPath) : null;
+                string matr = null, periodo = null;
+                if (!string.IsNullOrEmpty(pdfName))
+                {
+                    var m = PdfNameRe.Match(pdfName);
+                    if (m.Success) { matr = m.Groups[1].Value; periodo = m.Groups[2].Value; }
+                }
+
+                long pdfSize = 0;
+                string pdfSha = null;
+                if (!string.IsNullOrEmpty(pdfPath) && File.Exists(pdfPath))
+                {
+                    try
+                    {
+                        var bytes = File.ReadAllBytes(pdfPath);
+                        pdfSize = bytes.Length;
+                        pdfSha = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+                    }
+                    catch { /* file potrebbe essere temp/lockato; lasciamo null */ }
+                }
+
+                // Costruisco l'oggetto JSON tramite JsonObject (mantiene ordine campi).
+                var entry = new JsonObject
+                {
+                    ["ts"]         = DateTime.UtcNow.ToString("o"),
+                    ["event"]      = eventType,
+                    ["matricola"]  = matr,
+                    ["periodo"]    = periodo,
+                    ["to"]         = to,
+                    ["subject"]    = subject,
+                    ["pdf_name"]   = pdfName,
+                    ["pdf_size"]   = pdfSize,
+                    ["pdf_sha256"] = pdfSha,
+                    ["importo"]    = null, // TODO: estendere bridge JS->C# per portare importo
+                    ["user"]       = Environment.UserName,
+                    ["machine"]    = Environment.MachineName
+                };
+                var jsonLine = entry.ToJsonString() + "\n";
+
+                lock (_auditLock)
+                {
+                    Directory.CreateDirectory(AppDataRoot);
+                    File.AppendAllText(AuditLogPath, jsonLine, Utf8NoBom);
+                }
+            }
+            catch (Exception ex)
+            {
+                // L'audit non deve mai bloccare l'invio. Visibilita` errore via mini-log.
+                SetStatus("Audit log fallito: " + ex.Message);
+            }
         }
 
         // ── HELPERS ────────────────────────────────────────────────────────────

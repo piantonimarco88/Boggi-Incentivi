@@ -41,6 +41,9 @@ build_log.txt
 state.json
 state.json.tmp
 
+# ===== Audit log invii email (#8) — contiene PII =====
+audit_log.jsonl
+
 # ===== OS =====
 Thumbs.db
 ehthumbs.db
