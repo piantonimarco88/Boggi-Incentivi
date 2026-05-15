@@ -195,14 +195,7 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 /*BUNDLE_INSERT:00-bootstrap*/// Initialize STORE_FLAGS from DEPT list if not already set
 function initStoreFlags(){DEPT.forEach(function(sid){var k=String(sid);if(!STORE_FLAGS[k])STORE_FLAGS[k]={dept:true,noSas:false,noDig:false}})}
 function isD(s){var sf=STORE_FLAGS[String(s)];return sf?sf.dept:false}
-var IT=[{k:"rb",l:"BDG",fl:"TURNOVER TARGET",c:"#c9a96e"},{k:"rd",l:"Digital",fl:"DIGITAL TARGET",c:"#8b7ec8"},{k:"rs",l:"SY",fl:"SHOPPER YIELD",c:"#5ba4cf"},{k:"rp",l:"Privilege",fl:"PRIVILEGE",c:"#5bb98c"},{k:"rsa",l:"SAS",fl:"SAS TARGET",c:"#d4a94e"},{k:"rdc",l:"DCC",fl:"DCC TARGET",c:"#cf5b5b"},{k:"rcs",l:"CS",fl:"CUSTOMER SVC",c:"#c95ba4"},{k:"ra",l:"Articoli",fl:"ITEMS",c:"#cf8b4e"},{k:"vi",l:"Visual",fl:"VISUAL IN STORE",c:"#4eafaf"},{k:"pq",l:"QTY",fl:"QTY (DEPT)",c:"#9b6ec9"}];
-var CS={EUR:"\u20ac",GBP:"\u00a3",CHF:"CHF ",USD:"$",HKD:"HK$",SGD:"S$",SEK:"kr ",MOP:"MOP ",HUF:"Ft ",DKK:"kr "};
-function fc(v,c,d){d=d===undefined?0:d;if(!v&&v!==0)return(CS[c]||c+" ")+"0";var n=Math.abs(Number(v)).toFixed(d);var parts=n.split(".");var intPart=parts[0].replace(/\B(?=(\d{3})+(?!\d))/g,".");var decPart=parts.length>1&&d>0?","+parts[1]:"";return(CS[c]||c+" ")+intPart+decPart}
-function fcEUR(v){return"\u20ac"+Math.round(Number(v)||0).toLocaleString("it-IT")}
-function fPct(v){var n=(Number(v||0)*100).toFixed(2);return n.replace(".",",")+"%"}
-function fDec(v,d){d=d===undefined?2:d;return Number(v||0).toFixed(d).replace(".",",")}
-function esc(s){if(!s)return"";return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
-
+/*BUNDLE_INSERT:10-formatters*/
 // === AGGIUNTE: manual overrides per employee, ADDED to normal calc, bypass rules/malattia ===
 // Keys match Aggiunte sheet: rb=BDG lordo, rbn=BDG netto, rd=Digital, rs=SY, rp=Privilege, rsa=SAS, rdc=DCC, rcs=CS, ra=Articoli
 var AGG={};// keyed by matricola: {rb:0,rbn:0,rd:0,rs:0,rp:0,rsa:0,rdc:0,rcs:0,ra:0}
