@@ -36,15 +36,16 @@ const SRC_DIR = path.join(ROOT, "src");
 const OUT_PATH = path.join(ROOT, "web", "app.html");
 
 // === Raccolta sorgenti =====================================
-// Walk ricorsivo di src/, ritorna i percorsi in ordine alfabetico
-// stabile (case-sensitive lexicographic). I prefissi numerici
-// (00-, 010_, ...) garantiscono ordine di esecuzione deterministico.
-function collectSources(dir) {
+// Walk ricorsivo di una cartella, ritorna i percorsi in ordine
+// alfabetico stabile (case-sensitive lexicographic). I prefissi
+// numerici (010_, 020_, ...) garantiscono ordine deterministico.
+function collectFiles(dir) {
+  if (!fs.existsSync(dir)) return [];
   const out = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
     const p = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      out.push(...collectSources(p));
+      out.push(...collectFiles(p));
     } else if (entry.isFile()) {
       out.push(p);
     }
@@ -52,27 +53,53 @@ function collectSources(dir) {
   return out;
 }
 
-// === Fase passthrough ======================================
-// Finche` non iniziamo l'estrazione, esiste un solo file in
-// src/_monolith/app.html. Lo scriviamo verbatim.
-// Quando avremo piu` file, questa funzione concatenera`
-// shell/head + <script> con tutti i .js + shell/mid + <body>
-// markup + shell/tail.
-function buildPassthrough() {
-  const sources = collectSources(SRC_DIR);
-  if (sources.length === 0) {
-    throw new Error("Nessun file trovato in src/. Aggiungere almeno src/_monolith/app.html");
+// === Direttive di insert ===================================
+// Due forme di marker — equivalenti per il bundler:
+//   <!--BUNDLE_INSERT:<dirname>-->   per zone HTML (markup body)
+//   /*BUNDLE_INSERT:<dirname>*/      per zone JS (dentro <script>)
+//
+// Viene sostituito dal contenuto concatenato di tutti i file
+// in src/<dirname>/ (walk alfabetico). I file vengono uniti
+// SENZA separatori aggiunti: gli "a capo" devono stare dentro
+// i file estratti.
+//
+// Questa strategia permette estrazione incrementale mantenendo
+// byte-identity tra build successive: l'estrazione di un blocco
+// e` solo "taglia & incolla", il bundler ricostruisce lo stesso
+// output. Importante: la regex matcha SOLO la direttiva, non
+// eventuali newline circostanti — l'estratto deve includere
+// gli stessi newline che aveva nel monolite originale.
+const INSERT_RE = /(?:<!--BUNDLE_INSERT:([A-Za-z0-9_\-]+)-->|\/\*BUNDLE_INSERT:([A-Za-z0-9_\-]+)\*\/)/g;
+
+function expandInserts(content) {
+  return content.replace(INSERT_RE, (_match, htmlName, jsName) => {
+    const dirName = (htmlName || jsName).trim();
+    const dir = path.join(SRC_DIR, dirName);
+    const files = collectFiles(dir);
+    if (files.length === 0) {
+      throw new Error("BUNDLE_INSERT:" + dirName + " — nessun file in " + path.relative(ROOT, dir));
+    }
+    return files.map(f => fs.readFileSync(f, "utf8")).join("");
+  });
+}
+
+// === Build =================================================
+// Strategia: leggi src/_monolith/app.html, espandi le direttive
+// BUNDLE_INSERT (se presenti), scrivi web/app.html.
+//
+// Fase iniziale (step 1): nessuna direttiva nel monolite ->
+// output byte-identico al monolite stesso.
+// Fasi successive: il monolite viene progressivamente svuotato,
+// le righe estratte finiscono in src/<00-..., 10-..., ...>/ e
+// vengono rimpiazzate da una direttiva BUNDLE_INSERT.
+function build() {
+  const monolithPath = path.join(SRC_DIR, "_monolith", "app.html");
+  if (!fs.existsSync(monolithPath)) {
+    throw new Error("Monolite non trovato: " + path.relative(ROOT, monolithPath));
   }
-  if (sources.length === 1 && sources[0].endsWith("app.html")) {
-    return fs.readFileSync(sources[0]);
-  }
-  // Quando avro` piu` di un file, lancio errore: significa che ho
-  // iniziato l'estrazione modulare e devo aggiornare il bundler.
-  throw new Error(
-    "Bundler in modalita` passthrough ma trovati " + sources.length +
-    " file. Aggiornare build/build.js per gestire la concatenazione modulare:\n" +
-    sources.map(s => "  " + path.relative(ROOT, s)).join("\n")
-  );
+  const monolith = fs.readFileSync(monolithPath, "utf8");
+  const expanded = expandInserts(monolith);
+  return Buffer.from(expanded, "utf8");
 }
 
 // === Main ==================================================
@@ -81,7 +108,7 @@ function main() {
   const verifyIdx = args.indexOf("--verify");
   const expectedSha = verifyIdx >= 0 ? args[verifyIdx + 1] : null;
 
-  const content = buildPassthrough();
+  const content = build();
   fs.writeFileSync(OUT_PATH, content);
 
   const sha = crypto.createHash("sha256").update(content).digest("hex");
