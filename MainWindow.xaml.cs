@@ -44,6 +44,9 @@ namespace BoggiIncentivi
         // JSON Lines (una riga JSON per record), append-only, UTF-8 senza BOM.
         // Contiene PII (matricola, email, nomi) -> escluso da git via .gitignore.
         private static readonly string AuditLogPath = Path.Combine(AppDataRoot, "audit_log.jsonl");
+        // Snapshot storici (#9): %LOCALAPPDATA%\BoggiIncentivi\snapshots\snapshot_<ts>_<mode>_<prize>.json
+        // Salvati automaticamente dopo "Salva Tutti PDF". Contengono PII -> in .gitignore.
+        private static readonly string SnapshotsDir = Path.Combine(AppDataRoot, "snapshots");
         private static readonly Encoding Utf8NoBom = new UTF8Encoding(false);
         private static readonly object _auditLock = new object();
         // Regex per estrarre matricola dal nome PDF (formato: {matr}_{periodo}.pdf)
@@ -331,6 +334,22 @@ namespace BoggiIncentivi
                     try { if (File.Exists(StatePath)) File.Delete(StatePath); }
                     catch (Exception ex) { SetStatus("Errore reset state: " + ex.Message); }
                 }
+                else if (type == "listSnapshots")
+                {
+                    // Risponde con "snapshotsList:<json-array>".
+                    var listJson = ListSnapshotsJson();
+                    WebView.CoreWebView2.PostWebMessageAsString("snapshotsList:" + listJson);
+                }
+                else if (type == "readSnapshot")
+                {
+                    // Risponde con "snapshotData:<filename>:<json-content>" oppure "snapshotError:<filename>".
+                    var filename = json?["filename"]?.GetValue<string>();
+                    var content = ReadSnapshot(filename);
+                    if (content != null)
+                        WebView.CoreWebView2.PostWebMessageAsString("snapshotData:" + filename + ":" + content);
+                    else
+                        WebView.CoreWebView2.PostWebMessageAsString("snapshotError:" + (filename ?? ""));
+                }
                 else if (type == "saveFile")
                 {
                     var path    = json?["path"]?.GetValue<string>();
@@ -585,6 +604,116 @@ namespace BoggiIncentivi
             }
         }
 
+        // ── SNAPSHOT STORICI (#9) ──────────────────────────────────────────────
+        // Salva un nuovo snapshot in SnapshotsDir. Filename con timestamp + mode + prize_mode
+        // (estratti dal JSON payload) per evitare collisioni e permettere ordinamento.
+        // Ritorna il filename salvato (senza path) o null in caso di errore.
+        private string SaveSnapshotToDisk(string json)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(json)) return null;
+                Directory.CreateDirectory(SnapshotsDir);
+                // Estrai mode + prize_mode + period per il nome file
+                string mode = "unknown", prize = "unknown", periodTag = "";
+                try
+                {
+                    var node = JsonNode.Parse(json);
+                    mode  = node?["mode"]?.GetValue<string>() ?? "unknown";
+                    prize = node?["prize_mode"]?.GetValue<string>() ?? "unknown";
+                    var month = node?["period"]?["month"]?.GetValue<int?>();
+                    var year  = node?["period"]?["year"]?.GetValue<int?>();
+                    var season = node?["period"]?["season"]?.GetValue<string>();
+                    if (prize == "seasonal" && !string.IsNullOrEmpty(season) && year != null)
+                        periodTag = $"_{season}_{year}";
+                    else if (month != null && year != null)
+                        periodTag = $"_{month:D2}_{year}";
+                }
+                catch { /* tag periodo "best effort" */ }
+
+                var ts = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
+                var filename = $"snapshot_{ts}_{mode}_{prize}{periodTag}.json";
+                var path = Path.Combine(SnapshotsDir, filename);
+                File.WriteAllText(path, json, Utf8NoBom);
+                return filename;
+            }
+            catch (Exception ex)
+            {
+                SetStatus("Snapshot fallito: " + ex.Message);
+                return null;
+            }
+        }
+
+        // Lista snapshot disponibili come array JSON di metadati [{filename, ts, size, mode, prize, period}].
+        // I metadati base (filename, size) sono dal filesystem. Mode/prize/period sono parsati dal JSON
+        // (lettura completa di ogni file: per N snapshot piccoli e` accettabile).
+        private string ListSnapshotsJson()
+        {
+            try
+            {
+                if (!Directory.Exists(SnapshotsDir)) return "[]";
+                var arr = new JsonArray();
+                var files = Directory.GetFiles(SnapshotsDir, "snapshot_*.json")
+                                     .OrderByDescending(f => f) // piu` recenti prima
+                                     .ToArray();
+                foreach (var path in files)
+                {
+                    var info = new FileInfo(path);
+                    var entry = new JsonObject
+                    {
+                        ["filename"] = info.Name,
+                        ["size"]     = info.Length,
+                        ["mtime"]    = info.LastWriteTimeUtc.ToString("o")
+                    };
+                    // Parse leggero per ottenere mode / prize_mode / period / saved_at / n_employees
+                    try
+                    {
+                        var node = JsonNode.Parse(File.ReadAllText(path));
+                        entry["mode"]       = node?["mode"]?.GetValue<string>();
+                        entry["prize_mode"] = node?["prize_mode"]?.GetValue<string>();
+                        entry["region"]     = node?["region"]?.GetValue<string>();
+                        entry["saved_at"]   = node?["saved_at"]?.GetValue<string>();
+                        if (node?["period"] is JsonObject p)
+                        {
+                            var pclone = new JsonObject();
+                            foreach (var kv in p) pclone[kv.Key] = kv.Value?.DeepClone();
+                            entry["period"] = pclone;
+                        }
+                        if (node?["employees"] is JsonArray emp) entry["n_employees"] = emp.Count;
+                    }
+                    catch { /* metadata estratti best-effort */ }
+                    arr.Add(entry);
+                }
+                return arr.ToJsonString();
+            }
+            catch (Exception ex)
+            {
+                SetStatus("Lista snapshot fallita: " + ex.Message);
+                return "[]";
+            }
+        }
+
+        // Legge il contenuto completo di un singolo snapshot. Filename atteso senza path
+        // (validazione contro path traversal: deve matchare "snapshot_*.json").
+        private string ReadSnapshot(string filename)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(filename)) return null;
+                if (filename.IndexOfAny(new[] { '/', '\\', ':' }) >= 0) return null; // no path traversal
+                if (!filename.StartsWith("snapshot_", StringComparison.Ordinal)) return null;
+                if (!filename.EndsWith(".json", StringComparison.Ordinal)) return null;
+                var path = Path.Combine(SnapshotsDir, filename);
+                if (!File.Exists(path)) return null;
+                return File.ReadAllText(path, Encoding.UTF8);
+            }
+            catch (Exception ex)
+            {
+                SetStatus("Read snapshot fallita: " + ex.Message);
+                return null;
+            }
+        }
+
         // ── HELPERS ────────────────────────────────────────────────────────────
         private async Task<string> RunJS(string script)
         {
@@ -768,6 +897,26 @@ namespace BoggiIncentivi
                 if (skipped  > 0) msg += $"\n({skipped} errori)";
                 if (cancelled)    msg += "\n\nInterrotto dall'utente.";
                 System.Windows.MessageBox.Show(msg, "Boggi Incentivi — Completato");
+            }
+
+            // ── SNAPSHOT STORICO AUTOMATICO (#9) ──────────────────────────────
+            // Dopo "Salva Tutti PDF" completato con almeno un file salvato,
+            // chiede al JS di costruire uno snapshot dei calcoli correnti e lo
+            // persiste in %LOCALAPPDATA%\BoggiIncentivi\snapshots\.
+            // Fail-safe: errori non bloccano nulla, finiscono nel mini-log.
+            if (saved > 0)
+            {
+                try
+                {
+                    var rawSnap = await RunJS("(typeof buildSnapshotForHistory==='function')?buildSnapshotForHistory():null");
+                    var snapJson = JS2Str(rawSnap);
+                    if (!string.IsNullOrEmpty(snapJson) && snapJson != "null")
+                    {
+                        var saved_file = SaveSnapshotToDisk(snapJson);
+                        if (saved_file != null) SetStatus("Snapshot storico salvato: " + saved_file);
+                    }
+                }
+                catch (Exception ex) { SetStatus("Snapshot non salvato: " + ex.Message); }
             }
         }
     }

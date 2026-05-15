@@ -44,6 +44,9 @@ state.json.tmp
 # ===== Audit log invii email (#8) — contiene PII =====
 audit_log.jsonl
 
+# ===== Snapshot storici (#9) — contengono PII (matricola, premio per dipendente) =====
+snapshots/
+
 # ===== OS =====
 Thumbs.db
 ehthumbs.db
