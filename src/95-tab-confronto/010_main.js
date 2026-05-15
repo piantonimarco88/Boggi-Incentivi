@@ -89,11 +89,11 @@ function renderConfrontoUI(container, snapshots){
     return;
   }
 
-  // Render: selettore periodo in alto + corpo
+  // Render: selettore periodo in alto + corpo (stile chiaro coerente)
   var h='<div style="padding:12px">';
-  h+='<div style="margin-bottom:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">';
-  h+='<label style="color:#c9a96e;font-size:12px;font-weight:600">Periodo:</label>';
-  h+='<select id="cfPeriodSel" style="padding:6px 10px;background:#1e1c1a;color:#f5f4f1;border:1px solid #555;border-radius:4px;font-size:12px">';
+  h+='<div class="flt" style="margin-bottom:16px">';
+  h+='<label style="color:#6b6560;font-size:12px;font-weight:600;margin-right:4px">Periodo:</label>';
+  h+='<select id="cfPeriodSel">';
   periods.forEach(function(pk,i){
     var pd=byPeriod[pk];
     var marker=(pd.preventivo&&pd.consuntivo)?"✓":(pd.preventivo?"P":"C");
@@ -113,12 +113,12 @@ function renderConfrontoUI(container, snapshots){
     var prev=pd.preventivo, cons=pd.consuntivo;
     var html="";
     if(!prev && !cons){
-      body.innerHTML='<div style="color:#cf5b5b">Nessuno snapshot per questo periodo.</div>';return;
+      body.innerHTML='<div style="color:#c0392b;padding:12px">Nessuno snapshot per questo periodo.</div>';return;
     }
     if(!prev){
-      html+='<div style="padding:12px;background:#2c2925;border-left:3px solid #cf5b5b;margin-bottom:12px;color:#a09a92"><b>Manca lo snapshot di preventivo</b> per '+esc(pd.periodLabel)+'.<br>Per fare il confronto, passa in modalita` Preventivo e fai "Salva Tutti i PDF".</div>';
+      html+='<div style="padding:12px 14px;background:#fff3cd;border-left:3px solid #c0392b;margin-bottom:12px;color:#856404;border-radius:4px"><b>Manca lo snapshot di preventivo</b> per '+esc(pd.periodLabel)+'.<br>Per fare il confronto, passa in modalita` Preventivo e fai "Salva Tutti i PDF".</div>';
     } else if(!cons){
-      html+='<div style="padding:12px;background:#2c2925;border-left:3px solid #c9a96e;margin-bottom:12px;color:#a09a92"><b>Manca lo snapshot di consuntivo</b> per '+esc(pd.periodLabel)+'.<br>Quando avrai i dati finali, passa in Consuntivo e fai "Salva Tutti i PDF".</div>';
+      html+='<div style="padding:12px 14px;background:#fff3cd;border-left:3px solid #c9a96e;margin-bottom:12px;color:#856404;border-radius:4px"><b>Manca lo snapshot di consuntivo</b> per '+esc(pd.periodLabel)+'.<br>Quando avrai i dati finali, passa in Consuntivo e fai "Salva Tutti i PDF".</div>';
     }
 
     // Costruisco la mappa matricola -> {prev, cons}
@@ -163,18 +163,18 @@ function renderConfrontoUI(container, snapshots){
     var deltaPct=totPrev>0?(deltaEur/totPrev):0;
     var accuracy=totPrev>0?(1-Math.abs(deltaEur)/totPrev):0;
 
-    // Card riassuntiva
-    html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px">';
+    // Card riassuntiva — stile chiaro coerente con .cd esistente
+    html+='<div class="cg" style="margin-bottom:16px">';
     function card(label,val,color,sub){
-      return '<div style="padding:12px;background:#1a1816;border:1px solid #2c2925;border-radius:6px">'
-        +'<div style="font-size:10px;color:#8a8680;text-transform:uppercase;letter-spacing:0.5px">'+esc(label)+'</div>'
-        +'<div style="font-size:20px;font-weight:700;color:'+(color||"#f5f4f1")+';margin-top:4px;font-family:monospace">'+val+'</div>'
-        +(sub?'<div style="font-size:10px;color:#6b6560;margin-top:2px">'+sub+'</div>':'')
+      return '<div class="cd" style="text-align:left">'
+        +'<div style="font-size:10px;color:#8a8680;text-transform:uppercase;letter-spacing:0.5px;font-weight:600">'+esc(label)+'</div>'
+        +'<div style="font-size:20px;font-weight:700;color:'+(color||"#2c2925")+';margin-top:4px;font-family:\'DM Sans\',monospace">'+val+'</div>'
+        +(sub?'<div style="font-size:10px;color:#8a8680;margin-top:2px">'+sub+'</div>':'')
         +'</div>';
     }
     html+=card("Totale Preventivo", "€"+Math.round(totPrev).toLocaleString("it-IT"), "#c9a96e", (prev?prev.n_employees+" dip.":"n.d."));
-    html+=card("Totale Consuntivo", "€"+Math.round(totCons).toLocaleString("it-IT"), "#5bb98c", (cons?cons.n_employees+" dip.":"n.d."));
-    var dColor=deltaEur>0?"#5bb98c":(deltaEur<0?"#cf5b5b":"#8a8680");
+    html+=card("Totale Consuntivo", "€"+Math.round(totCons).toLocaleString("it-IT"), "#2d7a3a", (cons?cons.n_employees+" dip.":"n.d."));
+    var dColor=deltaEur>0?"#2d7a3a":(deltaEur<0?"#c0392b":"#8a8680");
     html+=card("Delta €", (deltaEur>=0?"+":"")+"€"+Math.round(deltaEur).toLocaleString("it-IT"), dColor);
     html+=card("Delta %", (deltaPct>=0?"+":"")+(deltaPct*100).toFixed(1)+"%", dColor);
     html+=card("Accuratezza", (accuracy*100).toFixed(1)+"%", "#c9a96e", "100% = previsto perfetto");
@@ -189,10 +189,10 @@ function renderConfrontoUI(container, snapshots){
         +'</div>';
     }
 
-    // Filtri
-    html+='<div style="margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
-    html+='<input id="cfSearch" placeholder="Cerca matricola / cognome / nome..." style="padding:6px 10px;flex:1;min-width:240px;background:#1e1c1a;color:#f5f4f1;border:1px solid #555;border-radius:4px;font-size:12px">';
-    html+='<select id="cfDeltaFilter" style="padding:6px 10px;background:#1e1c1a;color:#f5f4f1;border:1px solid #555;border-radius:4px;font-size:12px">';
+    // Filtri — stile chiaro coerente
+    html+='<div class="flt">';
+    html+='<input id="cfSearch" placeholder="Cerca matricola / cognome / nome...">';
+    html+='<select id="cfDeltaFilter">';
     html+='<option value="all">Tutti</option>';
     html+='<option value="diff">Solo con varianza</option>';
     html+='<option value="positive">Solo Δ positivi (cons > prev)</option>';
@@ -201,60 +201,60 @@ function renderConfrontoUI(container, snapshots){
     html+='</select>';
     html+='</div>';
 
-    // Tabella
+    // Tabella — stile chiaro coerente con Calcolo Premi
     if(prev || cons){
-      html+='<div style="overflow:auto;max-height:calc(100vh - 380px);border:1px solid #2c2925;border-radius:4px">';
-      html+='<table style="border-collapse:collapse;font-size:11px;width:100%;min-width:800px">';
-      html+='<thead><tr style="background:#2c2925;color:#c9a96e;position:sticky;top:0;z-index:1">';
+      html+='<div class="scroll-wrap" style="max-height:calc(100vh - 380px)">';
+      html+='<table style="min-width:800px">';
+      html+='<thead><tr>';
       ["Matr.","Cognome","Nome","Ruolo","Store"].forEach(function(c){
-        html+='<th style="padding:6px 8px;text-align:left;border:1px solid #444;white-space:nowrap">'+c+'</th>';
+        html+='<th style="cursor:default">'+c+'</th>';
       });
-      html+='<th style="padding:6px 8px;text-align:right;border:1px solid #444" title="Premio nella valuta locale del dipendente">Preventivo</th>';
-      html+='<th style="padding:6px 8px;text-align:right;border:1px solid #444" title="Premio nella valuta locale del dipendente">Consuntivo</th>';
-      html+='<th style="padding:6px 8px;text-align:right;border:1px solid #444" title="Differenza nella valuta locale">Δ loc</th>';
-      html+='<th style="padding:6px 8px;text-align:right;border:1px solid #444 ;background:#262320" title="Preventivo convertito in EUR">Prev €</th>';
-      html+='<th style="padding:6px 8px;text-align:right;border:1px solid #444 ;background:#262320" title="Consuntivo convertito in EUR">Cons €</th>';
-      html+='<th style="padding:6px 8px;text-align:right;border:1px solid #444 ;background:#262320" title="Differenza in EUR (confrontabile cross-valuta)">Δ €</th>';
-      html+='<th style="padding:6px 8px;text-align:right;border:1px solid #444">Δ %</th>';
+      html+='<th style="cursor:default;text-align:right" title="Premio nella valuta locale del dipendente">Preventivo</th>';
+      html+='<th style="cursor:default;text-align:right" title="Premio nella valuta locale del dipendente">Consuntivo</th>';
+      html+='<th style="cursor:default;text-align:right" title="Differenza nella valuta locale">Δ loc</th>';
+      html+='<th style="cursor:default;text-align:right;background:#dcd6cc" title="Preventivo convertito in EUR">Prev €</th>';
+      html+='<th style="cursor:default;text-align:right;background:#dcd6cc" title="Consuntivo convertito in EUR">Cons €</th>';
+      html+='<th style="cursor:default;text-align:right;background:#dcd6cc" title="Differenza in EUR (confrontabile cross-valuta)">Δ €</th>';
+      html+='<th style="cursor:default;text-align:right">Δ %</th>';
       html+='</tr></thead><tbody id="cfTbody">';
       rows.forEach(function(r){
-        // Valori nella valuta locale (per visualizzazione "tradizionale")
+        // Valori nella valuta locale
         var vp=(r.prev && typeof r.prev.tl==="number")?r.prev.tl:null;
         var vc=(r.cons && typeof r.cons.tl==="number")?r.cons.tl:null;
         var dLoc=null;
         if(vp!==null && vc!==null) dLoc=vc-vp;
-        // Valori convertiti in EUR (per aggregati e confronti cross-valuta)
+        // Valori convertiti in EUR
         var vpE=eurOf(r.prev), vcE=eurOf(r.cons);
         var dE=null, dP=null;
         if(vpE!==null && vcE!==null){ dE=vcE-vpE; dP=vpE>0?(dE/vpE):null; }
         var search=((r.m||"")+" "+(r.c||"")+" "+(r.n||"")).toLowerCase();
         var dEnum=dE!==null?dE:0, dPnum=dP!==null?dP:0;
         var dataAttr='data-search="'+esc(search)+'" data-de="'+dEnum+'" data-dp="'+dPnum+'" data-hasdiff="'+(dE!==null&&Math.abs(dE)>0.01?"1":"0")+'"';
-        html+='<tr class="cf-row" '+dataAttr+' style="background:#1a1816">';
-        html+='<td style="padding:5px 8px;border:1px solid #2c2925;font-family:monospace;color:#a09a92">'+esc(r.m)+'</td>';
-        html+='<td style="padding:5px 8px;border:1px solid #2c2925;color:#f5f4f1">'+esc(r.c)+'</td>';
-        html+='<td style="padding:5px 8px;border:1px solid #2c2925;color:#f5f4f1">'+esc(r.n)+'</td>';
-        html+='<td style="padding:5px 8px;border:1px solid #2c2925;color:#8a8680;font-size:10px">'+esc(r.j)+'</td>';
-        html+='<td style="padding:5px 8px;border:1px solid #2c2925;color:#8a8680;font-size:10px">'+esc(r.s)+'</td>';
+        html+='<tr class="cf-row ck" '+dataAttr+'>';
+        html+='<td class="mn">'+esc(r.m)+'</td>';
+        html+='<td>'+esc(r.c)+'</td>';
+        html+='<td>'+esc(r.n)+'</td>';
+        html+='<td style="font-size:10px;color:#8a8680">'+esc(r.j)+'</td>';
+        html+='<td style="font-size:10px;color:#8a8680">'+esc(r.s)+'</td>';
         // Colonne valuta locale
-        html+='<td style="padding:5px 8px;border:1px solid #2c2925;text-align:right;font-family:monospace;color:'+(vp!==null && vp>0?"#c9a96e":"#6b6560")+'">'+(vp===null?"—":fc(vp,r.cu))+'</td>';
-        html+='<td style="padding:5px 8px;border:1px solid #2c2925;text-align:right;font-family:monospace;color:'+(vc!==null && vc>0?"#5bb98c":"#6b6560")+'">'+(vc===null?"—":fc(vc,r.cu))+'</td>';
+        html+='<td class="r mn" style="color:'+(vp!==null && vp>0?"#c9a96e":"#b0a99f")+';font-weight:'+(vp!==null && vp>0?"600":"400")+'">'+(vp===null?"—":fc(vp,r.cu))+'</td>';
+        html+='<td class="r mn" style="color:'+(vc!==null && vc>0?"#2d7a3a":"#b0a99f")+';font-weight:'+(vc!==null && vc>0?"600":"400")+'">'+(vc===null?"—":fc(vc,r.cu))+'</td>';
         if(dLoc===null){
-          html+='<td style="padding:5px 8px;border:1px solid #2c2925;text-align:right;color:#4a4744">—</td>';
+          html+='<td class="r mn" style="color:#b0a99f">—</td>';
         } else {
-          var dLocColor=dLoc>0.01?"#5bb98c":(dLoc<-0.01?"#cf5b5b":"#8a8680");
-          html+='<td style="padding:5px 8px;border:1px solid #2c2925;text-align:right;font-family:monospace;color:'+dLocColor+'">'+(dLoc>0?"+":"")+fc(dLoc,r.cu)+'</td>';
+          var dLocColor=dLoc>0.01?"#2d7a3a":(dLoc<-0.01?"#c0392b":"#8a8680");
+          html+='<td class="r mn" style="color:'+dLocColor+';font-weight:600">'+(dLoc>0?"+":"")+fc(dLoc,r.cu)+'</td>';
         }
-        // Colonne EUR (sfondo lievemente diverso per distinguerle)
-        html+='<td style="padding:5px 8px;border:1px solid #2c2925;background:#1f1d1b;text-align:right;font-family:monospace;color:'+(vpE!==null && vpE>0?"#c9a96e":"#6b6560")+'">'+(vpE===null?"—":fcEUR(vpE))+'</td>';
-        html+='<td style="padding:5px 8px;border:1px solid #2c2925;background:#1f1d1b;text-align:right;font-family:monospace;color:'+(vcE!==null && vcE>0?"#5bb98c":"#6b6560")+'">'+(vcE===null?"—":fcEUR(vcE))+'</td>';
+        // Colonne EUR — sfondo beige lievemente piu` evidente
+        html+='<td class="r mn" style="background:#f5efe5;color:'+(vpE!==null && vpE>0?"#c9a96e":"#b0a99f")+';font-weight:'+(vpE!==null && vpE>0?"600":"400")+'">'+(vpE===null?"—":fcEUR(vpE))+'</td>';
+        html+='<td class="r mn" style="background:#f5efe5;color:'+(vcE!==null && vcE>0?"#2d7a3a":"#b0a99f")+';font-weight:'+(vcE!==null && vcE>0?"600":"400")+'">'+(vcE===null?"—":fcEUR(vcE))+'</td>';
         if(dE===null){
-          html+='<td style="padding:5px 8px;border:1px solid #2c2925;background:#1f1d1b;text-align:right;color:#4a4744">—</td>';
-          html+='<td style="padding:5px 8px;border:1px solid #2c2925;text-align:right;color:#4a4744">—</td>';
+          html+='<td class="r mn" style="background:#f5efe5;color:#b0a99f">—</td>';
+          html+='<td class="r mn" style="color:#b0a99f">—</td>';
         } else {
-          var dColor2=dE>0.01?"#5bb98c":(dE<-0.01?"#cf5b5b":"#8a8680");
-          html+='<td style="padding:5px 8px;border:1px solid #2c2925;background:#1f1d1b;text-align:right;font-family:monospace;color:'+dColor2+'">'+(dE>0?"+":"")+fcEUR(dE)+'</td>';
-          html+='<td style="padding:5px 8px;border:1px solid #2c2925;text-align:right;font-family:monospace;color:'+dColor2+'">'+(dP===null?"—":((dP>0?"+":"")+(dP*100).toFixed(1)+"%"))+'</td>';
+          var dColor2=dE>0.01?"#2d7a3a":(dE<-0.01?"#c0392b":"#8a8680");
+          html+='<td class="r mn" style="background:#f5efe5;color:'+dColor2+';font-weight:600">'+(dE>0?"+":"")+fcEUR(dE)+'</td>';
+          html+='<td class="r mn" style="color:'+dColor2+';font-weight:600">'+(dP===null?"—":((dP>0?"+":"")+(dP*100).toFixed(1)+"%"))+'</td>';
         }
         html+='</tr>';
       });

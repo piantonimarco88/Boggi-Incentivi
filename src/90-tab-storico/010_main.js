@@ -149,51 +149,51 @@ function renderStoricoTable(container, snapshots){
   var rows=Object.keys(byMatr).map(function(k){return byMatr[k];})
     .sort(function(a,b){return (a.c||"").localeCompare(b.c||"");});
 
-  // Render
+  // Render — stile chiaro coerente con tabelle Calcolo Premi/Analisi
   var h='<div style="padding:12px">';
-  h+='<div style="margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
-  h+='<input id="storicoSearch" placeholder="Cerca matricola / cognome / nome..." style="padding:6px 10px;flex:1;min-width:240px;background:#1e1c1a;color:#f5f4f1;border:1px solid #555;border-radius:4px;font-size:12px">';
+  h+='<div class="flt">';
+  h+='<input id="storicoSearch" placeholder="Cerca matricola / cognome / nome...">';
   h+='<span style="font-size:11px;color:#8a8680;white-space:nowrap">'+rows.length+' dipendenti · '+periodKeys.length+' periodi · '+fileNames.length+' snapshot</span>';
   h+='</div>';
   if(periodKeys.length===0){
-    h+='<div style="padding:20px;color:#a09a92">Nessun periodo disponibile.</div></div>';
+    h+='<div style="padding:20px;color:#8a8680">Nessun periodo disponibile.</div></div>';
     container.innerHTML=h;return;
   }
-  h+='<div style="overflow:auto;max-height:calc(100vh - 220px);border:1px solid #2c2925;border-radius:4px">';
-  h+='<table style="border-collapse:collapse;font-size:11px;width:100%;min-width:900px">';
-  h+='<thead><tr style="background:#2c2925;color:#c9a96e;position:sticky;top:0;z-index:1">';
+  h+='<div class="scroll-wrap" style="max-height:calc(100vh - 220px)">';
+  h+='<table style="min-width:900px">';
+  h+='<thead><tr>';
   ["Matr.","Cognome","Nome","Ruolo","Store"].forEach(function(c){
-    h+='<th style="padding:6px 8px;text-align:left;border:1px solid #444;white-space:nowrap">'+c+'</th>';
+    h+='<th style="cursor:default">'+c+'</th>';
   });
   periodKeys.forEach(function(p){
-    h+='<th style="padding:6px 8px;text-align:right;border:1px solid #444;white-space:nowrap;font-family:monospace;font-weight:600">'+esc(p)+'</th>';
+    h+='<th style="cursor:default;text-align:right;font-family:\'DM Sans\',monospace">'+esc(p)+'</th>';
   });
   h+='</tr></thead><tbody id="storicoTbody">';
   rows.forEach(function(r){
     var search=((r.m||"")+" "+(r.c||"")+" "+(r.n||"")).toLowerCase();
-    h+='<tr class="storico-row" data-search="'+esc(search)+'" style="background:#1a1816">';
-    h+='<td style="padding:5px 8px;border:1px solid #2c2925;font-family:monospace;color:#a09a92">'+esc(r.m)+'</td>';
-    h+='<td style="padding:5px 8px;border:1px solid #2c2925;color:#f5f4f1">'+esc(r.c)+'</td>';
-    h+='<td style="padding:5px 8px;border:1px solid #2c2925;color:#f5f4f1">'+esc(r.n)+'</td>';
-    h+='<td style="padding:5px 8px;border:1px solid #2c2925;color:#8a8680;font-size:10px">'+esc(r.j)+'</td>';
-    h+='<td style="padding:5px 8px;border:1px solid #2c2925;color:#8a8680;font-size:10px">'+esc(r.s)+'</td>';
+    h+='<tr class="storico-row ck" data-search="'+esc(search)+'">';
+    h+='<td class="mn">'+esc(r.m)+'</td>';
+    h+='<td>'+esc(r.c)+'</td>';
+    h+='<td>'+esc(r.n)+'</td>';
+    h+='<td style="font-size:10px;color:#8a8680">'+esc(r.j)+'</td>';
+    h+='<td style="font-size:10px;color:#8a8680">'+esc(r.s)+'</td>';
     var prevVal=null;
     periodKeys.forEach(function(p){
       var pd=r.periods[p];
       if(!pd){
-        h+='<td style="padding:5px 8px;border:1px solid #2c2925;text-align:right;color:#4a4744">—</td>';
+        h+='<td class="r mn" style="color:#b0a99f">—</td>';
         prevVal=null;
       } else {
         var v=pd.tl||0;
         var deltaHtml="";
         if(prevVal!==null && prevVal>0){
           var diff=(v-prevVal)/prevVal;
-          var c2=diff>0.001?"#5bb98c":(diff<-0.001?"#cf5b5b":"#8a8680");
+          var c2=diff>0.001?"#2d7a3a":(diff<-0.001?"#c0392b":"#8a8680");
           var sign=diff>0?"+":"";
           deltaHtml='<br><span style="font-size:9px;color:'+c2+'">'+sign+(diff*100).toFixed(0)+'%</span>';
         }
-        var color=v>0?"#c9a96e":"#6b6560";
-        h+='<td style="padding:5px 8px;border:1px solid #2c2925;text-align:right;font-family:monospace;color:'+color+'">'+fc(v,pd.cu||r.cu)+deltaHtml+'</td>';
+        var color=v>0?"#2c2925":"#b0a99f";
+        h+='<td class="r mn" style="color:'+color+';font-weight:'+(v>0?"600":"400")+'">'+fc(v,pd.cu||r.cu)+deltaHtml+'</td>';
         prevVal=v;
       }
     });
