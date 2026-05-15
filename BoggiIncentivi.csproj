@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>boggi.ico</ApplicationIcon>
+    <AssemblyName>BoggiIncentivi</AssemblyName>
+    <RootNamespace>BoggiIncentivi</RootNamespace>
+    <AssemblyTitle>Boggi Milano - Sistema Incentivazione</AssemblyTitle>
+    <Company>Boggi Milano</Company>
+    <Description>Sistema Incentivazione Rete Vendita</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- app.html e risorse web: copiati nella cartella web\ accanto all'exe -->
+    <Content Include="web\**" CopyToOutputDirectory="PreserveNewest" />
+    <!-- update.json: copiato accanto all'exe, preserva modifiche utente -->
+    <Content Include="update.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Icona: inclusa nell'exe e copiata accanto -->
+    <Content Include="boggi.ico" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

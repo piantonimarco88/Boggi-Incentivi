@@ -1,0 +1,200 @@
+<Window x:Class="BoggiIncentivi.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Title="Boggi Milano — Sistema Incentivazione"
+        Height="900" Width="1440"
+        MinHeight="600" MinWidth="900"
+        WindowStartupLocation="CenterScreen"
+        Background="#2c2925"
+        WindowStyle="SingleBorderWindow"
+        ResizeMode="CanResize"
+        WindowState="Maximized">
+
+    <Window.Resources>
+
+        <Style x:Key="ToolBtn" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#a09a92"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#555"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="Margin" Value="3,0"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="Cursor" Value="Hand"/>
+
+            <Setter Property="Template">
+                <Setter.Value>
+
+                    <ControlTemplate TargetType="Button">
+
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+
+                        </Border>
+
+                        <ControlTemplate.Triggers>
+
+                            <Trigger Property="IsMouseOver" Value="True">
+
+                                <Setter TargetName="Bd"
+                                        Property="Background"
+                                        Value="#3d3a36"/>
+
+                                <Setter Property="Foreground"
+                                        Value="#f5f4f1"/>
+
+                            </Trigger>
+
+                        </ControlTemplate.Triggers>
+
+                    </ControlTemplate>
+
+                </Setter.Value>
+            </Setter>
+
+        </Style>
+
+
+        <Style x:Key="ToolBtnAccent"
+               TargetType="Button"
+               BasedOn="{StaticResource ToolBtn}">
+
+            <Setter Property="BorderBrush" Value="#c9a96e"/>
+            <Setter Property="Foreground" Value="#c9a96e"/>
+
+        </Style>
+
+    </Window.Resources>
+
+
+    <Grid>
+
+        <Grid.RowDefinitions>
+
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+
+        </Grid.RowDefinitions>
+
+
+        <!-- Toolbar -->
+
+        <Border Grid.Row="0"
+                Background="#2c2925"
+                Padding="12,8">
+
+            <DockPanel>
+
+                <StackPanel DockPanel.Dock="Left"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+
+                    <TextBlock Text="B O G G I   M I L A N O"
+                               FontSize="9"
+                               FontWeight="Bold"
+                               Foreground="#c9a96e"
+                               VerticalAlignment="Center"
+                               Margin="0,0,16,0"/>
+
+                    <Button x:Name="BtnSaveConfig"
+                            Content="💾 Salva Config"
+                            Style="{StaticResource ToolBtn}"
+                            Click="BtnSaveConfig_Click"/>
+
+                    <Button x:Name="BtnLoadConfig"
+                            Content="📂 Carica Config"
+                            Style="{StaticResource ToolBtn}"
+                            Click="BtnLoadConfig_Click"/>
+
+                    <Rectangle Width="1"
+                               Height="20"
+                               Fill="#555"
+                               Margin="8,0"/>
+
+                    <Button x:Name="BtnPrintPDF"
+                            Content="🖨 Stampa PDF"
+                            Style="{StaticResource ToolBtn}"
+                            Click="BtnPrintPDF_Click"/>
+
+                    <Button x:Name="BtnSaveAllPDF"
+                            Content="📁 Salva Tutti i PDF"
+                            Style="{StaticResource ToolBtnAccent}"
+                            Click="BtnSaveAllPDF_Click"/>
+
+                </StackPanel>
+
+
+                <StackPanel DockPanel.Dock="Right"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Right">
+
+                    <TextBlock Text=""
+                               Foreground="#a09a92"
+                               FontSize="11"
+                               VerticalAlignment="Center"
+                               Margin="0,0,8,0"/>
+
+                    <TextBlock x:Name="TxtStatus"
+                               Text=""
+                               Foreground="#c9a96e"
+                               FontSize="10"
+                               VerticalAlignment="Center"/>
+
+                </StackPanel>
+
+            </DockPanel>
+
+        </Border>
+
+
+        <!-- WebView principale -->
+        <wv2:WebView2 x:Name="WebView"
+                      Grid.Row="1"
+                      CoreWebView2InitializationCompleted="WebView_CoreWebView2InitializationCompleted"/>
+
+        <!-- WebView nascosto per generazione PDF silenziosa -->
+        <wv2:WebView2 x:Name="PrintWebView"
+                      Grid.Row="3"
+                      Visibility="Collapsed"
+                      Width="0"
+                      Height="0"/>
+
+
+        <!-- Status bar -->
+
+        <Border Grid.Row="2"
+                Background="#1e1c1a"
+                Padding="12,4">
+
+            <DockPanel>
+
+                <TextBlock DockPanel.Dock="Left"
+                           x:Name="TxtStatusBar"
+                           Text="Pronto"
+                           Foreground="#6b6560"
+                           FontSize="10"/>
+
+                <TextBlock DockPanel.Dock="Right"
+                           Text=""
+                           Foreground="#4a4744"
+                           FontSize="9"
+                           HorizontalAlignment="Right"/>
+
+            </DockPanel>
+
+        </Border>
+
+    </Grid>
+
+</Window>

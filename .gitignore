@@ -1,0 +1,48 @@
+# ===== Build artifacts =====
+bin/
+obj/
+publish/
+
+# ===== Visual Studio user files =====
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# ===== Rider / VS Code =====
+.idea/
+.vscode/
+
+# ===== Test data (Excel grandi, dati interni Boggi) =====
+test semestrali SS26/
+test aprile 2026/
+test febbraio 2026 ita/
+*.tmp
+*.bak
+
+# ===== PII / output: lettere generate ai dipendenti =====
+# Contengono nomi, matricole, importi premi: MAI in repo.
+LETTERE/
+
+# ===== Installer / log =====
+BoggiIncentivi_Setup.exe
+build_log.txt
+
+# ===== Cartelle spurious / accidentali =====
+{Properties,Resources}/
+
+# ===== Claude Code local settings (per-user, non condivisi) =====
+.claude/settings.local.json
+
+# ===== State runtime locale (sopravvive solo in %LOCALAPPDATA%) =====
+# Non finisce mai in git ma per chiarezza:
+state.json
+state.json.tmp
+
+# ===== OS =====
+Thumbs.db
+ehthumbs.db
+desktop.ini
+.DS_Store

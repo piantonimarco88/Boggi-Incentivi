@@ -1,0 +1,11 @@
+{
+  "updateUrl": "https://github.com/piantonimarco88/Boggi-Incentivi/raw/refs/heads/main/app.html",
+  "checkOnStartup": true,
+  "silentUpdate": false,
+  "comment": "Inserire l'URL diretto al file app.html su OneDrive/SharePoint/GitHub. Esempi:",
+  "esempi": {
+    "onedrive_link_diretto": "https://onedrive.live.com/download?cid=XXX&resid=YYY&authkey=ZZZ",
+    "sharepoint": "https://boggi.sharepoint.com/sites/IT/Shared%20Documents/BoggiIncentivi/app.html?download=1",
+    "github_raw": "https://raw.githubusercontent.com/utente/repo/main/app.html"
+  }
+}
