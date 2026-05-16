@@ -57,3 +57,62 @@ Filename: "{app}\BoggiIncentivi.exe"; Description: "Avvia Boggi Incentivi"; Flag
 [UninstallDelete]
 ; Pulisce eventuali file orfani in app dir (gli output utente in %LOCALAPPDATA% NON vengono toccati di proposito)
 Type: filesandordirs; Name: "{app}\runtimes"
+
+[Code]
+// ────────────────────────────────────────────────────────────────────────
+//  Upgrade automatico: rileva una versione precedente di Boggi Incentivi
+//  e la disinstalla silently prima di installare la nuova.
+//
+//  Il vecchio installer (pre v8.31) registrava la chiave registry usando
+//  AppName come fallback: "Boggi Incentivi_is1".
+//  Il nuovo usa il GUID: "{B0664912-09EE-4501-A6CC-BB6E62695F0F}_is1".
+//  Quindi non c'e` collisione tra i due.
+//
+//  Fallback per casi non standard: cerca l'uninstaller nel path
+//  tipico C:\Program Files (x86)\BoggiIncentivi\unins000.exe.
+//
+//  I dati utente in %LOCALAPPDATA%\BoggiIncentivi\ NON vengono toccati.
+// ────────────────────────────────────────────────────────────────────────
+
+function GetUninstallString(const appKey: String): String;
+var
+  fullPath: String;
+  uninstStr: String;
+begin
+  fullPath := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\' + appKey;
+  uninstStr := '';
+  // Prova HKLM 64-bit
+  if not RegQueryStringValue(HKLM, fullPath, 'UninstallString', uninstStr) then
+    // Fallback HKLM 32-bit (per app x86 su Win64)
+    RegQueryStringValue(HKLM32, fullPath, 'UninstallString', uninstStr);
+  Result := uninstStr;
+end;
+
+function InitializeSetup(): Boolean;
+var
+  oldUninst: String;
+  pfx86Uninst: String;
+  resultCode: Integer;
+begin
+  Result := True;
+  // 1. Cerca vecchia install via registry (chiave fallback AppName)
+  oldUninst := GetUninstallString('Boggi Incentivi_is1');
+  // 2. Fallback: cerca uninstaller nel path tipico Program Files (x86)
+  if oldUninst = '' then
+  begin
+    pfx86Uninst := ExpandConstant('{commonpf32}\BoggiIncentivi\unins000.exe');
+    if FileExists(pfx86Uninst) then
+      oldUninst := pfx86Uninst;
+  end;
+  if oldUninst <> '' then
+  begin
+    oldUninst := RemoveQuotes(oldUninst);
+    Log('Vecchia installazione rilevata: ' + oldUninst);
+    // Esegui in silent, aspetta che termini
+    Exec(oldUninst, '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART', '', SW_HIDE,
+         ewWaitUntilTerminated, resultCode);
+    Log('Uninstall precedente terminato, exit code: ' + IntToStr(resultCode));
+    // Piccola pausa per rilascio handle file
+    Sleep(800);
+  end;
+end;
