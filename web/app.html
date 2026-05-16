@@ -543,7 +543,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='8.29'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='8.30'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -8827,40 +8827,64 @@ function validateAnagrafica(){
     });
   }
 
-  // 4. Store_id non in anagrafica negozi
+  // Helper: dipendente USA (commission-based, anagrafica separata in D.usa)
+  function _isUSA(e){
+    try{
+      if(typeof isUSA==="function")return isUSA(e.si,e);
+    }catch(ex){}
+    if(e&&e.cu==="USD")return true;
+    if(typeof D!=="undefined"&&D&&Array.isArray(D.us)&&e&&D.us.indexOf(Number(e.si))>=0)return true;
+    return false;
+  }
+
+  // 4. Store_id non in anagrafica negozi (esclude store USA noti in D.us)
   if(typeof D!=="undefined"&&D&&D.s){
     var stores=D.s;
+    var usStoresSet={};
+    if(D&&Array.isArray(D.us))D.us.forEach(function(s){usStoresSet[String(s)]=true});
     E.forEach(function(e){
       if(!e.si)return;
+      if(_isUSA(e))return; // skip US: hanno anagrafica separata
       var k1=String(e.si), k2=e.si;
-      if(!stores[k1]&&!stores[k2]){
+      if(!stores[k1]&&!stores[k2]&&!usStoresSet[k1]){
         issues.warnings.push("Matr. "+e.m+" ("+(e.c||"?")+"): store_id "+e.si+" non in anagrafica negozi");
       }
     });
   }
 
-  // 5. Ruolo non in RL (lista ruoli ufficiali)
+  // 5. Ruolo non in RL (lista ruoli ufficiali) — skip dipendenti USA
+  //    (i ruoli USA come STK, etc. non sono in RL standard)
   if(typeof RL!=="undefined"&&Array.isArray(RL)){
     var unknownJobs={};
     E.forEach(function(e){
       if(!e.j)return;
+      if(_isUSA(e))return;
       if(RL.indexOf(e.j)<0){
         if(!unknownJobs[e.j])unknownJobs[e.j]=0;
         unknownJobs[e.j]++;
       }
     });
     Object.keys(unknownJobs).forEach(function(j){
-      issues.warnings.push("Ruolo \""+j+"\" non in lista ufficiale (presente in "+unknownJobs[j]+" righe)");
+      issues.warnings.push("Ruolo \""+j+"\" non in lista ufficiale (presente in "+unknownJobs[j]+" righe non-USA)");
     });
   }
 
-  // 6. Stipendio lordo
-  var nNoSalary=0;
+  // 6. Stipendio lordo — skip dipendenti USA (usano commission in D.usa[e.m].cm)
+  var nNoSalary=0, nUsaNoCommission=0;
   E.forEach(function(e){
+    if(_isUSA(e)){
+      // Per USA verifica commission in D.usa
+      var ud=(typeof D!=="undefined"&&D&&D.usa)?(D.usa[e.m]||{}):{};
+      if(typeof ud.cm!=="number"||ud.cm<=0)nUsaNoCommission++;
+      return;
+    }
     if(typeof e.ib!=="number"||e.ib<=0)nNoSalary++;
   });
   if(nNoSalary>0){
-    issues.warnings.push(nNoSalary+" dipendenti con stipendio lordo (ib) mancante o non valido");
+    issues.warnings.push(nNoSalary+" dipendenti (non-USA) con stipendio lordo (ib) mancante o non valido");
+  }
+  if(nUsaNoCommission>0){
+    issues.warnings.push(nUsaNoCommission+" dipendenti USA con commission% mancante o non valida in D.usa");
   }
 
   // 7. Info / stats
@@ -8871,6 +8895,9 @@ function validateAnagrafica(){
   E.forEach(function(e){var c=e.cu||"(nessuna)";byCur[c]=(byCur[c]||0)+1;});
   var curSummary=Object.keys(byCur).map(function(c){return c+":"+byCur[c]}).join(", ");
   if(curSummary)issues.info.push("Distribuzione valuta: "+curSummary);
+  // USA breakdown
+  var nUsa=0;E.forEach(function(e){if(_isUSA(e))nUsa++});
+  if(nUsa>0)issues.info.push("Dipendenti USA: "+nUsa+" (anagrafica separata, controlli store/ruolo/stipendio dedicati)");
 
   return issues;
 }
