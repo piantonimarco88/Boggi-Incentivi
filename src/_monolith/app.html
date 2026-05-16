@@ -181,7 +181,7 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
   </div>
 </div>
 <div class="cnt"><div class="tabs" id="tabs"></div>
-<div class="pnl on" id="p0"></div><div class="pnl" id="p1"></div><div class="pnl" id="p2"></div><div class="pnl" id="p5"></div><div class="pnl" id="p7"></div><div class="pnl" id="p6"></div><div class="pnl" id="p3"></div><div class="pnl" id="p4"></div><div class="pnl" id="p8"></div><div class="pnl" id="p9"></div>
+<div class="pnl on" id="p0"></div><div class="pnl" id="p1"></div><div class="pnl" id="p2"></div><div class="pnl" id="p5"></div><div class="pnl" id="p7"></div><div class="pnl" id="p6"></div><div class="pnl" id="p3"></div><div class="pnl" id="p4"></div><div class="pnl" id="p8"></div><div class="pnl" id="p9"></div><div class="pnl" id="p10"></div>
 </div>
 <!-- Save bar (hidden until changes) -->
 <div class="save-bar" id="saveBar">
@@ -228,7 +228,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='8.30'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='8.31'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -682,14 +682,14 @@ document.getElementById("modeC").className="gbtn"+(MODE==="consuntivo"?" on":"")
 document.getElementById("regInt").className="gbtn"+(REGION==="international"?" on":"");
 document.getElementById("regIt").className="gbtn"+(REGION==="italia"?" on":"");
 
-// 10 TABS (k=8 in #9b: Storico, k=9 in #15: Confronto)
-var TD=[{k:"0",l:"\ud83d\udcca Calcolo Premi"},{k:"1",l:"\ud83d\udcc4 Lettera"},{k:"2",l:"\ud83d\udcc8 Analisi"},{k:"5",l:"\u270f\ufe0f Aggiunte"},{k:"7",l:"\ud83c\udfea Negozi"},{k:"6",l:"\ud83d\udce7 Distribuzione"},{k:"8",l:"\ud83d\uddd3\ufe0f Storico"},{k:"9",l:"\u2696\ufe0f Confronto"},{k:"3",l:"\u2699\ufe0f Configurazione"},{k:"4",l:"\ud83d\uddc2\ufe0f Fonti Dati"}];
+// 11 TABS (k=8 #9b Storico, k=9 #15 Confronto, k=10 #10 Simulatore what-if)
+var TD=[{k:"0",l:"\ud83d\udcca Calcolo Premi"},{k:"1",l:"\ud83d\udcc4 Lettera"},{k:"2",l:"\ud83d\udcc8 Analisi"},{k:"5",l:"\u270f\ufe0f Aggiunte"},{k:"7",l:"\ud83c\udfea Negozi"},{k:"6",l:"\ud83d\udce7 Distribuzione"},{k:"8",l:"\ud83d\uddd3\ufe0f Storico"},{k:"9",l:"\u2696\ufe0f Confronto"},{k:"10",l:"\ud83c\udf9a\ufe0f Simulatore"},{k:"3",l:"\u2699\ufe0f Configurazione"},{k:"4",l:"\ud83d\uddc2\ufe0f Fonti Dati"}];
 var tbE=document.getElementById("tabs");
 TD.forEach(function(td,i){var b=document.createElement("button");b.className="tab"+(i===0?" on":"");b.textContent=td.l;
   if(td.k==="5")b.id="tab-aggiunte";
   b.onclick=function(){document.querySelectorAll(".tab").forEach(function(t){t.className="tab"});b.className="tab on";
     document.querySelectorAll(".pnl").forEach(function(p){p.className="pnl"});document.getElementById("p"+td.k).className="pnl on";
-    if(td.k==="0")rC();if(td.k==="2")rA();if(td.k==="3")rT();if(td.k==="4")rSources();if(td.k==="5")rAgg();if(td.k==="6")rDist();if(td.k==="7")rStores();if(td.k==="8")rStorico();if(td.k==="9")rConfronto()};tbE.appendChild(b)});
+    if(td.k==="0")rC();if(td.k==="2")rA();if(td.k==="3")rT();if(td.k==="4")rSources();if(td.k==="5")rAgg();if(td.k==="6")rDist();if(td.k==="7")rStores();if(td.k==="8")rStorico();if(td.k==="9")rConfronto();if(td.k==="10")rSimulatore()};tbE.appendChild(b)});
 function updateAggiunteTabVisibility(){
   var t=document.getElementById("tab-aggiunte");
   if(!t)return;
@@ -8452,6 +8452,7 @@ getLetterHtmlForPrint=function(i){
   return _glhfp(i);
 };
 /*BUNDLE_INSERT:35-validation*/
+/*BUNDLE_INSERT:85-tab-simulatore*/
 /*BUNDLE_INSERT:90-tab-storico*/
 /*BUNDLE_INSERT:95-tab-confronto*/
 </script>
