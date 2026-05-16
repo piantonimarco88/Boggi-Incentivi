@@ -97,9 +97,19 @@ function build() {
   if (!fs.existsSync(monolithPath)) {
     throw new Error("Monolite non trovato: " + path.relative(ROOT, monolithPath));
   }
-  const monolith = fs.readFileSync(monolithPath, "utf8");
-  const expanded = expandInserts(monolith);
-  return Buffer.from(expanded, "utf8");
+  // Espansione ricorsiva: ripeti finche` ci sono direttive da espandere.
+  // Necessario perche` un modulo estratto puo` contenere a sua volta direttive
+  // BUNDLE_INSERT che riferiscono altri moduli (es. quando si estrae un
+  // blocco grande che include intervalli gia` estratti in step precedenti).
+  // Reset INSERT_RE.lastIndex prima di ogni test (regex globale ha stato).
+  let content = fs.readFileSync(monolithPath, "utf8");
+  const maxIter = 20;
+  for (let iter = 0; iter < maxIter; iter++) {
+    INSERT_RE.lastIndex = 0;
+    if (!INSERT_RE.test(content)) return Buffer.from(content, "utf8");
+    content = expandInserts(content);
+  }
+  throw new Error("Possibile loop in BUNDLE_INSERT (> " + maxIter + " iterazioni)");
 }
 
 // === Main ==================================================
