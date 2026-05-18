@@ -1392,8 +1392,9 @@ function exportExcel(){
   E.forEach(function(e){
     if(e.ps==="SI")return;
     var sm=sickMult(e.ml),ex=e.ex||1;
-    var rbn=0;
-    var rb=isOn(e.j,"rb")?getVal(e,"rb")*sm:0;
+    var rbCalc=isOn(e.j,"rb")?getVal(e,"rb")*sm:0;
+    var rb=e.ibFromAY?0:rbCalc;
+    var rbn=e.ibFromAY?rbCalc:0;
     var rd=isOn(e.j,"rd")?getVal(e,"rd")*sm:0;
     var rs=isOn(e.j,"rs")?getVal(e,"rs")*sm:0;
     var rp=isOn(e.j,"rp")?getVal(e,"rp")*sm:0;
