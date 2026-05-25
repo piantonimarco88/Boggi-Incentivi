@@ -294,6 +294,7 @@ function rT(){try{
   h+=pRow("privPct","% RLM","",PARAMS.privPct*100,"%",0.01);
   h+='<div style="font-size:11px;font-weight:700;color:#d4a94e;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">SAS</div>';
   h+=pRow("sasRate","\u20ac/SAS","",PARAMS.sasRate,"\u20ac",0.5)+pRow("sasMax","Max","",PARAMS.sasMax,"\u20ac",10);
+  h+=pRow("sasMinAccPct","% min SAS accettati","Soglia minima % SAS accettati per erogare il premio (solo mensile, da Giugno 2026). Sotto soglia: premio SAS azzerato.",PARAMS.sasMinAccPct*100,"%",1);
   h+='<div style="font-size:11px;font-weight:700;color:#cf5b5b;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">DCC</div>';
   h+=pRow("dccRate","Aliquota","",PARAMS.dccRate*100,"%",0.01)+pRow("dccMax","Max","",PARAMS.dccMax,"\u20ac",10);
   h+='<div style="font-size:11px;font-weight:700;color:#cf8b4e;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;justify-content:space-between">Articoli Incentivati<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:10px;font-weight:400;color:#6b6560;text-transform:none;letter-spacing:0"><input type="checkbox" id="artEnabled"'+(PARAMS.artEnabled?' checked':'')+' style="accent-color:#cf8b4e;width:14px;height:14px;cursor:pointer"> Attivo</label></div>';
@@ -362,7 +363,7 @@ function rT(){try{
 
   document.querySelectorAll("input[data-pk]").forEach(function(inp){inp.onchange=function(){
     var pk=inp.getAttribute("data-pk"),v=parseFloat(inp.value);if(isNaN(v))return;
-    if(["bdg100","kpi100","bdg60","bdg60mult","digMinClassic","digMinMobility","digPct","syPct","privPct","dccRate","qtyPct","workgamePct"].indexOf(pk)>=0)v=v/100;
+    if(["bdg100","kpi100","bdg60","bdg60mult","digMinClassic","digMinMobility","digPct","syPct","privPct","dccRate","qtyPct","workgamePct","sasMinAccPct"].indexOf(pk)>=0)v=v/100;
     PARAMS[pk]=v;markDirty();rC();rA()}});
   var artEnabledCb=document.getElementById("artEnabled");if(artEnabledCb)artEnabledCb.onchange=function(){PARAMS.artEnabled=this.checked;var wrap=document.getElementById("artEnabledWrap");if(wrap)wrap.style.display=this.checked?"":"none";markDirty();rC();rA()};
   document.querySelectorAll(".tb").forEach(function(b){

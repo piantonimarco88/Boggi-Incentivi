@@ -322,7 +322,21 @@ var DISCL={
 };
 function getDiscl(e){return DISCL[trLang(e)]||DISCL["INGLESE"]}
 
-var PARAMS={bdg100:0.995,kpi100:0.995,bdg60:0.95,bdg60mult:0.6,digMinClassic:0.03,digMinMobility:0.05,digPct:0.3,syPct:0.03,privPct:0.02,sasRate:2,sasMax:200,dccRate:0.002,dccMax:100,qtyPct:0.5,artPct:0.3,artEnabled:true,workgamePct:0.30};
+var PARAMS={bdg100:0.995,kpi100:0.995,bdg60:0.95,bdg60mult:0.6,digMinClassic:0.03,digMinMobility:0.05,digPct:0.3,syPct:0.03,privPct:0.02,sasRate:2,sasMax:200,sasMinAccPct:0.70,dccRate:0.002,dccMax:100,qtyPct:0.5,artPct:0.3,artEnabled:true,workgamePct:0.30};
+// Soglia % SAS accettati per erogare premio SAS (solo modalità mensile, attiva da Giugno 2026)
+// Se cn.sa < sasMinAccPct → premio SAS azzerato.
+var SAS_ACC_START_YEAR=2026, SAS_ACC_START_MONTH=6;
+function sasAccActive(){return PRIZE_MODE==="mensile"&&((CFG_YEAR>SAS_ACC_START_YEAR)||(CFG_YEAR===SAS_ACC_START_YEAR&&CFG_MONTH>=SAS_ACC_START_MONTH));}
+// Returns true if SAS premium must be zeroed for this employee due to %SAS accettati under threshold.
+// Only applies in monthly mode from June 2026 onwards, in consuntivo, when cn.sa is defined.
+function sasZeroByAcc(e){
+  if(MODE!=="consuntivo")return false;
+  if(!sasAccActive())return false;
+  if(!e||isUSA&&isUSA(e.si,e))return false;
+  var cn=(D&&D.c)?D.c[String(e.si)]:null;
+  if(!cn||cn.sa==null)return false; // dato mancante: non azzerare
+  return cn.sa<PARAMS.sasMinAccPct;
+}
 
 // === SEASONAL BONUS CONFIG ===
 function _seasRangeLabel(r){
@@ -543,7 +557,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='8.32'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='8.33'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -883,7 +897,7 @@ function getVal(e,kpiKey){
     case "rd":if(storePct>=PARAMS.bdg100&&(cn.pd||0)>=getDigMin(e.si))return Math.round(e.ib*PARAMS.digPct*100)/100;return 0;
     case "rs":if((tg.sy||0)>0&&(cn.sy||0)>=(tg.sy||0)*PARAMS.kpi100){var _rl2=e.rl||e.ib||0;return Math.round(_rl2*PARAMS.syPct*100)/100}return 0;
     case "rp":if((tg.pr||0)>0&&(cn.nf||0)>=(tg.pr||0)*PARAMS.kpi100){var _rl3=e.rl||e.ib||0;return Math.round(_rl3*PARAMS.privPct*100)/100}return 0;
-    case "rsa":return Math.min((cn.s4||0)*PARAMS.sasRate,PARAMS.sasMax);
+    case "rsa":if(sasZeroByAcc(e))return 0;return Math.min((cn.s4||0)*PARAMS.sasRate,PARAMS.sasMax);
     case "rdc":return Math.round(Math.min((cn.dv||0)*PARAMS.dccRate,PARAMS.dccMax)*100)/100;
     case "rcs":return e.rcs||0;case "ra":if(!PARAMS.artEnabled||isUSA(e.si,e))return 0;if((e.ra||0)>0)return e.ra;var ac=cn.ac||0;return ac>0?Math.round(e.ib*PARAMS.artPct*ac*100)/100:0;
     case "vi":{var _vle2=VL[e.m];if(!_vle2)return 0;if(!Array.isArray(_vle2)){var _vla=Number(_vle2)||0;return(_vla>0&&storePct>=PARAMS.bdg100)?_vla:0;}var _vtot=0;var _nEmpty=_vle2.filter(function(x){return !String(x.sid||'').trim();}).length;_vle2.forEach(function(entry){var _esid=String(entry.sid||'').trim();if(_esid){var _pi=parseInt(_esid);if(!isNaN(_pi))_esid=String(_pi);}var _spct;if(!_esid){_spct=(_nEmpty===1)?storePct:0;}else{var _etg=D.t[_esid]||{};var _ecn=D.c[_esid]||{};_spct=_etg.to>0?((_ecn.sc||0)+(_ecn.es||0))/_etg.to:0;}if(_spct>=PARAMS.bdg100)_vtot+=entry.amt||0;});return _vtot;}
@@ -960,7 +974,7 @@ function gR(e){
         case "rd":if(paid)R.push({t:"success",x:fc(vS,cu)+" \u2014 Dig. "+(cn.pd*100).toFixed(1)+"%."});else R.push({t:"fail",x:fc(0,cu)+" \u2014 Dig: "+(cn.pd*100).toFixed(1)+"%."});break;
         case "rs":if(paid)R.push({t:"success",x:fc(vS,cu)+" \u2014 SY "+(cn.sy||0)+" \u2265 "+(Math.round((tg.sy||0)*PARAMS.kpi100*10)/10)+" (soglia "+(PARAMS.kpi100*100)+"% di "+tg.sy+")."});else R.push({t:"fail",x:fc(0,cu)+" \u2014 SY "+(cn.sy||0)+" < "+(Math.round((tg.sy||0)*PARAMS.kpi100*10)/10)+" (soglia "+(PARAMS.kpi100*100)+"% di "+(tg.sy||0)+")."});break;
         case "rp":if(paid)R.push({t:"success",x:fc(vS,cu)+" \u2014 Privilege "+fPct(cn.nf)+" \u2265 "+fPct((tg.pr||0)*PARAMS.kpi100)+" (soglia "+(PARAMS.kpi100*100)+"% di "+fPct(tg.pr)+")."});else R.push({t:"fail",x:fc(0,cu)+" \u2014 Privilege "+fPct(cn.nf)+" < "+fPct((tg.pr||0)*PARAMS.kpi100)+" (soglia "+(PARAMS.kpi100*100)+"% di "+fPct(tg.pr||0)+")."});break;
-        case "rsa":if(paid)R.push({t:"success",x:fc(vS,cu)+" \u2014 "+(cn.s4||0)+" SAS."});else R.push({t:"fail",x:fc(0,cu)+" \u2014 SAS."});break;
+        case "rsa":if(sasZeroByAcc(e)){var saTx=(cn.sa==null?"n/d":((cn.sa*100).toFixed(0)+"%"));R.push({t:"fail",x:fc(0,cu)+" \u2014 SAS azzerato: % accettati "+saTx+" < soglia "+Math.round(PARAMS.sasMinAccPct*100)+"%."});}else if(paid)R.push({t:"success",x:fc(vS,cu)+" \u2014 "+(cn.s4||0)+" SAS"+(cn.sa!=null?" \u2014 % accettati: "+((cn.sa*100).toFixed(0)+"%"):"")+"."});else R.push({t:"fail",x:fc(0,cu)+" \u2014 SAS."});break;
         case "rdc":if(paid)R.push({t:"success",x:fc(vS,cu)+" \u2014 DCC."});else R.push({t:"fail",x:fc(0,cu)+" \u2014 DCC."});break;
         case "ra":if(paid){if((e.ra||0)>0){R.push({t:"success",x:fc(vS,cu)+" \u2014 Articoli incentivati (individuale)."});}else{var acN=cn.ac||0;R.push({t:"success",x:fc(vS,cu)+" \u2014 Articoli incentivati: "+(PARAMS.artPct*100)+"% BDG x "+acN+" categori"+(acN===1?"a":"e")+"."});}}break;
         case "vi":if(paid)R.push({t:"success",x:fc(vS,cu)+" \u2014 Visual."});break;
@@ -1351,6 +1365,14 @@ function rC(){
     var ridotto=!psOn&&t>0&&isRidotto(e)&&isOn(e.j,"rb");
     h+='<td style="text-align:center;font-size:13px" title="'+(ridotto?"Premio BDG ridotto ("+Math.round(PARAMS.bdg60mult*100)+"%)":"—")+'">'+(ridotto?'<span style="color:#c9a96e">&#11044;</span>':'—')+"</td>";
     IT.forEach(function(it){if(it.k==="ra"&&!PARAMS.artEnabled)return;var on=it.k==="vi"?true:isOn(e.j,it.k),raw=getVal(e,it.k),val=on?raw*sm:0;
+      // SAS azzerato per soglia % accettati non raggiunta \u2192 mostra "0" in rosso con tooltip
+      if(it.k==="rsa"&&on&&!psOn&&sasZeroByAcc(e)){
+        var cnSA=(D.c[String(e.si)]||{}).sa;
+        var saTxt=(cnSA==null)?"n/d":((cnSA*100).toFixed(0)+"%");
+        var tipSA="SAS azzerato: % accettati ("+saTxt+") sotto soglia "+Math.round(PARAMS.sasMinAccPct*100)+"%";
+        h+='<td class="r mn b" style="color:#cf5b5b" title="'+esc(tipSA)+'">0</td>';
+        return;
+      }
       h+='<td class="r mn '+(val>0&&!psOn?"g":"gy")+'"'+(on?"":" style=\"text-decoration:line-through;opacity:.3\"")+">"+(val>0?fc(psOn?0:val,cu):"\u2014")+"</td>"});
     h+='<td class="r mn" style="color:'+(at>0?"#c9a96e":"#d5d0c8")+'">'+(at>0?fc(psOn?0:at,cu):"\u2014")+"</td>";
     h+='<td class="r mn b" style="color:'+(t>0&&!psOn?"#2c2925":"#b0a99f")+'">'+fc(psOn?0:t,cu)+"</td>";
@@ -1930,7 +1952,34 @@ function buildLetter(e){
   if(isOn(e.j,"rd")){sN++;var val=getVal(e,"rd"),p=val>0,vS=Math.round(val*sm);var digThr=getDigMin(e.si);h+=secHd(sN,tr(e,"digital","DIGITAL TARGET"),p,isP);h+=ltRow("TARGET",fPct(digThr));h+=ltRow("INCENTIVE MAX",'<span class="lt-row-cur">'+cu+"</span>"+Math.round(e.ib*PARAMS.digPct));if(!isP)h+=ltRow("RESULT",fPct(cn.pd));h+=secPd(pdLabel,vS,cu,p);h+="</div></div>"}
   if(isOn(e.j,"rp")){sN++;var val=getVal(e,"rp"),p=val>0,vS=Math.round(val*sm);var _rlP=e.rl||e.ib||0;h+=secHd(sN,tr(e,"privilege","PRIVILEGE"),p,isP);if(!isP||tg.pr){h+=ltRow("TARGET",fPct(tg.pr));if(PARAMS.kpi100<1&&(tg.pr||0)>0)h+=ltRow('<span style="font-size:9px;color:#a09a92">Soglia ('+Math.round(PARAMS.kpi100*100)+'%)</span>','<span style="font-size:9px;color:#a09a92">'+fPct((tg.pr||0)*PARAMS.kpi100)+'</span>');}h+=ltRow("FORMULA",(PARAMS.privPct*100)+"% RLM");h+=ltRow("INCENTIVE MAX",'<span class="lt-row-cur">'+cu+"</span>"+Math.round(_rlP*PARAMS.privPct));if(!isP)h+=ltRow("RESULT",fPct(cn.nf));h+=secPd(pdLabel,vS,cu,p);h+="</div></div>"}
   if(isOn(e.j,"rs")){sN++;var val=getVal(e,"rs"),p=val>0,vS=Math.round(val*sm);var _rlS=e.rl||e.ib||0;h+=secHd(sN,"SY TARGET",p,isP);if(!isP||tg.sy){h+=ltRow("TARGET",fDec(tg.sy));if(PARAMS.kpi100<1&&(tg.sy||0)>0)h+=ltRow('<span style="font-size:9px;color:#a09a92">Soglia ('+Math.round(PARAMS.kpi100*100)+'%)</span>','<span style="font-size:9px;color:#a09a92">'+fDec(Math.round((tg.sy||0)*PARAMS.kpi100*10)/10)+'</span>');}h+=ltRow("FORMULA",(PARAMS.syPct*100)+"% RLM");h+=ltRow("INCENTIVE MAX",'<span class="lt-row-cur">'+cu+"</span>"+Math.round(_rlS*PARAMS.syPct));if(!isP)h+=ltRow("RESULT",fDec(cn.sy));h+=secPd(pdLabel,vS,cu,p);h+="</div></div>"}
-  if(isOn(e.j,"rsa")){sN++;var val=getVal(e,"rsa"),p=val>0,vS=Math.round(val*sm);h+=secHd(sN,"SAS TARGET",p,isP);h+=ltRow("FORMULA","\u20ac"+PARAMS.sasRate+"/SAS, max \u20ac"+PARAMS.sasMax);if(!isP)h+=ltRow("SAS ON TARGET",String(cn.s4||0));h+=secPd(pdLabel,vS,cu,p);h+="</div></div>"}
+  if(isOn(e.j,"rsa")){sN++;var val=getVal(e,"rsa"),p=val>0,vS=Math.round(val*sm);h+=secHd(sN,"SAS TARGET",p,isP);h+=ltRow("FORMULA","\u20ac"+PARAMS.sasRate+"/SAS, max \u20ac"+PARAMS.sasMax);
+    // SAS accepted % threshold (mensile only, da Giugno 2026)
+    var sasAccLang=trLang(e);
+    var SAS_ACC_T={
+      "ITALIANO":{thr:"SOGLIA % SAS ACCETTATI",acc:"% SAS ACCETTATI",zeroed:"Premio SAS azzerato: % SAS accettati sotto la soglia minima."},
+      "INGLESE":{thr:"ACCEPTED SAS % THRESHOLD",acc:"ACCEPTED SAS %",zeroed:"SAS prize zeroed: accepted SAS % below minimum threshold."},
+      "FRANCESE":{thr:"SEUIL % SAS ACCEPT\u00c9S",acc:"% SAS ACCEPT\u00c9S",zeroed:"Prime SAS annul\u00e9e : % SAS accept\u00e9s en dessous du seuil minimum."},
+      "TEDESCO":{thr:"SCHWELLE % AKZEPTIERTE SAS",acc:"% AKZEPTIERTE SAS",zeroed:"SAS-Pr\u00e4mie auf null gesetzt: % akzeptierte SAS unter Mindestschwelle."},
+      "SPAGNOLO":{thr:"UMBRAL % SAS ACEPTADOS",acc:"% SAS ACEPTADOS",zeroed:"Premio SAS anulado: % SAS aceptados por debajo del umbral m\u00ednimo."}
+    };
+    var sasT=SAS_ACC_T[sasAccLang]||SAS_ACC_T["INGLESE"];
+    if(sasAccActive()){
+      h+=ltRow(sasT.thr,(PARAMS.sasMinAccPct*100).toFixed(0)+"%");
+      if(!isP){
+        var saV=(cn.sa!=null)?((cn.sa*100).toFixed(0)+"%"):"\u2014";
+        var saOk=cn.sa!=null&&cn.sa>=PARAMS.sasMinAccPct;
+        h+=ltRow(sasT.acc,'<span style="color:'+(cn.sa==null?"#a09a92":(saOk?"#2d7a3a":"#cf5b5b"))+';font-weight:700">'+saV+(cn.sa!=null?(saOk?" \u2713":" \u2717"):"")+'</span>');
+      }
+    }
+    if(!isP)h+=ltRow("SAS ON TARGET",String(cn.s4||0));
+    // Mostra paid (vS) o, se azzerato per soglia, evidenzia il motivo
+    if(!isP&&sasZeroByAcc(e)){
+      h+='<div class="lt-row" style="background:#fdecea;border-left:3px solid #cf5b5b;padding:6px 10px;margin-top:4px;border-radius:0 4px 4px 0"><span style="font-size:10px;color:#a02d2d;font-weight:600">\u26a0 '+esc(sasT.zeroed)+'</span></div>';
+      h+=secPd(pdLabel,0,cu,false);
+    } else {
+      h+=secPd(pdLabel,vS,cu,p);
+    }
+    h+="</div></div>"}
   if(PARAMS.artEnabled&&isOn(e.j,"ra")){sN++;var val=getVal(e,"ra"),p=val>0,vS=Math.round(val*sm);var acCnt=cn.ac||0;h+=secHd(sN,tr(e,"articles","ITEMS"),isP?true:p,isP);h+=ltRow("FORMULA",(PARAMS.artPct*100)+"% "+tr(e,"turnover","BDG")+" x N. "+tr(e,"items","CAT"));if(isP){/* nessuna stima in preventivo */}else{if(acCnt>0)h+=ltRow(tr(e,"items","CATEGORIES")+" ON TARGET",String(acCnt));if(acCnt>0)h+=ltRow("INCENTIVE MAX",'<span class="lt-row-cur">'+cu+"</span>"+Math.round(e.ib*PARAMS.artPct*acCnt));h+=secPd(pdLabel,vS,cu,p)}h+="</div></div>"}
   if(isOn(e.j,"rdc")){sN++;var val=getVal(e,"rdc"),p=val>0,vS=Math.round(val*sm);h+=secHd(sN,"DCC TARGET",p,isP);h+=ltRow("FORMULA",(PARAMS.dccRate*100).toFixed(1)+"% max \u20ac"+PARAMS.dccMax);if(!isP)h+=ltRow("DCC VALUE",'<span class="lt-row-cur">'+cu+"</span>"+(cn.dv||0).toLocaleString("it-IT"));h+=secPd(pdLabel,vS,cu,p);h+="</div></div>"}
   var _vlei=VL[e.m];var viVal=getVal(e,"vi");var _hasVI=viVal>0||(!isP&&Array.isArray(_vlei)&&_vlei.length>0);if(_hasVI){sN++;var _vLng=trLang(e);var _vLS={"ITALIANO":"NEGOZIO","INGLESE":"STORE","FRANCESE":"MAGASIN","TEDESCO":"STORE","SPAGNOLO":"TIENDA"};var _vLT={"ITALIANO":"TARGET FATTURATO","INGLESE":"TURNOVER TARGET","FRANCESE":"OBJECTIF CA","TEDESCO":"UMSATZZIEL","SPAGNOLO":"OBJETIVO"};var _vLA={"ITALIANO":"CONSUNTIVO","INGLESE":"ACTUAL","FRANCESE":"RÉEL","TEDESCO":"IST","SPAGNOLO":"REAL"};var _vLP={"ITALIANO":"PREMIO","INGLESE":"INCENTIVE","FRANCESE":"PRIME","TEDESCO":"PRÄMIE","SPAGNOLO":"INCENTIVO"};var _vLN={"ITALIANO":"Obiettivo non raggiunto","INGLESE":"Target not reached","FRANCESE":"Objectif non atteint","TEDESCO":"Ziel nicht erreicht","SPAGNOLO":"Objetivo no alcanzado"};h+=secHd(sN,"EXTRA BDG VISUAL IN STORE",viVal>0,isP);if(!isP){if(!Array.isArray(_vlei)){h+=ltRow('','<span style="color:#a09a92;font-size:10px;font-style:italic">Ricarica il file Visual In Store per visualizzare il dettaglio per negozio</span>');}else if(_vlei.length>0){var _nEmptyD=_vlei.filter(function(x){return !String(x.sid||'').trim();}).length;var _allEmpty=_nEmptyD===_vlei.length&&_vlei.length>1;if(_allEmpty){h+=ltRow('','<span style="color:#a09a92;font-size:10px;font-style:italic">Colonna Store ID non rilevata nel file Visual — ricaricarlo per il dettaglio per negozio</span>');}else{_vlei.forEach(function(entry){var _vsid=String(entry.sid||'').trim();if(_vsid){var _pi=parseInt(_vsid);if(!isNaN(_pi))_vsid=String(_pi);}var _vtg=_vsid?D.t[_vsid]||{}:tg;var _vcn=_vsid?D.c[_vsid]||{}:cn;var _vpct=_vtg.to>0?((_vcn.sc||0)+(_vcn.es||0))/_vtg.to:(!_vsid?storePct:0);var _vhit=_vpct>=PARAMS.bdg100;var _vprz=_vhit?Math.round((entry.amt||0)*sm):0;var _vname=(function(){var n='';E.forEach(function(emp){if(String(emp.si)===_vsid&&emp.s){n=emp.s;}});return n;}());var _vlbl=(_vLS[_vLng]||'STORE')+' '+(_vsid||String(e.si));if(_vname)_vlbl+='—'+_vname;h+=ltRow(_vlbl,(_vhit?'✅':'❌')+' '+fPct(_vpct));if((_vtg.to||0)>0){h+=ltRow(_vLT[_vLng]||'TARGET','<span class="lt-row-cur">'+cu+'</span>'+(_vtg.to).toLocaleString('it-IT'));h+=ltRow(_vLA[_vLng]||'ACTUAL','<span class="lt-row-cur">'+cu+'</span>'+Math.round((_vcn.sc||0)+(_vcn.es||0)).toLocaleString('it-IT'));}h+=ltRow(_vLP[_vLng]||'INCENTIVE',_vhit?('<span class="lt-row-cur">'+cu+'</span>'+_vprz):('<span style="color:#cf5b5b;font-style:italic">'+esc(_vLN[_vLng]||'Target not reached')+'</span>'));});}}}if(viVal>0)h+=secPd(pdLabel,Math.round(viVal*sm),cu,true);h+="</div></div>"}
@@ -3581,6 +3630,7 @@ function rT(){try{
   h+=pRow("privPct","% RLM","",PARAMS.privPct*100,"%",0.01);
   h+='<div style="font-size:11px;font-weight:700;color:#d4a94e;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">SAS</div>';
   h+=pRow("sasRate","\u20ac/SAS","",PARAMS.sasRate,"\u20ac",0.5)+pRow("sasMax","Max","",PARAMS.sasMax,"\u20ac",10);
+  h+=pRow("sasMinAccPct","% min SAS accettati","Soglia minima % SAS accettati per erogare il premio (solo mensile, da Giugno 2026). Sotto soglia: premio SAS azzerato.",PARAMS.sasMinAccPct*100,"%",1);
   h+='<div style="font-size:11px;font-weight:700;color:#cf5b5b;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">DCC</div>';
   h+=pRow("dccRate","Aliquota","",PARAMS.dccRate*100,"%",0.01)+pRow("dccMax","Max","",PARAMS.dccMax,"\u20ac",10);
   h+='<div style="font-size:11px;font-weight:700;color:#cf8b4e;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;justify-content:space-between">Articoli Incentivati<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:10px;font-weight:400;color:#6b6560;text-transform:none;letter-spacing:0"><input type="checkbox" id="artEnabled"'+(PARAMS.artEnabled?' checked':'')+' style="accent-color:#cf8b4e;width:14px;height:14px;cursor:pointer"> Attivo</label></div>';
@@ -3649,7 +3699,7 @@ function rT(){try{
 
   document.querySelectorAll("input[data-pk]").forEach(function(inp){inp.onchange=function(){
     var pk=inp.getAttribute("data-pk"),v=parseFloat(inp.value);if(isNaN(v))return;
-    if(["bdg100","kpi100","bdg60","bdg60mult","digMinClassic","digMinMobility","digPct","syPct","privPct","dccRate","qtyPct","workgamePct"].indexOf(pk)>=0)v=v/100;
+    if(["bdg100","kpi100","bdg60","bdg60mult","digMinClassic","digMinMobility","digPct","syPct","privPct","dccRate","qtyPct","workgamePct","sasMinAccPct"].indexOf(pk)>=0)v=v/100;
     PARAMS[pk]=v;markDirty();rC();rA()}});
   var artEnabledCb=document.getElementById("artEnabled");if(artEnabledCb)artEnabledCb.onchange=function(){PARAMS.artEnabled=this.checked;var wrap=document.getElementById("artEnabledWrap");if(wrap)wrap.style.display=this.checked?"":"none";markDirty();rC();rA()};
   document.querySelectorAll(".tb").forEach(function(b){
@@ -5397,13 +5447,25 @@ function loadResultsExcel(file){
 
       else if(type==="sas_results"){
         var cSid=fH("store id","store_id");var cS4=fH("processed within 4","within 4h");
+        var cSa=fH("% accepted","% accettati","accepted %","accepted","% accettazione","accettati %","sas accepted","% acceptance");
+        var withAcc=0;
         for(var ri=dataStart;ri<json.length;ri++){
           var row=json[ri];if(!row)continue;var sid=row[cSid];if(!sid)continue;
           sid=String(parseInt(sid));if(sid==="NaN")continue;
           if(!D.c[sid])D.c[sid]={sc:0,es:0,pd:0,cr:0,sy:0,nf:0,qc:0,s4:0,dv:0};
-          D.c[sid].s4=Math.round(parseNum(row[cS4]));imported++;
+          D.c[sid].s4=Math.round(parseNum(row[cS4]));
+          if(cSa>=0){
+            var av=parseNum(row[cSa]);
+            if(!isNaN(av)){
+              // Accept either 0..1 or 0..100
+              if(av>1)av=av/100;
+              if(av<0)av=0;if(av>1)av=1;
+              D.c[sid].sa=av;withAcc++;
+            }
+          }
+          imported++;
         }
-        report="SAS caricati: "+imported+" negozi.";
+        report="SAS caricati: "+imported+" negozi"+(cSa>=0?(" (% accettati: "+withAcc+")"):" (colonna % accettati non rilevata)")+".";
       }
 
       else if(type==="malattie"){

@@ -1,4 +1,18 @@
-var PARAMS={bdg100:0.995,kpi100:0.995,bdg60:0.95,bdg60mult:0.6,digMinClassic:0.03,digMinMobility:0.05,digPct:0.3,syPct:0.03,privPct:0.02,sasRate:2,sasMax:200,dccRate:0.002,dccMax:100,qtyPct:0.5,artPct:0.3,artEnabled:true,workgamePct:0.30};
+var PARAMS={bdg100:0.995,kpi100:0.995,bdg60:0.95,bdg60mult:0.6,digMinClassic:0.03,digMinMobility:0.05,digPct:0.3,syPct:0.03,privPct:0.02,sasRate:2,sasMax:200,sasMinAccPct:0.70,dccRate:0.002,dccMax:100,qtyPct:0.5,artPct:0.3,artEnabled:true,workgamePct:0.30};
+// Soglia % SAS accettati per erogare premio SAS (solo modalità mensile, attiva da Giugno 2026)
+// Se cn.sa < sasMinAccPct → premio SAS azzerato.
+var SAS_ACC_START_YEAR=2026, SAS_ACC_START_MONTH=6;
+function sasAccActive(){return PRIZE_MODE==="mensile"&&((CFG_YEAR>SAS_ACC_START_YEAR)||(CFG_YEAR===SAS_ACC_START_YEAR&&CFG_MONTH>=SAS_ACC_START_MONTH));}
+// Returns true if SAS premium must be zeroed for this employee due to %SAS accettati under threshold.
+// Only applies in monthly mode from June 2026 onwards, in consuntivo, when cn.sa is defined.
+function sasZeroByAcc(e){
+  if(MODE!=="consuntivo")return false;
+  if(!sasAccActive())return false;
+  if(!e||isUSA&&isUSA(e.si,e))return false;
+  var cn=(D&&D.c)?D.c[String(e.si)]:null;
+  if(!cn||cn.sa==null)return false; // dato mancante: non azzerare
+  return cn.sa<PARAMS.sasMinAccPct;
+}
 
 // === SEASONAL BONUS CONFIG ===
 function _seasRangeLabel(r){

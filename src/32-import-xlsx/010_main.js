@@ -1182,13 +1182,25 @@ function loadResultsExcel(file){
 
       else if(type==="sas_results"){
         var cSid=fH("store id","store_id");var cS4=fH("processed within 4","within 4h");
+        var cSa=fH("% accepted","% accettati","accepted %","accepted","% accettazione","accettati %","sas accepted","% acceptance");
+        var withAcc=0;
         for(var ri=dataStart;ri<json.length;ri++){
           var row=json[ri];if(!row)continue;var sid=row[cSid];if(!sid)continue;
           sid=String(parseInt(sid));if(sid==="NaN")continue;
           if(!D.c[sid])D.c[sid]={sc:0,es:0,pd:0,cr:0,sy:0,nf:0,qc:0,s4:0,dv:0};
-          D.c[sid].s4=Math.round(parseNum(row[cS4]));imported++;
+          D.c[sid].s4=Math.round(parseNum(row[cS4]));
+          if(cSa>=0){
+            var av=parseNum(row[cSa]);
+            if(!isNaN(av)){
+              // Accept either 0..1 or 0..100
+              if(av>1)av=av/100;
+              if(av<0)av=0;if(av>1)av=1;
+              D.c[sid].sa=av;withAcc++;
+            }
+          }
+          imported++;
         }
-        report="SAS caricati: "+imported+" negozi.";
+        report="SAS caricati: "+imported+" negozi"+(cSa>=0?(" (% accettati: "+withAcc+")"):" (colonna % accettati non rilevata)")+".";
       }
 
       else if(type==="malattie"){

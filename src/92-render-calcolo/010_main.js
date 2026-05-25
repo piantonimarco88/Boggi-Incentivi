@@ -31,6 +31,14 @@ function rC(){
     var ridotto=!psOn&&t>0&&isRidotto(e)&&isOn(e.j,"rb");
     h+='<td style="text-align:center;font-size:13px" title="'+(ridotto?"Premio BDG ridotto ("+Math.round(PARAMS.bdg60mult*100)+"%)":"—")+'">'+(ridotto?'<span style="color:#c9a96e">&#11044;</span>':'—')+"</td>";
     IT.forEach(function(it){if(it.k==="ra"&&!PARAMS.artEnabled)return;var on=it.k==="vi"?true:isOn(e.j,it.k),raw=getVal(e,it.k),val=on?raw*sm:0;
+      // SAS azzerato per soglia % accettati non raggiunta \u2192 mostra "0" in rosso con tooltip
+      if(it.k==="rsa"&&on&&!psOn&&sasZeroByAcc(e)){
+        var cnSA=(D.c[String(e.si)]||{}).sa;
+        var saTxt=(cnSA==null)?"n/d":((cnSA*100).toFixed(0)+"%");
+        var tipSA="SAS azzerato: % accettati ("+saTxt+") sotto soglia "+Math.round(PARAMS.sasMinAccPct*100)+"%";
+        h+='<td class="r mn b" style="color:#cf5b5b" title="'+esc(tipSA)+'">0</td>';
+        return;
+      }
       h+='<td class="r mn '+(val>0&&!psOn?"g":"gy")+'"'+(on?"":" style=\"text-decoration:line-through;opacity:.3\"")+">"+(val>0?fc(psOn?0:val,cu):"\u2014")+"</td>"});
     h+='<td class="r mn" style="color:'+(at>0?"#c9a96e":"#d5d0c8")+'">'+(at>0?fc(psOn?0:at,cu):"\u2014")+"</td>";
     h+='<td class="r mn b" style="color:'+(t>0&&!psOn?"#2c2925":"#b0a99f")+'">'+fc(psOn?0:t,cu)+"</td>";
