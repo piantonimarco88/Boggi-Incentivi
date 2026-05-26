@@ -231,14 +231,25 @@ function loadAnagraficaExcel(file){
       // Il file HR pu\u00f2 cambiare struttura nel tempo (es. v31.03.2026 aggiunge colonna "Plus" che shifta Budget/Status/Hire).
       // Rileviamo le colonne per nome di header (lookup parziale, accent-insensitive) con fallback agli indici storici.
       var INT_HDR=json[hdrRow]||[];
+      function _intNorm(s){return String(s||"").toLowerCase().replace(/[\s\n\r]+/g," ").replace(/[\u00e0\u00e1\u00e2\u00e3]/g,"a").replace(/[\u00e8\u00e9\u00ea\u00eb]/g,"e").replace(/[\u00ec\u00ed\u00ee\u00ef]/g,"i").replace(/[\u00f2\u00f3\u00f4\u00f5]/g,"o").replace(/[\u00f9\u00fa\u00fb\u00fc]/g,"u").replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();}
+      // Match per WORD boundary: il pattern deve combaciare come parola/inizio-parola, non come sottostringa.
+      // (Es. "nome" NON deve combaciare con "cognome".)
       function _intFind(){
-        function _norm(s){return String(s||"").toLowerCase().replace(/[\s\n\r]+/g," ").replace(/[\u00e0\u00e1\u00e2\u00e3]/g,"a").replace(/[\u00e8\u00e9\u00ea\u00eb]/g,"e").replace(/[\u00ec\u00ed\u00ee\u00ef]/g,"i").replace(/[\u00f2\u00f3\u00f4\u00f5]/g,"o").replace(/[\u00f9\u00fa\u00fb\u00fc]/g,"u").replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();}
+        var pats=[];for(var i=0;i<arguments.length;i++){var p=_intNorm(arguments[i]);if(p)pats.push(p);}
+        // Pass 1: match come parola intera (delimitata da inizio/fine o spazio)
         for(var ci=0;ci<INT_HDR.length;ci++){
-          var h=_norm(INT_HDR[ci]);
-          if(!h)continue;
-          for(var i=0;i<arguments.length;i++){
-            var pat=_norm(arguments[i]);
-            if(pat&&h.indexOf(pat)>=0)return ci;
+          var h=_intNorm(INT_HDR[ci]);if(!h)continue;
+          var hw=" "+h+" ";
+          for(var pi=0;pi<pats.length;pi++){
+            if(hw.indexOf(" "+pats[pi]+" ")>=0)return ci;
+          }
+        }
+        // Pass 2: match come INIZIO di una parola (prefix word)
+        for(var ci=0;ci<INT_HDR.length;ci++){
+          var h=_intNorm(INT_HDR[ci]);if(!h)continue;
+          var hw=" "+h+" ";
+          for(var pi=0;pi<pats.length;pi++){
+            if(hw.indexOf(" "+pats[pi])>=0)return ci;
           }
         }
         return -1;
