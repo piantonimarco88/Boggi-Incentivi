@@ -203,13 +203,13 @@ function loadFcVmAnagrafica(file){
       // Mapping negozio → FC/VM — array per supportare più persone per ruolo
       if(tipo==='AREA'){
         if(!FC_MAP[sid])FC_MAP[sid]={fc:[],vm:[],s:sname,tipo:'AREA'};
+        else FC_MAP[sid].tipo='AREA'; // promuove da BDG ad AREA: uno store con dipendenti AREA deve rientrare nel calcolo area
         if(ruolo==='FC'&&FC_MAP[sid].fc.indexOf(matr)<0)FC_MAP[sid].fc.push(matr);
         else if(ruolo==='VM'&&FC_MAP[sid].vm.indexOf(matr)<0)FC_MAP[sid].vm.push(matr);
       } else {
-        // Negozio BDG: forzare sempre tipo='BDG' nel FC_MAP (anche se già esisteva come AREA)
-        // così viene escluso dal calcolo area per tutti i dipendenti
+        // Negozio BDG: crea l'entry solo se non esiste ancora.
+        // NON sovrascrive tipo='AREA' — il premio BDG è calcolato tramite bdg_stores, non da FC_MAP.
         if(!FC_MAP[sid])FC_MAP[sid]={fc:[],vm:[],s:sname,tipo:'BDG'};
-        else FC_MAP[sid].tipo='BDG';
       }
     }
 
