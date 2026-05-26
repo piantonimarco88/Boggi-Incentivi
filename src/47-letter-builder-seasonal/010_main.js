@@ -80,7 +80,16 @@ function buildMidSeasonLetter(e){
   infoFields.forEach(function(p){
     h+='<div class="lt-info-item"><div class="lt-info-label">'+esc(p[0])+'</div><div class="lt-info-val">'+esc(String(p[1]))+'</div></div>';
   });
-  h+='<div class="lt-info-item"><div class="lt-info-label">MID-SEASON MAX (30%)</div>';
+  // === Traduzioni mid-season per riga ===
+  var MID_TR={
+    "ITALIANO":{midMax:"MID-SEASON MAX (30%)",gate:"SBARRAMENTO",status:"STATUS",storeBudget:"Budget Negozio",convRate:"Conversion Rate",passed:"\u2713 SUPERATO \u2014 Premio confermato",failed:"\u2717 NON SUPERATO \u2014 Premio azzerato",checkCons:"Verificato a consuntivo",gateOk:"Sbarramento superato",gateKo:"Sbarramento non superato"},
+    "INGLESE":{midMax:"MID-SEASON MAX (30%)",gate:"GATE",status:"STATUS",storeBudget:"Store Budget",convRate:"Conversion Rate",passed:"\u2713 PASSED \u2014 Bonus confirmed",failed:"\u2717 NOT PASSED \u2014 Bonus zeroed",checkCons:"Verified at year-end",gateOk:"Gate passed",gateKo:"Gate not passed"},
+    "FRANCESE":{midMax:"MID-SEASON MAX (30%)",gate:"SEUIL",status:"STATUT",storeBudget:"Budget Magasin",convRate:"Taux de Conversion",passed:"\u2713 ATTEINT \u2014 Prime confirm\u00e9e",failed:"\u2717 NON ATTEINT \u2014 Prime annul\u00e9e",checkCons:"V\u00e9rifi\u00e9 au consuntivo",gateOk:"Seuil atteint",gateKo:"Seuil non atteint"},
+    "TEDESCO":{midMax:"MID-SEASON MAX (30%)",gate:"SCHWELLE",status:"STATUS",storeBudget:"Store-Budget",convRate:"Conversion Rate",passed:"\u2713 ERREICHT \u2014 Pr\u00e4mie best\u00e4tigt",failed:"\u2717 NICHT ERREICHT \u2014 Pr\u00e4mie auf null",checkCons:"Bei Jahresabschluss gepr\u00fcft",gateOk:"Schwelle erreicht",gateKo:"Schwelle nicht erreicht"},
+    "SPAGNOLO":{midMax:"MID-SEASON MAX (30%)",gate:"BARRERA",status:"ESTADO",storeBudget:"Presupuesto Tienda",convRate:"Tasa de Conversi\u00f3n",passed:"\u2713 SUPERADO \u2014 Premio confirmado",failed:"\u2717 NO SUPERADO \u2014 Premio anulado",checkCons:"Verificado en consuntivo",gateOk:"Barrera superada",gateKo:"Barrera no superada"}
+  };
+  var M=MID_TR[lang]||MID_TR["INGLESE"];
+  h+='<div class="lt-info-item"><div class="lt-info-label">'+esc(M.midMax)+'</div>';
   h+='<div class="lt-info-val" style="color:#c9a96e;font-weight:800">'+fc(Math.round(base*100)/100,cu)+' \u00d7 30% = '+fc(midMax,cu)+'</div></div>';
   h+='</div>';
 
@@ -142,16 +151,16 @@ function buildMidSeasonLetter(e){
   var sbarCols=isP?'1fr 100px 80px':'1fr 100px 100px 60px 80px';
   h+='<div class="lt-kpi" style="margin-top:16px">';
   h+='<div class="lt-kpi-head" style="background:#2c2925;color:#c9a96e;grid-template-columns:'+sbarCols+';padding:8px 14px">'+
-     '<span>SBARRAMENTO</span><span style="text-align:right">'+T.target+'</span>'+
+     '<span>'+esc(M.gate)+'</span><span style="text-align:right">'+T.target+'</span>'+
      (isP?'':'<span style="text-align:right">'+T.result+'</span><span style="text-align:right">'+T.var_pct+'</span>')+
-     '<span style="text-align:right">STATUS</span></div>';
+     '<span style="text-align:right">'+esc(M.status)+'</span></div>';
 
   // Riga Fatturato
   var storeTgt=stg2.to||0;
   var storeCons=(cn2.sc||0);
   var storeVarPct=storeTgt>0?((storeCons/storeTgt-1)*100):0;
   h+='<div class="lt-kpi-row" style="grid-template-columns:'+sbarCols+'">';
-  h+='<span style="font-weight:600">'+(T.store_budget||"Store Budget")+'</span>';
+  h+='<span style="font-weight:600">'+esc(M.storeBudget)+'</span>';
   h+='<span style="text-align:right;font-size:10px;color:#6b6560">'+(isP?(storeTgt>0?fc(storeTgt,cu):T.target):fc(storeTgt,cu))+'</span>';
   if(!isP){
     h+='<span style="text-align:right;font-size:10px;color:#2c2925">'+fc(storeCons,cu)+'</span>';
@@ -164,7 +173,7 @@ function buildMidSeasonLetter(e){
   var crTgt=crTarget!==null?crTarget:(stg2.cr||null);
   var crRes=crActual!==null?crActual:(cn2.cr||null);
   h+='<div class="lt-kpi-row" style="grid-template-columns:'+sbarCols+';background:#faf9f7">';
-  h+='<span style="font-weight:600">Conversion Rate</span>';
+  h+='<span style="font-weight:600">'+esc(M.convRate)+'</span>';
   h+='<span style="text-align:right;font-size:10px;color:#6b6560">'+(crTgt!==null?fDec(crTgt*100,2)+'%':(isP?T.target:'—'))+'</span>';
   if(!isP){
     h+='<span style="text-align:right;font-size:10px;color:#2c2925">'+(crRes!==null?fDec(crRes*100,2)+'%':'—')+'</span>';
@@ -178,27 +187,28 @@ function buildMidSeasonLetter(e){
 
   // Sbarramento result row
   h+='<div style="padding:8px 14px;background:'+(isP?'#3d3a36':sbarOk?'#2d7a3a':'#c0392b')+';display:flex;justify-content:space-between;align-items:center">';
-  h+='<span style="font-size:10px;font-weight:700;color:#f5f4f1;text-transform:uppercase;letter-spacing:1px">SBARRAMENTO</span>';
+  h+='<span style="font-size:10px;font-weight:700;color:#f5f4f1;text-transform:uppercase;letter-spacing:1px">'+esc(M.gate)+'</span>';
   if(isP){
-    h+='<span style="font-size:12px;color:#a09a92">Verificato a consuntivo</span>';
+    h+='<span style="font-size:12px;color:#a09a92">'+esc(M.checkCons)+'</span>';
   } else {
-    h+='<span style="font-size:14px;font-weight:800;color:#fff">'+(sbarOk?'\u2713 SUPERATO \u2014 Premio confermato':'\u2717 NON SUPERATO \u2014 Premio azzerato')+'</span>';
+    h+='<span style="font-size:14px;font-weight:800;color:#fff">'+esc(sbarOk?M.passed:M.failed)+'</span>';
   }
   h+='</div>';
-  h+='</div>'; // close sbarramento section
+  // (Bugfix v8.39: rimosso un </div> extra che chiudeva prematuramente .lt-body
+  //  facendo finire .lt-total e .lt-footer FUORI dal contenitore .lt \u2192 overflow visivo.)
 
   h+='</div>'; // close lt-body
 
   // Total bar
   h+='<div class="lt-total">';
   h+='<div><div class="lt-total-label">'+(isP?(T.mid_potential||'MID-SEASON POTENTIAL'):(T.mid_earned||'MID-SEASON EARNED'))+'</div>';
-  if(!isP) h+='<div class="lt-total-pct">'+(sbarOk?'Sbarramento superato':'Sbarramento non superato')+'</div>';
+  if(!isP) h+='<div class="lt-total-pct">'+esc(sbarOk?M.gateOk:M.gateKo)+'</div>';
   h+='</div>';
   h+='<div class="lt-total-val">'+fc(kpiEarned,cu)+'</div>';
   h+='</div>';
 
   // Footer
-  h+='<div class="lt-footer">'+esc(getDiscl(e))+'</div>';
+  h+='<div class="lt-footer"><div style="white-space:pre-wrap;word-wrap:break-word">'+esc(getDiscl(e))+'</div></div>';
   h+='</div>'; // close .lt
   return h;
 }
