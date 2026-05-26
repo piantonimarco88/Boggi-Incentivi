@@ -35,13 +35,16 @@ function calcFcVmPremio(matr){
     }
     detail.push({sid:sid,to:to,sc:sc,exclFatt:!!flg.excl_fatt,exclSy:!!flg.excl_sy});
   });
-  // ── Esubero mese precedente (area) ───────────────────────────────────────
+  // ── Esubero mese precedente (area netta) ─────────────────────────────────
+  // I negozi in deficit compensano quelli in surplus: max(0, Σ(cons-target) area)
   var totEsubero=0;
   if(isCons&&Object.keys(FC_PREV_RESULTS).length){
+    var _areaSurplus=0;
     detail.forEach(function(d){
       var prev=FC_PREV_RESULTS[String(d.sid)]||{};
-      if((prev.to_eur||0)>0)totEsubero+=Math.max(0,(prev.sc_eur||0)-(prev.to_eur||0));
+      if((prev.to_eur||0)>0)_areaSurplus+=(prev.sc_eur||0)-(prev.to_eur||0);
     });
+    totEsubero=Math.max(0,_areaSurplus);
   }
   var totConsWithEsub=totCons+totEsubero;
   var pct=totTarget>0?totConsWithEsub/totTarget:0;
