@@ -27,6 +27,16 @@ if(window._autoState){try{
   if(as.vl)VL=as.vl;
   if(as.monthly_syly)MONTHLY_SYLY=as.monthly_syly;
   if(as.monitor_snaps)MONITOR_SNAPS=as.monitor_snaps;
+  // FC+VM: ripristina prima di setPrizeMode (che chiama rAFcvm con lang già popolato)
+  if(as.fc_emp)FC_EMP=as.fc_emp;
+  if(as.fc_map)FC_MAP=as.fc_map;
+  if(as.fc_targets)FC_TARGETS=as.fc_targets;
+  if(as.fc_results)FC_RESULTS=as.fc_results;
+  if(as.fc_syly)FC_SYLY=as.fc_syly;
+  if(as.fc_store_flags)FC_STORE_FLAGS=as.fc_store_flags;
+  if(as.agg_fcvm)AGG_FCVM=as.agg_fcvm;
+  if(as.fc_overrides)FC_OVERRIDES=as.fc_overrides;
+  if(as.fc_prev_results)FC_PREV_RESULTS=as.fc_prev_results;
   delete window._autoState;
 }catch(ex){/* autoState restore failed, use defaults */}}
 // Ensure all RL roles exist in TC (runs ALWAYS, even if autoState restore failed)

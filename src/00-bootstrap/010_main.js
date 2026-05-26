@@ -32,7 +32,8 @@ function _readInitialState(){
 var D;
 try{
   var st=_readInitialState();
-  if(st&&st.v===AUTO_VERSION&&st.D&&Array.isArray(st.D.e)&&st.D.e.length>0){
+  var _fcvmHasData=st&&st.fc_emp&&Object.keys(st.fc_emp).length>0;
+  if(st&&st.v===AUTO_VERSION&&st.D&&(Array.isArray(st.D.e)&&st.D.e.length>0||_fcvmHasData)){
     D=st.D;
     if(!D.t)D.t={};if(!D.c)D.c={};if(!D.s)D.s={};if(!D.v)D.v={};if(!D.tr)D.tr=D_DEFAULT.tr||{};if(!D.usa)D.usa={};if(!D.cs)D.cs={};
     window._autoState=st;
