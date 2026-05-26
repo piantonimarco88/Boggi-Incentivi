@@ -12,8 +12,8 @@
 [Setup]
 AppId={{B0664912-09EE-4501-A6CC-BB6E62695F0F}
 AppName=Boggi Incentivi
-AppVersion=8.33
-AppVerName=Boggi Incentivi 8.33
+AppVersion=8.34
+AppVerName=Boggi Incentivi 8.34
 AppPublisher=Boggi Milano
 AppPublisherURL=https://www.boggi.com/
 AppSupportURL=https://www.boggi.com/

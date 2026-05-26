@@ -557,7 +557,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='8.33'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='8.34'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -4492,26 +4492,66 @@ function loadAnagraficaExcel(file){
       }
       // === END ITALIA BRANCH ===
 
+      // === RILEVAZIONE COLONNE INTERNAZIONALI DAL HEADER ===
+      // Il file HR pu\u00f2 cambiare struttura nel tempo (es. v31.03.2026 aggiunge colonna "Plus" che shifta Budget/Status/Hire).
+      // Rileviamo le colonne per nome di header (lookup parziale, accent-insensitive) con fallback agli indici storici.
+      var INT_HDR=json[hdrRow]||[];
+      function _intFind(){
+        function _norm(s){return String(s||"").toLowerCase().replace(/[\s\n\r]+/g," ").replace(/[\u00e0\u00e1\u00e2\u00e3]/g,"a").replace(/[\u00e8\u00e9\u00ea\u00eb]/g,"e").replace(/[\u00ec\u00ed\u00ee\u00ef]/g,"i").replace(/[\u00f2\u00f3\u00f4\u00f5]/g,"o").replace(/[\u00f9\u00fa\u00fb\u00fc]/g,"u").replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();}
+        for(var ci=0;ci<INT_HDR.length;ci++){
+          var h=_norm(INT_HDR[ci]);
+          if(!h)continue;
+          for(var i=0;i<arguments.length;i++){
+            var pat=_norm(arguments[i]);
+            if(pat&&h.indexOf(pat)>=0)return ci;
+          }
+        }
+        return -1;
+      }
+      var C_ID    =_intFind("id empl","employee id");                       if(C_ID<0)    C_ID=0;
+      var C_ENTE  =_intFind("cod unita locale","cod unit","unit locale");   if(C_ENTE<0)  C_ENTE=2;
+      var C_STORE =_intFind("cod cdc","cod c d c","store id");              if(C_STORE<0) C_STORE=4;
+      var C_SDESC =_intFind("cdc description","store name","negozio");      if(C_SDESC<0) C_SDESC=5;
+      var C_COGN  =_intFind("cognome","surname","last name");                if(C_COGN<0)  C_COGN=6;
+      var C_NOME  =_intFind("nome","first name");                            if(C_NOME<0)  C_NOME=7;
+      var C_JOB   =_intFind("job title","job","ruolo");                      if(C_JOB<0)   C_JOB=8;
+      var C_SAL   =_intFind("salary","stipendio","gross salary");            if(C_SAL<0)   C_SAL=9;
+      // Budget: evitiamo collisione con "Budget Visual in Store"
+      var C_BDG=-1;
+      for(var _bi=0;_bi<INT_HDR.length;_bi++){
+        var _bh=String(INT_HDR[_bi]||"").toLowerCase();
+        if(_bh.indexOf("budget")>=0&&_bh.indexOf("visual")<0&&_bh.indexOf("vis ")<0){C_BDG=_bi;break;}
+      }
+      if(C_BDG<0)C_BDG=10;
+      var C_STATUS=_intFind("active dismissal","active/dismissal","dismissal resignation","status");
+      if(C_STATUS<0)C_STATUS=14;
+      var C_HIRE  =_intFind("data inizio rapporto","data assunzione","hire date","start date");
+      if(C_HIRE<0)C_HIRE=15;
+      var C_EMAIL =_intFind("e mail","email");
+      if(C_EMAIL<0)C_EMAIL=22;
+      var C_FC    =-1;
+      INT_HDR.forEach(function(cell,ci){var s=String(cell||"").toLowerCase().replace(/[\s\n\r]+/g,"");if(s==="fc"||s.indexOf("fieldcoach")>=0||s.indexOf("field coach")>=0)C_FC=ci;});
+
       var imported=[],errors=[];
       for(var ri=hdrRow+1;ri<json.length;ri++){
         var row=json[ri];if(!row)continue;
-        var cdc=row[4];if(!cdc)continue;// Col E = store
+        var cdc=row[C_STORE];if(!cdc)continue;
         cdc=parseInt(cdc);if(isNaN(cdc))continue;
 
-        var cognome=String(row[6]||"").trim();// Col G
-        var nome=String(row[7]||"").trim();// Col H
+        var cognome=String(row[C_COGN]||"").trim();
+        var nome=String(row[C_NOME]||"").trim();
         var fullName=cognome+" "+nome;
         if(!cognome&&!nome)continue;
 
-        // Status filter (Col O = 14): only Active (or empty = treat as active for new hires)
-        var status=String(row[14]||"").trim().toLowerCase();
+        // Status filter: only Active (or empty = treat as active for new hires)
+        var status=String(row[C_STATUS]||"").trim().toLowerCase();
         if(status&&status!=="active"){
-          errors.push({row:ri+1,name:fullName,reason:"Status non Active: "+row[14]});
+          errors.push({row:ri+1,name:fullName,reason:"Status non Active: "+row[C_STATUS]});
           continue;
         }
 
-        // Hire date filter (Col P = 15)
-        var hireDateRaw=row[15];
+        // Hire date filter
+        var hireDateRaw=row[C_HIRE];
         var hireDate=parseHireDate(hireDateRaw);
         if(hireDate&&hireDate.toISOString().slice(0,10)>cutoffDate.toISOString().slice(0,10)){
           var hdStr=hireDate.toISOString().slice(0,10);
@@ -4529,8 +4569,8 @@ function loadAnagraficaExcel(file){
           }
         }
 
-        // Matricola (Col A = 0)
-        var eid=row[0];
+        // Matricola
+        var eid=row[C_ID];
         var matricola;
         if(eid){
           var eidNum=parseInt(String(eid).replace(/[^0-9]/g,""));
@@ -4542,15 +4582,15 @@ function loadAnagraficaExcel(file){
           // Don't skip, import with warning
         }
 
-        // Ente (Col C = 2)
-        var ente=parseInt(row[2])||210;
+        // Ente
+        var ente=parseInt(row[C_ENTE])||210;
         var cuInfo=ENTE_CU[String(ente)]||{cu:"EUR",ex:1};
         // FC per negozio: FC_MAP se disponibile, fallback ENTE_FC[ente]
         var fc="";
         (function(){var _mp=FC_MAP[String(cdc)];if(_mp){var _fa=Array.isArray(_mp.fc)?_mp.fc[0]:_mp.fc;if(_fa&&FC_EMP[_fa]){var _fe=FC_EMP[_fa];fc=_fe.n+' '+_fe.c;return;}}fc=ENTE_FC[String(ente)]||'';})();
 
-        // Job (Col I = 8)
-        var rawJob=row[8]?String(row[8]).trim():"SA";
+        // Job
+        var rawJob=row[C_JOB]?String(row[C_JOB]).trim():"SA";
         var nj=normalizeJob(rawJob);
 
         // Seasonal: solo SM e VSM
@@ -4562,24 +4602,21 @@ function loadAnagraficaExcel(file){
           }
         }
 
-        // Salary (Col J = 9) — handle thousand separators
-        var salStr=String(row[9]||"0").trim();
+        // Salary — handle thousand separators
+        var salStr=String(row[C_SAL]||"0").trim();
         var salary=parseNum(salStr);
         if(salary<=0){errors.push({row:ri+1,name:fullName,reason:"Stipendio zero o mancante"});continue}
 
-        // Budget (Col K = 10)
-        var bdg=parseNum(String(row[10]||"0").trim());
+        // Budget
+        var bdg=parseNum(String(row[C_BDG]||"0").trim());
 
-        // Store name (Col F = 5)
-        var storeDesc=String(row[5]||"").trim();
+        // Store name
+        var storeDesc=String(row[C_SDESC]||"").trim();
         var storeName=(cdc+" "+(storeDesc||"Store "+cdc)).toUpperCase();
 
-        // Rileva colonna Field Coach dall'header (internazionale)
-        var fcColINT=-1;
-        (json[hdrRow]||[]).forEach(function(cell,ci){var s=String(cell||"").toLowerCase().replace(/[\s\n\r]+/g,"");if(s==="fc"||s.indexOf("fieldcoach")>=0||s.indexOf("field coach")>=0||s.indexOf("coach")>=0)fcColINT=ci;});
-        // Email — rileva colonna dall'header, fallback W(22)
-        var emailCol=22;
-        (json[hdrRow]||[]).forEach(function(cell,ci){var s=String(cell||"").toLowerCase().replace(/[\s\n\r]+/g,"");if(s.indexOf("email")>=0||s.indexOf("e-mail")>=0)emailCol=ci;});
+        // FC + email columns rilevate sopra dal header
+        var fcColINT=C_FC;
+        var emailCol=C_EMAIL;
         var email=String(row[emailCol]||"").trim().replace(/[\s\n\r]+/g,"");
 
         var emp={
