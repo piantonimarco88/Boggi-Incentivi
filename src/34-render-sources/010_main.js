@@ -272,7 +272,7 @@ function rSources(){try{
   document.querySelectorAll("select[data-dr]").forEach(function(sel){sel.onchange=function(){var id=sel.getAttribute("data-dr");DATA_REQS.forEach(function(d){if(d.id===id)d.srcType=sel.value||null});markDirty();rSources()}});
   document.querySelectorAll("input[data-dr]").forEach(function(inp){inp.onchange=function(){var id=inp.getAttribute("data-dr"),f=inp.getAttribute("data-field");DATA_REQS.forEach(function(d){if(d.id===id){if(f==="path")d.srcPath=inp.value||null;else if(f==="sheet")d.src=inp.value||null}});markDirty()}});
 }catch(ex){console.error("rSources error:",ex);var _p4=document.getElementById("p4");if(_p4)_p4.innerHTML='<div style="padding:20px;color:#cf5b5b">Errore rendering Fonti Dati: '+ex.message+(ex.stack?'<br><details style="margin-top:8px"><summary style="cursor:pointer;font-size:10px">Dettagli tecnici</summary><pre style="font-size:9px;white-space:pre-wrap;color:#a09a92">'+ex.stack+'</pre></details>':'')+'</div>';}}
-rSources();
+try{ rSources(); }catch(_e){ try{setTimeout(rSources,0)}catch(_e2){} }
 
 // ==== TAB 7: NEGOZI (Store Settings) ====
 var storeFilter="";

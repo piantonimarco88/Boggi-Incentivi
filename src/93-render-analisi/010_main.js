@@ -76,4 +76,8 @@ function rA(){
   document.querySelectorAll(".gbtn[data-g]").forEach(function(b){b.onclick=function(){aG=b.getAttribute("data-g");rA()}});
   document.querySelectorAll("#atbl th[data-ac]").forEach(function(th){th.onclick=function(){var c=th.getAttribute("data-ac");if(aSort.col===c)aSort.dir*=-1;else{aSort.col=c;aSort.dir=-1}rA()}});
 }
-rA();
+// rA() chiama renderMonitorSection() definita in uno <script> successivo —
+// se eseguito a parse-time del primo <script>, quella funzione non esiste ancora
+// e l'eccezione bloccherebbe il resto del blocco (compresa la var ENTE_CU).
+// Defer al successivo tick: a quel punto tutti gli <script> sono stati eseguiti.
+try{ if(typeof renderMonitorSection==="function") rA(); else setTimeout(rA,0); }catch(_e){ try{setTimeout(rA,0)}catch(_e2){} }

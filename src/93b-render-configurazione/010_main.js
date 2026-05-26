@@ -456,4 +456,6 @@ function seasLiveUpdate(m){
 
 function pRow(pk,l,d,dv,u,step){return'<div class="cfg-row"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">'+esc(l)+"</span>"+(d?'<span style="font-size:9px;color:#a09a92">'+esc(d)+"</span>":"")+"</div>"+'<div style="display:flex;align-items:center;gap:4px"><input class="cfg-input" style="width:75px" type="number" data-pk="'+pk+'" value="'+dv+'" step="'+(step||1)+'" min="0"><span style="font-size:10px;color:#8a8680">'+u+"</span></div></div>"}
 function usaRow(role,key,l,d,dv,u,step){return'<div class="cfg-row"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">'+esc(l)+"</span>"+(d?'<span style="font-size:9px;color:#a09a92">'+esc(d)+"</span>":"")+"</div>"+'<div style="display:flex;align-items:center;gap:4px"><input class="cfg-input" style="width:75px" type="number" data-ur="'+esc(role)+'" data-uk="'+key+'" value="'+dv+'" step="'+(step||1)+'" min="0"><span style="font-size:10px;color:#8a8680">'+u+"</span></div></div>"}
-rT();updateHeader();
+// Defer per evitare race con funzioni definite in <script> successivi (vedi nota in 93-render-analisi).
+try{ rT(); }catch(_e){ try{setTimeout(rT,0)}catch(_e2){} }
+try{ updateHeader(); }catch(_e){ try{setTimeout(updateHeader,0)}catch(_e2){} }

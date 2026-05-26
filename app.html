@@ -557,7 +557,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='8.36'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='8.37'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -1404,8 +1404,8 @@ function rC(){
   _ovToggle("data-ov-rid","ov_rid");
   _ovToggle("data-ov-wg","ov_wg");
 }
-rC();
-updateAggiunteTabVisibility();
+try{ rC(); }catch(_e){ try{setTimeout(rC,0)}catch(_e2){} }
+try{ updateAggiunteTabVisibility(); }catch(_e){ try{setTimeout(updateAggiunteTabVisibility,0)}catch(_e2){} }
 
 // === EXPORT EXCEL (matching TESTATA template) ===
 function exportExcel(){
@@ -2619,7 +2619,7 @@ function sL(mm){
   }
   document.getElementById("lc").innerHTML=isUSA(e.si,e)?buildLetterUSA(e):buildLetter(e);
 }
-rL();
+try{ rL(); }catch(_e){ try{setTimeout(rL,0)}catch(_e2){} }
 
 </script>
 <script>
@@ -3212,7 +3212,11 @@ function rA(){
   document.querySelectorAll(".gbtn[data-g]").forEach(function(b){b.onclick=function(){aG=b.getAttribute("data-g");rA()}});
   document.querySelectorAll("#atbl th[data-ac]").forEach(function(th){th.onclick=function(){var c=th.getAttribute("data-ac");if(aSort.col===c)aSort.dir*=-1;else{aSort.col=c;aSort.dir=-1}rA()}});
 }
-rA();
+// rA() chiama renderMonitorSection() definita in uno <script> successivo —
+// se eseguito a parse-time del primo <script>, quella funzione non esiste ancora
+// e l'eccezione bloccherebbe il resto del blocco (compresa la var ENTE_CU).
+// Defer al successivo tick: a quel punto tutti gli <script> sono stati eseguiti.
+try{ if(typeof renderMonitorSection==="function") rA(); else setTimeout(rA,0); }catch(_e){ try{setTimeout(rA,0)}catch(_e2){} }
 
 // ==== TAB 5: AGGIUNTE (editable manual adjustments) ====
 var aggFilter="";
@@ -4203,7 +4207,9 @@ function seasLiveUpdate(m){
 
 function pRow(pk,l,d,dv,u,step){return'<div class="cfg-row"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">'+esc(l)+"</span>"+(d?'<span style="font-size:9px;color:#a09a92">'+esc(d)+"</span>":"")+"</div>"+'<div style="display:flex;align-items:center;gap:4px"><input class="cfg-input" style="width:75px" type="number" data-pk="'+pk+'" value="'+dv+'" step="'+(step||1)+'" min="0"><span style="font-size:10px;color:#8a8680">'+u+"</span></div></div>"}
 function usaRow(role,key,l,d,dv,u,step){return'<div class="cfg-row"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">'+esc(l)+"</span>"+(d?'<span style="font-size:9px;color:#a09a92">'+esc(d)+"</span>":"")+"</div>"+'<div style="display:flex;align-items:center;gap:4px"><input class="cfg-input" style="width:75px" type="number" data-ur="'+esc(role)+'" data-uk="'+key+'" value="'+dv+'" step="'+(step||1)+'" min="0"><span style="font-size:10px;color:#8a8680">'+u+"</span></div></div>"}
-rT();updateHeader();
+// Defer per evitare race con funzioni definite in <script> successivi (vedi nota in 93-render-analisi).
+try{ rT(); }catch(_e){ try{setTimeout(rT,0)}catch(_e2){} }
+try{ updateHeader(); }catch(_e){ try{setTimeout(updateHeader,0)}catch(_e2){} }
 
 // ==== TAB 4: FONTI DATI ====
 var SRC_TYPES=[{k:"excel_local",l:"Excel Locale",icon:"\ud83d\udcc1"},{k:"excel_net",l:"Excel Rete",icon:"\ud83c\udf10"},{k:"gsheet",l:"Google Sheets",icon:"\ud83d\udfe9"},{k:"api",l:"API",icon:"\u26a1"},{k:"db",l:"Database",icon:"\ud83d\uddc4"}];
@@ -5962,7 +5968,7 @@ function rSources(){try{
   document.querySelectorAll("select[data-dr]").forEach(function(sel){sel.onchange=function(){var id=sel.getAttribute("data-dr");DATA_REQS.forEach(function(d){if(d.id===id)d.srcType=sel.value||null});markDirty();rSources()}});
   document.querySelectorAll("input[data-dr]").forEach(function(inp){inp.onchange=function(){var id=inp.getAttribute("data-dr"),f=inp.getAttribute("data-field");DATA_REQS.forEach(function(d){if(d.id===id){if(f==="path")d.srcPath=inp.value||null;else if(f==="sheet")d.src=inp.value||null}});markDirty()}});
 }catch(ex){console.error("rSources error:",ex);var _p4=document.getElementById("p4");if(_p4)_p4.innerHTML='<div style="padding:20px;color:#cf5b5b">Errore rendering Fonti Dati: '+ex.message+(ex.stack?'<br><details style="margin-top:8px"><summary style="cursor:pointer;font-size:10px">Dettagli tecnici</summary><pre style="font-size:9px;white-space:pre-wrap;color:#a09a92">'+ex.stack+'</pre></details>':'')+'</div>';}}
-rSources();
+try{ rSources(); }catch(_e){ try{setTimeout(rSources,0)}catch(_e2){} }
 
 // ==== TAB 7: NEGOZI (Store Settings) ====
 var storeFilter="";

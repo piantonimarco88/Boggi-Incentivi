@@ -781,7 +781,7 @@ function sL(mm){
   }
   document.getElementById("lc").innerHTML=isUSA(e.si,e)?buildLetterUSA(e):buildLetter(e);
 }
-rL();
+try{ rL(); }catch(_e){ try{setTimeout(rL,0)}catch(_e2){} }
 
 </script>
 <script>
