@@ -62,11 +62,13 @@ function rSources(){try{
         var hasNF=cKeys.some(function(k){return(D.cs[k].nf||0)>0});
         var hasCR=cKeys.some(function(k){return D.cs[k].cr!=null&&D.cs[k].cr>0});
         var hasSAS=cKeys.some(function(k){return(D.cs[k].s4||0)>0});
+        var hasAV=cKeys.some(function(k){return D.cs[k].av!=null&&D.cs[k].av>0});
         checks.push({l:"Consuntivo Fatturato",ok:hasSC,v:hasSC?cKeys.length+" neg.":"Da caricare"});
         checks.push({l:"Consuntivo CR (sbarramento)",ok:hasCR,v:hasCR?"OK":"⚠ Richiesto per sbarramento"});
         checks.push({l:"Consuntivo SY",ok:hasSY,v:hasSY?"OK":"Da caricare"});
         checks.push({l:"Consuntivo Subscription Rate",ok:hasNF,v:hasNF?"OK":"Da caricare"});
         checks.push({l:"Consuntivo SAS",ok:hasSAS,v:hasSAS?"OK":"Da caricare"});
+        checks.push({l:"Consuntivo Accuracy",ok:hasAV,v:hasAV?"OK":"Da caricare"});
         // Inventario NON richiesto in mid-season
         checks.push({l:"Inventario",ok:true,v:"Non richiesto (mid-season)"});
       }
