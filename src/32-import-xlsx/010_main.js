@@ -381,7 +381,11 @@ function loadAnagraficaExcel(file){
 
       showImportReport(imported,errors,sheet,file.name,cutoffStr);
 
-    }catch(ex){alert("Errore lettura: "+ex.message)}
+    }catch(ex){
+      var stk=(ex&&ex.stack)?String(ex.stack).split("\n").slice(0,5).join("\n"):"(no stack)";
+      console.error("Errore import anagrafica:",ex);
+      alert("Errore lettura: "+ex.message+"\n\nStack:\n"+stk);
+    }
   },50)};
   reader.readAsArrayBuffer(file);
 }

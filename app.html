@@ -557,7 +557,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='8.34'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='8.35'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -4646,7 +4646,11 @@ function loadAnagraficaExcel(file){
 
       showImportReport(imported,errors,sheet,file.name,cutoffStr);
 
-    }catch(ex){alert("Errore lettura: "+ex.message)}
+    }catch(ex){
+      var stk=(ex&&ex.stack)?String(ex.stack).split("\n").slice(0,5).join("\n"):"(no stack)";
+      console.error("Errore import anagrafica:",ex);
+      alert("Errore lettura: "+ex.message+"\n\nStack:\n"+stk);
+    }
   },50)};
   reader.readAsArrayBuffer(file);
 }
