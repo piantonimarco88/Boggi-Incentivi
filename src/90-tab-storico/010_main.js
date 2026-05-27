@@ -10,6 +10,7 @@
 // Ritorna stringa JSON con meta + array employees con dettagli calcolo.
 function buildSnapshotForHistory(){
   try{
+    var isFcvm=PRIZE_MODE==="fcvm";
     var snap={
       schema_version:1,
       saved_at:new Date().toISOString(),
@@ -23,39 +24,64 @@ function buildSnapshotForHistory(){
         year:CFG_YEAR,
         season:(typeof CFG_SEASON!=="undefined"?CFG_SEASON:null)
       },
-      params:JSON.parse(JSON.stringify(PARAMS||{})),
-      n_employees:(E||[]).length,
+      params:isFcvm
+        ?JSON.parse(JSON.stringify(FCVM_PARAMS||{}))
+        :JSON.parse(JSON.stringify(PARAMS||{})),
+      n_employees:isFcvm?Object.keys(FC_EMP||{}).length:(E||[]).length,
       employees:[]
     };
-    (E||[]).forEach(function(e){
-      var t=0;try{t=calcE(e)||0}catch(ex){}
-      var t_eur=0;try{t_eur=(typeof calcEUR==="function"?calcEUR(e):t)||0}catch(ex){t_eur=t;}
-      var emp={
-        m:e.m, c:e.c, n:e.n,
-        s:e.s, si:e.si,
-        j:e.j, f:e.f,
-        cu:e.cu||"EUR",
-        ex:(typeof e.ex==="number"?e.ex:1),
-        ml:e.ml||0,
-        ps:e.ps==="SI",
-        tl:t,
-        tl_eur:t_eur,
-        agg:(typeof aggTotal==="function"?aggTotal(e.m):0)
-      };
-      // KPI breakdown (solo valori non-zero, per compattezza)
-      var kpi={};
-      if(typeof IT!=="undefined" && Array.isArray(IT)){
-        IT.forEach(function(it){
-          if(it.k==="vi")return;
-          try{
-            var raw=(typeof getVal==="function")?getVal(e,it.k):0;
-            if(raw)kpi[it.k]={v:raw,on:(typeof isOn==="function"?isOn(e.j,it.k):true)};
-          }catch(ex){}
+
+    if(isFcvm){
+      // ── Snapshot FC+VM ──────────────────────────────────────────────────
+      Object.values(FC_EMP||{}).forEach(function(emp){
+        var r={};try{r=calcFcVmPremio(emp.m)||{};}catch(ex){}
+        var exR=(typeof getFcVmExRate==="function")?getFcVmExRate(emp.cu||"EUR"):1;
+        var agg=Math.round((AGG_FCVM[emp.m]||0)*exR*100)/100;
+        var tl_eur=(r.hasBdg?r.totalPremioEur:r.premio_eur)||0;
+        tl_eur=Math.round((tl_eur+agg)*100)/100;
+        snap.employees.push({
+          m:emp.m, c:emp.c, n:emp.n,
+          s:emp.s||"", si:emp.si||"",
+          j:emp.j, f:emp.j,
+          cu:"EUR", ex:1,          // importo già in EUR
+          tl:tl_eur, tl_eur:tl_eur,
+          esito:r.esito||"",
+          pct:r.pct||0,
+          agg:AGG_FCVM[emp.m]||0,
+          kpi:{}
         });
-      }
-      emp.kpi=kpi;
-      snap.employees.push(emp);
-    });
+      });
+    } else {
+      // ── Snapshot Mensile / Seasonal ─────────────────────────────────────
+      (E||[]).forEach(function(e){
+        var t=0;try{t=calcE(e)||0}catch(ex){}
+        var t_eur=0;try{t_eur=(typeof calcEUR==="function"?calcEUR(e):t)||0}catch(ex){t_eur=t;}
+        var emp={
+          m:e.m, c:e.c, n:e.n,
+          s:e.s, si:e.si,
+          j:e.j, f:e.f,
+          cu:e.cu||"EUR",
+          ex:(typeof e.ex==="number"?e.ex:1),
+          ml:e.ml||0,
+          ps:e.ps==="SI",
+          tl:t,
+          tl_eur:t_eur,
+          agg:(typeof aggTotal==="function"?aggTotal(e.m):0)
+        };
+        var kpi={};
+        if(typeof IT!=="undefined" && Array.isArray(IT)){
+          IT.forEach(function(it){
+            if(it.k==="vi")return;
+            try{
+              var raw=(typeof getVal==="function")?getVal(e,it.k):0;
+              if(raw)kpi[it.k]={v:raw,on:(typeof isOn==="function"?isOn(e.j,it.k):true)};
+            }catch(ex){}
+          });
+        }
+        emp.kpi=kpi;
+        snap.employees.push(emp);
+      });
+    }
     return JSON.stringify(snap);
   }catch(ex){
     console.error("buildSnapshotForHistory:",ex);
@@ -64,9 +90,6 @@ function buildSnapshotForHistory(){
 }
 
 // Costruisce una label compatta per il periodo dello snapshot.
-// Formati:
-//   mensile/fcvm: "MM/YYYY (Cons)" | "MM/YYYY (Prev)" | "MM/YYYY (FCC)" ...
-//   seasonal:     "SS26 (Cons)" ecc.
 function makePeriodKey(snap){
   var mode=snap.mode==="consuntivo"?"C":"P";
   if(snap.prize_mode==="seasonal"){
@@ -124,17 +147,41 @@ function rStorico(){
   window.chrome.webview.postMessage({type:"listSnapshots"});
 }
 
-// Aggrega gli snapshot caricati per matricola e renderizza una tabella
-// dipendenti x periodi, con delta % rispetto al periodo precedente.
+// Aggrega gli snapshot filtrati per modalità corrente (PRIZE_MODE) e renderizza
+// una tabella dipendenti x periodi con delta % rispetto al periodo precedente.
 function renderStoricoTable(container, snapshots){
-  // Aggregazione
+  var fileNames=Object.keys(snapshots).sort();
+
+  // ── Filtra per modalità corrente ────────────────────────────────────────
+  var currentMode=PRIZE_MODE||"mensile";
+  var filtered={};
+  var modesAvail=[];
+  fileNames.forEach(function(fn){
+    var s=snapshots[fn];
+    if(!s)return;
+    var pm=s.prize_mode||"mensile";
+    if(modesAvail.indexOf(pm)<0)modesAvail.push(pm);
+    if(pm===currentMode)filtered[fn]=s;
+  });
+  var filteredNames=Object.keys(filtered).sort();
+
+  if(!filteredNames.length){
+    var modeLabel={"mensile":"Mensile","fcvm":"FC+VM","seasonal":"Seasonal Bonus"};
+    var others=modesAvail.filter(function(m){return m!==currentMode;})
+      .map(function(m){return modeLabel[m]||m;}).join(", ");
+    container.innerHTML='<div style="padding:24px;color:#a09a92">'
+      +'Nessuno snapshot in modalità <b>'+(modeLabel[currentMode]||currentMode)+'</b>.<br>'
+      +(others?'Snapshot disponibili per: <b>'+esc(others)+'</b>. Cambia modalità o genera i PDF in questa modalità.<br>':'')
+      +'<br>Lo storico si popola automaticamente dopo ogni "Salva Tutti i PDF".</div>';
+    return;
+  }
+
+  // ── Aggregazione ────────────────────────────────────────────────────────
   var byMatr={};
   var periodKeys=[];
   var seen={};
-  // Ordino i filename: piu` vecchi a sinistra (filename inizia con data ordinabile)
-  var fileNames=Object.keys(snapshots).sort();
-  fileNames.forEach(function(fn){
-    var s=snapshots[fn];
+  filteredNames.forEach(function(fn){
+    var s=filtered[fn];
     if(!s||!s.employees)return;
     var pk=makePeriodKey(s);
     if(!seen[pk]){seen[pk]=true;periodKeys.push(pk);}
@@ -149,17 +196,26 @@ function renderStoricoTable(container, snapshots){
   var rows=Object.keys(byMatr).map(function(k){return byMatr[k];})
     .sort(function(a,b){return (a.c||"").localeCompare(b.c||"");});
 
-  // Render — stile chiaro coerente con tabelle Calcolo Premi/Analisi
+  // ── Render ──────────────────────────────────────────────────────────────
+  var modeLabels={"mensile":"Mensile","fcvm":"FC+VM","seasonal":"Seasonal Bonus"};
   var h='<div style="padding:12px">';
+  // Badge modalità
+  h+='<div style="margin-bottom:10px;display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:#f0ede8;border:1px solid #e5e1db;border-radius:6px;font-size:11px;color:#6b6560">';
+  h+='Storico modalità: <b style="color:#2c2925">'+(modeLabels[currentMode]||currentMode)+'</b>';
+  if(modesAvail.length>1){
+    var oth=modesAvail.filter(function(m){return m!==currentMode;}).map(function(m){return modeLabels[m]||m;}).join(", ");
+    h+='<span style="color:#a09a92;font-size:10px">(altri disponibili: '+esc(oth)+')</span>';
+  }
+  h+='</div>';
   h+='<div class="flt">';
   h+='<input id="storicoSearch" placeholder="Cerca matricola / cognome / nome...">';
-  h+='<span style="font-size:11px;color:#8a8680;white-space:nowrap">'+rows.length+' dipendenti · '+periodKeys.length+' periodi · '+fileNames.length+' snapshot</span>';
+  h+='<span style="font-size:11px;color:#8a8680;white-space:nowrap">'+rows.length+' dipendenti · '+periodKeys.length+' periodi · '+filteredNames.length+' snapshot</span>';
   h+='</div>';
   if(periodKeys.length===0){
     h+='<div style="padding:20px;color:#8a8680">Nessun periodo disponibile.</div></div>';
     container.innerHTML=h;return;
   }
-  h+='<div class="scroll-wrap" style="max-height:calc(100vh - 220px)">';
+  h+='<div class="scroll-wrap" style="max-height:calc(100vh - 240px)">';
   h+='<table style="min-width:900px">';
   h+='<thead><tr>';
   ["Matr.","Cognome","Nome","Ruolo","Store"].forEach(function(c){
