@@ -27,6 +27,7 @@ var SIM_FCVM_PARAM_DEFS=[
 
 var _SIM_ORIG_PARAMS=null, _SIM_CURRENT=null;
 var _SIM_FCVM_ORIG=null,   _SIM_FCVM_CUR=null;
+var _SIM_SEAS_ORIG=null,   _SIM_SEAS_CUR=null;
 var _SIM_DEBOUNCE_TIMER=null;
 
 // ── Calc mensile ──────────────────────────────────────────────────────────
@@ -76,6 +77,51 @@ function _simCountChangesFcvm(origP,simP){
     FCVM_PARAMS=simP; var s=pool.map(function(emp){var r=calcFcVmPremio(emp.m);return r.hasBdg?r.totalPremioEur:r.premio_eur;});
     var n=0;for(var i=0;i<o.length;i++){if(Math.abs(s[i]-o[i])>0.01)n++;}return n;
   }finally{FCVM_PARAMS=orig;}
+}
+
+// ── Calc Seasonal ─────────────────────────────────────────────────────────
+// Clone profondo di SEAS_CFG che preserva i valori Infinity (non serializzabili via JSON)
+function _simCloneSeasCfg(cfg){
+  return {
+    basePct:cfg.basePct,
+    sasMaxHours:cfg.sasMaxHours,
+    kpi:cfg.kpi.map(function(k){return{k:k.k,label:k.label,weight:k.weight,threshold:k.threshold};}),
+    kpi_nosas:cfg.kpi_nosas.map(function(k){return{k:k.k,label:k.label,weight:k.weight,threshold:k.threshold};}),
+    kpi_noacc:cfg.kpi_noacc.map(function(k){return{k:k.k,label:k.label,weight:k.weight,threshold:k.threshold};}),
+    molt_turnover:cfg.molt_turnover.map(function(r){return{from:r.from,to:r.to,coeff:r.coeff,label:r.label||""};}),
+    molt_inventario:cfg.molt_inventario.map(function(r){return{from:r.from,to:r.to,coeff:r.coeff,label:r.label||""};})
+  };
+}
+function _simComputePayoutSeasonal(simCfg){
+  if(typeof SEAS_CFG==="undefined"||!Array.isArray(E)||!E.length)return null;
+  var pool=E.filter(isSMVSM);
+  if(!pool.length)return null;
+  var orig=SEAS_CFG;
+  try{
+    SEAS_CFG=simCfg;
+    var tot=0,n=0,byR={};
+    var isMid=SEASON_PERIOD==="mid";
+    pool.forEach(function(e){
+      if(SEAS[e.m]&&SEAS[e.m].excluded)return;
+      var v=0;try{v=(isMid?calcMidSeason(e):calcSeasonal(e))*(e.ex||1);}catch(ex){}
+      tot+=v;if(v>0.01)n++;
+      var r=e.f||e.j||"(altro)";if(!byR[r])byR[r]={tot:0,n:0};byR[r].tot+=v;byR[r].n++;
+    });
+    return{totEur:tot,nWithPremio:n,byRole:byR};
+  }finally{SEAS_CFG=orig;}
+}
+function _simCountChangesSeasonal(origCfg,simCfg){
+  if(!Array.isArray(E)||!E.length)return 0;
+  var pool=E.filter(isSMVSM);
+  var orig=SEAS_CFG;
+  try{
+    var isMid=SEASON_PERIOD==="mid";
+    SEAS_CFG=origCfg;
+    var o=pool.map(function(e){if(SEAS[e.m]&&SEAS[e.m].excluded)return 0;try{return(isMid?calcMidSeason(e):calcSeasonal(e))*(e.ex||1);}catch(ex){return 0;}});
+    SEAS_CFG=simCfg;
+    var s=pool.map(function(e){if(SEAS[e.m]&&SEAS[e.m].excluded)return 0;try{return(isMid?calcMidSeason(e):calcSeasonal(e))*(e.ex||1);}catch(ex){return 0;}});
+    var n=0;for(var i=0;i<o.length;i++){if(Math.abs(s[i]-o[i])>0.01)n++;}return n;
+  }finally{SEAS_CFG=orig;}
 }
 
 // ── Helpers render comuni ─────────────────────────────────────────────────
@@ -131,11 +177,10 @@ function rSimulatore(){
   if(!p10)return;
 
   // Dispatcher per modalità
-  if(PRIZE_MODE==="fcvm"){
-    _rSimulatoreFcvm(p10);return;
-  }
+  if(PRIZE_MODE==="fcvm"){_rSimulatoreFcvm(p10);return;}
+  if(PRIZE_MODE==="seasonal"){_rSimulatoreSeasonal(p10);return;}
 
-  // Mensile / Seasonal
+  // Mensile
   if(typeof PARAMS==="undefined"||!Array.isArray(E)||E.length===0){
     p10.innerHTML='<div style="padding:24px;color:#8a8680">Caricare prima l\'anagrafica dipendenti (tab Fonti Dati).</div>';
     return;
@@ -145,7 +190,7 @@ function rSimulatore(){
 
   var h='<div style="padding:12px">';
   h+='<div style="background:#faf9f7;border:1px solid #e5e1db;border-radius:6px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#6b6560;line-height:1.5">';
-  h+='<b style="color:#2c2925">Simulatore What-If — Mensile.</b> Muovi gli slider per vedere come cambiano il payout totale e la distribuzione per ruolo. ';
+  h+='<b style="color:#2c2925">Simulatore What-If — Mensile.</b> Muovi gli slider per vedere come cambia il payout totale e la distribuzione per ruolo. ';
   h+='<b>Le modifiche sono solo di anteprima</b> — non vengono salvate nei PARAMS.';
   h+='</div>';
   h+='<div id="simImpactCards"></div>';
@@ -247,6 +292,10 @@ function _simScheduleRecalcFcvm(){
   if(_SIM_DEBOUNCE_TIMER)clearTimeout(_SIM_DEBOUNCE_TIMER);
   _SIM_DEBOUNCE_TIMER=setTimeout(_simRecalcFcvm,150);
 }
+function _simScheduleRecalcSeasonal(){
+  if(_SIM_DEBOUNCE_TIMER)clearTimeout(_SIM_DEBOUNCE_TIMER);
+  _SIM_DEBOUNCE_TIMER=setTimeout(_simRecalcSeasonal,150);
+}
 
 function _simRecalc(){
   var orig=_simComputePayout(_SIM_ORIG_PARAMS);
@@ -254,6 +303,200 @@ function _simRecalc(){
   if(!orig||!sim)return;
   var nChanged=_simCountChanges(_SIM_ORIG_PARAMS,_SIM_CURRENT);
   _simRenderImpact(orig,sim,nChanged,E.length);
+}
+
+// ── Render Seasonal ───────────────────────────────────────────────────────
+function _rSimulatoreSeasonal(p10){
+  if(!Array.isArray(E)||!E.length){
+    p10.innerHTML='<div style="padding:24px;color:#8a8680">Caricare prima l\'anagrafica dipendenti (tab Fonti Dati).</div>';
+    return;
+  }
+  var pool=E.filter(isSMVSM);
+  if(!pool.length){
+    p10.innerHTML='<div style="padding:24px;color:#8a8680">Nessun SM/VSM trovato nell\'anagrafica.</div>';
+    return;
+  }
+  _SIM_SEAS_ORIG=_simCloneSeasCfg(SEAS_CFG);
+  _SIM_SEAS_CUR =_simCloneSeasCfg(SEAS_CFG);
+  var isMid=SEASON_PERIOD==="mid";
+  var modeLabel=isMid?"Mid-Season (30% KPI — no moltiplicatori)":"Full Season";
+  var activeKpis=SEAS_CFG.kpi.filter(function(kd){return kd.weight>0;});
+
+  var h='<div style="padding:12px">';
+  h+='<div style="background:#faf9f7;border:1px solid #e5e1db;border-radius:6px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#6b6560;line-height:1.5">';
+  h+='<b style="color:#2c2925">Simulatore What-If — Seasonal ('+modeLabel+').</b> Muovi gli slider per vedere come cambia il payout SM/VSM. ';
+  h+='<b>Le modifiche sono solo di anteprima</b> — non vengono salvate in SEAS_CFG.';
+  h+='</div>';
+  h+='<div id="simImpactCards"></div>';
+  h+='<div style="background:#fff;border:1px solid #e5e1db;border-radius:6px;padding:16px;margin-bottom:16px">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+  h+='<div style="font-size:11px;color:#6b6560;font-weight:700;text-transform:uppercase;letter-spacing:0.5px">Parametri SEAS_CFG (anteprima)</div>';
+  h+='<button id="simSeasResetBtn" class="exp-btn" style="border-color:#8a8680;color:#8a8680;padding:4px 12px;font-size:11px">↺ Reset</button>';
+  h+='</div>';
+
+  // ── Gruppo: Base ────────────────────────────────────────────────────────
+  h+='<div style="margin-bottom:14px"><div style="font-size:10px;color:#8a8680;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:6px">Base</div>';
+  h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px">';
+  h+='<div style="background:#faf9f7;border:1px solid #e5e1db;border-radius:4px;padding:8px 10px">';
+  h+='<div style="display:flex;justify-content:space-between;font-size:11px;color:#6b6560;margin-bottom:4px">';
+  h+='<span>% Retribuzione semestrale (base)</span><span id="simSeasBpVal" style="font-family:\'DM Sans\',monospace;color:#2c2925;font-weight:600">'+(SEAS_CFG.basePct*100).toFixed(1)+'%</span></div>';
+  h+='<input type="range" id="simSeasBp" min="0.10" max="0.35" step="0.005" value="'+SEAS_CFG.basePct+'" style="width:100%;accent-color:#c9a96e"></div>';
+  h+='</div></div>';
+
+  // ── Gruppo: Soglie KPI ──────────────────────────────────────────────────
+  if(activeKpis.length){
+    h+='<div style="margin-bottom:14px"><div style="font-size:10px;color:#8a8680;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:6px">Soglie KPI</div>';
+    h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px">';
+    activeKpis.forEach(function(kd){
+      h+='<div style="background:#faf9f7;border:1px solid #e5e1db;border-radius:4px;padding:8px 10px">';
+      h+='<div style="display:flex;justify-content:space-between;font-size:11px;color:#6b6560;margin-bottom:4px">';
+      h+='<span>Soglia '+esc(kd.label)+'</span><span id="simSeasKpiVal_'+kd.k+'" style="font-family:\'DM Sans\',monospace;color:#2c2925;font-weight:600">'+(kd.threshold*100).toFixed(1)+'%</span></div>';
+      h+='<input type="range" id="simSeasKpi_'+kd.k+'" min="0.90" max="1.05" step="0.005" value="'+kd.threshold+'" style="width:100%;accent-color:#c9a96e"></div>';
+    });
+    h+='</div></div>';
+  }
+
+  // ── Gruppo: Moltiplicatori Fatturato M1 (solo full season) ──────────────
+  if(!isMid){
+    h+='<div style="margin-bottom:14px"><div style="font-size:10px;color:#8a8680;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:6px">Moltiplicatori Fatturato M1</div>';
+    h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px">';
+    SEAS_CFG.molt_turnover.forEach(function(r,i){
+      h+='<div style="background:#faf9f7;border:1px solid #e5e1db;border-radius:4px;padding:8px 10px">';
+      h+='<div style="display:flex;justify-content:space-between;font-size:11px;color:#6b6560;margin-bottom:4px">';
+      h+='<span>'+esc(r.label||"Fascia "+i)+'</span><span id="simSeasTurnVal_'+i+'" style="font-family:\'DM Sans\',monospace;color:#2c2925;font-weight:600">'+r.coeff.toFixed(2)+'</span></div>';
+      h+='<input type="range" id="simSeasTurn_'+i+'" min="0" max="2.0" step="0.05" value="'+r.coeff+'" style="width:100%;accent-color:#c9a96e"></div>';
+    });
+    h+='</div></div>';
+
+    // ── Gruppo: Moltiplicatori Inventario M2 (solo full season) ────────────
+    h+='<div style="margin-bottom:14px"><div style="font-size:10px;color:#8a8680;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:6px">Moltiplicatori Inventario M2</div>';
+    h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px">';
+    SEAS_CFG.molt_inventario.forEach(function(r,i){
+      h+='<div style="background:#faf9f7;border:1px solid #e5e1db;border-radius:4px;padding:8px 10px">';
+      h+='<div style="display:flex;justify-content:space-between;font-size:11px;color:#6b6560;margin-bottom:4px">';
+      h+='<span>'+esc(r.label||"Fascia "+i)+'</span><span id="simSeasInvVal_'+i+'" style="font-family:\'DM Sans\',monospace;color:#2c2925;font-weight:600">'+r.coeff.toFixed(2)+'</span></div>';
+      h+='<input type="range" id="simSeasInv_'+i+'" min="0" max="1.5" step="0.05" value="'+r.coeff+'" style="width:100%;accent-color:#c9a96e"></div>';
+    });
+    h+='</div></div>';
+  }
+
+  h+='<div style="margin-top:16px;font-size:10px;color:#8a8680;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:6px">Impatto per SM/VSM</div>';
+  h+='<div id="simSeasDetail" class="scroll-wrap" style="max-height:320px;border:none"></div>';
+  h+='</div>';
+  h+='<div id="simRoleBreakdown"></div></div>';
+  p10.innerHTML=h;
+
+  // ── Wire-up eventi ──────────────────────────────────────────────────────
+  var bpEl=document.getElementById("simSeasBp");
+  if(bpEl)bpEl.oninput=function(){
+    var v=parseFloat(this.value);_SIM_SEAS_CUR.basePct=v;
+    var lab=document.getElementById("simSeasBpVal");if(lab)lab.textContent=(v*100).toFixed(1)+"%";
+    _simScheduleRecalcSeasonal();
+  };
+  activeKpis.forEach(function(kd){
+    var el=document.getElementById("simSeasKpi_"+kd.k);if(!el)return;
+    el.oninput=function(){
+      var v=parseFloat(this.value);
+      ["kpi","kpi_nosas","kpi_noacc"].forEach(function(sk){
+        _SIM_SEAS_CUR[sk].forEach(function(k2){if(k2.k===kd.k)k2.threshold=v;});
+      });
+      var lab=document.getElementById("simSeasKpiVal_"+kd.k);if(lab)lab.textContent=(v*100).toFixed(1)+"%";
+      _simScheduleRecalcSeasonal();
+    };
+  });
+  if(!isMid){
+    SEAS_CFG.molt_turnover.forEach(function(r,i){
+      var el=document.getElementById("simSeasTurn_"+i);if(!el)return;
+      el.oninput=function(){
+        var v=parseFloat(this.value);_SIM_SEAS_CUR.molt_turnover[i].coeff=v;
+        var lab=document.getElementById("simSeasTurnVal_"+i);if(lab)lab.textContent=v.toFixed(2);
+        _simScheduleRecalcSeasonal();
+      };
+    });
+    SEAS_CFG.molt_inventario.forEach(function(r,i){
+      var el=document.getElementById("simSeasInv_"+i);if(!el)return;
+      el.oninput=function(){
+        var v=parseFloat(this.value);_SIM_SEAS_CUR.molt_inventario[i].coeff=v;
+        var lab=document.getElementById("simSeasInvVal_"+i);if(lab)lab.textContent=v.toFixed(2);
+        _simScheduleRecalcSeasonal();
+      };
+    });
+  }
+  document.getElementById("simSeasResetBtn").onclick=function(){
+    _SIM_SEAS_CUR=_simCloneSeasCfg(_SIM_SEAS_ORIG);
+    // Reset basePct
+    var bpEl2=document.getElementById("simSeasBp"),bpLab=document.getElementById("simSeasBpVal");
+    if(bpEl2)bpEl2.value=_SIM_SEAS_CUR.basePct;if(bpLab)bpLab.textContent=(_SIM_SEAS_CUR.basePct*100).toFixed(1)+"%";
+    // Reset KPI thresholds
+    activeKpis.forEach(function(kd){
+      var origThr=kd.threshold;
+      for(var ki=0;ki<_SIM_SEAS_ORIG.kpi.length;ki++){if(_SIM_SEAS_ORIG.kpi[ki].k===kd.k){origThr=_SIM_SEAS_ORIG.kpi[ki].threshold;break;}}
+      var el2=document.getElementById("simSeasKpi_"+kd.k),lab2=document.getElementById("simSeasKpiVal_"+kd.k);
+      if(el2)el2.value=origThr;if(lab2)lab2.textContent=(origThr*100).toFixed(1)+"%";
+    });
+    // Reset turnover + inventory
+    if(!isMid){
+      _SIM_SEAS_ORIG.molt_turnover.forEach(function(r,i){
+        var el2=document.getElementById("simSeasTurn_"+i),lab2=document.getElementById("simSeasTurnVal_"+i);
+        if(el2)el2.value=r.coeff;if(lab2)lab2.textContent=r.coeff.toFixed(2);
+      });
+      _SIM_SEAS_ORIG.molt_inventario.forEach(function(r,i){
+        var el2=document.getElementById("simSeasInv_"+i),lab2=document.getElementById("simSeasInvVal_"+i);
+        if(el2)el2.value=r.coeff;if(lab2)lab2.textContent=r.coeff.toFixed(2);
+      });
+    }
+    _simRecalcSeasonal();
+  };
+  _simRecalcSeasonal();
+}
+
+function _simRecalcSeasonal(){
+  var orig=_simComputePayoutSeasonal(_SIM_SEAS_ORIG);
+  var sim=_simComputePayoutSeasonal(_SIM_SEAS_CUR);
+  if(!orig||!sim)return;
+  var pool=E.filter(isSMVSM);
+  var nChanged=_simCountChangesSeasonal(_SIM_SEAS_ORIG,_SIM_SEAS_CUR);
+  _simRenderImpact(orig,sim,nChanged,pool.length);
+
+  var isMid=SEASON_PERIOD==="mid";
+  var showExtras=!isMid&&MODE==="consuntivo";
+  var origRef=SEAS_CFG;
+  var detH='<table style="font-size:10px;width:100%"><thead><tr style="background:#f0ede8">';
+  detH+='<th style="padding:4px 8px;text-align:left">Matr.</th><th style="padding:4px 8px;text-align:left">Cognome Nome</th>';
+  detH+='<th style="padding:4px 8px;text-align:left">Negozio</th><th style="padding:4px 8px;text-align:center">Ruolo</th>';
+  if(showExtras){detH+='<th style="padding:4px 8px;text-align:right">Scost.%</th><th style="padding:4px 8px;text-align:center">M1</th><th style="padding:4px 8px;text-align:center">M2</th>';}
+  detH+='<th style="padding:4px 8px;text-align:right">Premio orig. €</th><th style="padding:4px 8px;text-align:right">Premio sim. €</th>';
+  detH+='<th style="padding:4px 8px;text-align:right">Δ €</th></tr></thead><tbody>';
+  pool.forEach(function(e,i){
+    var excl=SEAS[e.m]&&SEAS[e.m].excluded;
+    SEAS_CFG=_SIM_SEAS_ORIG; var pO=excl?0:(isMid?calcMidSeason(e):calcSeasonal(e))*(e.ex||1);
+    SEAS_CFG=_SIM_SEAS_CUR;  var pS=excl?0:(isMid?calcMidSeason(e):calcSeasonal(e))*(e.ex||1);
+    SEAS_CFG=origRef;
+    var dE=pS-pO;
+    var dc=dE>0.5?"#2d7a3a":(dE<-0.5?"#c0392b":"#8a8680");
+    var changed=Math.abs(dE)>0.01;
+    var bg=changed?"#fffbf0":(i%2===0?"#fff":"#faf9f7");
+    detH+='<tr style="background:'+bg+'">';
+    detH+='<td style="padding:3px 8px;font-family:monospace;color:#8a8680">'+esc(String(e.m))+'</td>';
+    detH+='<td style="padding:3px 8px;font-weight:600">'+esc(e.c)+' '+esc(e.n)+'</td>';
+    detH+='<td style="padding:3px 8px;color:#6b6560">'+esc(e.s)+'</td>';
+    detH+='<td style="padding:3px 8px;text-align:center"><span class="bg" style="background:'+(e.f==="SM"?"#c9a96e":"#8a8680")+';color:#fff;padding:1px 5px;border-radius:3px;font-size:9px">'+esc(e.f||e.j)+'</span></td>';
+    if(showExtras){
+      var autoD=seasAutoData(e);
+      var m1=seasMoltTurnover(autoD.scost);
+      var m2=seasMoltInventarioV(autoD.inv);
+      var sc=autoD.scost>=0?"#2d7a3a":"#c0392b";
+      detH+='<td style="padding:3px 8px;text-align:right;font-weight:600;color:'+sc+'">'+autoD.scost.toFixed(1)+'%</td>';
+      detH+='<td style="padding:3px 8px;text-align:center;color:#8a8680">'+m1.toFixed(2)+'</td>';
+      detH+='<td style="padding:3px 8px;text-align:center;color:#8a8680">'+m2.toFixed(2)+'</td>';
+    }
+    detH+='<td style="padding:3px 8px;text-align:right">€'+Math.round(pO).toLocaleString("it-IT")+'</td>';
+    detH+='<td style="padding:3px 8px;text-align:right;font-weight:700;color:#2d7a3a">€'+Math.round(pS).toLocaleString("it-IT")+'</td>';
+    detH+='<td style="padding:3px 8px;text-align:right;font-weight:700;color:'+dc+'">'+(dE>=0?"+":"")+'€'+Math.round(dE).toLocaleString("it-IT")+'</td>';
+    detH+='</tr>';
+  });
+  detH+='</tbody></table>';
+  var el=document.getElementById("simSeasDetail");if(el)el.innerHTML=detH;
 }
 
 function _simRecalcFcvm(){
