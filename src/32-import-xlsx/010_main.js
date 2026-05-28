@@ -38,8 +38,10 @@ function parseNum(s){
 }
 
 // === LOAD ANAGRAFICA FROM EXCEL ===
-// Fixed columns: A(0)=Id Empl, C(2)=Ente, E(4)=Store, F(5)=Store Name, G(6)=Cognome, H(7)=Nome
-// I(8)=Job Title, J(9)=Salary, K(10)=Budget, P(15)=Data inizio rapporto, O(14)=Status, W(22)=Email
+// Nuovo formato HR (foglio "db"): C(2)=dipendente, D(3)=cognome, E(4)=nome, H(7)=data_assunzione,
+// I(8)=data_cessazione, O(14)=CODICE_INTERNO (e.rl/salary), P(15)=AZIENDA_PER_COSTI (e.ib/budget),
+// U(20)=filiale (store_id), V(21)=filiale_descrizione, W(22)=unita_locale (ente→valuta), AX(49)=Cod_Mansione, DJ(113)=residenza_email
+// Vecchio formato (backward compat via header detection): A(0)=Id Empl, C(2)=Ente, E(4)=Store, ...
 function loadAnagraficaExcel(file){
   var reader=new FileReader();
   reader.onload=function(ev){setTimeout(function(){
@@ -254,27 +256,37 @@ function loadAnagraficaExcel(file){
         }
         return -1;
       }
-      var C_ID    =_intFind("id empl","employee id");                       if(C_ID<0)    C_ID=0;
-      var C_ENTE  =_intFind("cod unita locale","cod unit","unit locale");   if(C_ENTE<0)  C_ENTE=2;
-      var C_STORE =_intFind("cod cdc","cod c d c","store id");              if(C_STORE<0) C_STORE=4;
-      var C_SDESC =_intFind("cdc description","store name","negozio");      if(C_SDESC<0) C_SDESC=5;
-      var C_COGN  =_intFind("cognome","surname","last name");                if(C_COGN<0)  C_COGN=6;
-      var C_NOME  =_intFind("nome","first name");                            if(C_NOME<0)  C_NOME=7;
-      var C_JOB   =_intFind("job title","job","ruolo");                      if(C_JOB<0)   C_JOB=8;
-      var C_SAL   =_intFind("salary","stipendio","gross salary");            if(C_SAL<0)   C_SAL=9;
-      // Budget: evitiamo collisione con "Budget Visual in Store"
+      // Nuovo formato HR: dipendente(C2), cognome(D3), nome(E4), data_assunzione(H7), data_cessazione(I8),
+      // CODICE_INTERNO(O14)=salary, AZIENDA_PER_COSTI(P15)=budget, filiale(U20), filiale_descrizione(V21),
+      // unita_locale(W22)=ente/valuta, Cod_Mansione(AX49), residenza_email(DJ113)
+      var C_ID    =_intFind("dipendente","id empl","employee id");                              if(C_ID<0)    C_ID=2;
+      var C_ENTE  =_intFind("unita locale","cod unita locale","cod unit","unit locale");        if(C_ENTE<0)  C_ENTE=22;
+      var C_STORE =_intFind("filiale","cod cdc","cod c d c","store id");                        if(C_STORE<0) C_STORE=20;
+      var C_SDESC =_intFind("filiale descrizione","cdc description","store name","negozio");    if(C_SDESC<0) C_SDESC=21;
+      var C_COGN  =_intFind("cognome","surname","last name");                                    if(C_COGN<0)  C_COGN=3;
+      var C_NOME  =_intFind("nome","first name");                                                if(C_NOME<0)  C_NOME=4;
+      var C_JOB   =_intFind("cod mansione","job title","job","ruolo");                           if(C_JOB<0)   C_JOB=49;
+      var C_SAL   =_intFind("codice interno","salary","stipendio","gross salary");               if(C_SAL<0)   C_SAL=14;
+      // Budget: nuovo formato = "azienda per costi", vecchio formato = colonna "budget" (escludi "budget visual")
       var C_BDG=-1;
       for(var _bi=0;_bi<INT_HDR.length;_bi++){
-        var _bh=String(INT_HDR[_bi]||"").toLowerCase();
-        if(_bh.indexOf("budget")>=0&&_bh.indexOf("visual")<0&&_bh.indexOf("vis ")<0){C_BDG=_bi;break;}
+        var _bh=_intNorm(INT_HDR[_bi]||"");
+        if(_bh.indexOf("azienda per costi")>=0){C_BDG=_bi;break;}
       }
-      if(C_BDG<0)C_BDG=10;
+      if(C_BDG<0){
+        for(var _bi=0;_bi<INT_HDR.length;_bi++){
+          var _bh=_intNorm(INT_HDR[_bi]||"");
+          if(_bh.indexOf("budget")>=0&&_bh.indexOf("visual")<0&&_bh.indexOf("vis ")<0){C_BDG=_bi;break;}
+        }
+      }
+      if(C_BDG<0)C_BDG=15;
+      // Status (vecchio formato: "Active/Dismissal") — non presente nel nuovo formato, -1 se non trovato
       var C_STATUS=_intFind("active dismissal","active/dismissal","dismissal resignation","status");
-      if(C_STATUS<0)C_STATUS=14;
-      var C_HIRE  =_intFind("data inizio rapporto","data assunzione","hire date","start date");
-      if(C_HIRE<0)C_HIRE=15;
-      var C_EMAIL =_intFind("e mail","email");
-      if(C_EMAIL<0)C_EMAIL=22;
+      if(C_STATUS<0)C_STATUS=-1;
+      // Data assunzione e cessazione
+      var C_HIRE  =_intFind("data assunzione","data inizio rapporto","hire date","start date");  if(C_HIRE<0)C_HIRE=7;
+      var C_TERM  =_intFind("data cessazione","data fine rapporto","termination date","end date"); if(C_TERM<0)C_TERM=-1;
+      var C_EMAIL =_intFind("residenza email","e mail","email");                                  if(C_EMAIL<0)C_EMAIL=113;
       var C_FC    =-1;
       INT_HDR.forEach(function(cell,ci){var s=String(cell||"").toLowerCase().replace(/[\s\n\r]+/g,"");if(s==="fc"||s.indexOf("fieldcoach")>=0||s.indexOf("field coach")>=0)C_FC=ci;});
 
@@ -289,11 +301,25 @@ function loadAnagraficaExcel(file){
         var fullName=cognome+" "+nome;
         if(!cognome&&!nome)continue;
 
-        // Status filter: only Active (or empty = treat as active for new hires)
-        var status=String(row[C_STATUS]||"").trim().toLowerCase();
-        if(status&&status!=="active"){
-          errors.push({row:ri+1,name:fullName,reason:"Status non Active: "+row[C_STATUS]});
-          continue;
+        // Cessazione: nuovo formato = data_cessazione (date-based), vecchio formato = status "Active"
+        if(C_TERM>=0){
+          var termRaw=row[C_TERM];
+          if(termRaw!=null&&String(termRaw).trim()!==""){
+            var termDate=parseHireDate(termRaw);
+            if(termDate){
+              var nextMonthStart=new Date(CFG_YEAR,CFG_MONTH,1);
+              if(termDate<nextMonthStart){
+                errors.push({row:ri+1,name:fullName,reason:"Cessato/dimesso il "+termDate.toISOString().slice(0,10)+" (cessazione nel mese premi o precedente)"});
+                continue;
+              }
+            }
+          }
+        } else if(C_STATUS>=0){
+          var status=String(row[C_STATUS]||"").trim().toLowerCase();
+          if(status&&status!=="active"){
+            errors.push({row:ri+1,name:fullName,reason:"Status non Active: "+row[C_STATUS]});
+            continue;
+          }
         }
 
         // Hire date filter
