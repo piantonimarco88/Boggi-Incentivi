@@ -120,6 +120,15 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 .exp-btn:hover{background:#c9a96e;color:#fff}
 .exp-btn.primary{background:#2c2925;color:#c9a96e;border-color:#2c2925}
 .exp-btn.primary:hover{background:#3d3a36}
+/* Color variants — sostituiscono inline style="border-color:X;color:X" che impedisce al :hover di sovrascrivere il colore testo */
+.exp-btn.btn-green{border-color:#2d7a3a;color:#2d7a3a}.exp-btn.btn-green:hover{background:#2d7a3a;color:#fff}
+.exp-btn.btn-amber{border-color:#c9a96e;color:#c9a96e}.exp-btn.btn-amber:hover{background:#c9a96e;color:#fff}
+.exp-btn.btn-blue{border-color:#5b6abf;color:#5b6abf}.exp-btn.btn-blue:hover{background:#5b6abf;color:#fff}
+.exp-btn.btn-purple{border-color:#8b7ec8;color:#8b7ec8}.exp-btn.btn-purple:hover{background:#8b7ec8;color:#fff}
+.exp-btn.btn-violet{border-color:#9b6ec9;color:#9b6ec9}.exp-btn.btn-violet:hover{background:#9b6ec9;color:#fff}
+.exp-btn.btn-red{border-color:#cf5b5b;color:#cf5b5b}.exp-btn.btn-red:hover{background:#cf5b5b;color:#fff}
+.exp-btn.btn-lgreen{border-color:#5bb98c;color:#2d7a3a}.exp-btn.btn-lgreen:hover{background:#5bb98c;color:#fff}
+.exp-btn.btn-grey{border-color:#8a8680;color:#8a8680}.exp-btn.btn-grey:hover{background:#8a8680;color:#fff}
 @media print{
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
   .hdr,.tabs,.flt,.exp-bar,.gb,.no-print,.save-bar{display:none!important}.lt{box-shadow:none;border:none;max-width:100%}.cnt{padding:0}
@@ -561,7 +570,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='8.50'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='8.51'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -1354,8 +1363,8 @@ function rC(){
   if(PRIZE_MODE==="seasonal"){rCSeasonal();return;}
   var mL=MODE==="preventivo"?'<span style="background:#fff3cd;color:#856404;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700">\u26a0 PREVENTIVO</span>':'';
   mL+=' <button class="exp-btn" onclick="exportExcel()" style="font-size:10px;padding:4px 12px">&#128202; Export Excel</button>';
-  if(MODE==="consuntivo")mL+=' <button class="exp-btn" onclick="saveMonitorSnap()" style="font-size:10px;padding:4px 12px;border-color:#5bb98c;color:#2d7a3a">&#128229; Salva per Monitor</button>';
-  if(REGION==="international"&&MODE==="consuntivo")mL+=' <button class="exp-btn" onclick="exportExcelUSA()" style="font-size:10px;padding:4px 12px;border-color:#c9a96e;color:#c9a96e">&#127482;&#127480; Export Excel USA</button>';
+  if(MODE==="consuntivo")mL+=' <button class="exp-btn btn-lgreen" onclick="saveMonitorSnap()" style="font-size:10px;padding:4px 12px">&#128229; Salva per Monitor</button>';
+  if(REGION==="international"&&MODE==="consuntivo")mL+=' <button class="exp-btn btn-amber" onclick="exportExcelUSA()" style="font-size:10px;padding:4px 12px">&#127482;&#127480; Export Excel USA</button>';
   var fl=E.filter(function(e){if(cF.j!=="ALL"&&e.j!==cF.j)return false;if(cF.s!=="ALL"&&e.s!==cF.s)return false;
     if(cF.q){var q=cF.q.toLowerCase();return(e.c&&e.c.toLowerCase().indexOf(q)>=0)||(e.n&&e.n.toLowerCase().indexOf(q)>=0)||(e.m&&e.m.toLowerCase().indexOf(q)>=0)||(e.s&&e.s.toLowerCase().indexOf(q)>=0)}return true});
   fl.sort(function(a,b){var va,vb,col=cSort.col;
@@ -1589,8 +1598,8 @@ function rL(){
   if(PRIZE_MODE==="fcvm"){rLFcvm();return;}
   var h='<div class="exp-bar no-print">'; 
   h+='<button class="exp-btn primary" onclick="printLetterOnly()">&#128424; Stampa / PDF</button>';
-  h+='<button class="exp-btn" onclick="saveAllPDFsFolder()" style="border-color:#2d7a3a;color:#2d7a3a" title="Salva PDF in cartella (Chrome/Edge)">&#128194; Salva in Cartella PC</button>';
-  h+='<button class="exp-btn" onclick="saveAllPDFsZip()" style="border-color:#5b6abf;color:#5b6abf">&#128230; Scarica ZIP</button>';
+  h+='<button class="exp-btn btn-green" onclick="saveAllPDFsFolder()" title="Salva PDF in cartella (Chrome/Edge)">&#128194; Salva in Cartella PC</button>';
+  h+='<button class="exp-btn btn-blue" onclick="saveAllPDFsZip()">&#128230; Scarica ZIP</button>';
   h+='</div>';
   var searchPool=PRIZE_MODE==="seasonal"?E.filter(function(e){return isSMVSM(e);}):E;
   var placeholder=PRIZE_MODE==="seasonal"?"Cerca SM/VSM...":"Cerca dipendente...";
@@ -4061,7 +4070,7 @@ function rCSeasonal(){
   });
 
   var h='<button class="exp-btn" onclick="exportSeasonalExcel()" style="font-size:10px;padding:4px 12px;margin-bottom:8px">&#128202; Export Excel</button>';
-  if(MODE==="consuntivo")h+='<button class="exp-btn" onclick="saveMonitorSnap()" style="font-size:10px;padding:4px 12px;margin-bottom:8px;border-color:#5bb98c;color:#2d7a3a">&#128229; Salva per Monitor</button>';
+  if(MODE==="consuntivo")h+='<button class="exp-btn btn-lgreen" onclick="saveMonitorSnap()" style="font-size:10px;padding:4px 12px;margin-bottom:8px">&#128229; Salva per Monitor</button>';
   h+='<div class="flt"><input placeholder="Cerca..." id="seasQ" value="'+esc(_seasF.q)+'">';
   h+='<select id="seasJ">';
   uSeasJ.forEach(function(j){h+='<option value="'+esc(j)+'"'+(_seasF.j===j?' selected':'')+'>'+(j==='ALL'?'Tutti i ruoli':esc(j))+'</option>';});
@@ -5778,12 +5787,12 @@ function rSources(){try{
   }
   sh+='</div>';
   sh+='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">';
-  sh+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#2d7a3a;color:#2d7a3a">&#128101; Carica Anagrafica Excel<input type="file" accept=".xlsx,.xlsm,.xls" id="loadAnagrafica" style="display:none"></label>';
-  if(REGION==="international"&&PRIZE_MODE==="mensile")sh+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#c9a96e;color:#c9a96e">&#127482;&#127480; Carica Anagrafica USA Excel<input type="file" accept=".xlsx,.xlsm,.xls" id="loadAnagraficaUSA" style="display:none"></label>';
+  sh+='<label class="exp-btn btn-green" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128101; Carica Anagrafica Excel<input type="file" accept=".xlsx,.xlsm,.xls" id="loadAnagrafica" style="display:none"></label>';
+  if(REGION==="international"&&PRIZE_MODE==="mensile")sh+='<label class="exp-btn btn-amber" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#127482;&#127480; Carica Anagrafica USA Excel<input type="file" accept=".xlsx,.xlsm,.xls" id="loadAnagraficaUSA" style="display:none"></label>';
   sh+='<label class="exp-btn primary" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128194; Carica Excel Target<input type="file" accept=".xlsx,.xlsm,.xls,.csv" id="loadTarget" style="display:none"></label>';
-  sh+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#8b7ec8;color:#8b7ec8">&#128202; Carica Excel Results<input type="file" accept=".xlsx,.xlsm,.xls,.csv" id="loadCons" style="display:none"></label>';
-  sh+='<button class="exp-btn" onclick="runValidationsAndReport(\'Verifica dati caricati\')" style="border-color:#2d7a3a;color:#2d7a3a" title="Esegue controlli di coerenza su anagrafica e configurazione: matricole duplicate, currency mancanti, store sconosciuti, ruoli non validi, ecc.">&#128269; Verifica Dati</button>';
-  sh+='<button class="exp-btn" onclick="resetAllData()" style="border-color:#cf5b5b;color:#cf5b5b">&#128465; Reset Dati</button>';
+  sh+='<label class="exp-btn btn-purple" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128202; Carica Excel Results<input type="file" accept=".xlsx,.xlsm,.xls,.csv" id="loadCons" style="display:none"></label>';
+  sh+='<button class="exp-btn btn-green" onclick="runValidationsAndReport(\'Verifica dati caricati\')" title="Esegue controlli di coerenza su anagrafica e configurazione: matricole duplicate, currency mancanti, store sconosciuti, ruoli non validi, ecc.">&#128269; Verifica Dati</button>';
+  sh+='<button class="exp-btn btn-red" onclick="resetAllData()">&#128465; Reset Dati</button>';
   sh+='</div>';
   sh+='<div style="font-size:9px;color:#a09a92;margin-top:6px">Anagrafica: carica il file con matricola, cognome, nome, negozio, ruolo, stipendio. Auto-scan: cerca i dati necessari in tutti i fogli.<br>🇺🇸 Anagrafica USA: formato Estrazione_Piantoni — col. A=StoreID, B=Store, C=Nome, D=Cognome, E=Job, G=Commission%, I=Tipo negozio. Righe con 0% escluse automaticamente.</div>';
   sh+='<div id="scanResults"></div></div>';
@@ -5922,7 +5931,7 @@ function rSources(){try{
     sh+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">🎨 Visual In Store</div>';
     sh+='<div style="font-size:10px;color:#8a8680;margin-bottom:10px">Importa il file Excel con i premi Visual In Store. Colonne attese: MATRICOLA, STORE ID, BDG (una riga per negozio per dipendente; importi sommati per matricola).'+(isIT?' <span style="color:#c9a96e">Opzionale per Italia.</span>':'')+'</div>';
     sh+='<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">';
-    sh+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#8b7ec8;color:#8b7ec8">📂 Carica Visual In Store (.xlsx)<input type="file" accept=".xlsx,.xls,.csv" onchange="loadVisualExcel(this)" style="display:none"></label>';
+    sh+='<label class="exp-btn btn-purple" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">📂 Carica Visual In Store (.xlsx)<input type="file" accept=".xlsx,.xls,.csv" onchange="loadVisualExcel(this)" style="display:none"></label>';
     if(vlCount>0)sh+='<span style="font-size:10px;color:#2d7a3a;font-weight:600">✅ '+vlCount+' dipendenti caricati</span>';
     else sh+='<span style="font-size:10px;color:#a09a92">Nessun dato caricato</span>';
     sh+='</div></div>';
@@ -7207,7 +7216,7 @@ function rCFcvm(){
   // Barra azioni (stile identico a rC mensile)
   var mL=isP?'<span style="background:#fff3cd;color:#856404;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700">\u26a0 PREVENTIVO</span>':'';
   mL+=' <button class="exp-btn" onclick="exportFcVmExcel()" style="font-size:10px;padding:4px 12px">&#128196; Export Excel</button>';
-  if(MODE==="consuntivo")mL+=' <button class="exp-btn" onclick="saveMonitorSnap()" style="font-size:10px;padding:4px 12px;border-color:#5bb98c;color:#2d7a3a">&#128229; Salva per Monitor</button>';
+  if(MODE==="consuntivo")mL+=' <button class="exp-btn btn-lgreen" onclick="saveMonitorSnap()" style="font-size:10px;padding:4px 12px">&#128229; Salva per Monitor</button>';
 
   if(!pool.length){
     var h=mL+'<div class="wg" style="text-align:center;padding:40px;color:#a09a92">';
@@ -7352,8 +7361,8 @@ function setFcVmOverride(matr,pct){
 function rLFcvm(){
   var h='<div class="exp-bar no-print">';
   h+='<button class="exp-btn primary" onclick="printLetterOnly()">&#128424; Stampa / PDF</button>';
-  h+='<button class="exp-btn" onclick="saveAllPDFsFolder()" style="border-color:#2d7a3a;color:#2d7a3a" title="Salva PDF in cartella (Chrome/Edge)">&#128194; Salva in Cartella PC</button>';
-  h+='<button class="exp-btn" onclick="saveAllPDFsZip()" style="border-color:#5b6abf;color:#5b6abf">&#128230; Scarica ZIP</button>';
+  h+='<button class="exp-btn btn-green" onclick="saveAllPDFsFolder()" title="Salva PDF in cartella (Chrome/Edge)">&#128194; Salva in Cartella PC</button>';
+  h+='<button class="exp-btn btn-blue" onclick="saveAllPDFsZip()">&#128230; Scarica ZIP</button>';
   h+='</div>';
   h+='<input placeholder="Cerca FC/VM..." id="lq" style="width:100%;padding:10px 14px;border-radius:6px;border:1px solid #d5d0c8;font-size:13px;font-family:inherit;background:#fff;margin-bottom:6px" class="no-print">';
   h+='<div id="lr" class="no-print"></div><div id="lc"></div>';
@@ -7746,13 +7755,13 @@ function rSourcesFcvm(){
   var h='<div class="wg" style="margin-bottom:20px"><div class="wg-title">&#128229; Carica Dati FC + VM</div>';
   h+='<div style="font-size:10px;color:#8a8680;margin-bottom:10px">Modalità <b>FC + VM — '+(isP?'PREVENTIVO':'CONSUNTIVO')+'</b></div>';
   h+='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">';
-  h+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#5b6abf;color:#5b6abf">&#128101; Anagrafica FC/VM<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_anag" style="display:none" onchange="loadFcVmFile(this)"></label>';
+  h+='<label class="exp-btn btn-blue" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128101; Anagrafica FC/VM<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_anag" style="display:none" onchange="loadFcVmFile(this)"></label>';
   // Mapping negozi: derivato automaticamente dall'anagrafica FC+VM
   h+='<label class="exp-btn primary" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#127919; Target Fatturato<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_target" style="display:none" onchange="loadFcVmFile(this)"></label>';
-  h+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#9b6ec9;color:#9b6ec9">&#128200; SY LY (Fatt.+Traffico LY)<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_syly" style="display:none" onchange="loadFcVmFile(this)"></label>';
-  h+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#2d7a3a;color:#2d7a3a">&#128200; Risultati (Fatt.+Traffico CY)<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_results" style="display:none" onchange="loadFcVmFile(this)"></label>';
-  h+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#5b6abf;color:#5b6abf">&#128194; Risultati Mese Precedente<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_prev" style="display:none" onchange="loadFcVmFile(this)"></label>';
-  h+='<button onclick="clearFcVmData()" class="exp-btn" style="border-color:#cf5b5b;color:#cf5b5b">&#128465; Reset Dati</button>';
+  h+='<label class="exp-btn btn-violet" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128200; SY LY (Fatt.+Traffico LY)<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_syly" style="display:none" onchange="loadFcVmFile(this)"></label>';
+  h+='<label class="exp-btn btn-green" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128200; Risultati (Fatt.+Traffico CY)<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_results" style="display:none" onchange="loadFcVmFile(this)"></label>';
+  h+='<label class="exp-btn btn-blue" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128194; Risultati Mese Precedente<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_prev" style="display:none" onchange="loadFcVmFile(this)"></label>';
+  h+='<button onclick="clearFcVmData()" class="exp-btn btn-red">&#128465; Reset Dati</button>';
   h+='</div>';
   h+='<div style="font-size:9px;color:#a09a92;margin-top:8px;line-height:1.6">';
   h+='<b>Anagrafica FC/VM:</b> store_id, nome store, matricola, nome, cognome, ruolo (FC/VM), valuta, premio massimale &mdash; una riga per store/dipendente. Il mapping negozi viene derivato automaticamente. &nbsp;&#183;&nbsp; ';
@@ -8446,7 +8455,7 @@ function rStoresFcvm(){
     h+='<div style="display:flex;gap:10px;flex-wrap:wrap">';
     if(nExclFatt>0)h+='<div style="background:#fef6f0;border:1px solid #f8d7da;border-radius:5px;padding:6px 12px;font-size:10px;font-weight:600;color:#721c24">&#128196; '+nExclFatt+' store esclus'+(nExclFatt===1?'o':'i')+' da fatturato</div>';
     if(nExclSy>0)h+='<div style="background:#fff3e0;border:1px solid #ffe0b2;border-radius:5px;padding:6px 12px;font-size:10px;font-weight:600;color:#e65100">&#128200; '+nExclSy+' store esclus'+(nExclSy===1?'o':'i')+' da SY</div>';
-    h+='<button onclick="clearFcVmFlags()" class="exp-btn" style="border-color:#cf5b5b;color:#cf5b5b;font-size:10px">&#8635; Reset esclusioni</button>';
+    h+='<button onclick="clearFcVmFlags()" class="exp-btn btn-red" style="font-size:10px">&#8635; Reset esclusioni</button>';
     h+='</div>';
   }
   h+='</div></div>';
@@ -8497,7 +8506,7 @@ function toggleFcVmStoreFlag(input){
       sh+='<div style="display:flex;gap:10px;flex-wrap:wrap">';
       if(nExclFatt>0)sh+='<div style="background:#fef6f0;border:1px solid #f8d7da;border-radius:5px;padding:6px 12px;font-size:10px;font-weight:600;color:#721c24">&#128196; '+nExclFatt+' store esclus'+(nExclFatt===1?'o':'i')+' da fatturato</div>';
       if(nExclSy>0)sh+='<div style="background:#fff3e0;border:1px solid #ffe0b2;border-radius:5px;padding:6px 12px;font-size:10px;font-weight:600;color:#e65100">&#128200; '+nExclSy+' store esclus'+(nExclSy===1?'o':'i')+' da SY</div>';
-      sh+='<button onclick="clearFcVmFlags()" class="exp-btn" style="border-color:#cf5b5b;color:#cf5b5b;font-size:10px">&#8635; Reset esclusioni</button>';
+      sh+='<button onclick="clearFcVmFlags()" class="exp-btn btn-red" style="font-size:10px">&#8635; Reset esclusioni</button>';
       sh+='</div>';
     }
     summaryEl.innerHTML=sh;
@@ -8909,8 +8918,8 @@ function renderMonitorSection(){
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
   h+='<div style="font-size:15px;font-weight:700;color:#2c2925">&#128200; Incentive Monitor</div>';
   h+='<div style="display:flex;gap:8px">';
-  h+='<button class="exp-btn" onclick="document.querySelectorAll(\'.mon-snap-cb\').forEach(function(c){c.checked=true;});exportMonitorExcel();" style="font-size:10px;padding:4px 14px;border-color:#c9a96e;color:#c9a96e">&#9776; Seleziona tutto ed esporta</button>';
-  h+='<button class="exp-btn" onclick="exportMonitorExcel()" style="font-size:10px;padding:4px 14px;border-color:#2d7a3a;color:#2d7a3a">&#9989; Genera Excel selezionati</button>';
+  h+='<button class="exp-btn btn-amber" onclick="document.querySelectorAll(\'.mon-snap-cb\').forEach(function(c){c.checked=true;});exportMonitorExcel();" style="font-size:10px;padding:4px 14px">&#9776; Seleziona tutto ed esporta</button>';
+  h+='<button class="exp-btn btn-green" onclick="exportMonitorExcel()" style="font-size:10px;padding:4px 14px">&#9989; Genera Excel selezionati</button>';
   h+='</div></div>';
   if(!MONITOR_SNAPS.length){
     h+='<div style="text-align:center;padding:20px;color:#a09a92;font-size:12px">Nessuno snapshot salvato. Usa il pulsante <b>Salva per Monitor</b> nella scheda Calcolo Premi per salvare i dati di ciascuna modalità.</div>';
@@ -9397,7 +9406,7 @@ function rSimulatore(){
   h+='<div style="background:#fff;border:1px solid #e5e1db;border-radius:6px;padding:16px;margin-bottom:16px">';
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
   h+='<div style="font-size:11px;color:#6b6560;font-weight:700;text-transform:uppercase;letter-spacing:0.5px">Parametri (anteprima)</div>';
-  h+='<button id="simResetBtn" class="exp-btn" style="border-color:#8a8680;color:#8a8680;padding:4px 12px;font-size:11px">↺ Reset</button>';
+  h+='<button id="simResetBtn" class="exp-btn btn-grey" style="padding:4px 12px;font-size:11px">↺ Reset</button>';
   h+='</div>';
   h+='<div style="margin-bottom:14px;display:flex;align-items:center;gap:8px">';
   h+='<input type="checkbox" id="sim_artEnabled" '+(PARAMS.artEnabled?'checked':'')+'>';
@@ -9454,7 +9463,7 @@ function _rSimulatoreFcvm(p10){
   h+='<div style="background:#fff;border:1px solid #e5e1db;border-radius:6px;padding:16px;margin-bottom:16px">';
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
   h+='<div style="font-size:11px;color:#6b6560;font-weight:700;text-transform:uppercase;letter-spacing:0.5px">Soglie premio (anteprima)</div>';
-  h+='<button id="simFcvmResetBtn" class="exp-btn" style="border-color:#8a8680;color:#8a8680;padding:4px 12px;font-size:11px">↺ Reset</button>';
+  h+='<button id="simFcvmResetBtn" class="exp-btn btn-grey" style="padding:4px 12px;font-size:11px">↺ Reset</button>';
   h+='</div>';
   h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px">';
   SIM_FCVM_PARAM_DEFS.forEach(function(p){
@@ -9531,7 +9540,7 @@ function _rSimulatoreSeasonal(p10){
   h+='<div style="background:#fff;border:1px solid #e5e1db;border-radius:6px;padding:16px;margin-bottom:16px">';
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
   h+='<div style="font-size:11px;color:#6b6560;font-weight:700;text-transform:uppercase;letter-spacing:0.5px">Parametri SEAS_CFG (anteprima)</div>';
-  h+='<button id="simSeasResetBtn" class="exp-btn" style="border-color:#8a8680;color:#8a8680;padding:4px 12px;font-size:11px">↺ Reset</button>';
+  h+='<button id="simSeasResetBtn" class="exp-btn btn-grey" style="padding:4px 12px;font-size:11px">↺ Reset</button>';
   h+='</div>';
 
   // ── Gruppo: Base ────────────────────────────────────────────────────────

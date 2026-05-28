@@ -197,7 +197,7 @@ function rSimulatore(){
   h+='<div style="background:#fff;border:1px solid #e5e1db;border-radius:6px;padding:16px;margin-bottom:16px">';
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
   h+='<div style="font-size:11px;color:#6b6560;font-weight:700;text-transform:uppercase;letter-spacing:0.5px">Parametri (anteprima)</div>';
-  h+='<button id="simResetBtn" class="exp-btn" style="border-color:#8a8680;color:#8a8680;padding:4px 12px;font-size:11px">↺ Reset</button>';
+  h+='<button id="simResetBtn" class="exp-btn btn-grey" style="padding:4px 12px;font-size:11px">↺ Reset</button>';
   h+='</div>';
   h+='<div style="margin-bottom:14px;display:flex;align-items:center;gap:8px">';
   h+='<input type="checkbox" id="sim_artEnabled" '+(PARAMS.artEnabled?'checked':'')+'>';
@@ -254,7 +254,7 @@ function _rSimulatoreFcvm(p10){
   h+='<div style="background:#fff;border:1px solid #e5e1db;border-radius:6px;padding:16px;margin-bottom:16px">';
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
   h+='<div style="font-size:11px;color:#6b6560;font-weight:700;text-transform:uppercase;letter-spacing:0.5px">Soglie premio (anteprima)</div>';
-  h+='<button id="simFcvmResetBtn" class="exp-btn" style="border-color:#8a8680;color:#8a8680;padding:4px 12px;font-size:11px">↺ Reset</button>';
+  h+='<button id="simFcvmResetBtn" class="exp-btn btn-grey" style="padding:4px 12px;font-size:11px">↺ Reset</button>';
   h+='</div>';
   h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px">';
   SIM_FCVM_PARAM_DEFS.forEach(function(p){
@@ -331,7 +331,7 @@ function _rSimulatoreSeasonal(p10){
   h+='<div style="background:#fff;border:1px solid #e5e1db;border-radius:6px;padding:16px;margin-bottom:16px">';
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
   h+='<div style="font-size:11px;color:#6b6560;font-weight:700;text-transform:uppercase;letter-spacing:0.5px">Parametri SEAS_CFG (anteprima)</div>';
-  h+='<button id="simSeasResetBtn" class="exp-btn" style="border-color:#8a8680;color:#8a8680;padding:4px 12px;font-size:11px">↺ Reset</button>';
+  h+='<button id="simSeasResetBtn" class="exp-btn btn-grey" style="padding:4px 12px;font-size:11px">↺ Reset</button>';
   h+='</div>';
 
   // ── Gruppo: Base ────────────────────────────────────────────────────────

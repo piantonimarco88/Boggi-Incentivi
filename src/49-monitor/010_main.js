@@ -285,8 +285,8 @@ function renderMonitorSection(){
   h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
   h+='<div style="font-size:15px;font-weight:700;color:#2c2925">&#128200; Incentive Monitor</div>';
   h+='<div style="display:flex;gap:8px">';
-  h+='<button class="exp-btn" onclick="document.querySelectorAll(\'.mon-snap-cb\').forEach(function(c){c.checked=true;});exportMonitorExcel();" style="font-size:10px;padding:4px 14px;border-color:#c9a96e;color:#c9a96e">&#9776; Seleziona tutto ed esporta</button>';
-  h+='<button class="exp-btn" onclick="exportMonitorExcel()" style="font-size:10px;padding:4px 14px;border-color:#2d7a3a;color:#2d7a3a">&#9989; Genera Excel selezionati</button>';
+  h+='<button class="exp-btn btn-amber" onclick="document.querySelectorAll(\'.mon-snap-cb\').forEach(function(c){c.checked=true;});exportMonitorExcel();" style="font-size:10px;padding:4px 14px">&#9776; Seleziona tutto ed esporta</button>';
+  h+='<button class="exp-btn btn-green" onclick="exportMonitorExcel()" style="font-size:10px;padding:4px 14px">&#9989; Genera Excel selezionati</button>';
   h+='</div></div>';
   if(!MONITOR_SNAPS.length){
     h+='<div style="text-align:center;padding:20px;color:#a09a92;font-size:12px">Nessuno snapshot salvato. Usa il pulsante <b>Salva per Monitor</b> nella scheda Calcolo Premi per salvare i dati di ciascuna modalità.</div>';

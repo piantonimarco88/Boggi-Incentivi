@@ -7,13 +7,13 @@ function rSourcesFcvm(){
   var h='<div class="wg" style="margin-bottom:20px"><div class="wg-title">&#128229; Carica Dati FC + VM</div>';
   h+='<div style="font-size:10px;color:#8a8680;margin-bottom:10px">Modalità <b>FC + VM — '+(isP?'PREVENTIVO':'CONSUNTIVO')+'</b></div>';
   h+='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">';
-  h+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#5b6abf;color:#5b6abf">&#128101; Anagrafica FC/VM<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_anag" style="display:none" onchange="loadFcVmFile(this)"></label>';
+  h+='<label class="exp-btn btn-blue" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128101; Anagrafica FC/VM<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_anag" style="display:none" onchange="loadFcVmFile(this)"></label>';
   // Mapping negozi: derivato automaticamente dall'anagrafica FC+VM
   h+='<label class="exp-btn primary" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#127919; Target Fatturato<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_target" style="display:none" onchange="loadFcVmFile(this)"></label>';
-  h+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#9b6ec9;color:#9b6ec9">&#128200; SY LY (Fatt.+Traffico LY)<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_syly" style="display:none" onchange="loadFcVmFile(this)"></label>';
-  h+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#2d7a3a;color:#2d7a3a">&#128200; Risultati (Fatt.+Traffico CY)<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_results" style="display:none" onchange="loadFcVmFile(this)"></label>';
-  h+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#5b6abf;color:#5b6abf">&#128194; Risultati Mese Precedente<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_prev" style="display:none" onchange="loadFcVmFile(this)"></label>';
-  h+='<button onclick="clearFcVmData()" class="exp-btn" style="border-color:#cf5b5b;color:#cf5b5b">&#128465; Reset Dati</button>';
+  h+='<label class="exp-btn btn-violet" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128200; SY LY (Fatt.+Traffico LY)<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_syly" style="display:none" onchange="loadFcVmFile(this)"></label>';
+  h+='<label class="exp-btn btn-green" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128200; Risultati (Fatt.+Traffico CY)<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_results" style="display:none" onchange="loadFcVmFile(this)"></label>';
+  h+='<label class="exp-btn btn-blue" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128194; Risultati Mese Precedente<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_prev" style="display:none" onchange="loadFcVmFile(this)"></label>';
+  h+='<button onclick="clearFcVmData()" class="exp-btn btn-red">&#128465; Reset Dati</button>';
   h+='</div>';
   h+='<div style="font-size:9px;color:#a09a92;margin-top:8px;line-height:1.6">';
   h+='<b>Anagrafica FC/VM:</b> store_id, nome store, matricola, nome, cognome, ruolo (FC/VM), valuta, premio massimale &mdash; una riga per store/dipendente. Il mapping negozi viene derivato automaticamente. &nbsp;&#183;&nbsp; ';
@@ -707,7 +707,7 @@ function rStoresFcvm(){
     h+='<div style="display:flex;gap:10px;flex-wrap:wrap">';
     if(nExclFatt>0)h+='<div style="background:#fef6f0;border:1px solid #f8d7da;border-radius:5px;padding:6px 12px;font-size:10px;font-weight:600;color:#721c24">&#128196; '+nExclFatt+' store esclus'+(nExclFatt===1?'o':'i')+' da fatturato</div>';
     if(nExclSy>0)h+='<div style="background:#fff3e0;border:1px solid #ffe0b2;border-radius:5px;padding:6px 12px;font-size:10px;font-weight:600;color:#e65100">&#128200; '+nExclSy+' store esclus'+(nExclSy===1?'o':'i')+' da SY</div>';
-    h+='<button onclick="clearFcVmFlags()" class="exp-btn" style="border-color:#cf5b5b;color:#cf5b5b;font-size:10px">&#8635; Reset esclusioni</button>';
+    h+='<button onclick="clearFcVmFlags()" class="exp-btn btn-red" style="font-size:10px">&#8635; Reset esclusioni</button>';
     h+='</div>';
   }
   h+='</div></div>';
@@ -758,7 +758,7 @@ function toggleFcVmStoreFlag(input){
       sh+='<div style="display:flex;gap:10px;flex-wrap:wrap">';
       if(nExclFatt>0)sh+='<div style="background:#fef6f0;border:1px solid #f8d7da;border-radius:5px;padding:6px 12px;font-size:10px;font-weight:600;color:#721c24">&#128196; '+nExclFatt+' store esclus'+(nExclFatt===1?'o':'i')+' da fatturato</div>';
       if(nExclSy>0)sh+='<div style="background:#fff3e0;border:1px solid #ffe0b2;border-radius:5px;padding:6px 12px;font-size:10px;font-weight:600;color:#e65100">&#128200; '+nExclSy+' store esclus'+(nExclSy===1?'o':'i')+' da SY</div>';
-      sh+='<button onclick="clearFcVmFlags()" class="exp-btn" style="border-color:#cf5b5b;color:#cf5b5b;font-size:10px">&#8635; Reset esclusioni</button>';
+      sh+='<button onclick="clearFcVmFlags()" class="exp-btn btn-red" style="font-size:10px">&#8635; Reset esclusioni</button>';
       sh+='</div>';
     }
     summaryEl.innerHTML=sh;

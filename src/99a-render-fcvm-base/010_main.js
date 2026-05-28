@@ -5,7 +5,7 @@ function rCFcvm(){
   // Barra azioni (stile identico a rC mensile)
   var mL=isP?'<span style="background:#fff3cd;color:#856404;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700">\u26a0 PREVENTIVO</span>':'';
   mL+=' <button class="exp-btn" onclick="exportFcVmExcel()" style="font-size:10px;padding:4px 12px">&#128196; Export Excel</button>';
-  if(MODE==="consuntivo")mL+=' <button class="exp-btn" onclick="saveMonitorSnap()" style="font-size:10px;padding:4px 12px;border-color:#5bb98c;color:#2d7a3a">&#128229; Salva per Monitor</button>';
+  if(MODE==="consuntivo")mL+=' <button class="exp-btn btn-lgreen" onclick="saveMonitorSnap()" style="font-size:10px;padding:4px 12px">&#128229; Salva per Monitor</button>';
 
   if(!pool.length){
     var h=mL+'<div class="wg" style="text-align:center;padding:40px;color:#a09a92">';
@@ -150,8 +150,8 @@ function setFcVmOverride(matr,pct){
 function rLFcvm(){
   var h='<div class="exp-bar no-print">';
   h+='<button class="exp-btn primary" onclick="printLetterOnly()">&#128424; Stampa / PDF</button>';
-  h+='<button class="exp-btn" onclick="saveAllPDFsFolder()" style="border-color:#2d7a3a;color:#2d7a3a" title="Salva PDF in cartella (Chrome/Edge)">&#128194; Salva in Cartella PC</button>';
-  h+='<button class="exp-btn" onclick="saveAllPDFsZip()" style="border-color:#5b6abf;color:#5b6abf">&#128230; Scarica ZIP</button>';
+  h+='<button class="exp-btn btn-green" onclick="saveAllPDFsFolder()" title="Salva PDF in cartella (Chrome/Edge)">&#128194; Salva in Cartella PC</button>';
+  h+='<button class="exp-btn btn-blue" onclick="saveAllPDFsZip()">&#128230; Scarica ZIP</button>';
   h+='</div>';
   h+='<input placeholder="Cerca FC/VM..." id="lq" style="width:100%;padding:10px 14px;border-radius:6px;border:1px solid #d5d0c8;font-size:13px;font-family:inherit;background:#fff;margin-bottom:6px" class="no-print">';
   h+='<div id="lr" class="no-print"></div><div id="lc"></div>';

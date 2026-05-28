@@ -231,7 +231,7 @@ function rCSeasonal(){
   });
 
   var h='<button class="exp-btn" onclick="exportSeasonalExcel()" style="font-size:10px;padding:4px 12px;margin-bottom:8px">&#128202; Export Excel</button>';
-  if(MODE==="consuntivo")h+='<button class="exp-btn" onclick="saveMonitorSnap()" style="font-size:10px;padding:4px 12px;margin-bottom:8px;border-color:#5bb98c;color:#2d7a3a">&#128229; Salva per Monitor</button>';
+  if(MODE==="consuntivo")h+='<button class="exp-btn btn-lgreen" onclick="saveMonitorSnap()" style="font-size:10px;padding:4px 12px;margin-bottom:8px">&#128229; Salva per Monitor</button>';
   h+='<div class="flt"><input placeholder="Cerca..." id="seasQ" value="'+esc(_seasF.q)+'">';
   h+='<select id="seasJ">';
   uSeasJ.forEach(function(j){h+='<option value="'+esc(j)+'"'+(_seasF.j===j?' selected':'')+'>'+(j==='ALL'?'Tutti i ruoli':esc(j))+'</option>';});

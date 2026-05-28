@@ -15,12 +15,12 @@ function rSources(){try{
   }
   sh+='</div>';
   sh+='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">';
-  sh+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#2d7a3a;color:#2d7a3a">&#128101; Carica Anagrafica Excel<input type="file" accept=".xlsx,.xlsm,.xls" id="loadAnagrafica" style="display:none"></label>';
-  if(REGION==="international"&&PRIZE_MODE==="mensile")sh+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#c9a96e;color:#c9a96e">&#127482;&#127480; Carica Anagrafica USA Excel<input type="file" accept=".xlsx,.xlsm,.xls" id="loadAnagraficaUSA" style="display:none"></label>';
+  sh+='<label class="exp-btn btn-green" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128101; Carica Anagrafica Excel<input type="file" accept=".xlsx,.xlsm,.xls" id="loadAnagrafica" style="display:none"></label>';
+  if(REGION==="international"&&PRIZE_MODE==="mensile")sh+='<label class="exp-btn btn-amber" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#127482;&#127480; Carica Anagrafica USA Excel<input type="file" accept=".xlsx,.xlsm,.xls" id="loadAnagraficaUSA" style="display:none"></label>';
   sh+='<label class="exp-btn primary" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128194; Carica Excel Target<input type="file" accept=".xlsx,.xlsm,.xls,.csv" id="loadTarget" style="display:none"></label>';
-  sh+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#8b7ec8;color:#8b7ec8">&#128202; Carica Excel Results<input type="file" accept=".xlsx,.xlsm,.xls,.csv" id="loadCons" style="display:none"></label>';
-  sh+='<button class="exp-btn" onclick="runValidationsAndReport(\'Verifica dati caricati\')" style="border-color:#2d7a3a;color:#2d7a3a" title="Esegue controlli di coerenza su anagrafica e configurazione: matricole duplicate, currency mancanti, store sconosciuti, ruoli non validi, ecc.">&#128269; Verifica Dati</button>';
-  sh+='<button class="exp-btn" onclick="resetAllData()" style="border-color:#cf5b5b;color:#cf5b5b">&#128465; Reset Dati</button>';
+  sh+='<label class="exp-btn btn-purple" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128202; Carica Excel Results<input type="file" accept=".xlsx,.xlsm,.xls,.csv" id="loadCons" style="display:none"></label>';
+  sh+='<button class="exp-btn btn-green" onclick="runValidationsAndReport(\'Verifica dati caricati\')" title="Esegue controlli di coerenza su anagrafica e configurazione: matricole duplicate, currency mancanti, store sconosciuti, ruoli non validi, ecc.">&#128269; Verifica Dati</button>';
+  sh+='<button class="exp-btn btn-red" onclick="resetAllData()">&#128465; Reset Dati</button>';
   sh+='</div>';
   sh+='<div style="font-size:9px;color:#a09a92;margin-top:6px">Anagrafica: carica il file con matricola, cognome, nome, negozio, ruolo, stipendio. Auto-scan: cerca i dati necessari in tutti i fogli.<br>🇺🇸 Anagrafica USA: formato Estrazione_Piantoni — col. A=StoreID, B=Store, C=Nome, D=Cognome, E=Job, G=Commission%, I=Tipo negozio. Righe con 0% escluse automaticamente.</div>';
   sh+='<div id="scanResults"></div></div>';
@@ -159,7 +159,7 @@ function rSources(){try{
     sh+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">🎨 Visual In Store</div>';
     sh+='<div style="font-size:10px;color:#8a8680;margin-bottom:10px">Importa il file Excel con i premi Visual In Store. Colonne attese: MATRICOLA, STORE ID, BDG (una riga per negozio per dipendente; importi sommati per matricola).'+(isIT?' <span style="color:#c9a96e">Opzionale per Italia.</span>':'')+'</div>';
     sh+='<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">';
-    sh+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#8b7ec8;color:#8b7ec8">📂 Carica Visual In Store (.xlsx)<input type="file" accept=".xlsx,.xls,.csv" onchange="loadVisualExcel(this)" style="display:none"></label>';
+    sh+='<label class="exp-btn btn-purple" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">📂 Carica Visual In Store (.xlsx)<input type="file" accept=".xlsx,.xls,.csv" onchange="loadVisualExcel(this)" style="display:none"></label>';
     if(vlCount>0)sh+='<span style="font-size:10px;color:#2d7a3a;font-weight:600">✅ '+vlCount+' dipendenti caricati</span>';
     else sh+='<span style="font-size:10px;color:#a09a92">Nessun dato caricato</span>';
     sh+='</div></div>';

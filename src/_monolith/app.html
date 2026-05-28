@@ -120,6 +120,15 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 .exp-btn:hover{background:#c9a96e;color:#fff}
 .exp-btn.primary{background:#2c2925;color:#c9a96e;border-color:#2c2925}
 .exp-btn.primary:hover{background:#3d3a36}
+/* Color variants — sostituiscono inline style="border-color:X;color:X" che impedisce al :hover di sovrascrivere il colore testo */
+.exp-btn.btn-green{border-color:#2d7a3a;color:#2d7a3a}.exp-btn.btn-green:hover{background:#2d7a3a;color:#fff}
+.exp-btn.btn-amber{border-color:#c9a96e;color:#c9a96e}.exp-btn.btn-amber:hover{background:#c9a96e;color:#fff}
+.exp-btn.btn-blue{border-color:#5b6abf;color:#5b6abf}.exp-btn.btn-blue:hover{background:#5b6abf;color:#fff}
+.exp-btn.btn-purple{border-color:#8b7ec8;color:#8b7ec8}.exp-btn.btn-purple:hover{background:#8b7ec8;color:#fff}
+.exp-btn.btn-violet{border-color:#9b6ec9;color:#9b6ec9}.exp-btn.btn-violet:hover{background:#9b6ec9;color:#fff}
+.exp-btn.btn-red{border-color:#cf5b5b;color:#cf5b5b}.exp-btn.btn-red:hover{background:#cf5b5b;color:#fff}
+.exp-btn.btn-lgreen{border-color:#5bb98c;color:#2d7a3a}.exp-btn.btn-lgreen:hover{background:#5bb98c;color:#fff}
+.exp-btn.btn-grey{border-color:#8a8680;color:#8a8680}.exp-btn.btn-grey:hover{background:#8a8680;color:#fff}
 @media print{
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
   .hdr,.tabs,.flt,.exp-bar,.gb,.no-print,.save-bar{display:none!important}.lt{box-shadow:none;border:none;max-width:100%}.cnt{padding:0}
@@ -201,7 +210,7 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 /*BUNDLE_INSERT:60-fcvm-state*/
 /*BUNDLE_INSERT:70-fcvm-calc*//*BUNDLE_INSERT:80-roles-config*/var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='8.50'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='8.51'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 /*BUNDLE_INSERT:82-month-labels*/
 /*BUNDLE_INSERT:84-state-restore*/

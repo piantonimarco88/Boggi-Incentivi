@@ -2,8 +2,8 @@ function rL(){
   if(PRIZE_MODE==="fcvm"){rLFcvm();return;}
   var h='<div class="exp-bar no-print">'; 
   h+='<button class="exp-btn primary" onclick="printLetterOnly()">&#128424; Stampa / PDF</button>';
-  h+='<button class="exp-btn" onclick="saveAllPDFsFolder()" style="border-color:#2d7a3a;color:#2d7a3a" title="Salva PDF in cartella (Chrome/Edge)">&#128194; Salva in Cartella PC</button>';
-  h+='<button class="exp-btn" onclick="saveAllPDFsZip()" style="border-color:#5b6abf;color:#5b6abf">&#128230; Scarica ZIP</button>';
+  h+='<button class="exp-btn btn-green" onclick="saveAllPDFsFolder()" title="Salva PDF in cartella (Chrome/Edge)">&#128194; Salva in Cartella PC</button>';
+  h+='<button class="exp-btn btn-blue" onclick="saveAllPDFsZip()">&#128230; Scarica ZIP</button>';
   h+='</div>';
   var searchPool=PRIZE_MODE==="seasonal"?E.filter(function(e){return isSMVSM(e);}):E;
   var placeholder=PRIZE_MODE==="seasonal"?"Cerca SM/VSM...":"Cerca dipendente...";

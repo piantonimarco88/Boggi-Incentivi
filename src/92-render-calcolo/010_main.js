@@ -5,8 +5,8 @@ function rC(){
   if(PRIZE_MODE==="seasonal"){rCSeasonal();return;}
   var mL=MODE==="preventivo"?'<span style="background:#fff3cd;color:#856404;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700">\u26a0 PREVENTIVO</span>':'';
   mL+=' <button class="exp-btn" onclick="exportExcel()" style="font-size:10px;padding:4px 12px">&#128202; Export Excel</button>';
-  if(MODE==="consuntivo")mL+=' <button class="exp-btn" onclick="saveMonitorSnap()" style="font-size:10px;padding:4px 12px;border-color:#5bb98c;color:#2d7a3a">&#128229; Salva per Monitor</button>';
-  if(REGION==="international"&&MODE==="consuntivo")mL+=' <button class="exp-btn" onclick="exportExcelUSA()" style="font-size:10px;padding:4px 12px;border-color:#c9a96e;color:#c9a96e">&#127482;&#127480; Export Excel USA</button>';
+  if(MODE==="consuntivo")mL+=' <button class="exp-btn btn-lgreen" onclick="saveMonitorSnap()" style="font-size:10px;padding:4px 12px">&#128229; Salva per Monitor</button>';
+  if(REGION==="international"&&MODE==="consuntivo")mL+=' <button class="exp-btn btn-amber" onclick="exportExcelUSA()" style="font-size:10px;padding:4px 12px">&#127482;&#127480; Export Excel USA</button>';
   var fl=E.filter(function(e){if(cF.j!=="ALL"&&e.j!==cF.j)return false;if(cF.s!=="ALL"&&e.s!==cF.s)return false;
     if(cF.q){var q=cF.q.toLowerCase();return(e.c&&e.c.toLowerCase().indexOf(q)>=0)||(e.n&&e.n.toLowerCase().indexOf(q)>=0)||(e.m&&e.m.toLowerCase().indexOf(q)>=0)||(e.s&&e.s.toLowerCase().indexOf(q)>=0)}return true});
   fl.sort(function(a,b){var va,vb,col=cSort.col;
