@@ -34,6 +34,9 @@ const crypto = require("crypto");
 const ROOT = path.resolve(__dirname, "..");
 const SRC_DIR = path.join(ROOT, "src");
 const OUT_PATH = path.join(ROOT, "web", "app.html");
+// Root copy: l'auto-updater del wrapper .exe legge app.html dalla root del repo
+// (come definito in update.json). Ogni build sincronizza automaticamente.
+const ROOT_COPY_PATH = path.join(ROOT, "app.html");
 
 // === Raccolta sorgenti =====================================
 // Walk ricorsivo di una cartella, ritorna i percorsi in ordine
@@ -120,11 +123,14 @@ function main() {
 
   const content = build();
   fs.writeFileSync(OUT_PATH, content);
+  // Sincronizza root app.html per l'auto-updater del wrapper .exe
+  fs.writeFileSync(ROOT_COPY_PATH, content);
 
   const sha = crypto.createHash("sha256").update(content).digest("hex");
   const sizeKb = (content.length / 1024).toFixed(1);
   console.log("Build OK:");
   console.log("  output: " + path.relative(ROOT, OUT_PATH));
+  console.log("  copy:   " + path.relative(ROOT, ROOT_COPY_PATH) + " (auto-updater)");
   console.log("  size:   " + content.length + " bytes (" + sizeKb + " KB)");
   console.log("  sha256: " + sha);
 
