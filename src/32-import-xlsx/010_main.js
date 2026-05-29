@@ -531,6 +531,62 @@ function applyImportedAnagrafica(){
   alert("Anagrafica aggiornata: "+E.length+" dipendenti (precedenti: "+oldLen+").\n\nTarget, consuntivo e KPI azzerati. Ricarica i dati per "+getMonthYearLabel()+".");
 }
 
+// ── IMPORT MAPPING FC PER MODALITÀ MENSILE INTERNAZIONALE ───────────────────
+// Legge il file anagrafica FC+VM (stesso formato di loadFcVmAnagrafica) e
+// estrae solo il mapping store → nome FC per popolare e.mf dei dipendenti mensili.
+// Non tocca FC_EMP / FC_MAP / nessun dato esistente.
+function loadFcMappingForMensile(file){
+  var reader=new FileReader();
+  reader.onload=function(ev){setTimeout(function(){try{
+    var data=new Uint8Array(ev.target.result);
+    var wb=XLSX.read(data,{type:'array'});
+    // Stesso foglio detection di loadFcVmAnagrafica
+    var sheet=wb.SheetNames[0];
+    wb.SheetNames.forEach(function(sn){var snl=sn.toLowerCase();if(snl.indexOf('anag')>=0||snl.indexOf('fc')>=0||snl.indexOf('vm')>=0||snl.indexOf('testata')>=0)sheet=sn;});
+    var ws=wb.Sheets[sheet];
+    var json=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+    if(json.length<2){alert('Foglio vuoto o non riconosciuto.');return;}
+    // Header detection (stessa logica di loadFcVmAnagrafica)
+    var hdrRow=0,hdr={sid:-1,nome:-1,cogn:-1,ruolo:-1};
+    for(var ri=0;ri<Math.min(5,json.length);ri++){
+      var row=json[ri];if(!row)continue;
+      var rowStr=row.map(function(c){return String(c||'').toLowerCase().trim();});
+      var found=false;
+      rowStr.forEach(function(h,ci){
+        if(h.indexOf('store id')>=0||h==='store_id'||h==='storeid'){hdr.sid=ci;found=true;}
+        else if(h==='nome'||h==='nome '||h==='name'||h==='first name'){hdr.nome=ci;}
+        else if(h==='cognome'||h==='surname'||h==='last name'){hdr.cogn=ci;}
+        else if(h==='ruolo'||h==='role'||h==='funzione'){hdr.ruolo=ci;}
+      });
+      if(found){hdrRow=ri;break;}
+    }
+    if(hdr.sid<0){alert('Colonna "Store ID" non trovata nel file.');return;}
+    // Build store → FC name (primo FC per store)
+    var storeToFcName={};
+    for(var ri=hdrRow+1;ri<json.length;ri++){
+      var row=json[ri];if(!row)continue;
+      var sid=String(parseInt(row[hdr.sid]||''));if(sid==='NaN')continue;
+      if(storeToFcName[sid])continue;
+      var ruolo=hdr.ruolo>=0?String(row[hdr.ruolo]||'').trim().toUpperCase():'FC';
+      if(ruolo!=='FC')continue;
+      var nome=hdr.nome>=0?String(row[hdr.nome]||'').trim():'';
+      var cogn=hdr.cogn>=0?String(row[hdr.cogn]||'').trim():'';
+      var fullName=(nome+' '+cogn).trim();
+      if(fullName)storeToFcName[sid]=fullName;
+    }
+    // Aggiorna e.mf per tutti i dipendenti mensili che non hanno già email FC
+    var updated=0,nStores=Object.keys(storeToFcName).length;
+    E.forEach(function(e){
+      if(e.mf&&e.mf.indexOf('@')>0)return;
+      var fcName=storeToFcName[String(e.si)];
+      if(fcName){e.mf=fcName.toLowerCase().replace(/ /g,'.')+'@boggi.com';updated++;}
+    });
+    alert('✅ Mapping FC caricato:\n• '+nStores+' store con FC assegnato\n• '+updated+' dipendenti aggiornati con email FC');
+    rDist();autoSave();
+  }catch(ex){alert('Errore lettura mapping FC:\n'+ex.message);}},50);};
+  reader.readAsArrayBuffer(file);
+}
+
 // ── IMPORT ANAGRAFICA USA (formato Estrazione_Piantoni) ─────────────────────
 function loadAnagraficaUSA(file){
   var reader=new FileReader();

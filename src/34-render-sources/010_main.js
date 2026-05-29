@@ -17,6 +17,7 @@ function rSources(){try{
   sh+='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">';
   sh+='<label class="exp-btn btn-green" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128101; Carica Anagrafica Excel<input type="file" accept=".xlsx,.xlsm,.xls" id="loadAnagrafica" style="display:none"></label>';
   if(REGION==="international"&&PRIZE_MODE==="mensile")sh+='<label class="exp-btn btn-amber" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#127482;&#127480; Carica Anagrafica USA Excel<input type="file" accept=".xlsx,.xlsm,.xls" id="loadAnagraficaUSA" style="display:none"></label>';
+  if(REGION==="international"&&PRIZE_MODE==="mensile")sh+='<label class="exp-btn btn-blue" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="Stessa anagrafica FC+VM — estrae solo il mapping Store→FC per popolare le email FC dei dipendenti mensili">&#128101; Mapping FC (xlsx)<input type="file" accept=".xlsx,.xlsm,.xls" id="loadFcMapping" style="display:none"></label>';
   sh+='<label class="exp-btn primary" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128194; Carica Excel Target<input type="file" accept=".xlsx,.xlsm,.xls,.csv" id="loadTarget" style="display:none"></label>';
   sh+='<label class="exp-btn btn-purple" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128202; Carica Excel Results<input type="file" accept=".xlsx,.xlsm,.xls,.csv" id="loadCons" style="display:none"></label>';
   sh+='<button class="exp-btn btn-green" onclick="runValidationsAndReport(\'Verifica dati caricati\')" title="Esegue controlli di coerenza su anagrafica e configurazione: matricole duplicate, currency mancanti, store sconosciuti, ruoli non validi, ecc.">&#128269; Verifica Dati</button>';
@@ -248,6 +249,8 @@ function rSources(){try{
   if(loadAnag)loadAnag.onchange=function(){if(this.files[0]){var f=this.files[0];this.value="";loadAnagraficaExcel(f)}};
   var loadAnagUSA=document.getElementById("loadAnagraficaUSA");
   if(loadAnagUSA)loadAnagUSA.onchange=function(){if(this.files[0]){var f=this.files[0];this.value="";loadAnagraficaUSA(f)}};
+  var loadFcMapping=document.getElementById("loadFcMapping");
+  if(loadFcMapping)loadFcMapping.onchange=function(){if(this.files[0]){var f=this.files[0];this.value="";loadFcMappingForMensile(f)}};
   var loadTarget=document.getElementById("loadTarget");
   if(loadTarget)loadTarget.onchange=function(){if(this.files[0]){var f=this.files[0];this.value="";scanExcelFile(f,"target")}};
   var loadCons=document.getElementById("loadCons");
