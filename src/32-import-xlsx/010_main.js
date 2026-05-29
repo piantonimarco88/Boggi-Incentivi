@@ -575,13 +575,15 @@ function loadFcMappingForMensile(file){
       if(fullName)storeToFcName[sid]=fullName;
     }
     // Aggiorna e.mf per tutti i dipendenti mensili che non hanno già email FC
-    var updated=0,nStores=Object.keys(storeToFcName).length;
+    var FC_FALLBACK='giulio.zaccaria@boggi.com';
+    var updated=0,fallback=0,nStores=Object.keys(storeToFcName).length;
     E.forEach(function(e){
       if(e.mf&&e.mf.indexOf('@')>0)return;
       var fcName=storeToFcName[String(e.si)];
       if(fcName){e.mf=fcName.toLowerCase().replace(/ /g,'.')+'@boggi.com';updated++;}
+      else{e.mf=FC_FALLBACK;fallback++;}  // store non mappato → fallback
     });
-    alert('✅ Mapping FC caricato:\n• '+nStores+' store con FC assegnato\n• '+updated+' dipendenti aggiornati con email FC');
+    alert('✅ Mapping FC caricato:\n• '+nStores+' store con FC assegnato\n• '+updated+' dipendenti aggiornati\n• '+fallback+' dipendenti → fallback ('+FC_FALLBACK+')');
     rDist();autoSave();
   }catch(ex){alert('Errore lettura mapping FC:\n'+ex.message);}},50);};
   reader.readAsArrayBuffer(file);
