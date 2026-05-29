@@ -513,6 +513,15 @@ function applyImportedAnagrafica(){
   // Note: D.tr (translations) and ENTE_CU (exchange rates) are preserved
   // They can be reloaded separately via Fonti Dati if needed
 
+  // Popola e.mf (email FC) da FC_MAP per dipendenti senza FC nel file anagrafica
+  // (caso tipico: nuovo formato HR non ha colonna FC; FC_MAP già caricato da FC+VM)
+  E.forEach(function(emp){
+    if(!emp.mf||emp.mf.indexOf("@")<0){
+      var _mp=FC_MAP[String(emp.si)];
+      if(_mp){var _fa=Array.isArray(_mp.fc)?_mp.fc[0]:_mp.fc;if(_fa&&FC_EMP[_fa]){var _fe=FC_EMP[_fa];emp.mf=(_fe.n+" "+_fe.c).toLowerCase().replace(/ /g,".")+"@boggi.com";}}
+    }
+  });
+
   // Update header count
   var hs=document.getElementById("hs");
   updateHeaderCount();

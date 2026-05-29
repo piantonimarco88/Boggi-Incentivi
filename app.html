@@ -570,7 +570,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='8.51'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='8.52'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -4834,6 +4834,15 @@ function applyImportedAnagrafica(){
   // Note: D.tr (translations) and ENTE_CU (exchange rates) are preserved
   // They can be reloaded separately via Fonti Dati if needed
 
+  // Popola e.mf (email FC) da FC_MAP per dipendenti senza FC nel file anagrafica
+  // (caso tipico: nuovo formato HR non ha colonna FC; FC_MAP già caricato da FC+VM)
+  E.forEach(function(emp){
+    if(!emp.mf||emp.mf.indexOf("@")<0){
+      var _mp=FC_MAP[String(emp.si)];
+      if(_mp){var _fa=Array.isArray(_mp.fc)?_mp.fc[0]:_mp.fc;if(_fa&&FC_EMP[_fa]){var _fe=FC_EMP[_fa];emp.mf=(_fe.n+" "+_fe.c).toLowerCase().replace(/ /g,".")+"@boggi.com";}}
+    }
+  });
+
   // Update header count
   var hs=document.getElementById("hs");
   updateHeaderCount();
@@ -6193,10 +6202,25 @@ function rStores(){
 }
 
 // ==== TAB 6: DISTRIBUZIONE ====
+// Ritorna l'email FC effettiva per un dipendente:
+// 1. e.mf se già impostata (da colonna FC nel file anagrafica o da import precedente)
+// 2. Fallback dinamico su FC_MAP (se FC+VM è caricato) → non richiede re-import anagrafica
+function _distMf(e){
+  if(e.mf&&e.mf.indexOf("@")>0)return e.mf;
+  var _mp=FC_MAP[String(e.si)];
+  if(_mp){var _fa=Array.isArray(_mp.fc)?_mp.fc[0]:_mp.fc;if(_fa&&FC_EMP[_fa]){var _fe=FC_EMP[_fa];return(_fe.n+" "+_fe.c).toLowerCase().replace(/ /g,".")+"@boggi.com";}}
+  return "";
+}
+
 function rDist(){
   var folder=MODE==="preventivo"?"preventivo":"consuntivo";
   var psf=getPdfSubfolder();var psfFolder=folder==="preventivo"?psf.prev:psf.cons;
   var fullPath=CFG_PDF_PATH?(CFG_PDF_PATH.replace(/[\/\\]$/,"")+"/"+psfFolder+"/"):(psfFolder+"/");
+  // Pre-popola e.mf da FC_MAP per dipendenti che non hanno email FC impostata
+  // (caso: anagrafica importata prima di caricare i dati FC+VM, o nuovo formato HR senza colonna FC)
+  (PRIZE_MODE==='fcvm'?Object.values(FC_EMP):E).forEach(function(e){
+    if(!e.mf||e.mf.indexOf("@")<0){var m=_distMf(e);if(m)e.mf=m;}
+  });
   var h='<div style="font-size:12px;color:#6b6560;margin-bottom:16px"><b>Distribuzione lettere '+(MODE==="preventivo"?"PREVENTIVO":"CONSUNTIVO")+' \u2014 '+getMonthYearLabel()+'</b><br><span style="font-size:10px">Cartella PDF: <code style="background:#f0ede7;padding:1px 4px;border-radius:3px">'+esc(fullPath)+'</code></span></div>';
 
   // Note about email source

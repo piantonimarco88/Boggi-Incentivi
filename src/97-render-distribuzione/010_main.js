@@ -1,7 +1,22 @@
+// Ritorna l'email FC effettiva per un dipendente:
+// 1. e.mf se già impostata (da colonna FC nel file anagrafica o da import precedente)
+// 2. Fallback dinamico su FC_MAP (se FC+VM è caricato) → non richiede re-import anagrafica
+function _distMf(e){
+  if(e.mf&&e.mf.indexOf("@")>0)return e.mf;
+  var _mp=FC_MAP[String(e.si)];
+  if(_mp){var _fa=Array.isArray(_mp.fc)?_mp.fc[0]:_mp.fc;if(_fa&&FC_EMP[_fa]){var _fe=FC_EMP[_fa];return(_fe.n+" "+_fe.c).toLowerCase().replace(/ /g,".")+"@boggi.com";}}
+  return "";
+}
+
 function rDist(){
   var folder=MODE==="preventivo"?"preventivo":"consuntivo";
   var psf=getPdfSubfolder();var psfFolder=folder==="preventivo"?psf.prev:psf.cons;
   var fullPath=CFG_PDF_PATH?(CFG_PDF_PATH.replace(/[\/\\]$/,"")+"/"+psfFolder+"/"):(psfFolder+"/");
+  // Pre-popola e.mf da FC_MAP per dipendenti che non hanno email FC impostata
+  // (caso: anagrafica importata prima di caricare i dati FC+VM, o nuovo formato HR senza colonna FC)
+  (PRIZE_MODE==='fcvm'?Object.values(FC_EMP):E).forEach(function(e){
+    if(!e.mf||e.mf.indexOf("@")<0){var m=_distMf(e);if(m)e.mf=m;}
+  });
   var h='<div style="font-size:12px;color:#6b6560;margin-bottom:16px"><b>Distribuzione lettere '+(MODE==="preventivo"?"PREVENTIVO":"CONSUNTIVO")+' \u2014 '+getMonthYearLabel()+'</b><br><span style="font-size:10px">Cartella PDF: <code style="background:#f0ede7;padding:1px 4px;border-radius:3px">'+esc(fullPath)+'</code></span></div>';
 
   // Note about email source
