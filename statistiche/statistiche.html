@@ -1,0 +1,2695 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Boggi — Statistiche Premi</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f7;color:#1a1a2e;min-height:100vh}
+
+/* HEADER */
+header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;box-shadow:0 2px 12px rgba(0,0,0,.3)}
+.hbrand{display:flex;align-items:center;gap:12px}
+.hlogo{font-size:18px;font-weight:700;letter-spacing:3px}
+.hsep{width:1px;height:26px;background:rgba(255,255,255,.2)}
+.hsub{font-size:12px;opacity:.6}
+.hbtns{display:flex;gap:8px;align-items:center}
+.hbtn{padding:7px 14px;border-radius:7px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;cursor:pointer;font-size:12px;font-weight:500;transition:.15s;white-space:nowrap}
+.hbtn:hover{background:rgba(255,255,255,.18)}
+.hbtn.primary{background:#4f46e5;border-color:#4f46e5}
+.hbtn.primary:hover{background:#4338ca}
+
+/* UPLOAD */
+.upload{padding:20px 28px 0}
+.dz{border:2px dashed #c8ccd8;border-radius:14px;padding:28px 36px;text-align:center;background:#fff;cursor:pointer;transition:.2s}
+.dz:hover,.dz.over{border-color:#4f46e5;background:#f5f4ff}
+.dz-icon{font-size:36px;margin-bottom:6px}
+.dz h3{font-size:14px;margin-bottom:3px;color:#222}
+.dz p{color:#999;font-size:12px;margin-bottom:12px}
+.btn-up{background:#1a1a2e;color:#fff;border:none;padding:7px 18px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:500}
+.btn-up:hover{background:#2d2d4e}
+.dz-hint{font-size:10px;color:#bbb;margin-top:7px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;padding:8px 0 0}
+.chip{background:#edf7ed;border:1px solid #a8d5a8;border-radius:20px;padding:4px 12px;font-size:11px;display:flex;align-items:center;gap:4px;color:#2e6b2e}
+.chip.session{background:#eff6ff;border-color:#93c5fd;color:#1d4ed8}
+.chip .x{cursor:pointer;color:#999;font-size:13px;line-height:1}.chip .x:hover{color:#c00}
+.chip-drop{color:#b45309;background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:0 6px;font-weight:600;cursor:help}
+.curr-warn{font-size:11px;color:#d97706;background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:4px 10px;display:inline-flex;align-items:center;gap:5px;margin-top:6px}
+
+/* KPI */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:13px;padding:18px 28px 0}
+.kpi{background:#fff;border-radius:12px;padding:16px 18px;border-left:4px solid #4f46e5;box-shadow:0 1px 5px rgba(0,0,0,.06)}
+.kpi.g{border-left-color:#22c55e}.kpi.a{border-left-color:#f59e0b}.kpi.r{border-left-color:#ef4444}.kpi.p{border-left-color:#a855f7}
+.kpi-lbl{font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.5px}
+.kpi-val{font-size:20px;font-weight:700;margin:4px 0 2px;color:#111}
+.kpi-sub{font-size:10px;color:#bbb}
+
+/* CHARTS */
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:16px 28px 0}
+.cc{background:#fff;border-radius:12px;padding:16px 18px;box-shadow:0 1px 5px rgba(0,0,0,.06)}
+.cc.full{grid-column:1/-1}
+.cc-title{font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.4px;margin-bottom:12px}
+.cw{position:relative;height:240px}.cw.tall{height:290px}
+
+/* DIP SECTION */
+.dip{margin:16px 28px 28px;background:#fff;border-radius:14px;box-shadow:0 1px 8px rgba(0,0,0,.07);overflow:hidden}
+.dip-top{padding:14px 18px 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.dip-top h2{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#555}
+.dip-meta{font-size:11px;color:#aaa}
+.dip-actions{display:flex;align-items:center;gap:10px}
+.btn-exp{background:#f0fdf4;border:1px solid #86efac;color:#16a34a;border-radius:7px;padding:5px 13px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap;transition:.15s}
+.btn-exp:hover{background:#dcfce7}
+
+/* FILTERS */
+.dip-filters{padding:10px 18px 10px;background:#f8f9fc;border-bottom:1px solid #eaecf0;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+.fg{display:flex;flex-direction:column;gap:2px}
+.fg label{font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.4px}
+.fg input{padding:5px 8px;border:1px solid #dde1ea;border-radius:6px;font-size:11px;background:#fff;color:#222;min-width:160px}
+.fg input:focus{outline:none;border-color:#4f46e5}
+.btn-rst{align-self:flex-end;background:none;border:1px solid #dde1ea;border-radius:6px;padding:5px 11px;cursor:pointer;font-size:11px;color:#999}
+.btn-rst:hover{background:#f0f0f0}
+
+/* MULTI-SELECT DROPDOWN */
+.ms-wrap{position:relative;display:inline-block}
+.ms-btn{width:100%;padding:5px 28px 5px 8px;border:1px solid #dde1ea;border-radius:6px;font-size:11px;background:#fff;color:#222;cursor:pointer;text-align:left;position:relative;min-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ms-btn::after{content:'▾';position:absolute;right:7px;top:50%;transform:translateY(-50%);color:#aaa;font-size:9px;pointer-events:none}
+.ms-btn:focus{outline:none}
+.ms-btn.active{border-color:#4f46e5;background:#f5f4ff}
+.ms-panel{position:absolute;top:calc(100% + 3px);left:0;z-index:200;background:#fff;border:1px solid #dde1ea;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:220px;max-height:260px;overflow-y:auto;padding:3px 0;white-space:nowrap}
+.ms-panel label{display:flex;align-items:center;gap:7px;padding:5px 12px;font-size:11px;cursor:pointer;white-space:nowrap;color:#222;user-select:none}
+.ms-panel label:hover{background:#f5f4ff}
+.ms-panel label.ms-all{font-weight:700;color:#4f46e5;border-bottom:1px solid #f0f2f7;padding-bottom:7px;margin-bottom:2px}
+.ms-panel input[type=checkbox]{accent-color:#4f46e5;width:13px;height:13px;cursor:pointer;flex-shrink:0}
+.ms-cnt{display:inline-block;background:#4f46e5;color:#fff;border-radius:9px;padding:1px 6px;font-size:9px;font-weight:700;margin-left:3px;vertical-align:middle}
+
+/* SCROLLABLE TABLE */
+.tbl-scroll{overflow-y:auto;max-height:65vh;overflow-x:auto}
+.tbl-scroll table{width:100%;border-collapse:collapse;font-size:12px}
+.tbl-scroll thead th{
+  position:sticky;top:0;z-index:5;
+  text-align:left;padding:9px 11px;background:#f2f4f8;
+  font-weight:700;font-size:10px;text-transform:uppercase;color:#999;
+  border-bottom:2px solid #e4e7ef;cursor:pointer;user-select:none;white-space:nowrap
+}
+.tbl-scroll thead th:hover{background:#e8eaf2}
+.tbl-scroll tbody td{padding:8px 11px;border-bottom:1px solid #f2f3f7;vertical-align:middle}
+.tbl-scroll tbody tr.dr:hover td{background:#f9fafc;cursor:pointer}
+.tbl-scroll tbody tr.dr.open td{background:#f5f4ff}
+.tbl-scroll tbody tr.xr td{padding:0;background:#fafbff}
+.xr-inner{padding:12px 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.ci{background:#fff;border:1px solid #eaecf0;border-radius:8px;padding:9px 11px}
+.ci-name{font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.3px;margin-bottom:5px}
+.ci-bar{height:4px;background:#f0f0f0;border-radius:2px;overflow:hidden;margin-bottom:4px}
+.ci-fill{height:100%;border-radius:2px;transition:width .3s}
+.ci-vals{display:flex;justify-content:space-between;font-size:10px;color:#666}
+.ci-vals strong{font-weight:700;color:#1a1a2e}
+.monthly-tbl{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:10px}
+.monthly-tbl th{text-align:left;padding:5px 8px;background:#f0f2f7;font-weight:700;font-size:9px;text-transform:uppercase;color:#aaa}
+.monthly-tbl td{padding:5px 8px;border-bottom:1px solid #f0f2f7}
+
+/* BADGES */
+.badge{display:inline-block;padding:2px 6px;border-radius:8px;font-size:9px;font-weight:700;white-space:nowrap}
+.b0{background:#f1f5f9;color:#94a3b8}
+.b1{background:#fee2e2;color:#dc2626}
+.b2{background:#fef3c7;color:#d97706}
+.b3{background:#dbeafe;color:#2563eb}
+.b4{background:#dcfce7;color:#16a34a}
+.b5{background:#f3e8ff;color:#9333ea;border:1px solid #d8b4fe}
+.bjob{background:#f1f5f9;color:#475569;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600}
+
+/* PROGRESS */
+.pct-cell{display:flex;align-items:center;gap:6px;min-width:110px}
+.pbar{flex:1;height:4px;background:#f0f0f0;border-radius:2px;overflow:hidden;min-width:40px}
+.pfill{height:100%;border-radius:2px}
+.pf0{background:#cbd5e1}.pf1{background:#ef4444}.pf2{background:#f59e0b}.pf3{background:#3b82f6}.pf4{background:#22c55e}.pf5{background:#a855f7}
+
+/* FOOTER NOTE */
+.note{font-size:10px;color:#bbb;padding:8px 18px 12px;text-align:right}
+
+/* EXPAND BUTTON */
+.cc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.cc-head .cc-title{margin-bottom:0}
+.btn-expand{background:none;border:none;cursor:pointer;color:#ccc;padding:3px 5px;border-radius:5px;line-height:1;transition:.15s;flex-shrink:0}
+.btn-expand:hover{color:#4f46e5;background:#f0f0ff}
+.kpi-expand-wrap{display:flex;justify-content:flex-end;padding:4px 28px 0}
+.btn-kpi-expand{background:none;border:1px solid #e4e7ef;cursor:pointer;color:#bbb;padding:3px 10px 3px 7px;border-radius:6px;font-size:10px;font-weight:600;line-height:1.4;display:inline-flex;align-items:center;gap:4px;transition:.15s}
+.btn-kpi-expand:hover{color:#4f46e5;border-color:#4f46e5;background:#f5f4ff}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(10,10,30,.6);z-index:2000;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal-box{background:#fff;border-radius:16px;box-shadow:0 12px 60px rgba(0,0,0,.3);width:100%;max-width:1260px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;animation:mfade .18s ease}
+@keyframes mfade{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 22px;border-bottom:1px solid #eaecf0;flex-shrink:0}
+.modal-head h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#999}
+.btn-mclose{background:none;border:none;cursor:pointer;font-size:22px;color:#aaa;padding:0 4px;border-radius:4px;line-height:1;transition:.15s}
+.btn-mclose:hover{background:#f0f0f0;color:#333}
+.modal-body{flex:1;padding:22px 26px;overflow:auto;min-height:0}
+.modal-canvas-wrap{position:relative;height:72vh}
+.modal-kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:16px;padding:8px 0}
+.modal-kpi-grid .kpi{border-left-width:5px}
+
+@media(max-width:850px){.charts{grid-template-columns:1fr}
+  .kpi-row,.charts,.upload{padding-left:14px;padding-right:14px}
+  .dip{margin-left:14px;margin-right:14px}header{padding:12px 14px}}
+
+/* ── TABS ──────────────────────────────────────────────────── */
+.tab-bar{display:flex;gap:3px;padding:14px 28px 0;background:#f0f2f7}
+.tab-btn{padding:9px 22px;border:2px solid transparent;border-bottom:none;border-radius:10px 10px 0 0;background:#e4e7ef;color:#888;cursor:pointer;font-size:12px;font-weight:700;letter-spacing:.2px;transition:.15s}
+.tab-btn.active{background:#fff;color:#4f46e5;border-color:#dde1ea;border-bottom:2px solid #fff;position:relative;top:1px}
+.tab-btn:hover:not(.active){background:#d8dce8;color:#444}
+
+/* ── YOY SECTION ───────────────────────────────────────────── */
+.yoy-filters{background:#fff;border-radius:12px;padding:12px 18px;margin:18px 28px 0;box-shadow:0 1px 5px rgba(0,0,0,.06);display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+.yoy-charts{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:16px 28px 0}
+.yoy-tbl{margin:16px 28px 28px;background:#fff;border-radius:14px;box-shadow:0 1px 8px rgba(0,0,0,.07);overflow:hidden}
+.yoy-kpi-wrap{padding:18px 28px 0;display:flex;gap:14px;flex-wrap:wrap}
+.yoy-yr-card{flex:1;min-width:220px;background:#fff;border-radius:12px;padding:16px 20px;box-shadow:0 1px 6px rgba(0,0,0,.07);border-top:4px solid #4f46e5}
+.yoy-yr-card:nth-child(2){border-top-color:#f59e0b}
+.yoy-yr-card:nth-child(3){border-top-color:#22c55e}
+.yoy-yr-card:nth-child(4){border-top-color:#ef4444}
+.yoy-yr-card.delta{border-top-color:#a855f7!important;background:#faf8ff}
+.yoy-yr-title{font-size:20px;font-weight:800;color:#1a1a2e;margin-bottom:10px;letter-spacing:-.5px}
+.yoy-yr-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px}
+.yoy-stat-l{font-size:9px;color:#bbb;text-transform:uppercase;font-weight:700;letter-spacing:.4px;display:block}
+.yoy-stat-v{font-size:14px;font-weight:700;color:#111;display:block}
+.pos{color:#16a34a!important}.neg{color:#dc2626!important}
+.l4l-wrap{display:flex;flex-direction:column;gap:2px}
+.l4l-toggle{display:flex;gap:2px;background:#f0f2f7;border-radius:7px;padding:2px}
+.l4l-btn{padding:4px 11px;border:none;border-radius:5px;cursor:pointer;font-size:11px;font-weight:600;background:transparent;color:#888;transition:.15s;white-space:nowrap}
+.l4l-btn.active{background:#fff;color:#4f46e5;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.yoy-kpi-toggle{align-self:flex-end;background:#f5f4ff;border:1px solid #c7c3f7;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:11px;font-weight:600;color:#4f46e5;white-space:nowrap;transition:.15s}
+.yoy-kpi-toggle:hover{background:#ede9fe}
+.yoy-kpi-toggle.hidden-state{background:#f8f9fc;border-color:#dde1ea;color:#aaa}
+.yoy-eur-hidden .kpi-eur-row{display:none!important}
+.yoy-eur-hidden .cc-eur{display:none!important}
+.sal-eur-hidden .kpi-eur-row{display:none!important}
+.sal-eur-hidden .cc-eur{display:none!important}
+.sal-eur-hidden .yoy-charts .cc:not(.cc-eur){grid-column:1/-1!important}
+.dip-ac-wrap{position:relative}
+.dip-ac-list{position:absolute;top:calc(100% + 3px);left:0;z-index:300;background:#fff;border:1px solid #dde1ea;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);min-width:240px;max-height:240px;overflow-y:auto;padding:3px 0}
+.dip-ac-item{padding:6px 12px;cursor:pointer;display:flex;flex-direction:column;gap:1px}
+.dip-ac-item:hover{background:#f5f4ff}
+.dip-ac-name{font-size:11px;font-weight:600;color:#222}
+.dip-ac-sub{font-size:10px;color:#aaa}
+.info-tip{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#e0e7ff;color:#4f46e5;font-size:9px;font-weight:800;cursor:default;margin-left:5px;position:relative;vertical-align:middle;flex-shrink:0}
+.info-tip::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;font-size:10px;font-weight:400;line-height:1.5;padding:7px 10px;border-radius:7px;white-space:pre-wrap;width:260px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:999;text-align:left}
+.info-tip:hover::after{opacity:1}
+.yoy-tbl-head{padding:14px 18px 10px;border-bottom:1px solid #eaecf0}
+.yoy-tbl-head h2{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#555}
+@media(max-width:850px){.yoy-charts{grid-template-columns:1fr}.yoy-filters,.yoy-charts,.yoy-kpi-wrap{padding-left:14px;padding-right:14px}.yoy-tbl{margin-left:14px;margin-right:14px}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hbrand">
+    <div class="hlogo">BOGGI MILANO</div>
+    <div class="hsep"></div>
+    <div class="hsub">Statistiche Premi Dipendenti di Negozio</div>
+  </div>
+  <div class="hbtns">
+    <button class="hbtn" onclick="document.getElementById('sfi').click()" title="Carica una sessione precedentemente salvata">📥 Carica sessione</button>
+    <button class="hbtn primary" id="btnSave" onclick="saveSession()" style="display:none" title="Salva i dati correnti in un file JSON da condividere con i colleghi">💾 Salva sessione</button>
+    <input type="file" id="sfi" accept=".json" style="display:none" onchange="loadSession(event)">
+  </div>
+</header>
+
+<!-- UPLOAD -->
+<div class="upload">
+  <div class="dz" id="dz" onclick="document.getElementById('fi').click()">
+    <div class="dz-icon">📂</div>
+    <h3>Carica i file consuntivo premi mensili</h3>
+    <p>Trascina uno o più file .xlsx, oppure clicca per selezionarli</p>
+    <button class="btn-up" onclick="event.stopPropagation();document.getElementById('fi').click()">Seleziona file .xlsx</button>
+    <input type="file" id="fi" accept=".xlsx,.xls" multiple style="display:none">
+    <div class="dz-hint">Compatibile con: "PREMI [MESE] PER LAURA" (vecchio sistema) · "Incentivi_consuntivo" (nuovo sistema)</div>
+  </div>
+  <div id="chips" class="chips"></div>
+  <div id="currWarn" style="display:none" class="curr-warn"></div>
+</div>
+
+<!-- TAB BAR -->
+<div class="tab-bar">
+  <button class="tab-btn active" data-tab="dash" onclick="switchTab('dash')">📊 Dashboard</button>
+  <button class="tab-btn" data-tab="yoy" onclick="switchTab('yoy')">📅 Anno su Anno</button>
+  <button class="tab-btn" data-tab="sal" onclick="switchTab('sal')">💶 Stipendi</button>
+</div>
+
+<!-- ═══════════ DASHBOARD TAB ═══════════ -->
+<div id="tabDash">
+
+<!-- KPI -->
+<div class="kpi-expand-wrap" id="kpiExpandWrap" style="display:none">
+  <button class="btn-kpi-expand" onclick="expandKpi()"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M1 6V1h5M10 1h5v5M15 10v5h-5M6 15H1v-5"/></svg> Espandi KPI</button>
+</div>
+<div class="kpi-row" id="kpiRow" style="display:none">
+  <div class="kpi">
+    <div class="kpi-lbl">Dipendenti unici</div>
+    <div class="kpi-val" id="kDip">—</div>
+    <div class="kpi-sub" id="kMesi">—</div>
+  </div>
+  <div class="kpi g">
+    <div class="kpi-lbl">Achievement medio</div>
+    <div class="kpi-val" id="kAch">—</div>
+    <div class="kpi-sub">% massimale raggiunto</div>
+  </div>
+  <div class="kpi a">
+    <div class="kpi-lbl">Massimale totale erogabile</div>
+    <div class="kpi-val" id="kMax">—</div>
+    <div class="kpi-sub">somma massimali periodo</div>
+  </div>
+  <div class="kpi p">
+    <div class="kpi-lbl">Premi erogati (€)</div>
+    <div class="kpi-val" id="kTot">—</div>
+    <div class="kpi-sub" id="kMedia">—</div>
+  </div>
+  <div class="kpi r">
+    <div class="kpi-lbl">Dipendenti a €0</div>
+    <div class="kpi-val" id="kZero">—</div>
+    <div class="kpi-sub" id="kZeroPct">—</div>
+  </div>
+  <div class="kpi" style="border-left-color:#0891b2">
+    <div class="kpi-lbl">Incidenza su stipendio</div>
+    <div class="kpi-val" id="kInc">—</div>
+    <div class="kpi-sub" id="kIncSub">% premio / RML periodo</div>
+  </div>
+</div>
+
+<!-- CHARTS -->
+<div class="charts" id="chartsRow" style="display:none">
+  <div class="cc full">
+    <div class="cc-head">
+      <div class="cc-title">Massimale erogabile vs Premio erogato per negozio (€)</div>
+      <button class="btn-expand" onclick="expandCard('vs','Massimale erogabile vs Premio erogato per negozio (€)')" title="Espandi"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M1 6V1h5M10 1h5v5M15 10v5h-5M6 15H1v-5"/></svg></button>
+    </div>
+    <div class="cw tall"><canvas id="cVs"></canvas></div>
+  </div>
+  <div class="cc">
+    <div class="cc-head">
+      <div class="cc-title">% Achievement medio per negozio <span class="info-tip" data-tip="Achievement = erogato totale / massimale totale × 100.&#10;Valori > 100% sono possibili: alcune componenti (es. BDG) prevedono pagamenti oltre il massimale standard in caso di over-performance. A livello aggregato, i negozi che superano il target compensano quelli sotto, portando la media oltre 100%.">i</span></div>
+      <button class="btn-expand" onclick="expandCard('ach','% Achievement medio per negozio')" title="Espandi"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M1 6V1h5M10 1h5v5M15 10v5h-5M6 15H1v-5"/></svg></button>
+    </div>
+    <div class="cw"><canvas id="cAch"></canvas></div>
+  </div>
+  <div class="cc">
+    <div class="cc-head">
+      <div class="cc-title">Distribuzione dipendenti per fascia achievement</div>
+      <button class="btn-expand" onclick="expandCard('dist','Distribuzione dipendenti per fascia achievement')" title="Espandi"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M1 6V1h5M10 1h5v5M15 10v5h-5M6 15H1v-5"/></svg></button>
+    </div>
+    <div class="cw"><canvas id="cDist"></canvas></div>
+  </div>
+  <div class="cc full">
+    <div class="cc-head">
+      <div class="cc-title">Trend premi mensili cumulati (€) — erogato vs massimale</div>
+      <button class="btn-expand" onclick="expandCard('trend','Trend premi mensili cumulati (€) — erogato vs massimale')" title="Espandi"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M1 6V1h5M10 1h5v5M15 10v5h-5M6 15H1v-5"/></svg></button>
+    </div>
+    <div class="cw tall"><canvas id="cTrend"></canvas></div>
+  </div>
+  <div class="cc full">
+    <div class="cc-head">
+      <div class="cc-title">Totale erogato per componente — periodo selezionato (€)</div>
+      <button class="btn-expand" onclick="expandCard('comp','Totale erogato per componente — periodo selezionato (€)')" title="Espandi"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M1 6V1h5M10 1h5v5M15 10v5h-5M6 15H1v-5"/></svg></button>
+    </div>
+    <div class="cw"><canvas id="cComp"></canvas></div>
+  </div>
+  <div class="cc full">
+    <div class="cc-head">
+      <div class="cc-title">Incidenza premi su stipendio (%) per ruolo — dipendenti con RML</div>
+      <button class="btn-expand" onclick="expandCard('inc','Incidenza premi su stipendio (%) per ruolo — dipendenti con RML')" title="Espandi"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M1 6V1h5M10 1h5v5M15 10v5h-5M6 15H1v-5"/></svg></button>
+    </div>
+    <div class="cw tall"><canvas id="cInc"></canvas></div>
+  </div>
+</div>
+
+<!-- DIPENDENTI -->
+<div class="dip" id="dipSection" style="display:none">
+  <div class="dip-top">
+    <h2>Dettaglio dipendenti — Totale cumulato mesi caricati</h2>
+    <div class="dip-actions">
+      <button class="btn-exp" onclick="exportExcel()" title="Esporta la tabella filtrata in Excel">📊 Export Excel</button>
+      <span class="dip-meta" id="dipMeta"></span>
+    </div>
+  </div>
+  <div class="dip-filters">
+    <div class="fg"><label>Mese</label>
+      <div class="ms-wrap" id="ms-mese">
+        <button class="ms-btn" id="ms-mese-btn" onclick="toggleMs(event,'ms-mese')">Tutti</button>
+        <div class="ms-panel" id="ms-mese-panel" style="display:none"></div>
+      </div></div>
+    <div class="fg"><label>Negozio</label>
+      <div class="ms-wrap" id="ms-store">
+        <button class="ms-btn" id="ms-store-btn" onclick="toggleMs(event,'ms-store')">Tutti</button>
+        <div class="ms-panel" id="ms-store-panel" style="display:none"></div>
+      </div></div>
+    <div class="fg"><label>Ruolo</label>
+      <div class="ms-wrap" id="ms-job">
+        <button class="ms-btn" id="ms-job-btn" onclick="toggleMs(event,'ms-job')">Tutti</button>
+        <div class="ms-panel" id="ms-job-panel" style="display:none"></div>
+      </div></div>
+    <div class="fg"><label>Tipo premio</label>
+      <div class="ms-wrap" id="ms-tipo">
+        <button class="ms-btn" id="ms-tipo-btn" onclick="toggleMs(event,'ms-tipo')">Tutti i tipi</button>
+        <div class="ms-panel" id="ms-tipo-panel" style="display:none"></div>
+      </div></div>
+    <div class="fg"><label>Fascia achievement</label>
+      <div class="ms-wrap" id="ms-ach">
+        <button class="ms-btn" id="ms-ach-btn" onclick="toggleMs(event,'ms-ach')">Tutte</button>
+        <div class="ms-panel" id="ms-ach-panel" style="display:none"></div>
+      </div></div>
+    <div class="fg"><label>Cerca</label>
+      <input type="text" id="fQ" placeholder="Nome, negozio, matricola…" oninput="filter()"></div>
+    <button class="btn-rst" onclick="resetFilters()">↺ Reset</button>
+  </div>
+  <div class="tbl-scroll" id="tblScroll"></div>
+  <div class="note" id="dipNote"></div>
+</div>
+
+</div><!-- end #tabDash -->
+
+<!-- ═══════════ ANNO SU ANNO TAB ═══════════ -->
+<div id="tabYoy" style="display:none">
+
+  <!-- Filters -->
+  <div class="yoy-filters">
+    <div class="fg"><label>Mese</label>
+      <div class="ms-wrap" id="yoy-mese">
+        <button class="ms-btn" id="yoy-mese-btn" onclick="toggleMs(event,'yoy-mese')">Tutti</button>
+        <div class="ms-panel" id="yoy-mese-panel" style="display:none"></div>
+      </div></div>
+    <div class="fg"><label>Anno</label>
+      <div class="ms-wrap" id="yoy-anno">
+        <button class="ms-btn" id="yoy-anno-btn" onclick="toggleMs(event,'yoy-anno')">Tutti</button>
+        <div class="ms-panel" id="yoy-anno-panel" style="display:none"></div>
+      </div></div>
+    <div class="fg"><label>Ruolo</label>
+      <div class="ms-wrap" id="yoy-job">
+        <button class="ms-btn" id="yoy-job-btn" onclick="toggleMs(event,'yoy-job')">Tutti</button>
+        <div class="ms-panel" id="yoy-job-panel" style="display:none"></div>
+      </div></div>
+    <div class="fg"><label>Nazione</label>
+      <div class="ms-wrap" id="yoy-naz">
+        <button class="ms-btn" id="yoy-naz-btn" onclick="toggleMs(event,'yoy-naz')">Tutte</button>
+        <div class="ms-panel" id="yoy-naz-panel" style="display:none"></div>
+      </div></div>
+    <div class="fg"><label>Tipo premio</label>
+      <div class="ms-wrap" id="yoy-tipo">
+        <button class="ms-btn" id="yoy-tipo-btn" onclick="toggleMs(event,'yoy-tipo')">Tutti i tipi</button>
+        <div class="ms-panel" id="yoy-tipo-panel" style="display:none"></div>
+      </div></div>
+    <div class="fg"><label>Componente premio</label>
+      <div class="ms-wrap" id="yoy-comp">
+        <button class="ms-btn" id="yoy-comp-btn" onclick="toggleMs(event,'yoy-comp')">Tutti</button>
+        <div class="ms-panel" id="yoy-comp-panel" style="display:none"></div>
+      </div></div>
+    <div class="fg"><label>Negozio</label>
+      <div class="ms-wrap" id="yoy-store">
+        <button class="ms-btn" id="yoy-store-btn" onclick="toggleMs(event,'yoy-store')">Tutti</button>
+        <div class="ms-panel" id="yoy-store-panel" style="display:none"></div>
+      </div></div>
+    <div class="fg"><label>Dipendente</label>
+      <div class="dip-ac-wrap">
+        <input type="text" id="yoy-dip" placeholder="Nome, cognome, matricola…" oninput="dipAutocomplete(this.value)" onblur="setTimeout(()=>{const l=document.getElementById('dip-ac-list');if(l)l.style.display='none'},180)" autocomplete="off" style="min-width:170px">
+        <div id="dip-ac-list" class="dip-ac-list" style="display:none"></div>
+      </div></div>
+    <div style="flex-basis:100%;border-top:1px solid #eef0f5;margin-top:2px"></div>
+    <div class="l4l-wrap"><label class="fg" style="font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.4px">Perimetro negozi</label>
+      <div class="l4l-toggle">
+        <button class="l4l-btn active" id="l4l-tutti" onclick="setL4L('tutti')">Tutti</button>
+        <button class="l4l-btn" id="l4l-l4l" onclick="setL4L('l4l')">L4L</button>
+        <button class="l4l-btn" id="l4l-new" onclick="setL4L('new')">Nuovi</button>
+      </div></div>
+    <div class="l4l-wrap"><label class="fg" style="font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.4px">Perimetro dipendenti</label>
+      <div class="l4l-toggle">
+        <button class="l4l-btn active" id="yoy-l4ldip-tutti" onclick="setL4LDip('tutti')">Tutti</button>
+        <button class="l4l-btn" id="yoy-l4ldip-l4l" onclick="setL4LDip('l4l')">L4L</button>
+        <button class="l4l-btn" id="yoy-l4ldip-new" onclick="setL4LDip('new')">Nuovi</button>
+      </div></div>
+    <div class="l4l-wrap" id="yoy-l4lanni-wrap" style="display:none">
+      <label class="fg" style="font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.4px">Anni perimetro L4L <span class="info-tip" data-tip="Seleziona gli anni che definiscono il perimetro L4L.&#10;Tutti attivi = tutti gli anni caricati.&#10;Es: attiva solo 2025+2026 per confrontare solo quell'intervallo.">i</span></label>
+      <div class="l4l-toggle" id="yoy-l4lanni-btns"></div>
+    </div>
+    <button class="yoy-kpi-toggle" id="yoyKpiToggleBtn" onclick="toggleYoyKpis()">▤ Box KPI visibili</button>
+    <button class="btn-rst" onclick="resetYoyFilters()">↺ Reset</button>
+  </div>
+
+  <!-- KPI per anno -->
+  <div class="yoy-kpi-wrap" id="yoyKpiRow"></div>
+
+  <!-- Charts -->
+  <div class="yoy-charts">
+    <div class="cc cc-eur">
+      <div class="cc-head"><div class="cc-title">Erogato totale per mese — confronto anno (€)</div></div>
+      <div class="cw tall"><canvas id="yoy_c_mesi_er"></canvas></div>
+    </div>
+    <div class="cc">
+      <div class="cc-head"><div class="cc-title">Achievement % per mese — confronto anno <span class="info-tip" data-tip="Achievement = erogato totale / massimale totale × 100.&#10;Valori > 100% sono possibili: alcune componenti (es. BDG) prevedono pagamenti oltre il massimale standard in caso di over-performance. A livello aggregato, i negozi che superano il target compensano quelli sotto, portando la media oltre 100%.">i</span></div></div>
+      <div class="cw tall"><canvas id="yoy_c_mesi_ach"></canvas></div>
+    </div>
+    <div class="cc cc-eur">
+      <div class="cc-head"><div class="cc-title">Dipendenti unici per mese — confronto anno</div></div>
+      <div class="cw tall"><canvas id="yoy_c_ndip"></canvas></div>
+    </div>
+    <div class="cc">
+      <div class="cc-head"><div class="cc-title">Achievement % per nazione — confronto anno <span class="info-tip" data-tip="Achievement = erogato totale / massimale totale × 100.&#10;Valori > 100% sono possibili: alcune componenti (es. BDG) prevedono pagamenti oltre il massimale standard in caso di over-performance.">i</span></div></div>
+      <div class="cw tall"><canvas id="yoy_c_naz_ach"></canvas></div>
+    </div>
+    <div class="cc full cc-eur">
+      <div class="cc-head"><div class="cc-title">Erogato totale per ruolo — confronto anno (€)</div></div>
+      <div class="cw tall"><canvas id="yoy_c_job_er"></canvas></div>
+    </div>
+    <div class="cc full">
+      <div class="cc-head"><div class="cc-title">Achievement % per ruolo — confronto anno <span class="info-tip" data-tip="Achievement = erogato totale / massimale totale × 100.&#10;Valori > 100% sono possibili: alcune componenti (es. BDG) prevedono pagamenti oltre il massimale standard in caso di over-performance.">i</span></div></div>
+      <div class="cw tall"><canvas id="yoy_c_job_ach"></canvas></div>
+    </div>
+    <div class="cc full">
+      <div class="cc-head"><div class="cc-title">Incidenza % su stipendio per ruolo — confronto anno</div></div>
+      <div class="cw tall"><canvas id="yoy_c_job_inc"></canvas></div>
+    </div>
+    <div class="cc full cc-eur">
+      <div class="cc-head"><div class="cc-title">Erogato totale per nazione — confronto anno (€)</div></div>
+      <div class="cw tall"><canvas id="yoy_c_naz_er"></canvas></div>
+    </div>
+    <div class="cc full cc-eur">
+      <div class="cc-head"><div class="cc-title">Erogato per componente premio — confronto anno (€)</div></div>
+      <div class="cw tall"><canvas id="yoy_c_comp"></canvas></div>
+    </div>
+    <div class="cc full">
+      <div class="cc-head"><div class="cc-title">% Achievement per componente — confronto anno <span class="info-tip" data-tip="Erogato per componente / massimale totale dei dipendenti che hanno quella componente attiva × 100.&#10;Risponde a: «Tra chi è eleggibile per questa componente, quanto è stato raggiunto?»&#10;Valori > 100% possibili per BDG in caso di over-performance.">i</span></div></div>
+      <div class="cw tall"><canvas id="yoy_c_comp_achself"></canvas></div>
+    </div>
+    <div class="cc full">
+      <div class="cc-head"><div class="cc-title">Incidenza componente su massimale — confronto anno (% del massimale totale) <span class="info-tip" data-tip="Erogato per componente / massimale totale di tutti i dipendenti × 100.&#10;Risponde a: «Quanto pesa ogni componente sul pool totale del massimale?»">i</span></div></div>
+      <div class="cw tall"><canvas id="yoy_c_comp_ach"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="yoy-tbl">
+    <div class="yoy-tbl-head"><h2>Dettaglio Confronto — Mese × Ruolo × Anno</h2></div>
+    <div class="tbl-scroll" id="yoyTblScroll"></div>
+  </div>
+
+</div><!-- end #tabYoy -->
+
+<!-- ═══════════ STIPENDI TAB ═══════════ -->
+<div id="tabSal" style="display:none">
+
+  <div class="yoy-filters">
+    <div class="fg"><label>Mese</label>
+      <div class="ms-wrap" id="sal-mese">
+        <button class="ms-btn" id="sal-mese-btn" onclick="toggleMs(event,'sal-mese')">Tutti</button>
+        <div class="ms-panel" id="sal-mese-panel" style="display:none"></div>
+      </div></div>
+    <div class="fg"><label>Anno</label>
+      <div class="ms-wrap" id="sal-anno">
+        <button class="ms-btn" id="sal-anno-btn" onclick="toggleMs(event,'sal-anno')">Tutti</button>
+        <div class="ms-panel" id="sal-anno-panel" style="display:none"></div>
+      </div></div>
+    <div class="fg"><label>Ruolo</label>
+      <div class="ms-wrap" id="sal-job">
+        <button class="ms-btn" id="sal-job-btn" onclick="toggleMs(event,'sal-job')">Tutti</button>
+        <div class="ms-panel" id="sal-job-panel" style="display:none"></div>
+      </div></div>
+    <div class="fg"><label>Nazione</label>
+      <div class="ms-wrap" id="sal-naz">
+        <button class="ms-btn" id="sal-naz-btn" onclick="toggleMs(event,'sal-naz')">Tutte</button>
+        <div class="ms-panel" id="sal-naz-panel" style="display:none"></div>
+      </div></div>
+    <div class="fg"><label>Tipo premio</label>
+      <div class="ms-wrap" id="sal-tipo">
+        <button class="ms-btn" id="sal-tipo-btn" onclick="toggleMs(event,'sal-tipo')">Tutti i tipi</button>
+        <div class="ms-panel" id="sal-tipo-panel" style="display:none"></div>
+      </div></div>
+    <div class="fg"><label>Componente premio</label>
+      <div class="ms-wrap" id="sal-comp">
+        <button class="ms-btn" id="sal-comp-btn" onclick="toggleMs(event,'sal-comp')">Tutti</button>
+        <div class="ms-panel" id="sal-comp-panel" style="display:none"></div>
+      </div></div>
+    <div class="fg"><label>Negozio</label>
+      <div class="ms-wrap" id="sal-store">
+        <button class="ms-btn" id="sal-store-btn" onclick="toggleMs(event,'sal-store')">Tutti</button>
+        <div class="ms-panel" id="sal-store-panel" style="display:none"></div>
+      </div></div>
+    <div class="fg"><label>Dipendente</label>
+      <div class="dip-ac-wrap">
+        <input type="text" id="sal-dip" placeholder="Nome, cognome, matricola…" oninput="salDipAutocomplete(this.value)" onblur="setTimeout(()=>{const l=document.getElementById('sal-dip-ac-list');if(l)l.style.display='none'},180)" autocomplete="off" style="min-width:170px">
+        <div id="sal-dip-ac-list" class="dip-ac-list" style="display:none"></div>
+      </div></div>
+    <div style="flex-basis:100%;border-top:1px solid #eef0f5;margin-top:2px"></div>
+    <div class="l4l-wrap"><label class="fg" style="font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.4px">Perimetro negozi</label>
+      <div class="l4l-toggle">
+        <button class="l4l-btn active" id="sal-l4l-tutti" onclick="setSalL4L('tutti')">Tutti</button>
+        <button class="l4l-btn" id="sal-l4l-l4l" onclick="setSalL4L('l4l')">L4L</button>
+        <button class="l4l-btn" id="sal-l4l-new" onclick="setSalL4L('new')">Nuovi</button>
+      </div></div>
+    <div class="l4l-wrap"><label class="fg" style="font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.4px">Perimetro dipendenti</label>
+      <div class="l4l-toggle">
+        <button class="l4l-btn active" id="sal-l4ldip-tutti" onclick="setSalL4LDip('tutti')">Tutti</button>
+        <button class="l4l-btn" id="sal-l4ldip-l4l" onclick="setSalL4LDip('l4l')">L4L</button>
+        <button class="l4l-btn" id="sal-l4ldip-new" onclick="setSalL4LDip('new')">Nuovi</button>
+      </div></div>
+    <button class="yoy-kpi-toggle" id="salKpiToggleBtn" onclick="toggleSalKpis()">▤ € visibili</button>
+    <button class="btn-rst" onclick="resetSalFilters()">↺ Reset</button>
+  </div>
+
+  <div class="yoy-kpi-wrap" id="salKpiRow"></div>
+
+  <div class="yoy-charts">
+    <!-- Per mese: RML e BDG affiancati (2 col), % sempre full -->
+    <div class="cc cc-eur">
+      <div class="cc-head"><div class="cc-title">RML media mensile per mese — confronto anno (€)</div></div>
+      <div class="cw tall"><canvas id="sal_c_mesi_rml"></canvas></div>
+    </div>
+    <div class="cc cc-eur">
+      <div class="cc-head"><div class="cc-title">BDG massimale medio per mese — confronto anno (€)</div></div>
+      <div class="cw tall"><canvas id="sal_c_mesi_bdg"></canvas></div>
+    </div>
+    <div class="cc full">
+      <div class="cc-head"><div class="cc-title">BDG / RML % per mese — confronto anno</div></div>
+      <div class="cw tall"><canvas id="sal_c_mesi_pct"></canvas></div>
+    </div>
+    <!-- Per ruolo: RML e BDG affiancati, % full -->
+    <div class="cc cc-eur">
+      <div class="cc-head"><div class="cc-title">RML media per ruolo — confronto anno (€)</div></div>
+      <div class="cw tall"><canvas id="sal_c_job_rml"></canvas></div>
+    </div>
+    <div class="cc cc-eur">
+      <div class="cc-head"><div class="cc-title">BDG massimale medio per ruolo — confronto anno (€)</div></div>
+      <div class="cw tall"><canvas id="sal_c_job_bdg"></canvas></div>
+    </div>
+    <div class="cc full">
+      <div class="cc-head"><div class="cc-title">BDG / RML % per ruolo — confronto anno</div></div>
+      <div class="cw tall"><canvas id="sal_c_job_pct"></canvas></div>
+    </div>
+    <!-- Per nazione: RML e BDG affiancati, % full -->
+    <div class="cc cc-eur">
+      <div class="cc-head"><div class="cc-title">RML media per nazione — confronto anno (€)</div></div>
+      <div class="cw tall"><canvas id="sal_c_naz_rml"></canvas></div>
+    </div>
+    <div class="cc cc-eur">
+      <div class="cc-head"><div class="cc-title">BDG massimale medio per nazione — confronto anno (€)</div></div>
+      <div class="cw tall"><canvas id="sal_c_naz_bdg"></canvas></div>
+    </div>
+    <div class="cc full">
+      <div class="cc-head"><div class="cc-title">BDG / RML % per nazione — confronto anno</div></div>
+      <div class="cw tall"><canvas id="sal_c_naz_pct"></canvas></div>
+    </div>
+    <!-- Dipendenti -->
+    <div class="cc full cc-eur">
+      <div class="cc-head"><div class="cc-title">Dipendenti unici per mese — confronto anno</div></div>
+      <div class="cw tall"><canvas id="sal_c_ndip"></canvas></div>
+    </div>
+  </div>
+
+  <div class="yoy-tbl">
+    <div class="yoy-tbl-head"><h2>Dettaglio Stipendi — Mese × Ruolo × Anno</h2></div>
+    <div class="tbl-scroll" id="salTblScroll"></div>
+  </div>
+
+</div><!-- end #tabSal -->
+
+<!-- FULLSCREEN MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal-box" id="modalBox">
+    <div class="modal-head">
+      <h3 id="modalTitle">—</h3>
+      <button class="btn-mclose" onclick="closeModal()" title="Chiudi (Esc)">×</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+// ─── CONSTANTS ───────────────────────────────────────────────
+const MESI=['','Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
+            'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+const MESI_IDX=Object.fromEntries(MESI.map((m,i)=>[m,i]));
+const MESI_SORT=(a,b)=>(MESI_IDX[a]??99)-(MESI_IDX[b]??99);
+
+const COMP=[
+  // ── mensili ──────────────────────────────────────────────────────
+  {k:'cBdg',      l:'BDG (lordo)',             c:'#4f46e5', ek:'RISULTATO PREMIO BDG (LORDO)',               tipo:'mensile'},
+  {k:'cDigital',  l:'Digital',                 c:'#0ea5e9', ek:'RISULTATO PREMIO DIGITAL',                   tipo:'mensile'},
+  {k:'cShopper',  l:'Shopper Yield',           c:'#22c55e', ek:'RISULTATO SHOPPER YIELD',                    tipo:'mensile'},
+  {k:'cPrivilege',l:'Nuove Privilege',         c:'#f59e0b', ek:'RISULTATO NUOVE PRIVILEGE',                  tipo:'mensile'},
+  {k:'cSas',      l:'SAS',                     c:'#ef4444', ek:'RISULTATO SAS',                              tipo:'mensile'},
+  {k:'cDcc',      l:'DCC',                     c:'#a855f7', ek:'RISULTATO DCC',                              tipo:'mensile'},
+  {k:'cCs',       l:'Customer Service',        c:'#ec4899', ek:'RISULTATO CUSTOMER SERVICE',                 tipo:'mensile'},
+  {k:'cArt',      l:'Art. Incentivati',        c:'#14b8a6', ek:'RISULTATO ARTICOLI INCENTIVATI',             tipo:'mensile'},
+  {k:'cVisual',   l:'Visual in Store',         c:'#f97316', ek:'VISUAL IN STORE',                            tipo:'mensile'},
+  // ── semestrali ───────────────────────────────────────────────────
+  {k:'cCrSem',    l:'CR (sem.)',               c:'#0891b2', ek:'INCENTIVO RAGGIUNTO CR',                     tipo:'semestrale'},
+  {k:'cSySem',    l:'Shopper Yield (sem.)',    c:'#059669', ek:'INCENTIVO RAGGIUNTO SY',                     tipo:'semestrale'},
+  {k:'cSubSem',   l:'Subscription Index (sem.)',c:'#7c3aed',ek:'INCENTIVO RAGGIUNTO SUBSCRIPTION INDEX',    tipo:'semestrale'},
+  {k:'cSasSem',   l:'SAS (sem.)',              c:'#b91c1c', ek:'INCENTIVO RAGGIUNTO SAS',                    tipo:'semestrale'},
+];
+
+const PAL=['#4f46e5','#22c55e','#f59e0b','#ef4444','#a855f7',
+           '#0ea5e9','#ec4899','#14b8a6','#f97316','#64748b','#84cc16','#6366f1'];
+
+// ═══════════════════════════════════════════════════════════════
+// ─── DATI DI CONFIGURAZIONE — modifica qui enti / paesi / cambi ─
+// Tutti i dati di riferimento aziendali sono raccolti in questa sezione.
+// ═══════════════════════════════════════════════════════════════
+
+// USA — enti esclusi dall'import
+const ENTE_ESCLUDI=new Set([241,244,245,246]);
+
+// ENTE → nazione (etichette e raggruppamenti)
+const ENTE_PAESE={
+  209:'Svizzera',      210:'Italia',        211:'UK',
+  213:'Irlanda',       215:'Francia',       216:'Spagna',
+  217:'Germania',      219:'Austria',       220:'Hong Kong',
+  221:'Lussemburgo',   222:'Belgio',        223:'Singapore',
+  224:'Svezia',        226:'Ungheria',      228:'Netherlands',
+  230:'Grecia',        231:'Portogallo',    232:'Polonia',
+  240:'Danimarca',
+};
+
+// ENTE per FC / VM — non presente nei file, mappatura per matricola
+const FC_VM_ENTE={
+  'A1000026':216,'A1000022':216,'A1600104':222,'A4000063':215,
+  'A9000279':217,'A4000167':209,'A7000084':211,'A1500012':224,
+  'A7000134':211,'A1000027':216,'A3000217':217,'A1600144':222,
+  'A1200056':220,'A8000107':215,'A9000209':217,'A4000229':209,
+  'A7000028':211,'A1500011':224,'A1000076':216,
+};
+
+// Cambi statici per ENTE (valuta locale → EUR), fallback quando il file non li fornisce
+const ENTE_CAMBI={
+  209:{valuta:'CHF',cambio:1.10000},
+  210:{valuta:'EUR',cambio:1.00000},
+  211:{valuta:'GBP',cambio:1.16920},
+  215:{valuta:'EUR',cambio:1.00000},
+  216:{valuta:'EUR',cambio:1.00000},
+  217:{valuta:'EUR',cambio:1.00000},
+  219:{valuta:'EUR',cambio:1.00000},
+  220:{valuta:'HKD',cambio:0.11764},
+  221:{valuta:'EUR',cambio:1.00000},
+  222:{valuta:'EUR',cambio:1.00000},
+  223:{valuta:'SGD',cambio:0.68603},
+  224:{valuta:'SEK',cambio:0.08836},
+  225:{valuta:'MOP',cambio:0.11887},
+  226:{valuta:'HUF',cambio:0.00253},
+  228:{valuta:'EUR',cambio:1.00000},
+  229:{valuta:'RUB',cambio:0.01040},
+  240:{valuta:'DKK',cambio:0.13000},
+  230:{valuta:'EUR',cambio:1.00000},
+  231:{valuta:'EUR',cambio:1.00000},
+};
+
+// Enti per cui si usa SEMPRE il cambio statico, ignorando quello dei file:
+// i consuntivi riportano per il CHF un fattore 1.3756 (gross-up costo lavoro,
+// non un cambio valuta reale) → forziamo 1.10.
+const RATE_FORCE_STATIC=new Set([209]); // 209 = Svizzera (CHF → 1.10)
+// ═══════════════════════════════════════════════════════════════
+
+// Risolve la nazione di un ente a partire dalla config sopra.
+function enteNazione(e){
+  if(!e) return null;
+  if(ENTE_PAESE[e]) return ENTE_PAESE[e];
+  if(ENTE_CAMBI[e]&&ENTE_CAMBI[e].valuta!=='EUR') return ENTE_CAMBI[e].valuta;
+  return 'ENTE '+e;
+}
+
+// ─── CAMBI UNIFORMI — logica di riscalo (usa la config sopra) ──
+// Campi monetari da riscalare quando cambia il tasso applicato a una riga.
+const RATE_FIELDS=['massimale','erogato','rml_period','mBdg',...COMP.map(c=>c.k)];
+let rateNotes={realigned:[],guardrail:[]};
+function rateLabel(e){return (ENTE_CAMBI[e]&&ENTE_CAMBI[e].valuta)||enteNazione(e)||('ENTE '+e);}
+
+// ─── STATE ───────────────────────────────────────────────────
+let allData=[], filteredRaw=[], filteredAgg=[];
+let fileMap={}, charts={}, openRow=null, sCol='cognome', sDir=1;
+
+// ─── DUPLICATE-SAFE SHEET READER ─────────────────────────────
+function sheetToObj(ws){
+  if(!ws||!ws['!ref']) return [];
+  const rng=XLSX.utils.decode_range(ws['!ref']);
+  const seen={}, hdrs=[];
+  for(let c=rng.s.c;c<=rng.e.c;c++){
+    const cell=ws[XLSX.utils.encode_cell({r:rng.s.r,c})];
+    let h=cell?String(cell.v).trim():`__${c}`;
+    const orig=h;
+    if(seen[orig]!==undefined){seen[orig]++;h=`${orig}.${seen[orig]}`;}
+    else seen[orig]=0;
+    hdrs.push(h);
+  }
+  const rows=[];
+  for(let r=rng.s.r+1;r<=rng.e.r;r++){
+    const obj={};
+    for(let c=rng.s.c;c<=rng.e.c;c++){
+      const cell=ws[XLSX.utils.encode_cell({r,c})];
+      obj[hdrs[c-rng.s.c]]=cell!=null?cell.v:null;
+    }
+    rows.push(obj);
+  }
+  return rows;
+}
+
+// ─── FILE HANDLING ────────────────────────────────────────────
+const dz=document.getElementById('dz'), fi=document.getElementById('fi');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over')});
+dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');loadFiles(e.dataTransfer.files)});
+fi.addEventListener('change',e=>{loadFiles(e.target.files);e.target.value=''});
+
+function loadFiles(files){
+  for(const f of files){
+    if(fileMap[f.name]) continue;
+    const ext=f.name.split('.').pop().toLowerCase();
+    if(!['xlsx','xls'].includes(ext)) continue;
+    const rd=new FileReader();
+    rd.onload=e=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:'array'});
+        // leggi TUTTI i fogli e concatena (alcuni file hanno negozi su più fogli)
+        const seen=new Set();
+        const rows=[];
+        const diag={tenute:0,scartate:0,motivi:{}};
+        wb.SheetNames.forEach(sn=>{
+          parseRows(sheetToObj(wb.Sheets[sn]),f.name,diag).forEach(r=>{
+            const k=(r.matricola||'')+'_'+(r.monthKey||'');
+            if(!seen.has(k)){seen.add(k);rows.push(r);}
+          });
+        });
+        fileMap[f.name]=rows;
+        const tipo=rows.length>0?rows[0]._tipo:'mensile';
+        const isNF=rows.length>0&&!!rows[0]._isNewFmt;
+        rebuild(); addChip(f.name,rows.length,false,tipo,isNF,diag); refresh();
+      }catch(err){console.error(err);alert('Errore: '+f.name+'\n'+err.message);}
+    };
+    rd.readAsArrayBuffer(f);
+  }
+}
+
+function rebuild(){
+  allData=Object.values(fileMap).flat();
+  applyUniformRates();
+  const warn=document.getElementById('currWarn');
+  const msgs=[];
+  const unknownStores=[...new Set(allData.filter(r=>r._unknownEnte).map(r=>r.store))];
+  if(unknownStores.length)
+    msgs.push('⚠️ Cambio non trovato per: '+unknownStores.join(', ')+' — applicato cambio 1 (valori in valuta locale).');
+  if(rateNotes.realigned.length)
+    msgs.push('🔄 Cambi allineati al file più recente: '+rateNotes.realigned.join(', ')+'.');
+  if(rateNotes.guardrail.length)
+    msgs.push('🛟 Cambio statico mantenuto: '+rateNotes.guardrail.join(', ')+'.');
+  if(msgs.length){
+    warn.innerHTML=msgs.map(m=>'<span>'+m+'</span>').join('');
+    warn.style.flexDirection='column'; warn.style.alignItems='flex-start';
+    warn.style.display='';
+  } else {
+    warn.style.display='none';
+  }
+}
+
+// Applica, per ente, il cambio ricavato dal file più recente (periodo massimo),
+// uniformandolo a TUTTE le righe di quell'ente (vecchie e nuove). Riscala i campi €
+// con un solo fattore (verificato: in ogni riga tutte le colonne …EURO usano lo stesso
+// tasso). Idempotente: ricalcolata a ogni load/remove, riscala dal cambio attualmente
+// applicato a quello target → nessun doppio conteggio.
+function applyUniformRates(){
+  rateNotes={realigned:[],guardrail:[]};
+  // 1. Cambi derivati per ente e periodo (solo righe con RML locale + EURO validi)
+  const src={}; // ente -> monthKey -> {lc, eur}
+  allData.forEach(r=>{
+    const e=r._ente; if(!e) return;
+    const lc=r._rmlLc, eu=r._rmlEur;
+    if(!(lc>0&&eu>0)) return;
+    const mk=r.monthKey||r.month||0;
+    (src[e]||(src[e]={}));
+    (src[e][mk]||(src[e][mk]={lc:0,eur:0}));
+    src[e][mk].lc+=lc; src[e][mk].eur+=eu;
+  });
+  // 2. TARGET[ente] = cambio del periodo più recente, con override CHF e guardrail
+  const TARGET={};
+  Object.keys(src).forEach(eStr=>{
+    const e=+eStr;
+    const topMk=Object.keys(src[e]).map(Number).sort((a,b)=>b-a)[0];
+    const top=src[e][topMk];
+    let rate=top.lc>0?top.eur/top.lc:1;
+    const stat=ENTE_CAMBI[e]?ENTE_CAMBI[e].cambio:null;
+    if(RATE_FORCE_STATIC.has(e)&&stat!=null){
+      // override forzato (CHF): usa sempre lo statico
+      if(Math.abs(rate-stat)>1e-4) rateNotes.guardrail.push(rateLabel(e)+' (cambio statico forzato)');
+      rate=stat;
+    } else if(Math.abs(rate-1)<0.005&&stat!=null&&Math.abs(stat-1)>0.02){
+      // guardrail: file senza conversione (rate≈1) su ente non-EUR → usa statico
+      rateNotes.guardrail.push(rateLabel(e)+' (file senza cambio)');
+      rate=stat;
+    } else if(stat!=null&&Math.abs(rate-stat)/stat>0.001){
+      rateNotes.realigned.push(rateLabel(e)+' '+stat+'→'+(+rate.toFixed(4)));
+    }
+    TARGET[e]=rate;
+  });
+  // 3. Applica TARGET a tutte le righe dell'ente (riscala dal cambio attuale)
+  allData.forEach(r=>{
+    if(r._appliedCambio==null) r._appliedCambio=r.cambio||1;
+    const t=TARGET[r._ente]; if(t==null) return;
+    const f=t/r._appliedCambio;
+    if(Math.abs(f-1)>=1e-9){
+      RATE_FIELDS.forEach(k=>{if(typeof r[k]==='number') r[k]*=f;});
+      r._appliedCambio=t; r.cambio=t;
+    }
+    if(r._unknownEnte) r._unknownEnte=false; // ora abbiamo un cambio reale per l'ente
+  });
+}
+
+function addChip(name,n,isSession,tipo,isNewFmt,diag){
+  const d=document.getElementById('chips');
+  const c=document.createElement('div');
+  const isSem=tipo==='semestrale', isEci=tipo==='semestrale eci', isFcVm=tipo==='fc vm';
+  c.className='chip'+(isSession?' session':isEci?' eci':isSem?' sem':isFcVm?' fcvm':'');
+  c.id='chip_'+btoa(unescape(encodeURIComponent(name))).replace(/[^a-zA-Z0-9]/g,'');
+  const icon=isSession?'📋':isEci?'🏬':isSem?'📅':isFcVm?'🧭':'✅';
+  const tag=isEci
+    ?' <span style="font-size:9px;background:#dbeafe;border:1px solid #93c5fd;color:#1e40af;border-radius:4px;padding:1px 5px;font-weight:700">ECI</span>'
+    :isSem?' <span style="font-size:9px;background:#fef3c7;border:1px solid #fcd34d;color:#92400e;border-radius:4px;padding:1px 5px;font-weight:700">SEM</span>'
+    :isFcVm?' <span style="font-size:9px;background:#f0fdf4;border:1px solid #86efac;color:#166534;border-radius:4px;padding:1px 5px;font-weight:700">FC/VM</span>'
+    :isNewFmt?' <span style="font-size:9px;background:#fdf4ff;border:1px solid #e9d5ff;color:#7e22ce;border-radius:4px;padding:1px 5px;font-weight:700">NEW</span>':'';
+  // Diagnostica import: righe scartate + motivi (tooltip su hover)
+  let drop='';
+  if(diag&&diag.scartate>0){
+    const tot=n+diag.scartate;
+    const det=Object.entries(diag.motivi).map(([k,v])=>`${k}: ${v}`).join(' · ');
+    const title=`Righe lette: ${tot} · caricate: ${n} · scartate: ${diag.scartate}\n${det}`;
+    drop=` <small class="chip-drop" title="${title.replace(/"/g,'&quot;')}">⚠ ${diag.scartate} scartate</small>`;
+  }
+  c.innerHTML=`${icon} <strong>${name}</strong>${tag}&nbsp;<small>(${n})</small>${drop} <span class="x" onclick="rmFile('${encodeURIComponent(name)}')">×</span>`;
+  d.appendChild(c);
+}
+
+function rmFile(encName){
+  const name=decodeURIComponent(encName);
+  delete fileMap[name];
+  const id='chip_'+btoa(unescape(encodeURIComponent(name))).replace(/[^a-zA-Z0-9]/g,'');
+  const c=document.getElementById(id); if(c) c.remove();
+  rebuild();
+  const vis=allData.length?'':'none';
+  ['kpiRow','chartsRow','dipSection','kpiExpandWrap'].forEach(id=>document.getElementById(id).style.display=vis);
+  if(allData.length) refresh();
+}
+
+// ─── PARSE ROWS ───────────────────────────────────────────────
+function parseRows(raw,fname,diag){
+  if(!raw.length) return [];
+  // ── Format detection ────────────────────────────────────────
+  // semestrali standard: has TOTALE INCENTIVO SEASONAL + MAX TOTALE
+  const isSem=('TOTALE INCENTIVO SEASONAL' in raw[0])&&('MAX TOTALE' in raw[0]);
+  // FC/VM: pivot table export, massimale = "Somma di INCENTIVO RIPARTITO CORRETTO"
+  const isFcVm=('Somma di INCENTIVO RIPARTITO CORRETTO' in raw[0]);
+  // semestrali ECI/dept store: has PREMIO FINALE + BDG, massimale = BDG*6*1.5
+  const isEci=!isSem&&!isFcVm&&('PREMIO FINALE' in raw[0])&&('BDG' in raw[0]);
+  // NUOVO FORMATO (Incentivi_consuntivo_*): ha "TOTALE INCENTIVO EROGATO (LC)" come colonna esplicita.
+  // In questo formato TOTALE INCENTIVO LORDO = erogato LC (NON massimale come nel vecchio formato).
+  // Il massimale non è una colonna diretta → si ricostruisce da IMPORTO BDG × 1.5.
+  const isNewFmt=!isSem&&!isEci&&!isFcVm&&('TOTALE INCENTIVO EROGATO (LC)' in (raw[0]||{}));
+  // colonna BDG nominale: cerca case-insensitive 'BDG' o 'IMPORTO BDG' nelle chiavi reali del file
+  const bdgNomCol=Object.keys(raw[0]||{}).find(k=>/^(importo\s+)?bdg$/i.test(k.trim()));
+  // moltiplicatore massimale dept stores: x1 se presente colonna PREMIO QTY DEPT, x1.5 altrimenti
+  const bdgMultiplier=('PREMIO QTY DEPT' in (raw[0]||{}))?1:1.5;
+
+  // ECI: extract file-level month/year from CONSUNTIVO column (BP3/BP5 trick) or season code
+  let eciMonth=null, eciYear=null;
+  if(isEci){
+    for(const row of raw.slice(0,10)){
+      const cv=n(row['CONSUNTIVO']);
+      if(!eciYear&&cv>=2020&&cv<=2099) eciYear=cv;
+      if(!eciMonth&&cv>=1&&cv<=12) eciMonth=cv;
+      if(eciYear&&eciMonth) break;
+    }
+    // Fallback: parse season suffix from NOME FOGLIO e.g. _FW25 or _SS26
+    if((!eciMonth||!eciYear)&&raw[0]['NOME FOGLIO']){
+      const sm=String(raw[0]['NOME FOGLIO']).match(/(FW|SS)(\d{2})/i);
+      if(sm){
+        const calY=2000+(+sm[2]);
+        if(sm[1].toUpperCase()==='FW'){eciYear=eciYear||(calY+1);eciMonth=eciMonth||2;}
+        else{eciYear=eciYear||calY;eciMonth=eciMonth||8;}
+      }
+    }
+  }
+
+  // Anno autorevole dal nome file (es. "PREMI FEBBRAIO 2026" → 2026)
+  const _fnYearM=fname.match(/(20\d{2})/);
+  const _fnYear=_fnYearM?+_fnYearM[1]:null;
+
+  return raw.map(r=>{
+    // Month + Year
+    let month=null, year=null;
+    if(r['MONTH']&&r['MONTH']!==0) month=+r['MONTH'];
+    if(r['NOME FOGLIO']){
+      const pts=String(r['NOME FOGLIO']).split('_');
+      if(pts.length>=3){
+        const m=+pts[pts.length-2];
+        if(m>=1&&m<=12&&!month) month=m;
+        const y=+pts[pts.length-1];
+        // Usa anno da NOME FOGLIO solo se il filename non ha già un anno attendibile
+        if(y>=2020&&y<=2099&&!_fnYear) year=y;
+      }
+    }
+    if(!month||!year){
+      const mn=fname.match(/\b(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\b/i);
+      if(mn&&!month){const ns=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];month=ns.indexOf(mn[1].toLowerCase())+1;}
+      const nm=fname.match(/[_\s\-]0?(\d{1,2})[_\s\-](20\d{2})/i);
+      if(nm){if(!month) month=+nm[1]; if(!year) year=+nm[2];}
+      if(!year&&_fnYear) year=_fnYear;
+    }
+    // ECI: apply file-level values when row-level extraction found nothing
+    if(isEci){if(!month&&eciMonth) month=eciMonth; if(!year&&eciYear) year=eciYear;}
+    const monthKey=year&&month?year*100+month:month||0;
+
+    // EUR conversion (ECI + semestrali + FC/VM have no RML EURO → always ENTE lookup)
+    const rml_lc=n(r['RML']), rml_eur=n(r['RML EURO']);
+    const oldFmt=isSem||isEci||isFcVm||!('RML EURO' in r);
+    // FC/VM: ENTE not in file — look up from static map by matricola
+    const rawMatr=(isFcVm?s(r['MATRICOLA']):s(r['MATRICOLA DIPENDENTE'])).replace(/^[A-Za-z](\d+)$/,'$1');
+    const ente=isFcVm?(FC_VM_ENTE[rawMatr]||0):Math.round(n(r['ENTE']));
+    let cambio, valuta='EUR', _unknownEnte=false;
+    if(!oldFmt){
+      cambio=(rml_lc>0&&rml_eur>0&&Math.abs(rml_lc-rml_eur)>0.1)?rml_eur/rml_lc:1;
+      if(ENTE_CAMBI[ente]) valuta=ENTE_CAMBI[ente].valuta;
+    } else {
+      if(ENTE_CAMBI[ente]){cambio=ENTE_CAMBI[ente].cambio;valuta=ENTE_CAMBI[ente].valuta;}
+      else{cambio=1;_unknownEnte=true;}
+    }
+
+    function cv(ek){
+      const keyEur=ek+' EURO';
+      if(r[keyEur]!=null&&r[keyEur]!==0) return n(r[keyEur]);
+      return n(r[ek])*cambio;
+    }
+
+    // Massimale / Erogato depend on format
+    let massimale, erogato;
+    if(isSem){
+      massimale=n(r['MAX TOTALE'])*cambio;
+      erogato=n(r['TOTALE INCENTIVO SEASONAL'])*cambio;
+    } else if(isEci){
+      massimale=n(r['BDG'])*6*1.5*cambio;
+      erogato=n(r['PREMIO FINALE'])*cambio;
+    } else if(isFcVm){
+      massimale=n(r['Somma di INCENTIVO RIPARTITO CORRETTO'])*cambio;
+      erogato=n(r['PREMIO FINALE'])*cambio;
+    } else if(isNewFmt){
+      // ── NUOVO FORMATO (Incentivi_consuntivo_*) ───────────────
+      // Massimale: usa MASSIMALE TOTALE EURO (colonna esplicita aggiunta nel file)
+      // Fallback a LC×cambio, poi a BDG×1.5 per file senza colonne massimale
+      massimale=n(r['MASSIMALE TOTALE EURO'])||n(r['MASSIMALE TOTALE'])*cambio;
+      if(!massimale&&bdgNomCol) massimale=n(r[bdgNomCol])*1.5*cambio;
+      // Erogato: usa TOTALE INCENTIVO EROGATO (EURO) se presente
+      const erog_eur_nf=n(r['TOTALE INCENTIVO EROGATO (EURO)']);
+      const erog_lc_nf=n(r['TOTALE INCENTIVO EROGATO (LC)']);
+      erogato=erog_eur_nf>0?erog_eur_nf:erog_lc_nf*cambio;
+    } else {
+      // ── VECCHIO FORMATO (PREMI * PER LAURA *) ───────────────
+      // TOTALE INCENTIVO LORDO (1a occorrenza) = massimale
+      // TOTALE INCENTIVO LORDO.1 (2a occorrenza, deduplicata) = erogato LC
+      massimale=n(r['TOTALE INCENTIVO LORDO'])*cambio;
+      // Fallback per righe ECI-type in file mensili (TOTALE INCENTIVO LORDO=0 ma BDG>0)
+      // massimale totale = BDG × 1.5 sempre (old: 1.5 su BDG; new: 1.0 BDG + 0.5 QTY = stesso totale)
+      if(massimale===0&&bdgNomCol){const bdgV=n(r[bdgNomCol]);if(bdgV>0) massimale=bdgV*1.5*cambio;}
+      const erog_lc=n(r['TOTALE INCENTIVO LORDO.1']);
+      const erog_eur_ex=n(r['TOTALE INCENTIVO EROGATO (EURO)']);
+      erogato=erog_eur_ex>0?erog_eur_ex:erog_lc*cambio;
+    }
+    const pct=massimale>0?+((erogato/massimale)*100).toFixed(1):0;
+
+    // Job / Store
+    const job=isFcVm?s(r['FUNZIONE']):(s(r['FUNZIONE'])||s(r['JOB']));
+    // FC/VM: no store column → use FUNZIONE as group; split full NOME into cognome/nome
+    let store,cognome,nome,matricola;
+    if(isFcVm){
+      store=s(r['FUNZIONE'])||'FC/VM';
+      const parts=s(r['NOME']).split(' ');
+      cognome=parts.length>1?parts[parts.length-1]:parts[0];
+      nome=parts.length>1?parts.slice(0,-1).join(' '):'';
+      matricola=rawMatr;
+    } else {
+      store=s(r['DESCR FILIALE']);
+      cognome=s(r['COGNOME']);
+      nome=s(r['NOME']);
+      // Normalizza matricola: vecchio formato "A1234567" → "1234567" per match con nuovo formato
+      matricola=s(r['MATRICOLA DIPENDENTE']).replace(/^[A-Za-z](\d+)$/,'$1');
+    }
+    // tipo — isNewFmt rimane flag interno, non esposto come tipo separato nel filtro
+    const _tipo=isSem?'semestrale':isEci?'semestrale eci':isFcVm?'fc vm':'mensile';
+
+    return {
+      _f:fname,_oldFmt:oldFmt,_unknownEnte,_isNewFmt:isNewFmt,_tipo,_ente:ente,_nazione:enteNazione(ente),
+      month,year,monthKey,monthLabel:monthKey?mkLabel(monthKey):month?MESI[month]:'?',
+      store,matricola,cognome,nome,job,
+      massimale,erogato,pct,cambio,valuta,
+      _rmlLc:rml_lc,_rmlEur:rml_eur, // grezzi pre-conversione → ricavo cambio reale per ente
+      // massimale BDG nominale per tab Stipendi:
+      // - nuovo formato: IMPORTO BDG × cambio (il BDG budget è già il massimale BDG puro)
+      // - vecchio formato: BDG×bdgMultiplier se riga ECI (TOTALE INCENTIVO LORDO=0), else BDG×1
+      // massimale BDG per tab Stipendi:
+      // nuovo formato → MASSIMALE BDG EURO (esplicito) o fallback LC×cambio
+      // vecchio formato → BDG×bdgMultiplier se riga ECI (TOTALE=0), altrimenti BDG×1
+      mBdg: (isSem||isFcVm)?0:(()=>{
+        if(isNewFmt) return n(r['MASSIMALE BDG EURO'])||n(r['MASSIMALE BDG'])*cambio;
+        if(!bdgNomCol) return 0;
+        const bv=n(r[bdgNomCol]);if(!bv) return 0;
+        return bv*(n(r['TOTALE INCENTIVO LORDO'])===0?bdgMultiplier:1)*cambio;
+      })(),
+      // componenti premio — derivate da COMP (singola fonte di verità):
+      //   mensili    → 0 sulle righe semestrali/ECI
+      //   semestrali → valorizzate solo per i file semestrali standard (isSem)
+      ...Object.fromEntries(COMP.map(c=>[c.k,
+        c.tipo==='mensile' ? ((isSem||isEci)?0:cv(c.ek)) : (isSem?cv(c.ek):0)
+      ])),
+      malattie:n(r['MALATTIE']),
+      rml_period:isFcVm
+        ?n(r['Somma di RML RIPARTITA'])*cambio
+        :(isSem||isEci)
+          ?rml_lc*cambio*6
+          :!oldFmt
+            ?(rml_eur>0?rml_eur:rml_lc*cambio)
+            :rml_lc*cambio,
+    };
+  }).filter(r=>{
+    // Scarto righe non valide, registrando il motivo nel diag (se fornito).
+    let reason=null;
+    if(!(r.matricola&&r.cognome&&r.store)) reason='Dati anagrafici incompleti';
+    else if(!(r.massimale>0)) reason='Massimale assente o zero';
+    else if(ENTE_ESCLUDI.has(r._ente)) reason='Ente USA escluso';
+    else if(!(r._tipo==='fc vm'||r._ente!==0)) reason='Ente non identificato';
+    if(reason){
+      if(diag){diag.scartate=(diag.scartate||0)+1;(diag.motivi||(diag.motivi={}));diag.motivi[reason]=(diag.motivi[reason]||0)+1;}
+      return false;
+    }
+    if(diag) diag.tenute=(diag.tenute||0)+1;
+    return true;
+  });
+}
+
+function n(v){const x=parseFloat(v);return isNaN(x)?0:x;}
+function s(v){return v!=null?String(v).trim():'';}
+
+// ─── MONTH-KEY HELPERS ────────────────────────────────────────
+// monthKey = YYYYMM  e.g. 202602 = Feb 2026  (sortable, unique across years)
+function mkLabel(mk){
+  const m=mk%100,y=Math.floor(mk/100);
+  return (y>=2020&&y<=2099)?MESI[m]+' '+y:MESI[mk]||'?';
+}
+function mkShort(mk){
+  const m=mk%100,y=Math.floor(mk/100);
+  if(y>=2020&&y<=2099) return MESI[m].substring(0,3)+" '"+String(y).slice(2);
+  return MESI[mk]||'?';
+}
+
+
+// ─── AGGREGATE BY EMPLOYEE ────────────────────────────────────
+function aggregateEmployees(rows){
+  const map={};
+  const compInit=Object.fromEntries(COMP.map(c=>[c.k,0]));
+  rows.forEach(r=>{
+    const key=r.matricola||(r.cognome+'_'+r.nome);
+    if(!map[key]){
+      map[key]={...r,massimale:0,erogato:0,pct:0,...compInit,mBdg:0,malattie:0,rml_period:0,months:[],monthly:[]};
+    }
+    const a=map[key];
+    a.massimale+=r.massimale; a.erogato+=r.erogato;
+    a.mBdg+=(r.mBdg||0);
+    COMP.forEach(c=>a[c.k]+=r[c.k]);
+    a.malattie+=r.malattie;
+    a.rml_period+=r.rml_period;
+    a.store=r.store;
+    const mk=r.monthKey||r.month||0;
+    if(mk&&!a.months.includes(mk)) a.months.push(mk);
+    a.monthly.push({month:r.month,year:r.year,monthKey:mk,monthLabel:r.monthLabel,
+      massimale:r.massimale,erogato:r.erogato,pct:r.pct});
+  });
+  return Object.values(map).map(a=>{
+    a.pct=a.massimale>0?+((a.erogato/a.massimale)*100).toFixed(1):0;
+    a.incidenza=a.rml_period>0?+((a.erogato/a.rml_period)*100).toFixed(1):null;
+    a.months.sort((x,y)=>x-y);
+    a.monthLabel=a.months.map(mk=>mkLabel(mk)).join(' + ');
+    a.monthly.sort((x,y)=>(x.monthKey||x.month||0)-(y.monthKey||y.month||0));
+    return a;
+  });
+}
+
+// ─── REFRESH ─────────────────────────────────────────────────
+function refresh(){
+  if(!allData.length) return;
+  ['kpiRow','chartsRow','dipSection','kpiExpandWrap'].forEach(id=>document.getElementById(id).style.display='');
+  document.getElementById('btnSave').style.display='';
+  popFilters(); filter();
+  // refresh yoy tab if open
+  if(document.getElementById('tabYoy').style.display!=='none'){popYoyFilters();renderYoy();}
+  if(document.getElementById('tabSal').style.display!=='none'){popSalFilters();renderSal();}
+}
+
+// ─── MULTI-SELECT HELPERS ─────────────────────────────────────
+function toggleMs(evt,id){
+  evt.stopPropagation();
+  const panel=document.getElementById(id+'-panel');
+  const btn=document.getElementById(id+'-btn');
+  const isOpen=panel.style.display!=='none';
+  // close all
+  document.querySelectorAll('.ms-panel').forEach(p=>p.style.display='none');
+  document.querySelectorAll('.ms-btn').forEach(b=>b.classList.remove('active'));
+  if(!isOpen){panel.style.display='';btn.classList.add('active');}
+}
+document.addEventListener('click',()=>{
+  document.querySelectorAll('.ms-panel').forEach(p=>p.style.display='none');
+  document.querySelectorAll('.ms-btn').forEach(b=>b.classList.remove('active'));
+});
+
+function getMsVals(id){
+  return [...document.querySelectorAll('#'+id+'-panel input[type=checkbox]:not([data-all]):checked')].map(i=>i.value);
+}
+
+function setMsOpts(id,items,onCh){
+  const fireCh=onCh||filter;
+  const panel=document.getElementById(id+'-panel');
+  const curVals=getMsVals(id);
+  panel.innerHTML='';
+  // block click propagation so the document listener doesn't close the panel on checkbox clicks
+  // (change event is separate and still fires the callback correctly)
+  panel.onclick=e=>e.stopPropagation();
+  // "Tutti" option
+  const allLbl=document.createElement('label');
+  allLbl.className='ms-all';
+  const allCb=document.createElement('input');
+  allCb.type='checkbox'; allCb.setAttribute('data-all','1');
+  allCb.addEventListener('change',e=>{
+    panel.querySelectorAll('input:not([data-all])').forEach(i=>i.checked=e.target.checked);
+    updateMsLabel(id); fireCh();
+  });
+  allLbl.appendChild(allCb);
+  allLbl.appendChild(document.createTextNode(' Tutti/Tutte'));
+  panel.appendChild(allLbl);
+  // Items
+  items.forEach(item=>{
+    const lbl=document.createElement('label');
+    const cb=document.createElement('input');
+    cb.type='checkbox'; cb.value=String(item.v);
+    cb.setAttribute('data-label',item.l);
+    if(curVals.includes(String(item.v))) cb.checked=true;
+    cb.addEventListener('change',()=>{updateAllChk(id);updateMsLabel(id);fireCh();});
+    lbl.appendChild(cb);
+    lbl.appendChild(document.createTextNode(' '+item.l));
+    panel.appendChild(lbl);
+  });
+  updateAllChk(id); updateMsLabel(id);
+}
+
+function updateAllChk(id){
+  const panel=document.getElementById(id+'-panel');
+  const all=panel.querySelector('input[data-all]'); if(!all) return;
+  const items=[...panel.querySelectorAll('input:not([data-all])')];
+  all.checked=items.length>0&&items.every(i=>i.checked);
+  all.indeterminate=!all.checked&&items.some(i=>i.checked);
+}
+
+function updateMsLabel(id){
+  const panel=document.getElementById(id+'-panel');
+  const checked=[...panel.querySelectorAll('input[type=checkbox]:not([data-all]):checked')];
+  const btn=document.getElementById(id+'-btn');
+  if(!checked.length){btn.textContent=(id==='ms-ach')?'Tutte':(id==='ms-tipo')?'Tutti i tipi':'Tutti';}
+  else if(checked.length===1){
+    const lbl=checked[0].getAttribute('data-label')||checked[0].value;
+    btn.textContent=lbl.length>22?lbl.substring(0,21)+'…':lbl;
+  } else {btn.textContent=checked.length+' selezionati';}
+  btn.classList.toggle('active',checked.length>0);
+}
+
+// ─── FILTERS ─────────────────────────────────────────────────
+function popFilters(){
+  const monthKeys=[...new Set(allData.map(r=>r.monthKey||r.month||0).filter(Boolean))].sort((a,b)=>a-b);
+  const stores=[...new Set(allData.map(r=>r.store))].sort();
+  const jobs=[...new Set(allData.map(r=>r.job))].sort();
+  const tipi=[...new Set(allData.map(r=>r._tipo))].sort();
+  setMsOpts('ms-mese',monthKeys.map(mk=>({v:mk,l:mkLabel(mk)})));
+  setMsOpts('ms-store',stores.map(x=>({v:x,l:x})));
+  setMsOpts('ms-job',jobs.map(x=>({v:x,l:x})));
+  const TIPO_LBL={'mensile':'Mensile','semestrale':'Semestrale (standard)','semestrale eci':'Semestrale Dept Store','fc vm':'FC / VM'};
+  setMsOpts('ms-tipo',tipi.map(x=>({v:x,l:TIPO_LBL[x]||x})));
+  setMsOpts('ms-ach',[
+    {v:'0',l:'0% — nessun premio'},
+    {v:'1',l:'1–25%'},
+    {v:'2',l:'26–50%'},
+    {v:'3',l:'51–75%'},
+    {v:'4',l:'76–100%'},
+    {v:'5',l:'>100%'},
+  ]);
+}
+
+function filter(){
+  const meses=getMsVals('ms-mese');
+  const stores=getMsVals('ms-store');
+  const jobs=getMsVals('ms-job');
+  const tipi=getMsVals('ms-tipo');
+  const achs=getMsVals('ms-ach');
+  const q=document.getElementById('fQ').value.toLowerCase();
+
+  filteredRaw=allData.filter(r=>{
+    if(meses.length&&!meses.includes(String(r.monthKey||r.month||0))) return false;
+    if(stores.length&&!stores.includes(r.store)) return false;
+    if(jobs.length&&!jobs.includes(r.job)) return false;
+    if(tipi.length&&!tipi.includes(r._tipo)) return false;
+    if(q){const h=(r.cognome+' '+r.nome+' '+r.store+' '+r.matricola+' '+r.job).toLowerCase();if(!h.includes(q)) return false;}
+    return true;
+  });
+
+  const agg=aggregateEmployees(filteredRaw);
+  filteredAgg=agg.filter(r=>{
+    if(!achs.length) return true;
+    const p=r.pct;
+    return achs.some(ach=>{
+      if(ach=='0') return p===0;
+      if(ach=='1') return p>0&&p<=25;
+      if(ach=='2') return p>25&&p<=50;
+      if(ach=='3') return p>50&&p<=75;
+      if(ach=='4') return p>75&&p<=100;
+      if(ach=='5') return p>100;
+      return false;
+    });
+  });
+
+  openRow=null;
+  renderKpis(); renderCharts(); renderTable();
+}
+
+function resetFilters(){
+  ['ms-mese','ms-store','ms-job','ms-tipo','ms-ach'].forEach(id=>{
+    document.querySelectorAll('#'+id+'-panel input').forEach(i=>{i.checked=false;i.indeterminate=false;});
+    updateMsLabel(id);
+  });
+  document.getElementById('fQ').value='';
+  filter();
+}
+
+// ─── KPIs ─────────────────────────────────────────────────────
+function renderKpis(){
+  const d=filteredAgg, nd=d.length;
+  const mkeys=[...new Set(filteredRaw.map(r=>r.monthKey||r.month||0).filter(Boolean))].sort((a,b)=>a-b);
+  const totMax=d.reduce((s,r)=>s+r.massimale,0);
+  const totEr=d.reduce((s,r)=>s+r.erogato,0);
+  const avgPct=totMax>0?totEr/totMax*100:0;
+  const zeros=d.filter(r=>r.erogato===0).length;
+  const withRml=d.filter(r=>r.rml_period>0);
+  const avgInc=withRml.length?withRml.reduce((s,r)=>s+r.erogato/r.rml_period*100,0)/withRml.length:null;
+  g('kDip',nd.toLocaleString('it-IT'));
+  g('kMesi',mkeys.length?mkeys.map(mk=>mkLabel(mk)).join(' · '):'—');
+  g('kAch',avgPct.toFixed(1)+'%');
+  g('kMax','€ '+fmt(totMax));
+  g('kTot','€ '+fmt(totEr));
+  g('kMedia',nd?'media € '+fmt(totEr/nd)+' / dip.':'—');
+  g('kZero',zeros.toLocaleString('it-IT'));
+  g('kZeroPct',nd?(zeros/nd*100).toFixed(1)+'% del totale':'—');
+  g('kInc',avgInc!=null?avgInc.toFixed(1)+'%':'—');
+  g('kIncSub',avgInc!=null?withRml.length+' dip. con RML':'nessun RML');
+}
+function g(id,v){document.getElementById(id).textContent=v;}
+
+// ─── CHARTS ──────────────────────────────────────────────────
+function dc(k){if(charts[k]){charts[k].destroy();delete charts[k];}}
+function cx(id){return document.getElementById(id).getContext('2d');}
+function avg(a){return a.length?a.reduce((s,v)=>s+v,0)/a.length:0;}
+
+function renderCharts(){rcVs();rcAch();rcDist();rcTrend();rcComp();rcInc();}
+
+// ── Config builders (return fresh Chart.js config from current filtered data) ──
+function buildVsCfg(){
+  const bySt={};
+  filteredAgg.forEach(r=>{
+    if(!bySt[r.store]) bySt[r.store]={max:0,er:0};
+    bySt[r.store].max+=r.massimale; bySt[r.store].er+=r.erogato;
+  });
+  const labs=Object.keys(bySt).sort((a,b)=>bySt[b].er-bySt[a].er);
+  return{type:'bar',data:{labels:labs,datasets:[
+    {label:'Massimale erogabile (€)',data:labs.map(l=>Math.round(bySt[l].max)),backgroundColor:'#e0e7ff',borderColor:'#4f46e5',borderWidth:1.5,borderRadius:4},
+    {label:'Premio erogato (€)',data:labs.map(l=>Math.round(bySt[l].er)),backgroundColor:'#4f46e5',borderRadius:4},
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10}},
+             tooltip:{callbacks:{label:c=>`${c.dataset.label}: € ${Math.round(c.raw).toLocaleString('it-IT')}`}}},
+    scales:{y:{beginAtZero:true,ticks:{callback:fmtK}},
+            x:{ticks:{maxRotation:45,font:{size:9}}}}}};
+}
+
+function buildAchCfg(){
+  const bySt={};
+  filteredAgg.filter(r=>r.massimale>0).forEach(r=>{
+    if(!bySt[r.store]) bySt[r.store]=[];
+    bySt[r.store].push(r.pct);
+  });
+  const labs=Object.keys(bySt).sort((a,b)=>avg(bySt[b])-avg(bySt[a]));
+  const vals=labs.map(l=>+avg(bySt[l]).toFixed(1));
+  const cols=vals.map(achColor);
+  return{type:'bar',data:{labels:labs,datasets:[{data:vals,backgroundColor:cols,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw+'%'}}},
+      scales:{y:{beginAtZero:true,ticks:{callback:v=>v+'%'}},x:{ticks:{maxRotation:45,font:{size:9}}}}}};
+}
+
+function buildDistCfg(){
+  const b=[0,0,0,0,0,0];
+  filteredAgg.filter(r=>r.massimale>0).forEach(r=>{
+    const p=r.pct;
+    if(p===0) b[0]++; else if(p<=25) b[1]++; else if(p<=50) b[2]++;
+    else if(p<=75) b[3]++; else if(p<=100) b[4]++; else b[5]++;
+  });
+  return{type:'doughnut',
+    data:{labels:['0%','1–25%','26–50%','51–75%','76–100%','>100%'],
+      datasets:[{data:b,backgroundColor:['#94a3b8','#ef4444','#f59e0b','#3b82f6','#22c55e','#a855f7'],borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'right',labels:{font:{size:11},padding:10}},
+               tooltip:{callbacks:{label:c=>c.label+': '+c.raw+' dip.'}}}}};
+}
+
+function buildTrendCfg(){
+  const mkeys=[...new Set(filteredRaw.map(r=>r.monthKey||r.month||0).filter(Boolean))].sort((a,b)=>a-b);
+  if(!mkeys.length) return null;
+  const totEr=mkeys.map(mk=>filteredRaw.filter(r=>(r.monthKey||r.month||0)===mk).reduce((s,r)=>s+r.erogato,0));
+  const totMax=mkeys.map(mk=>filteredRaw.filter(r=>(r.monthKey||r.month||0)===mk).reduce((s,r)=>s+r.massimale,0));
+  let ce=0,cm=0;
+  const cumEr=totEr.map(v=>{ce+=v;return Math.round(ce);});
+  const cumMax=totMax.map(v=>{cm+=v;return Math.round(cm);});
+  return{type:'line',
+    data:{labels:mkeys.map(mk=>mkShort(mk)),datasets:[
+      {label:'Erogato cumulato (€)',data:cumEr,borderColor:'#4f46e5',backgroundColor:'#4f46e512',tension:.3,fill:true,pointRadius:5,pointHoverRadius:7,borderWidth:2.5},
+      {label:'Massimale cumulato (€)',data:cumMax,borderColor:'#94a3b8',backgroundColor:'transparent',borderDash:[7,4],tension:.3,fill:false,pointRadius:4,pointHoverRadius:6,borderWidth:2},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:12,padding:8}},
+               tooltip:{mode:'index',intersect:false,callbacks:{label:c=>c.dataset.label+': € '+Math.round(c.raw).toLocaleString('it-IT')}}},
+      scales:{y:{beginAtZero:true,ticks:{callback:fmtK}}}}};
+}
+
+function buildCompCfg(){
+  const tots=COMP.map(c=>({...c,t:filteredAgg.reduce((s,r)=>s+r[c.k],0)})).filter(c=>c.t>0).sort((a,b)=>b.t-a.t);
+  return{type:'bar',
+    data:{labels:tots.map(c=>c.l),datasets:[{data:tots.map(c=>Math.round(c.t)),backgroundColor:tots.map(c=>c.c),borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'€ '+Math.round(c.raw).toLocaleString('it-IT')}}},
+      scales:{y:{beginAtZero:true,ticks:{callback:v=>'€ '+v.toLocaleString('it-IT')}}}}};
+}
+
+function buildIncCfg(){
+  const byJob={};
+  filteredAgg.filter(r=>r.rml_period>0).forEach(r=>{
+    if(!byJob[r.job]) byJob[r.job]={er:0,rml:0,n:0};
+    byJob[r.job].er+=r.erogato;
+    byJob[r.job].rml+=r.rml_period;
+    byJob[r.job].n++;
+  });
+  if(!Object.keys(byJob).length) return null;
+  const labs=Object.keys(byJob).sort((a,b)=>(byJob[b].er/byJob[b].rml)-(byJob[a].er/byJob[a].rml));
+  const vals=labs.map(l=>+((byJob[l].er/byJob[l].rml)*100).toFixed(1));
+  const counts=labs.map(l=>byJob[l].n);
+  const cols=vals.map(v=>v>=15?'#0e7490':v>=10?'#0891b2':v>=5?'#22d3ee':'#a5f3fc');
+  return{type:'bar',
+    data:{labels:labs,datasets:[{
+      label:'Incidenza % (erogato / RML periodo)',
+      data:vals,backgroundColor:cols,borderRadius:4,
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{
+          label:c=>{
+            const j=labs[c.dataIndex];
+            return `${c.raw}%  ·  ${counts[c.dataIndex]} dip.  ·  € ${Math.round(byJob[j].er).toLocaleString('it-IT')} erogati su RML € ${Math.round(byJob[j].rml).toLocaleString('it-IT')}`;
+          },
+        }},
+      },
+      scales:{
+        y:{beginAtZero:true,ticks:{callback:v=>v+'%'},grid:{color:'#f0f2f7'}},
+        x:{ticks:{maxRotation:40,font:{size:10}}},
+      },
+    },
+  };
+}
+
+const CFG_BUILDERS={vs:buildVsCfg,ach:buildAchCfg,dist:buildDistCfg,trend:buildTrendCfg,comp:buildCompCfg,inc:buildIncCfg};
+
+function rcVs(){dc('vs');charts['vs']=new Chart(cx('cVs'),buildVsCfg());}
+function rcAch(){dc('ach');charts['ach']=new Chart(cx('cAch'),buildAchCfg());}
+function rcDist(){dc('dist');charts['dist']=new Chart(cx('cDist'),buildDistCfg());}
+function rcTrend(){dc('trend');const cfg=buildTrendCfg();if(cfg) charts['trend']=new Chart(cx('cTrend'),cfg);}
+function rcComp(){dc('comp');charts['comp']=new Chart(cx('cComp'),buildCompCfg());}
+function rcInc(){dc('inc');const cfg=buildIncCfg();if(cfg) charts['inc']=new Chart(cx('cInc'),cfg);}
+
+// ─── MODAL EXPAND ─────────────────────────────────────────────
+let modalChart=null;
+
+function expandCard(key,title){
+  const builder=CFG_BUILDERS[key]; if(!builder) return;
+  const cfg=builder(); if(!cfg) return;
+  const body=document.getElementById('modalBody');
+  body.innerHTML='<div class="modal-canvas-wrap"><canvas id="cModal"></canvas></div>';
+  document.getElementById('modalTitle').textContent=title;
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+  if(modalChart){modalChart.destroy();modalChart=null;}
+  modalChart=new Chart(document.getElementById('cModal').getContext('2d'),cfg);
+}
+
+function expandKpi(){
+  const body=document.getElementById('modalBody');
+  body.innerHTML='<div class="modal-kpi-grid">'+document.getElementById('kpiRow').innerHTML+'</div>';
+  document.getElementById('modalTitle').textContent='KPI — Periodo selezionato';
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+  if(modalChart){modalChart.destroy();modalChart=null;}
+}
+
+function closeModal(){
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.body.style.overflow='';
+  if(modalChart){modalChart.destroy();modalChart=null;}
+}
+
+function closeModalOutside(e){if(e.target===document.getElementById('modalOverlay')) closeModal();}
+document.addEventListener('keydown',e=>{if(e.key==='Escape') closeModal();});
+
+// ─── TABLE ────────────────────────────────────────────────────
+function renderTable(){
+  const sorted=[...filteredAgg];
+  if(sCol) sorted.sort((a,b)=>{
+    const av=a[sCol]??-Infinity,bv=b[sCol]??-Infinity;
+    return typeof av==='number'?(av-bv)*sDir:String(av).localeCompare(String(bv))*sDir;
+  });
+
+  const total=sorted.length;
+  g('dipMeta',total?total.toLocaleString('it-IT')+' dipendenti':'');
+
+  const cols=[
+    {l:'Cognome',sk:'cognome'},{l:'Nome',sk:'nome'},
+    {l:'Negozio',sk:'store'},{l:'Ruolo',sk:'job'},
+    {l:'Mesi inclusi',sk:'monthLabel'},
+    {l:'Massimale € (tot.)',sk:'massimale'},
+    {l:'Erogato € (tot.)',sk:'erogato'},
+    {l:'Achievement',sk:'pct'},
+    {l:'% su stipendio',sk:'incidenza'},
+  ];
+
+  if(!sorted.length){
+    document.getElementById('tblScroll').innerHTML='<div style="text-align:center;padding:48px;color:#ccc;font-size:14px">Nessun risultato con i filtri correnti</div>';
+    g('dipNote','');
+    return;
+  }
+
+  let h='<table><thead><tr>';
+  cols.forEach(c=>{
+    const ar=sCol===c.sk?(sDir===1?' ↑':' ↓'):'';
+    h+=`<th onclick="sortBy('${c.sk}')">${c.l}${ar}</th>`;
+  });
+  h+='</tr></thead><tbody>';
+
+  sorted.forEach((r,i)=>{
+    const{bc,fc}=pctCls(r.pct);
+    const bw=Math.min(Math.max(r.pct,0),100).toFixed(0);
+    const isOpen=openRow===i;
+    h+=`<tr class="dr${isOpen?' open':''}" onclick="toggle(${i})">
+      <td><strong>${r.cognome}</strong></td>
+      <td>${r.nome}</td>
+      <td style="font-size:11px;color:#666">${r.store}</td>
+      <td><span class="bjob">${r.job}</span></td>
+      <td style="font-size:11px;color:#888">${r.monthLabel}</td>
+      <td style="text-align:right">€ ${fmt(r.massimale)}</td>
+      <td style="text-align:right"><strong>€ ${fmt(r.erogato)}</strong></td>
+      <td><div class="pct-cell">
+        <div class="pbar"><div class="pfill ${fc}" style="width:${bw}%"></div></div>
+        <span class="badge ${bc}">${r.pct.toFixed(0)}%</span>
+      </div></td>
+      <td style="text-align:right;color:#0891b2;font-weight:600">${r.incidenza!=null?r.incidenza.toFixed(1)+'%':'—'}</td>
+    </tr>`;
+    if(isOpen) h+=`<tr class="xr"><td colspan="9">${buildDetail(r)}</td></tr>`;
+  });
+  h+='</tbody></table>';
+
+  document.getElementById('tblScroll').innerHTML=h;
+  g('dipNote',`Importi in € · cambio per ENTE applicato (vecchio sistema) / RML EURO÷RML (nuovo sistema) · ${total.toLocaleString('it-IT')} dipendenti`);
+}
+
+function buildDetail(r){
+  let h='<div class="xr-inner">';
+  if(r.monthly.length>1){
+    h+='<div style="grid-column:1/-1"><table class="monthly-tbl"><thead><tr><th>Mese</th><th style="text-align:right">Massimale €</th><th style="text-align:right">Erogato €</th><th>%</th></tr></thead><tbody>';
+    r.monthly.forEach(m=>{
+      const{bc}=pctCls(m.pct);
+      h+=`<tr><td>${m.monthLabel}</td><td style="text-align:right">€ ${fmt(m.massimale)}</td><td style="text-align:right">€ ${fmt(m.erogato)}</td><td><span class="badge ${bc}">${m.pct.toFixed(0)}%</span></td></tr>`;
+    });
+    h+='</tbody></table></div>';
+  }
+  const maxComp=Math.max(...COMP.map(c=>r[c.k]),0.01);
+  COMP.forEach(c=>{
+    const v=r[c.k]; if(v===0) return;
+    const w=(v/maxComp*100).toFixed(0);
+    h+=`<div class="ci">
+      <div class="ci-name">${c.l}</div>
+      <div class="ci-bar"><div class="ci-fill" style="width:${w}%;background:${c.c}"></div></div>
+      <div class="ci-vals"><strong>€ ${fmt(v)}</strong></div>
+    </div>`;
+  });
+  if(r.malattie>0){
+    h+=`<div class="ci"><div class="ci-name" style="color:#ef4444">Malattie (gg)</div>
+      <div class="ci-vals"><span style="color:#ef4444">−${r.malattie}</span></div></div>`;
+  }
+  h+=`<div class="ci" style="border-color:#4f46e5">
+    <div class="ci-name">Totale cumulato</div>
+    <div class="ci-bar"><div class="ci-fill" style="width:${Math.min(r.pct,100).toFixed(0)}%;background:#4f46e5"></div></div>
+    <div class="ci-vals"><strong>€ ${fmt(r.erogato)}</strong><span style="color:#aaa">/ € ${fmt(r.massimale)}</span></div>
+  </div>`;
+  if(r.incidenza!=null){
+    h+=`<div class="ci" style="border-color:#0891b2">
+      <div class="ci-name" style="color:#0891b2">Incidenza su stipendio</div>
+      <div class="ci-bar"><div class="ci-fill" style="width:${Math.min(r.incidenza,100).toFixed(0)}%;background:#0891b2"></div></div>
+      <div class="ci-vals"><strong style="color:#0891b2">${r.incidenza.toFixed(1)}%</strong><span style="color:#aaa">€ ${fmt(r.erogato)} / RML € ${fmt(r.rml_period)}</span></div>
+    </div>`;
+  }
+  h+='</div>';
+  return h;
+}
+
+function toggle(i){ openRow=(openRow===i)?null:i; renderTable(); }
+
+function pctCls(p){
+  if(p===0) return{bc:'b0',fc:'pf0'};
+  if(p<=25) return{bc:'b1',fc:'pf1'};
+  if(p<=50) return{bc:'b2',fc:'pf2'};
+  if(p<=75) return{bc:'b3',fc:'pf3'};
+  if(p<=100)return{bc:'b4',fc:'pf4'};
+  return{bc:'b5',fc:'pf5'};
+}
+
+function sortBy(col){ sDir=(sCol===col)?sDir*-1:1; sCol=col; renderTable(); }
+function fmt(n){return Math.round(n).toLocaleString('it-IT');}
+function fmtEur(n){return '€ '+fmt(n);}              // importo € arrotondato
+function fmtK(n){return '€ '+Math.round(n/1000)+'k';} // tick assi in migliaia
+function achColor(v){return v>=100?'#a855f7':v>=75?'#22c55e':v>=50?'#3b82f6':v>=25?'#f59e0b':'#ef4444';}
+
+// ─── EXPORT EXCEL ─────────────────────────────────────────────
+function exportExcel(){
+  if(!filteredAgg.length){alert('Nessun dato da esportare.');return;}
+  const rows=filteredAgg.map(r=>({
+    'Matricola':r.matricola,
+    'Cognome':r.cognome,
+    'Nome':r.nome,
+    'Negozio':r.store,
+    'Ruolo':r.job,
+    'Mesi':r.monthLabel,
+    'Massimale EUR':Math.round(r.massimale),
+    'Erogato EUR':Math.round(r.erogato),
+    'Achievement %':r.pct,
+    'RML periodo EUR':r.rml_period>0?Math.round(r.rml_period):'',
+    'Incidenza % su stipendio':r.incidenza!=null?r.incidenza:'',
+    // mensili components
+    'BDG (lordo)':Math.round(r.cBdg),
+    'Digital':Math.round(r.cDigital),
+    'Shopper Yield':Math.round(r.cShopper),
+    'Nuove Privilege':Math.round(r.cPrivilege),
+    'SAS':Math.round(r.cSas),
+    'DCC':Math.round(r.cDcc),
+    'Customer Service':Math.round(r.cCs),
+    'Art. Incentivati':Math.round(r.cArt),
+    'Visual in Store':Math.round(r.cVisual),
+    // semestrali components
+    'CR (sem.)':Math.round(r.cCrSem),
+    'Shopper Yield (sem.)':Math.round(r.cSySem),
+    'Subscription Index (sem.)':Math.round(r.cSubSem),
+    'SAS (sem.)':Math.round(r.cSasSem),
+  }));
+  const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=Object.keys(rows[0]).map(k=>({wch:Math.max(k.length+2,12)}));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Premi Dipendenti');
+  XLSX.writeFile(wb,'BoggiPremi_Dipendenti_'+new Date().toISOString().split('T')[0]+'.xlsx');
+}
+
+// ─── SAVE / LOAD SESSION ──────────────────────────────────────
+function saveSession(){
+  const session={version:'3.3',savedAt:new Date().toISOString(),fileNames:Object.keys(fileMap),rows:allData};
+  const blob=new Blob([JSON.stringify(session)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='BoggiPremi_'+new Date().toISOString().split('T')[0]+'.json';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function loadSession(evt){
+  const f=evt.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=e=>{
+    try{
+      const s=JSON.parse(e.target.result);
+      if(!s.rows||!Array.isArray(s.rows)) throw new Error('Formato sessione non valido');
+      // backfill fields added after v3.0
+      const compKeys=Object.fromEntries(COMP.map(c=>[c.k,0]));
+      s.rows.forEach(r=>{
+        if(!r._tipo) r._tipo='mensile'; // sessions before v3.1 had no _tipo (all were mensile)
+        Object.keys(compKeys).forEach(k=>{if(r[k]==null) r[k]=0;});
+        // backfill year + monthKey (old sessions are all 2026)
+        if(!r.year&&r.month) r.year=2026;
+        if(!r.monthKey&&r.month) r.monthKey=r.year*100+r.month;
+        if(!r.monthLabel&&r.monthKey) r.monthLabel=mkLabel(r.monthKey);
+        if(r.rml_period==null) r.rml_period=0;
+        if(r.mBdg==null) r.mBdg=0;
+        if(r.cambio==null) r.cambio=1; // base per riscalo cambi uniformi (sessioni < v3.3)
+        delete r._appliedCambio; // ricalcola da capo il riscalo cambi su questa sessione
+        r._nazione=enteNazione(r._ente||0); // always recalc to pick up corrected ENTE_PAESE
+      });
+      const label='📋 Sessione '+s.savedAt.split('T')[0]+' ('+s.rows.length+' righe)';
+      fileMap[label]=s.rows;
+      rebuild(); addChip(label,s.rows.length,true,'mensile'); refresh();
+    }catch(err){ alert('Errore caricamento sessione:\n'+err.message); }
+    evt.target.value='';
+  };
+  rd.readAsText(f);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ─── TAB SYSTEM ──────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+function switchTab(tab){
+  document.getElementById('tabDash').style.display=tab==='dash'?'':'none';
+  document.getElementById('tabYoy').style.display=tab==='yoy'?'':'none';
+  document.getElementById('tabSal').style.display=tab==='sal'?'':'none';
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+  if(tab==='yoy'&&allData.length){popYoyFilters();renderYoy();}
+  if(tab==='sal'&&allData.length){popSalFilters();renderSal();}
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ─── HELPER CONDIVISI YOY / STIPENDI ─────────────────────────
+// Logica identica fra i due tab, parametrizzata per prefisso id + render fn.
+// La logica L4L (che diverge fra i tab) resta nelle singole getYoyRows/getSalRows.
+// ═══════════════════════════════════════════════════════════════
+
+// Mostra/nasconde i valori € di un tab (toggle classe + label bottone).
+function _setEurVisible(tabId,btnId,cls,visible){
+  const tab=document.getElementById(tabId), btn=document.getElementById(btnId);
+  if(tab) tab.classList.toggle(cls,!visible);
+  if(btn){btn.textContent=visible?'▤ € visibili':'▤ € nascosti';btn.classList.toggle('hidden-state',!visible);}
+}
+
+// Evidenzia il pulsante L4L attivo ('tutti'|'l4l'|'new') per un dato gruppo di id.
+function _applyL4LBtns(idPrefix,val){
+  ['tutti','l4l','new'].forEach(v=>{
+    const el=document.getElementById(idPrefix+'-'+v);
+    if(el) el.classList.toggle('active',v===val);
+  });
+}
+
+// Popola i multi-select comuni (mese/anno/ruolo/nazione/negozio/tipo) di un tab.
+function _popTabFilters(prefix,renderFn,tipoChangeFn,extraInit){
+  const byMonth={};
+  allData.forEach(r=>{if(!r.month||!r.year)return;(byMonth[r.month]||(byMonth[r.month]=new Set())).add(r.year);});
+  const allMonths=Object.keys(byMonth).map(Number).sort((a,b)=>a-b);
+  const multiYrMonths=allMonths.filter(m=>byMonth[m].size>=2);
+  const displayMonths=multiYrMonths.length?multiYrMonths:allMonths;
+  const allYears=[...new Set(allData.map(r=>r.year).filter(Boolean))].sort();
+  const allJobs=[...new Set(allData.map(r=>r.job).filter(Boolean))].sort();
+  const allNaz=[...new Set(allData.map(r=>r._nazione).filter(n=>n&&!n.startsWith('ENTE ')))].sort();
+  const allStores=[...new Set(allData.map(r=>r.store).filter(Boolean))].sort();
+  const allTipi=[...new Set(allData.map(r=>r._tipo))].sort();
+  setMsOpts(prefix+'-mese',displayMonths.map(m=>({v:m,l:MESI[m]})),renderFn);
+  setMsOpts(prefix+'-anno',allYears.map(y=>({v:y,l:String(y)})),renderFn);
+  setMsOpts(prefix+'-job',allJobs.map(j=>({v:j,l:j})),renderFn);
+  setMsOpts(prefix+'-naz',allNaz.map(n=>({v:n,l:n})),renderFn);
+  setMsOpts(prefix+'-store',allStores.map(s=>({v:s,l:s})),renderFn);
+  setMsOpts(prefix+'-tipo',allTipi.map(t=>({v:t,l:TIPO_LBL_MAP[t]||t})),tipoChangeFn);
+  if(extraInit) extraInit();
+}
+
+// Ricostruisce le opzioni "componente premio" in base ai tipi selezionati.
+function _updateCompOpts(prefix,renderFn){
+  const selTipi=new Set(getMsVals(prefix+'-tipo'));
+  let comps;
+  if(!selTipi.size){
+    const activeKeys=new Set(allData.flatMap(r=>COMP.filter(c=>r[c.k]>0).map(c=>c.k)));
+    comps=COMP.filter(c=>activeKeys.has(c.k));
+  } else {
+    const wantMensile=selTipi.has('mensile')||selTipi.has('fc vm');
+    const wantSem=selTipi.has('semestrale')||selTipi.has('semestrale eci');
+    comps=COMP.filter(c=>(wantMensile&&c.tipo==='mensile')||(wantSem&&c.tipo==='semestrale'))
+              .filter(c=>allData.some(r=>r[c.k]>0));
+  }
+  const curSel=getMsVals(prefix+'-comp');
+  setMsOpts(prefix+'-comp',comps.map(c=>({v:c.k,l:c.l})),renderFn);
+  const validKeys=new Set(comps.map(c=>c.k));
+  document.querySelectorAll('#'+prefix+'-comp-panel input:not([data-all])').forEach(cb=>{
+    if(curSel.includes(cb.value)&&validKeys.has(cb.value)) cb.checked=true;
+  });
+  updateAllChk(prefix+'-comp'); updateMsLabel(prefix+'-comp');
+}
+
+// Filtro base comune (mese/anno/ruolo/nazione/negozio/tipo/componente/ricerca).
+// La logica L4L NON è qui: viene applicata dopo, separatamente, da ciascun tab.
+function _baseTabFilter(prefix,requireRml){
+  const months=getMsVals(prefix+'-mese'), years=getMsVals(prefix+'-anno'), jobs=getMsVals(prefix+'-job'),
+        naz=getMsVals(prefix+'-naz'), stores=getMsVals(prefix+'-store'), tipi=getMsVals(prefix+'-tipo'),
+        comps=getMsVals(prefix+'-comp');
+  const q=(document.getElementById(prefix+'-dip')||{value:''}).value.toLowerCase().trim();
+  const multiYr=yoyMultiYrMonths();
+  return allData.filter(r=>{
+    if(requireRml&&!rmlMonth(r)) return false;
+    if(months.length){if(!months.includes(String(r.month))) return false;}
+    else{if(multiYr.size&&!multiYr.has(r.month)) return false;}
+    if(years.length&&!years.includes(String(r.year))) return false;
+    if(jobs.length&&!jobs.includes(r.job)) return false;
+    if(naz.length&&!naz.includes(r._nazione)) return false;
+    if(stores.length&&!stores.includes(r.store)) return false;
+    if(tipi.length&&!tipi.includes(r._tipo)) return false;
+    if(comps.length&&!comps.some(k=>r[k]>0)) return false;
+    if(q){const h=(r.cognome+' '+r.nome+' '+r.matricola).toLowerCase();if(!h.includes(q)) return false;}
+    return true;
+  });
+}
+
+// Autocomplete dipendente (dropdown nome/cognome/matricola) condiviso.
+function _dipAutocomplete(val,listId,selectFn,renderFn){
+  renderFn();
+  const list=document.getElementById(listId);
+  if(!list) return;
+  const q=val.toLowerCase().trim();
+  if(q.length<2){list.style.display='none';return;}
+  const seen=new Set(), matches=[];
+  for(const r of allData){
+    const key=r.matricola; if(seen.has(key)) continue;
+    const h=(r.cognome+' '+r.nome+' '+r.matricola).toLowerCase();
+    if(h.includes(q)){seen.add(key);matches.push(r);if(matches.length>=14) break;}
+  }
+  if(!matches.length){list.style.display='none';return;}
+  list.innerHTML=matches.map(r=>{
+    const nm=(r.cognome+' '+r.nome).replace(/'/g,'&#39;');
+    const nmRaw=(r.cognome+' '+r.nome).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `<div class="dip-ac-item" onmousedown="${selectFn}('${nmRaw}')"><span class="dip-ac-name">${nm}</span><span class="dip-ac-sub">${r.store||''} · ${r.matricola||''}</span></div>`;
+  }).join('');
+  list.style.display='block';
+}
+function _selectDip(name,inputId,listId,renderFn){
+  const inp=document.getElementById(inputId); if(inp) inp.value=name;
+  const list=document.getElementById(listId); if(list) list.style.display='none';
+  renderFn();
+}
+
+// Reset dei multi-select comuni + svuota input dipendente; extraReset gestisce l'L4L.
+function _resetTabFilters(ids,dipId,extraReset,renderFn){
+  ids.forEach(id=>{
+    document.querySelectorAll('#'+id+'-panel input').forEach(i=>{i.checked=false;i.indeterminate=false;});
+    updateMsLabel(id);
+  });
+  const dipEl=document.getElementById(dipId); if(dipEl) dipEl.value='';
+  extraReset();
+  renderFn();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ─── YOY CONSTANTS ───────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+const YR_COLS=['#4f46e5','#f59e0b','#22c55e','#ef4444','#a855f7','#0ea5e9','#64748b'];
+const YR_COLS_LIGHT=['#a5b4fc','#fde68a','#86efac','#fca5a5','#d8b4fe','#bae6fd','#cbd5e1'];
+// Colore anno basato sulla posizione nell'elenco globale anni — stabile anche quando si filtra un sottoinsieme
+function yrCol(yr){
+  const allYrs=[...new Set(allData.map(r=>r.year).filter(Boolean))].sort();
+  const idx=allYrs.indexOf(yr);
+  return YR_COLS[idx>=0?idx%YR_COLS.length:0];
+}
+const TIPO_LBL_MAP={'mensile':'Mensile','semestrale':'Semestrale (standard)','semestrale eci':'Semestrale Dept Store','fc vm':'FC / VM'};
+
+// ─── YOY STATE ───────────────────────────────────────────────
+let yoyCharts={};
+let yoyL4L='tutti'; // 'tutti' | 'l4l' | 'new'
+let yoyL4LDip='tutti';
+let yoyL4LAnni=new Set(); // empty = tutti gli anni; altrimenti Set di anni numerici
+
+// Chiave canonica dipendente: cognome|nome lowercase — invariante tra sistemi HR / formati file
+const _empKey=r=>((r.cognome||'')+'|'+(r.nome||'')).toLowerCase().trim();
+
+function _l4lAnniActive(){return yoyL4L!=='tutti'||yoyL4LDip!=='tutti';}
+
+function setL4L(val,noRender){
+  yoyL4L=val; _applyL4LBtns('l4l',val); _updateL4LAnniWrap();
+  if(!noRender) renderYoy();
+}
+
+function setL4LDip(val,noRender){
+  yoyL4LDip=val; _applyL4LBtns('yoy-l4ldip',val); _updateL4LAnniWrap();
+  if(!noRender) renderYoy();
+}
+
+function _updateL4LAnniWrap(){
+  const wrap=document.getElementById('yoy-l4lanni-wrap');
+  if(wrap) wrap.style.display=_l4lAnniActive()?'':'none';
+}
+
+// Renderizza i pulsanti anni dinamicamente in base agli anni disponibili nei dati
+function updateL4LAnniUI(){
+  const btns=document.getElementById('yoy-l4lanni-btns');
+  if(!btns) return;
+  const years=[...new Set(allData.map(r=>r.year).filter(Boolean))].sort();
+  btns.innerHTML='';
+  years.forEach(yr=>{
+    const b=document.createElement('button');
+    b.className='l4l-btn'+((!yoyL4LAnni.size||yoyL4LAnni.has(yr))?' active':'');
+    b.textContent=yr;
+    b.onclick=()=>toggleL4LAnno(yr);
+    btns.appendChild(b);
+  });
+  _updateL4LAnniWrap();
+}
+
+function toggleL4LAnno(yr){
+  // Se tutti attivi e ne spengo uno → attivo gli altri esplicitamente
+  const years=[...new Set(allData.map(r=>r.year).filter(Boolean))].sort();
+  if(!yoyL4LAnni.size){
+    // erano tutti attivi → attiva tutti tranne quello cliccato
+    years.forEach(y=>{if(y!==yr) yoyL4LAnni.add(y);});
+  } else if(yoyL4LAnni.has(yr)){
+    yoyL4LAnni.delete(yr);
+    // Se torno ad avere tutti attivi → svuota il set (= tutti)
+    if(yoyL4LAnni.size===years.length) yoyL4LAnni.clear();
+  } else {
+    yoyL4LAnni.add(yr);
+    if(yoyL4LAnni.size===years.length) yoyL4LAnni.clear();
+  }
+  updateL4LAnniUI();
+  renderYoy();
+}
+
+// Restituisce gli anni richiesti per il check L4L (rispettando il perimetro selezionato)
+function l4lRequiredYears(availYrs){
+  if(!yoyL4LAnni.size) return availYrs; // tutti
+  return availYrs.filter(y=>yoyL4LAnni.has(y));
+}
+
+// ─── YOY FILTERS ─────────────────────────────────────────────
+function popYoyFilters(){
+  _popTabFilters('yoy',renderYoy,onYoyTipoChange,()=>{
+    updateYoyCompOpts(); // init comp based on current tipo selection
+    updateL4LAnniUI();   // aggiorna i pulsanti anni perimetro L4L
+  });
+}
+
+// rebuild comp options based on selected tipi (called on tipo change + init)
+function updateYoyCompOpts(){_updateCompOpts('yoy',renderYoy);}
+
+function onYoyTipoChange(){
+  updateYoyCompOpts();
+  renderYoy();
+}
+
+// pre-compute multi-year months set (used by getYoyRows)
+function yoyMultiYrMonths(){
+  const byMonth={};
+  allData.forEach(r=>{
+    if(!r.month||!r.year) return;
+    if(!byMonth[r.month]) byMonth[r.month]=new Set();
+    byMonth[r.month].add(r.year);
+  });
+  return new Set(Object.entries(byMonth).filter(([,ys])=>ys.size>=2).map(([m])=>+m));
+}
+
+function getYoyRows(){
+  const base=_baseTabFilter('yoy',false);
+  // Se L4L è attivo e anni perimetro L4L è settato → mostra solo quegli anni
+  const l4lActive=yoyL4L!=='tutti'||yoyL4LDip!=='tutti';
+  let filtered=l4lActive&&yoyL4LAnni.size?base.filter(r=>yoyL4LAnni.has(r.year)):base;
+
+  // L4L negozi — presenza basata su compEro>0
+  if(yoyL4L!=='tutti'){
+    const allYrs=[...new Set(filtered.map(r=>r.year).filter(Boolean))].sort();
+    const reqYrs=l4lRequiredYears(allYrs);
+    if(reqYrs.length>=2){
+      const storeYrs={};
+      filtered.filter(r=>compEro(r)>0).forEach(r=>{if(!storeYrs[r.store])storeYrs[r.store]=new Set();storeYrs[r.store].add(r.year);});
+      if(yoyL4L==='l4l') filtered=filtered.filter(r=>reqYrs.every(y=>storeYrs[r.store]?.has(y)));
+      else filtered=filtered.filter(r=>!storeYrs[r.store]?.has(reqYrs[0]));
+    }
+  }
+  // L4L dipendenti — chiave canonica: cognome|nome (invariante tra sistemi HR)
+  if(yoyL4LDip!=='tutti'){
+    const allYrs=[...new Set(filtered.map(r=>r.year).filter(Boolean))].sort();
+    const reqYrs=l4lRequiredYears(allYrs);
+    if(reqYrs.length>=2){
+      const empYrs={};
+      filtered.forEach(r=>{
+        const nk=_empKey(r);
+        if(nk!=='|'){if(!empYrs[nk])empYrs[nk]=new Set();empYrs[nk].add(r.year);}
+      });
+      if(yoyL4LDip==='l4l'){
+        filtered=filtered.filter(r=>{const nk=_empKey(r);return nk!=='|'&&empYrs[nk]&&reqYrs.every(y=>empYrs[nk].has(y));});
+      } else {
+        filtered=filtered.filter(r=>!empYrs[_empKey(r)]?.has(reqYrs[0]));
+      }
+    }
+  }
+  return filtered;
+}
+
+let yoyShowKpis=false;
+_setEurVisible('tabYoy','yoyKpiToggleBtn','yoy-eur-hidden',yoyShowKpis);
+function toggleYoyKpis(){
+  yoyShowKpis=!yoyShowKpis;
+  _setEurVisible('tabYoy','yoyKpiToggleBtn','yoy-eur-hidden',yoyShowKpis);
+}
+
+function dipAutocomplete(val){_dipAutocomplete(val,'dip-ac-list','selectDip',renderYoy);}
+function selectDip(name){_selectDip(name,'yoy-dip','dip-ac-list',renderYoy);}
+
+function resetYoyFilters(){
+  _resetTabFilters(['yoy-mese','yoy-anno','yoy-job','yoy-naz','yoy-store','yoy-tipo','yoy-comp'],'yoy-dip',()=>{
+    yoyL4LAnni.clear();
+    setL4L('tutti',true);
+    setL4LDip('tutti',true);
+    updateL4LAnniUI();
+  },renderYoy);
+}
+
+// ─── YOY AGGREGATION ─────────────────────────────────────────
+// Returns {dim: {year: {matr:Set, massimale, erogato, rml}}}
+// Returns component-specific erogato when comp filter active, else total erogato
+function compEro(r){
+  const sel=getMsVals('yoy-comp');
+  if(!sel.length) return r.erogato;
+  return sel.reduce((s,k)=>s+(r[k]||0),0);
+}
+
+// strictDimL4l=true → per ogni dimensione (es. mese), solo dipendenti presenti in QUELLA dim
+//   per tutti gli anni richiesti dal perimetro L4L. Garantisce che ogni barra dello stesso mese
+//   mostri le stesse persone → i conteggi non possono aumentare in anni successivi.
+function yoyAgg(rows,dimFn,strictDimL4l=false){
+  const out={};
+  const selComp=getMsVals('yoy-comp');
+
+  // Pre-computa set di chiavi canoniche valide per ogni dimensione (strict L4L per-dim)
+  // Usa _empKey (cognome|nome) — invariante tra sistemi HR
+  let dimValid=null;
+  if(strictDimL4l&&yoyL4LDip!=='tutti'){
+    const allYrs=[...new Set(rows.map(r=>r.year).filter(Boolean))].sort();
+    const reqYrs=l4lRequiredYears(allYrs);
+    if(reqYrs.length>=2){
+      const dyn={}; // dim -> year -> Set<empKey>
+      rows.forEach(r=>{
+        const dim=dimFn(r)||'?', yr=r.year||'?';
+        if(!reqYrs.includes(yr)) return;
+        const nk=_empKey(r);
+        if(nk!=='|'){
+          if(!dyn[dim]) dyn[dim]={};
+          if(!dyn[dim][yr]) dyn[dim][yr]=new Set();
+          dyn[dim][yr].add(nk);
+        }
+      });
+      dimValid={};
+      Object.keys(dyn).forEach(dim=>{
+        const allNames=new Set();
+        Object.values(dyn[dim]).forEach(s=>s.forEach(nk=>allNames.add(nk)));
+        dimValid[dim]=new Set([...allNames].filter(nk=>reqYrs.every(y=>dyn[dim][y]?.has(nk))));
+      });
+    }
+  }
+
+  rows.forEach(r=>{
+    const er=compEro(r);
+    if(selComp.length&&!er) return;
+    const dim=dimFn(r)||'?';
+    const nk=_empKey(r);
+    // Se strict: salta dipendenti non nella intersezione per questa dimensione
+    if(dimValid?.[dim]&&!dimValid[dim].has(nk)) return;
+    const yr=r.year||'?';
+    if(!out[dim]) out[dim]={};
+    if(!out[dim][yr]) out[dim][yr]={keys:new Set(),massimale:0,erogato:0,rml:0};
+    const b=out[dim][yr];
+    b.keys.add(nk!=='|'?nk:r.matricola);
+    b.massimale+=r.massimale;
+    b.erogato+=er;
+    b.rml+=r.rml_period;
+  });
+  for(const d of Object.keys(out))
+    for(const y of Object.keys(out[d]))
+      out[d][y].n=out[d][y].keys.size;
+  return out;
+}
+
+function yoyYears(rows){
+  return [...new Set(rows.map(r=>r.year).filter(Boolean))].sort();
+}
+
+// ─── YOY CHART BUILDERS ──────────────────────────────────────
+// Generic grouped-bar: dim on X, one dataset per year
+function buildYoyGroupBar(rows,dimFn,valFn,fmtTip,fmtAxis,sortFn,strict=false){
+  const data=yoyAgg(rows,dimFn,strict);
+  const years=yoyYears(rows);
+  if(!years.length) return null;
+  let dims=Object.keys(data).filter(d=>years.some(y=>data[d][y]&&(data[d][y].erogato>0||data[d][y].n>0)));
+  if(!dims.length) return null;
+  if(sortFn) dims=dims.sort(sortFn);
+  const datasets=years.map((yr)=>({
+    label:String(yr),
+    data:dims.map(d=>data[d][yr]?valFn(data[d][yr]):0),
+    backgroundColor:yrCol(yr),
+    borderRadius:4,barPercentage:.75,categoryPercentage:.8,
+  }));
+  return{type:'bar',data:{labels:dims,datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'top',labels:{font:{size:11},boxWidth:12,padding:10}},
+        tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtTip(c.raw,c.dataIndex,dims,data,years)}},
+      },
+      scales:{
+        y:{beginAtZero:true,ticks:{callback:v=>fmtAxis(v)},grid:{color:'#f0f2f7'}},
+        x:{ticks:{maxRotation:40,font:{size:10},callback:function(val,idx){const d=dims[idx];if(!d)return val;const ns=years.filter(y=>data[d]?.[y]?.n).map(y=>data[d][y].n).join(' · ');return ns?[d,ns+' dip.']:d;}}},
+      },
+    },
+  };
+}
+
+// Achievement% grouped bar (needs massimale for computing %)
+function buildYoyAchBar(rows,dimFn,sortFn,strict=false){
+  const data=yoyAgg(rows,dimFn,strict);
+  const years=yoyYears(rows);
+  if(!years.length) return null;
+  let dims=Object.keys(data).filter(d=>years.some(y=>data[d][y]));
+  if(!dims.length) return null;
+  if(sortFn) dims=dims.sort(sortFn);
+  const datasets=years.map((yr)=>({
+    label:String(yr),
+    data:dims.map(d=>{const b=data[d][yr];return b&&b.massimale>0?+((b.erogato/b.massimale)*100).toFixed(1):0;}),
+    backgroundColor:yrCol(yr),borderRadius:4,barPercentage:.75,categoryPercentage:.8,
+  }));
+  return{type:'bar',data:{labels:dims,datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:12,padding:10}},
+               tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.raw+'%'}}},
+      scales:{y:{beginAtZero:true,ticks:{callback:v=>v+'%'},grid:{color:'#f0f2f7'}},
+              x:{ticks:{maxRotation:40,font:{size:10},callback:function(val,idx){const d=dims[idx];if(!d)return val;const ns=years.filter(y=>data[d]?.[y]?.n).map(y=>data[d][y].n).join(' · ');return ns?[d,ns+' dip.']:d;}}}},
+    },
+  };
+}
+
+// Incidenza % grouped bar (erogato/rml)
+function buildYoyIncBar(rows,dimFn,sortFn){
+  const data=yoyAgg(rows,dimFn);
+  const years=yoyYears(rows);
+  if(!years.length) return null;
+  let dims=Object.keys(data).filter(d=>years.some(y=>data[d][y]&&data[d][y].rml>0));
+  if(!dims.length) return null;
+  if(sortFn) dims=dims.sort(sortFn);
+  const datasets=years.map((yr)=>({
+    label:String(yr),
+    data:dims.map(d=>{const b=data[d][yr];return b&&b.rml>0?+((b.erogato/b.rml)*100).toFixed(1):0;}),
+    backgroundColor:yrCol(yr),borderRadius:4,barPercentage:.75,categoryPercentage:.8,
+  }));
+  return{type:'bar',data:{labels:dims,datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:12,padding:10}},
+               tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.raw+'%'}}},
+      scales:{y:{beginAtZero:true,ticks:{callback:v=>v+'%'},grid:{color:'#f0f2f7'}},
+              x:{ticks:{maxRotation:40,font:{size:10},callback:function(val,idx){const d=dims[idx];if(!d)return val;const ns=years.filter(y=>data[d]?.[y]?.n).map(y=>data[d][y].n).join(' · ');return ns?[d,ns+' dip.']:d;}}}},
+    },
+  };
+}
+
+// Specific charts — mesi usano strict=true: ogni barra mostra le stesse persone per tutti gli anni
+function buildYoyMesiEr(rows){
+  return buildYoyGroupBar(rows,r=>MESI[r.month]||'?',
+    b=>Math.round(b.erogato),
+    fmtEur,
+    fmtK,
+    MESI_SORT,true);
+}
+function buildYoyMesiAch(rows){return buildYoyAchBar(rows,r=>MESI[r.month]||'?',MESI_SORT,true);}
+function buildYoyNDip(rows){
+  return buildYoyGroupBar(rows,r=>MESI[r.month]||'?',
+    b=>b.n,
+    v=>v+' dip.',v=>v,
+    MESI_SORT,true);
+}
+function buildYoyNazAch(rows){return buildYoyAchBar(rows,r=>r._nazione||'?');}
+function buildYoyJobEr(rows){
+  return buildYoyGroupBar(rows,r=>r.job||'?',
+    b=>Math.round(b.erogato),
+    fmtEur,
+    fmtK);
+}
+function buildYoyJobAch(rows){return buildYoyAchBar(rows,r=>r.job||'?');}
+function buildYoyJobInc(rows){return buildYoyIncBar(rows,r=>r.job||'?');}
+function buildYoyNazEr(rows){
+  return buildYoyGroupBar(rows,r=>r._nazione||'?',
+    b=>Math.round(b.erogato),
+    fmtEur,
+    fmtK);
+}
+
+// Component chart: X=component name, dataset per year, value=sum of that component
+function buildYoyCompChart(rows){
+  const years=yoyYears(rows);
+  if(!years.length) return null;
+  // which comps are selected (or all active)
+  const selComps=getMsVals('yoy-comp');
+  const comps=COMP.filter(c=>selComps.length?selComps.includes(c.k):(rows.some(r=>r[c.k]>0)));
+  if(!comps.length) return null;
+  const datasets=years.map((yr)=>{
+    const sub=rows.filter(r=>r.year===yr);
+    return{
+      label:String(yr),
+      data:comps.map(c=>Math.round(sub.reduce((s,r)=>s+r[c.k],0))),
+      backgroundColor:yrCol(yr),
+      borderRadius:4,barPercentage:.75,categoryPercentage:.8,
+    };
+  });
+  // add a dataset per year for component colors (use per-comp color in single-year view)
+  return{type:'bar',
+    data:{labels:comps.map(c=>c.l),datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'top',labels:{font:{size:11},boxWidth:12,padding:10}},
+        tooltip:{callbacks:{label:c=>`${c.dataset.label}: € ${Math.round(c.raw).toLocaleString('it-IT')}`}},
+      },
+      scales:{
+        y:{beginAtZero:true,ticks:{callback:fmtK},grid:{color:'#f0f2f7'}},
+        x:{ticks:{maxRotation:35,font:{size:10}}},
+      },
+    },
+  };
+}
+
+// Achievement per component: component_erogato / total_massimale * 100
+// Answers: "what % of the achievable prize pool was paid via each component?"
+function buildYoyCompAch(rows){
+  const years=yoyYears(rows);
+  if(!years.length) return null;
+  const selComps=getMsVals('yoy-comp');
+  const comps=COMP.filter(c=>selComps.length?selComps.includes(c.k):rows.some(r=>r[c.k]>0));
+  if(!comps.length) return null;
+  const datasets=years.map((yr)=>{
+    const sub=rows.filter(r=>r.year===yr);
+    const totMax=sub.reduce((s,r)=>s+r.massimale,0);
+    return{
+      label:String(yr),
+      data:comps.map(c=>totMax>0?+((sub.reduce((s,r)=>s+r[c.k],0)/totMax*100).toFixed(2)):0),
+      backgroundColor:yrCol(yr),
+      borderRadius:4,barPercentage:.75,categoryPercentage:.8,
+    };
+  });
+  return{type:'bar',data:{labels:comps.map(c=>c.l),datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'top',labels:{font:{size:11},boxWidth:12,padding:10}},
+        tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw}% del massimale`}},
+      },
+      scales:{
+        y:{beginAtZero:true,ticks:{callback:v=>v+'%'},grid:{color:'#f0f2f7'}},
+        x:{ticks:{maxRotation:35,font:{size:10}}},
+      },
+    },
+  };
+}
+
+// Achievement % per componente sul proprio pool:
+// component_erogato / massimale_totale_dei_dipendenti_con_quella_componente × 100
+// Answers: "Tra i dipendenti eleggibili per questa componente, che % del loro massimale è stata pagata tramite essa?"
+function buildYoyCompAchSelf(rows){
+  const years=yoyYears(rows);
+  if(!years.length) return null;
+  const selComps=getMsVals('yoy-comp');
+  const comps=COMP.filter(c=>selComps.length?selComps.includes(c.k):rows.some(r=>r[c.k]>0));
+  if(!comps.length) return null;
+  const datasets=years.map((yr)=>{
+    const sub=rows.filter(r=>r.year===yr);
+    return{
+      label:String(yr),
+      data:comps.map(c=>{
+        const elig=sub.filter(r=>r[c.k]>0);
+        const totMas=elig.reduce((s,r)=>s+r.massimale,0);
+        const totEro=elig.reduce((s,r)=>s+r[c.k],0);
+        return totMas>0?+((totEro/totMas*100).toFixed(2)):0;
+      }),
+      backgroundColor:yrCol(yr),
+      borderRadius:4,barPercentage:.75,categoryPercentage:.8,
+    };
+  });
+  return{type:'bar',
+    data:{labels:comps.map(c=>c.l),datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'top',labels:{font:{size:11},boxWidth:12,padding:10}},
+        tooltip:{callbacks:{
+          label:c=>c.dataset.label==='Massimale 100%'?'100% = massimale pieno':`${c.dataset.label}: ${c.raw}% del massimale degli eleggibili`,
+        }},
+      },
+      scales:{
+        y:{beginAtZero:true,ticks:{callback:v=>v+'%'},grid:{color:'#f0f2f7'}},
+        x:{ticks:{maxRotation:35,font:{size:10}}},
+      },
+    },
+  };
+}
+
+// ─── YOY CHART RENDER ────────────────────────────────────────
+function dcYoy(k){if(yoyCharts[k]){yoyCharts[k].destroy();delete yoyCharts[k];}}
+function cxYoy(id){const el=document.getElementById(id);return el?el.getContext('2d'):null;}
+
+function rcYoy(key,buildFn,rows){
+  dcYoy(key);
+  const cfg=buildFn(rows);
+  const ctx=cxYoy('yoy_c_'+key);
+  if(cfg&&ctx) yoyCharts[key]=new Chart(ctx,cfg);
+}
+
+// ─── YOY KPI CARDS ───────────────────────────────────────────
+function renderYoyKpis(rows){
+  const years=yoyYears(rows);
+  const el=document.getElementById('yoyKpiRow');
+  if(!rows.length||!years.length){
+    el.innerHTML='<div style="padding:40px;color:#aaa;font-size:13px">Nessun dato per i filtri selezionati — seleziona mesi presenti in almeno due anni.</div>';
+    return;
+  }
+  const fmtPct=(v,tot)=>tot>0?(v/tot*100).toFixed(1)+'%':'—';
+  const fmtInc=(er,rml)=>rml>0?(er/rml*100).toFixed(1)+'%':'—';
+  const fmtIncMx=(mx,rml)=>rml>0?(mx/rml*100).toFixed(1)+'%':'—';
+  const fmtAvg=(tot,n)=>n>0?'€ '+fmt(tot/n):'—';
+  let h='';
+  years.forEach((yr,i)=>{
+    // rows è già filtrato da getYoyRows con L4L → stessa pool di persone per tutti gli anni
+    const subYr=rows.filter(r=>r.year===yr);
+    // Conteggio unico per chiave canonica (gestisce cambio matricola tra formati/nazioni)
+    const emps=new Set(subYr.map(_empKey).filter(k=>k!=='|')).size;
+    // Aggregati: tutti i mesi già filtrati da getYoyRows
+    const sub=subYr;
+    const totEr=sub.reduce((s,r)=>s+compEro(r),0);
+    const totMax=sub.reduce((s,r)=>s+r.massimale,0);
+    const totRml=sub.filter(r=>r.rml_period>0).reduce((s,r)=>s+r.rml_period,0);
+    h+=`<div class="yoy-yr-card">
+      <div class="yoy-yr-title">${yr}</div>
+      <div class="yoy-yr-stats">
+        <div><span class="yoy-stat-l">Dipendenti</span><span class="yoy-stat-v">${emps.toLocaleString('it-IT')}</span></div>
+        <div><span class="yoy-stat-l">Achievement</span><span class="yoy-stat-v" style="color:#22c55e">${fmtPct(totEr,totMax)}</span></div>
+        <div><span class="yoy-stat-l">Incidenza erogato / RML</span><span class="yoy-stat-v" style="color:#0891b2">${fmtInc(totEr,totRml)}</span></div>
+        <div><span class="yoy-stat-l">Incidenza massimale / RML</span><span class="yoy-stat-v" style="color:#7c3aed">${fmtIncMx(totMax,totRml)}</span></div>
+        <div class="kpi-eur-row"><span class="yoy-stat-l">Media erogato</span><span class="yoy-stat-v">${fmtAvg(totEr,emps)}</span></div>
+        <div class="kpi-eur-row"><span class="yoy-stat-l">Media massimale</span><span class="yoy-stat-v">${fmtAvg(totMax,emps)}</span></div>
+        <div class="kpi-eur-row"><span class="yoy-stat-l">Erogato totale</span><span class="yoy-stat-v">€ ${fmt(totEr)}</span></div>
+        <div class="kpi-eur-row"><span class="yoy-stat-l">Massimale totale</span><span class="yoy-stat-v">€ ${fmt(totMax)}</span></div>
+      </div>
+    </div>`;
+  });
+  // Delta card: confronto primo e ultimo anno — stessa pool da getYoyRows (già L4L filtrata)
+  if(years.length>=2){
+    const y0=years[0], y1=years[years.length-1];
+    const r0=rows.filter(r=>r.year===y0), r1=rows.filter(r=>r.year===y1);
+    const er0=r0.reduce((s,r)=>s+compEro(r),0), er1=r1.reduce((s,r)=>s+compEro(r),0);
+    const mx0=r0.reduce((s,r)=>s+r.massimale,0), mx1=r1.reduce((s,r)=>s+r.massimale,0);
+    const rml0=r0.filter(r=>r.rml_period>0).reduce((s,r)=>s+r.rml_period,0);
+    const rml1=r1.filter(r=>r.rml_period>0).reduce((s,r)=>s+r.rml_period,0);
+    const e0=new Set(r0.map(_empKey).filter(k=>k!=='|')).size, e1=new Set(r1.map(_empKey).filter(k=>k!=='|')).size;
+    const avgEr0=e0>0?er0/e0:0, avgEr1=e1>0?er1/e1:0;
+    const avgMx0=e0>0?mx0/e0:0, avgMx1=e1>0?mx1/e1:0;
+    const ach0=mx0>0?er0/mx0*100:null, ach1=mx1>0?er1/mx1*100:null;
+    const incMx0=rml0>0?mx0/rml0*100:null, incMx1=rml1>0?mx1/rml1*100:null;
+    const incEr0=rml0>0?er0/rml0*100:null, incEr1=rml1>0?er1/rml1*100:null;
+    const delta=(base,val)=>base>0?((val-base)/base*100):null;
+    const dFmt=(d,sfx)=>d==null?'—':(d>=0?'<span class="pos">+'+d.toFixed(1)+sfx+'</span>':'<span class="neg">'+d.toFixed(1)+sfx+'</span>');
+    const dFmtN=(d)=>d==0?'<span style="color:#aaa">±0</span>':(d>0?'<span class="pos">+'+d+'</span>':'<span class="neg">'+d+'</span>');
+    const dAch=ach0!=null&&ach1!=null?ach1-ach0:null;
+    const dIncMx=incMx0!=null&&incMx1!=null?incMx1-incMx0:null;
+    const dIncEr=incEr0!=null&&incEr1!=null?incEr1-incEr0:null;
+    h+=`<div class="yoy-yr-card delta">
+      <div class="yoy-yr-title">Δ ${y0} → ${y1}</div>
+      <div class="yoy-yr-stats">
+        <div><span class="yoy-stat-l">Dipendenti</span><span class="yoy-stat-v">${dFmtN(e1-e0)}</span></div>
+        <div><span class="yoy-stat-l">Achievement</span><span class="yoy-stat-v">${dAch!=null?dFmt(dAch,'pp'):'—'}</span></div>
+        <div><span class="yoy-stat-l">Incidenza erogato / RML</span><span class="yoy-stat-v">${dIncEr!=null?dFmt(dIncEr,'pp'):'—'}</span></div>
+        <div><span class="yoy-stat-l">Incidenza massimale / RML</span><span class="yoy-stat-v">${dIncMx!=null?dFmt(dIncMx,'pp'):'—'}</span></div>
+        <div class="kpi-eur-row"><span class="yoy-stat-l">Media erogato</span><span class="yoy-stat-v">${dFmt(delta(avgEr0,avgEr1),'%')}</span></div>
+        <div class="kpi-eur-row"><span class="yoy-stat-l">Media massimale</span><span class="yoy-stat-v">${dFmt(delta(avgMx0,avgMx1),'%')}</span></div>
+        <div class="kpi-eur-row"><span class="yoy-stat-l">Erogato totale</span><span class="yoy-stat-v">${dFmt(delta(er0,er1),'%')}</span></div>
+        <div class="kpi-eur-row"><span class="yoy-stat-l">Massimale totale</span><span class="yoy-stat-v">${dFmt(delta(mx0,mx1),'%')}</span></div>
+      </div>
+    </div>`;
+  }
+  el.innerHTML=h;
+}
+
+// ─── YOY TABLE ───────────────────────────────────────────────
+function renderYoyTable(rows){
+  const years=yoyYears(rows);
+  const el=document.getElementById('yoyTblScroll');
+  if(!rows.length||!years.length){el.innerHTML='<div style="text-align:center;padding:48px;color:#ccc;font-size:14px">Nessun dato</div>';return;}
+
+  // dim = Mese + Ruolo combination for detailed breakdown
+  const data=yoyAgg(rows,r=>(MESI[r.month]||'?')+' · '+(r.job||'?'));
+  const dims=Object.keys(data).sort();
+
+  let h='<table><thead><tr><th>Mese · Ruolo</th>';
+  years.forEach(yr=>{
+    h+=`<th style="text-align:right">Dip. ${yr}</th>`;
+    h+=`<th style="text-align:right">Erogato ${yr} €</th>`;
+    h+=`<th style="text-align:right">Ach. ${yr}</th>`;
+  });
+  if(years.length>=2){
+    const y0=years[0],y1=years[years.length-1];
+    h+=`<th style="text-align:right">Δ Erogato</th><th style="text-align:right">Δ Ach.</th>`;
+  }
+  h+='</tr></thead><tbody>';
+
+  dims.forEach(dim=>{
+    h+=`<tr><td><strong>${dim.split(' · ')[0]}</strong> <span style="color:#888;font-size:11px">${dim.split(' · ')[1]||''}</span></td>`;
+    years.forEach(yr=>{
+      const b=data[dim][yr];
+      if(b){
+        const ach=b.massimale>0?(b.erogato/b.massimale*100).toFixed(1)+'%':'—';
+        h+=`<td style="text-align:right">${b.n}</td>`;
+        h+=`<td style="text-align:right">€ ${fmt(b.erogato)}</td>`;
+        h+=`<td style="text-align:right">${ach}</td>`;
+      }else{
+        h+='<td style="text-align:right;color:#ddd">—</td><td style="text-align:right;color:#ddd">—</td><td style="text-align:right;color:#ddd">—</td>';
+      }
+    });
+    if(years.length>=2){
+      const b0=data[dim][years[0]], b1=data[dim][years[years.length-1]];
+      const dEr=b0&&b1&&b0.erogato>0?((b1.erogato-b0.erogato)/b0.erogato*100):null;
+      const ach0=b0&&b0.massimale>0?b0.erogato/b0.massimale*100:null;
+      const ach1=b1&&b1.massimale>0?b1.erogato/b1.massimale*100:null;
+      const dAch=ach0!=null&&ach1!=null?ach1-ach0:null;
+      const cls=(v)=>v==null?'':(v>=0?' class="pos"':' class="neg"');
+      const sign=(v,sfx)=>v==null?'—':(v>=0?'+':'')+v.toFixed(1)+sfx;
+      h+=`<td style="text-align:right"${cls(dEr)}>${sign(dEr,'%')}</td>`;
+      h+=`<td style="text-align:right"${cls(dAch)}>${sign(dAch,'pp')}</td>`;
+    }
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  el.innerHTML=h;
+}
+
+// ─── YOY MAIN RENDER ─────────────────────────────────────────
+function renderYoy(){
+  if(!allData.length) return;
+  const rows=getYoyRows();
+  renderYoyKpis(rows);
+  rcYoy('mesi_er',buildYoyMesiEr,rows);
+  rcYoy('mesi_ach',buildYoyMesiAch,rows);
+  rcYoy('ndip',buildYoyNDip,rows);
+  rcYoy('naz_ach',buildYoyNazAch,rows);
+  rcYoy('job_er',buildYoyJobEr,rows);
+  rcYoy('job_ach',buildYoyJobAch,rows);
+  rcYoy('job_inc',buildYoyJobInc,rows);
+  rcYoy('naz_er',buildYoyNazEr,rows);
+  rcYoy('comp',buildYoyCompChart,rows);
+  rcYoy('comp_ach',buildYoyCompAch,rows);
+  rcYoy('comp_achself',buildYoyCompAchSelf,rows);
+  renderYoyTable(rows);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ─── STIPENDI TAB ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+
+// helper: normalizza rml_period a valore mensile
+function rmlMonth(r){
+  const t=r._tipo||'';
+  return t.includes('semestrale')?(r.rml_period||0)/6:(r.rml_period||0);
+}
+
+// ─── STATE ───────────────────────────────────────────────────
+let salChartRefs={};
+let salL4L='tutti';
+let salL4LDip='tutti';
+let salShowKpis=false;
+_setEurVisible('tabSal','salKpiToggleBtn','sal-eur-hidden',salShowKpis);
+
+function setSalL4L(val,noRender){
+  salL4L=val; _applyL4LBtns('sal-l4l',val);
+  if(!noRender) renderSal();
+}
+
+function setSalL4LDip(val,noRender){
+  salL4LDip=val; _applyL4LBtns('sal-l4ldip',val);
+  if(!noRender) renderSal();
+}
+
+function toggleSalKpis(){
+  salShowKpis=!salShowKpis;
+  _setEurVisible('tabSal','salKpiToggleBtn','sal-eur-hidden',salShowKpis);
+}
+
+// ─── FILTERS ────────────────────────────────────────────────
+function popSalFilters(){
+  _popTabFilters('sal',renderSal,onSalTipoChange,updateSalCompOpts);
+}
+
+function updateSalCompOpts(){_updateCompOpts('sal',renderSal);}
+
+function onSalTipoChange(){updateSalCompOpts();renderSal();}
+
+function getSalRows(){
+  const base=_baseTabFilter('sal',true);
+  let filtered=base;
+  if(salL4L!=='tutti'){
+    const yrs=[...new Set(base.map(r=>r.year).filter(Boolean))].sort();
+    if(yrs.length>=2){
+      const storeYrs={};
+      base.filter(r=>rmlMonth(r)>0).forEach(r=>{if(!storeYrs[r.store])storeYrs[r.store]=new Set();storeYrs[r.store].add(r.year);});
+      if(salL4L==='l4l') filtered=filtered.filter(r=>yrs.every(y=>storeYrs[r.store]?.has(y)));
+      else filtered=filtered.filter(r=>!storeYrs[r.store]?.has(yrs[0]));
+    }
+  }
+  if(salL4LDip!=='tutti'){
+    const yrs=[...new Set(filtered.map(r=>r.year).filter(Boolean))].sort();
+    if(yrs.length>=2){
+      const dipYrs={}, nameYrs={};
+      filtered.forEach(r=>{
+        if(r.matricola){if(!dipYrs[r.matricola])dipYrs[r.matricola]=new Set();dipYrs[r.matricola].add(r.year);}
+        const nk=((r.cognome||'')+'|'+(r.nome||'')).toLowerCase().trim();
+        if(nk!=='|'){if(!nameYrs[nk])nameYrs[nk]=new Set();nameYrs[nk].add(r.year);}
+      });
+      const nk=r=>((r.cognome||'')+'|'+(r.nome||'')).toLowerCase().trim();
+      const inAllYrs=(matr,name)=>{
+        if(dipYrs[matr]&&yrs.every(y=>dipYrs[matr].has(y))) return true;
+        return name!=='|'&&nameYrs[name]&&yrs.every(y=>nameYrs[name].has(y));
+      };
+      const inFirstYr=(matr,name)=>!!(dipYrs[matr]?.has(yrs[0])||(name!=='|'&&nameYrs[name]?.has(yrs[0])));
+      if(salL4LDip==='l4l') filtered=filtered.filter(r=>inAllYrs(r.matricola,nk(r)));
+      else filtered=filtered.filter(r=>!inFirstYr(r.matricola,nk(r)));
+    }
+  }
+  return filtered;
+}
+
+function resetSalFilters(){
+  _resetTabFilters(['sal-mese','sal-anno','sal-job','sal-naz','sal-store','sal-tipo','sal-comp'],'sal-dip',()=>{
+    setSalL4L('tutti',true);
+    setSalL4LDip('tutti',true);
+  },renderSal);
+}
+
+// ─── DIPENDENTE AUTOCOMPLETE ─────────────────────────────────
+function salDipAutocomplete(val){_dipAutocomplete(val,'sal-dip-ac-list','salSelectDip',renderSal);}
+function salSelectDip(name){_selectDip(name,'sal-dip','sal-dip-ac-list',renderSal);}
+
+// ─── AGGREGATION ─────────────────────────────────────────────
+function salAgg(rows,dimFn){
+  const out={};
+  rows.forEach(r=>{
+    const rml=rmlMonth(r);
+    if(!rml) return;
+    const bdg=r.mBdg||0;
+    const dim=dimFn(r)||'?';
+    const yr=r.year||'?';
+    if(!out[dim]) out[dim]={};
+    if(!out[dim][yr]) out[dim][yr]={matr:new Set(),rml:0,bdg:0};
+    const b=out[dim][yr];
+    b.matr.add(r.matricola);
+    b.rml+=rml;b.bdg+=bdg;
+  });
+  for(const d of Object.keys(out))
+    for(const y of Object.keys(out[d]))
+      out[d][y].n=out[d][y].matr.size;
+  return out;
+}
+
+// ─── KPI CARDS ───────────────────────────────────────────────
+function renderSalKpis(rows){
+  const years=yoyYears(rows);
+  const el=document.getElementById('salKpiRow');
+  if(!rows.length||!years.length){
+    el.innerHTML='<div style="padding:40px;color:#aaa;font-size:13px">Nessun dato per i filtri selezionati — seleziona mesi presenti in almeno due anni.</div>';
+    return;
+  }
+  const fmtAvg=(tot,n)=>n>0?'€ '+fmt(tot/n):'—';
+  const fmtPct=(bdg,rml)=>rml>0?(bdg/rml*100).toFixed(1)+'%':'—';
+  let h='';
+  years.forEach(yr=>{
+    const sub=rows.filter(r=>r.year===yr&&rmlMonth(r)>0);
+    const emps=new Set(sub.map(r=>r.matricola)).size;
+    const totRml=sub.reduce((s,r)=>s+rmlMonth(r),0);
+    const totBdg=sub.reduce((s,r)=>s+(r.mBdg||0),0);
+    h+=`<div class="yoy-yr-card">
+      <div class="yoy-yr-title">${yr}</div>
+      <div class="yoy-yr-stats">
+        <div><span class="yoy-stat-l">Dipendenti</span><span class="yoy-stat-v">${emps.toLocaleString('it-IT')}</span></div>
+        <div><span class="yoy-stat-l">BDG / RML %</span><span class="yoy-stat-v" style="color:#22c55e">${fmtPct(totBdg,totRml)}</span></div>
+        <div class="kpi-eur-row"><span class="yoy-stat-l">RML media</span><span class="yoy-stat-v">${fmtAvg(totRml,emps)}</span></div>
+        <div class="kpi-eur-row"><span class="yoy-stat-l">BDG massimale medio</span><span class="yoy-stat-v">${fmtAvg(totBdg,emps)}</span></div>
+        <div class="kpi-eur-row"><span class="yoy-stat-l">RML totale</span><span class="yoy-stat-v">€ ${fmt(totRml)}</span></div>
+        <div class="kpi-eur-row"><span class="yoy-stat-l">BDG massimale totale</span><span class="yoy-stat-v">€ ${fmt(totBdg)}</span></div>
+      </div>
+    </div>`;
+  });
+  if(years.length>=2){
+    const y0=years[0],y1=years[years.length-1];
+    const r0=rows.filter(r=>r.year===y0&&rmlMonth(r)>0),r1=rows.filter(r=>r.year===y1&&rmlMonth(r)>0);
+    const rml0=r0.reduce((s,r)=>s+rmlMonth(r),0),rml1=r1.reduce((s,r)=>s+rmlMonth(r),0);
+    const bdg0=r0.reduce((s,r)=>s+(r.mBdg||0),0),bdg1=r1.reduce((s,r)=>s+(r.mBdg||0),0);
+    const e0=new Set(r0.map(r=>r.matricola)).size,e1=new Set(r1.map(r=>r.matricola)).size;
+    const avgRml0=e0>0?rml0/e0:0,avgRml1=e1>0?rml1/e1:0;
+    const avgBdg0=e0>0?bdg0/e0:0,avgBdg1=e1>0?bdg1/e1:0;
+    const pct0=rml0>0?bdg0/rml0*100:null,pct1=rml1>0?bdg1/rml1*100:null;
+    const delta=(base,val)=>base>0?((val-base)/base*100):null;
+    const dFmt=(d,sfx)=>d==null?'—':(d>=0?'<span class="pos">+'+d.toFixed(1)+sfx+'</span>':'<span class="neg">'+d.toFixed(1)+sfx+'</span>');
+    const dFmtN=(d)=>d==0?'<span style="color:#aaa">±0</span>':(d>0?'<span class="pos">+'+d+'</span>':'<span class="neg">'+d+'</span>');
+    const dPct=pct0!=null&&pct1!=null?pct1-pct0:null;
+    h+=`<div class="yoy-yr-card delta">
+      <div class="yoy-yr-title">Δ ${y0} → ${y1}</div>
+      <div class="yoy-yr-stats">
+        <div><span class="yoy-stat-l">Dipendenti</span><span class="yoy-stat-v">${dFmtN(e1-e0)}</span></div>
+        <div><span class="yoy-stat-l">BDG / RML %</span><span class="yoy-stat-v">${dPct!=null?dFmt(dPct,'pp'):'—'}</span></div>
+        <div class="kpi-eur-row"><span class="yoy-stat-l">RML media</span><span class="yoy-stat-v">${dFmt(delta(avgRml0,avgRml1),'%')}</span></div>
+        <div class="kpi-eur-row"><span class="yoy-stat-l">BDG massimale medio</span><span class="yoy-stat-v">${dFmt(delta(avgBdg0,avgBdg1),'%')}</span></div>
+        <div class="kpi-eur-row"><span class="yoy-stat-l">RML totale</span><span class="yoy-stat-v">${dFmt(delta(rml0,rml1),'%')}</span></div>
+        <div class="kpi-eur-row"><span class="yoy-stat-l">BDG massimale totale</span><span class="yoy-stat-v">${dFmt(delta(bdg0,bdg1),'%')}</span></div>
+      </div>
+    </div>`;
+  }
+  el.innerHTML=h;
+}
+
+// ─── CHART BUILDERS ──────────────────────────────────────────
+function buildSalBar(rows,dimFn,valFn,fmtTip,fmtAxis,sortFn){
+  const data=salAgg(rows,dimFn);
+  const years=yoyYears(rows);
+  if(!years.length) return null;
+  let dims=Object.keys(data).filter(d=>years.some(y=>data[d][y]&&data[d][y].n>0));
+  if(!dims.length) return null;
+  if(sortFn) dims=dims.sort(sortFn);
+  const datasets=years.map((yr)=>({
+    label:String(yr),data:dims.map(d=>data[d][yr]?valFn(data[d][yr]):0),
+    backgroundColor:yrCol(yr),borderRadius:4,barPercentage:.75,categoryPercentage:.8,
+  }));
+  return{type:'bar',data:{labels:dims,datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:12,padding:10}},
+               tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtTip(c.raw)}}},
+      scales:{y:{beginAtZero:true,ticks:{callback:v=>fmtAxis(v)},grid:{color:'#f0f2f7'}},
+              x:{ticks:{maxRotation:40,font:{size:10},callback:function(val,idx){const d=dims[idx];if(!d)return val;const ns=years.filter(y=>data[d]?.[y]?.n).map(y=>data[d][y].n).join(' · ');return ns?[d,ns+' dip.']:d;}}}},
+    }};
+}
+function buildSalPctBar(rows,dimFn,valFn,sortFn){
+  const data=salAgg(rows,dimFn);
+  const years=yoyYears(rows);
+  if(!years.length) return null;
+  let dims=Object.keys(data).filter(d=>years.some(y=>data[d][y]));
+  if(!dims.length) return null;
+  if(sortFn) dims=dims.sort(sortFn);
+  const datasets=years.map((yr)=>({
+    label:String(yr),data:dims.map(d=>data[d][yr]?valFn(data[d][yr]):0),
+    backgroundColor:yrCol(yr),borderRadius:4,barPercentage:.75,categoryPercentage:.8,
+  }));
+  return{type:'bar',data:{labels:dims,datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:12,padding:10}},
+               tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.raw+'%'}}},
+      scales:{y:{beginAtZero:true,ticks:{callback:v=>v+'%'},grid:{color:'#f0f2f7'}},
+              x:{ticks:{maxRotation:40,font:{size:10},callback:function(val,idx){const d=dims[idx];if(!d)return val;const ns=years.filter(y=>data[d]?.[y]?.n).map(y=>data[d][y].n).join(' · ');return ns?[d,ns+' dip.']:d;}}}},
+    }};
+}
+
+function buildSalMesiRml(rows){return buildSalBar(rows,r=>MESI[r.month]||'?',b=>b.n>0?Math.round(b.rml/b.n):0,fmtEur,fmtK,MESI_SORT);}
+function buildSalMesiBdg(rows){return buildSalBar(rows,r=>MESI[r.month]||'?',b=>b.n>0?Math.round(b.bdg/b.n):0,fmtEur,fmtK,MESI_SORT);}
+function buildSalMesiPct(rows){return buildSalPctBar(rows,r=>MESI[r.month]||'?',b=>b.rml>0?+((b.bdg/b.rml)*100).toFixed(1):0,MESI_SORT);}
+function buildSalNdip(rows){return buildSalBar(rows,r=>MESI[r.month]||'?',b=>b.n,v=>v+' dip.',v=>v,MESI_SORT);}
+function buildSalJobRml(rows){return buildSalBar(rows,r=>r.job||'?',b=>b.n>0?Math.round(b.rml/b.n):0,fmtEur,fmtK);}
+function buildSalJobBdg(rows){return buildSalBar(rows,r=>r.job||'?',b=>b.n>0?Math.round(b.bdg/b.n):0,fmtEur,fmtK);}
+function buildSalJobPct(rows){return buildSalPctBar(rows,r=>r.job||'?',b=>b.rml>0?+((b.bdg/b.rml)*100).toFixed(1):0);}
+function buildSalNazRml(rows){return buildSalBar(rows,r=>r._nazione||'?',b=>b.n>0?Math.round(b.rml/b.n):0,fmtEur,fmtK);}
+function buildSalNazBdg(rows){return buildSalBar(rows,r=>r._nazione||'?',b=>b.n>0?Math.round(b.bdg/b.n):0,fmtEur,fmtK);}
+function buildSalNazPct(rows){return buildSalPctBar(rows,r=>r._nazione||'?',b=>b.rml>0?+((b.bdg/b.rml)*100).toFixed(1):0);}
+
+// ─── TABLE ───────────────────────────────────────────────────
+function renderSalTable(rows){
+  const years=yoyYears(rows);
+  const el=document.getElementById('salTblScroll');
+  if(!rows.length||!years.length){el.innerHTML='<div style="text-align:center;padding:48px;color:#ccc;font-size:14px">Nessun dato</div>';return;}
+  const data=salAgg(rows,r=>(MESI[r.month]||'?')+' · '+(r.job||'?'));
+  const dims=Object.keys(data).sort((a,b)=>{
+    const[ma]=a.split(' · '),[mb]=b.split(' · ');
+    return(MESI_IDX[ma]||99)-(MESI_IDX[mb]||99)||a.localeCompare(b);
+  });
+  let h='<table><thead><tr><th>Mese · Ruolo</th>';
+  years.forEach(yr=>{
+    h+=`<th style="text-align:right">Dip. ${yr}</th>`;
+    h+=`<th style="text-align:right">RML media ${yr}</th>`;
+    h+=`<th style="text-align:right">BDG mass. ${yr}</th>`;
+    h+=`<th style="text-align:right">BDG/RML ${yr}</th>`;
+  });
+  if(years.length>=2) h+=`<th style="text-align:right">Δ RML media</th><th style="text-align:right">Δ BDG/RML</th>`;
+  h+='</tr></thead><tbody>';
+  dims.forEach(dim=>{
+    h+=`<tr><td><strong>${dim.split(' · ')[0]}</strong> <span style="color:#888;font-size:11px">${dim.split(' · ')[1]||''}</span></td>`;
+    years.forEach(yr=>{
+      const b=data[dim][yr];
+      if(b){
+        h+=`<td style="text-align:right">${b.n}</td>`;
+        h+=`<td style="text-align:right">${b.n>0?'€ '+fmt(b.rml/b.n):'—'}</td>`;
+        h+=`<td style="text-align:right">${b.n>0?'€ '+fmt(b.bdg/b.n):'—'}</td>`;
+        h+=`<td style="text-align:right">${b.rml>0?(b.bdg/b.rml*100).toFixed(1)+'%':'—'}</td>`;
+      } else {
+        h+='<td style="text-align:right;color:#ddd">—</td>'.repeat(4);
+      }
+    });
+    if(years.length>=2){
+      const b0=data[dim][years[0]],b1=data[dim][years[years.length-1]];
+      const avgRml0=b0&&b0.n>0?b0.rml/b0.n:0,avgRml1=b1&&b1.n>0?b1.rml/b1.n:0;
+      const pct0=b0&&b0.rml>0?b0.bdg/b0.rml*100:null,pct1=b1&&b1.rml>0?b1.bdg/b1.rml*100:null;
+      const dRml=avgRml0>0?((avgRml1-avgRml0)/avgRml0*100):null;
+      const dPct=pct0!=null&&pct1!=null?pct1-pct0:null;
+      const cls=(v)=>v==null?'':(v>=0?' class="pos"':' class="neg"');
+      const sign=(v,sfx)=>v==null?'—':(v>=0?'+':'')+v.toFixed(1)+sfx;
+      h+=`<td style="text-align:right"${cls(dRml)}>${sign(dRml,'%')}</td>`;
+      h+=`<td style="text-align:right"${cls(dPct)}>${sign(dPct,'pp')}</td>`;
+    }
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  el.innerHTML=h;
+}
+
+// ─── CHART RENDER ────────────────────────────────────────────
+function dcSal(k){if(salChartRefs[k]){salChartRefs[k].destroy();delete salChartRefs[k];}}
+function rcSal(key,buildFn,rows){
+  dcSal(key);
+  const cfg=buildFn(rows);
+  const el=document.getElementById('sal_c_'+key);
+  if(cfg&&el) salChartRefs[key]=new Chart(el.getContext('2d'),cfg);
+}
+
+// ─── MAIN RENDER ─────────────────────────────────────────────
+function renderSal(){
+  if(!allData.length) return;
+  const rows=getSalRows();
+  renderSalKpis(rows);
+  rcSal('mesi_rml',buildSalMesiRml,rows);
+  rcSal('mesi_bdg',buildSalMesiBdg,rows);
+  rcSal('mesi_pct',buildSalMesiPct,rows);
+  rcSal('job_rml',buildSalJobRml,rows);
+  rcSal('job_bdg',buildSalJobBdg,rows);
+  rcSal('job_pct',buildSalJobPct,rows);
+  rcSal('naz_rml',buildSalNazRml,rows);
+  rcSal('naz_bdg',buildSalNazBdg,rows);
+  rcSal('naz_pct',buildSalNazPct,rows);
+  rcSal('ndip',buildSalNdip,rows);
+  renderSalTable(rows);
+}
+</script>
+</body>
+</html>
