@@ -95,6 +95,9 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
   border-bottom:2px solid #e4e7ef;cursor:pointer;user-select:none;white-space:nowrap
 }
 .tbl-scroll thead th:hover{background:#e8eaf2}
+.tbl-scroll thead th .tbl-flt{display:block;width:100%;margin-top:5px;padding:2px 5px;border:1px solid #dde1ea;border-radius:4px;font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;color:#222;background:#fff}
+.tbl-scroll thead th .tbl-flt:focus{outline:none;border-color:#4f46e5}
+.tbl-scroll td.muted{color:#ddd}
 .tbl-scroll tbody td{padding:8px 11px;border-bottom:1px solid #f2f3f7;vertical-align:middle}
 .tbl-scroll tbody tr.dr:hover td{background:#f9fafc;cursor:pointer}
 .tbl-scroll tbody tr.dr.open td{background:#f5f4ff}
@@ -487,10 +490,22 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
     </div>
   </div>
 
-  <!-- Table -->
+  <!-- Table: confronto Mese × Ruolo × Anno -->
   <div class="yoy-tbl">
-    <div class="yoy-tbl-head"><h2>Dettaglio Confronto — Mese × Ruolo × Anno</h2></div>
+    <div class="yoy-tbl-head" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <h2>Dettaglio Confronto — Mese × Ruolo × Anno</h2>
+      <button class="btn-exp" onclick="exportYoyCompare()" title="Esporta la tabella di confronto (filtri applicati) in Excel">📊 Export Excel</button>
+    </div>
     <div class="tbl-scroll" id="yoyTblScroll"></div>
+  </div>
+
+  <!-- Table: dettaglio per dipendente (stessi filtri) -->
+  <div class="yoy-tbl">
+    <div class="yoy-tbl-head" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <h2>Dettaglio per Dipendente — filtri applicati <span class="dip-meta" id="yoyDipMeta" style="font-weight:400;text-transform:none;letter-spacing:0"></span></h2>
+      <button class="btn-exp" onclick="exportYoyDip()" title="Esporta il dettaglio per dipendente (filtri applicati) in Excel">📊 Export Excel</button>
+    </div>
+    <div class="tbl-scroll" id="yoyDipTblScroll"></div>
   </div>
 
 </div><!-- end #tabYoy -->
@@ -2331,55 +2346,215 @@ function renderYoyKpis(rows){
 }
 
 // ─── YOY TABLE ───────────────────────────────────────────────
-function renderYoyTable(rows){
-  const years=yoyYears(rows);
-  const el=document.getElementById('yoyTblScroll');
-  if(!rows.length||!years.length){el.innerHTML='<div style="text-align:center;padding:48px;color:#ccc;font-size:14px">Nessun dato</div>';return;}
-
-  // dim = Mese + Ruolo combination for detailed breakdown
-  const data=yoyAgg(rows,r=>(MESI[r.month]||'?')+' · '+(r.job||'?'));
-  const dims=Object.keys(data).sort();
-
-  let h='<table><thead><tr><th>Mese · Ruolo</th>';
-  years.forEach(yr=>{
-    h+=`<th style="text-align:right">Dip. ${yr}</th>`;
-    h+=`<th style="text-align:right">Erogato ${yr} €</th>`;
-    h+=`<th style="text-align:right">Ach. ${yr}</th>`;
+// ─── TABELLA ORDINABILE + FILTRABILE (componente generico) ───
+// cols: [{label, align}] · rows: [{cells:[{disp(HTML), val(ordinamento), cls}]}]
+// Stato (ordinamento/filtri) persistito per stateKey; resettato se cambia il set colonne.
+const _tbl={};
+function makeSortTable(elId,stateKey,cols,rows,defSort){
+  const sig=cols.map(c=>c.label).join('|');
+  const prev=_tbl[stateKey], keep=prev&&prev.sig===sig;
+  _tbl[stateKey]={elId,cols,rows,sig,
+    sort:keep?prev.sort:(defSort||{i:0,dir:1}),
+    filters:keep?prev.filters:{}, _focus:null};
+  _renderSortTable(stateKey);
+}
+const _strip=s=>String(s).replace(/<[^>]+>/g,'').trim();
+function _renderSortTable(stateKey){
+  const t=_tbl[stateKey]; const el=document.getElementById(t.elId); if(!el) return;
+  if(!t.rows.length){el.innerHTML='<div style="text-align:center;padding:48px;color:#ccc;font-size:14px">Nessun dato</div>';return;}
+  let rows=t.rows;
+  const activeF=Object.keys(t.filters).filter(i=>(t.filters[i]||'').trim());
+  if(activeF.length) rows=rows.filter(r=>activeF.every(i=>{
+    const col=t.cols[i], fv=t.filters[i], txt=_strip(r.cells[i].disp);
+    // 'select' → corrispondenza esatta (SM ≠ VSM); 'text' → sottostringa
+    return col.filter==='select' ? txt===fv : txt.toLowerCase().includes(fv.toLowerCase().trim());
+  }));
+  const {i,dir}=t.sort;
+  rows=rows.slice().sort((a,b)=>{
+    const va=a.cells[i].val, vb=b.cells[i].val;
+    if(va==null&&vb==null) return 0;
+    if(va==null) return 1; if(vb==null) return -1;
+    return (typeof va==='number'&&typeof vb==='number'?va-vb:String(va).localeCompare(String(vb)))*dir;
   });
-  if(years.length>=2){
-    const y0=years[0],y1=years[years.length-1];
-    h+=`<th style="text-align:right">Δ Erogato</th><th style="text-align:right">Δ Ach.</th>`;
-  }
+  let h='<table><thead><tr>';
+  t.cols.forEach((c,ci)=>{
+    const ar=t.sort.i===ci?(t.sort.dir>0?' ▲':' ▼'):'';
+    const ta=c.align==='right'?'text-align:right;':'';
+    let flt='';
+    if(c.filter==='text'){
+      flt=`<input class="tbl-flt" id="flt_${stateKey}_${ci}" value="${(t.filters[ci]||'').replace(/"/g,'&quot;')}" oninput="filterTable('${stateKey}',${ci},this.value)" placeholder="filtra">`;
+    } else if(c.filter==='select'){
+      const seen=new Map();
+      t.rows.forEach(r=>{const k=_strip(r.cells[ci].disp); if(k&&!seen.has(k)) seen.set(k,r.cells[ci].val);});
+      const opts=[...seen.keys()].sort((a,b)=>{const va=seen.get(a),vb=seen.get(b);return (typeof va==='number'&&typeof vb==='number')?va-vb:String(va).localeCompare(String(vb));});
+      const cur=t.filters[ci]||'';
+      flt=`<select class="tbl-flt" onchange="filterTable('${stateKey}',${ci},this.value)"><option value="">(tutti)</option>`
+        +opts.map(o=>`<option value="${o.replace(/"/g,'&quot;')}"${o===cur?' selected':''}>${o}</option>`).join('')+`</select>`;
+    }
+    h+=`<th style="${ta}"><div onclick="sortTable('${stateKey}',${ci})" style="cursor:pointer;user-select:none">${c.label}${ar}</div>${flt}</th>`;
+  });
   h+='</tr></thead><tbody>';
+  rows.forEach(r=>{
+    h+='<tr>'+r.cells.map((cell,ci)=>`<td class="${cell.cls||''}" style="${t.cols[ci].align==='right'?'text-align:right':''}">${cell.disp}</td>`).join('')+'</tr>';
+  });
+  el.innerHTML=h+'</tbody></table>';
+  if(t._focus!=null){
+    const inp=document.getElementById('flt_'+stateKey+'_'+t._focus);
+    if(inp){inp.focus();const v=inp.value;inp.value='';inp.value=v;}
+  }
+}
+function sortTable(stateKey,i){
+  const t=_tbl[stateKey]; if(!t) return;
+  t.sort.dir=(t.sort.i===i)?-t.sort.dir:1; t.sort.i=i; t._focus=null;
+  _renderSortTable(stateKey);
+}
+function filterTable(stateKey,i,val){
+  const t=_tbl[stateKey]; if(!t) return;
+  t.filters[i]=val; t._focus=i;
+  _renderSortTable(stateKey);
+}
 
-  dims.forEach(dim=>{
-    h+=`<tr><td><strong>${dim.split(' · ')[0]}</strong> <span style="color:#888;font-size:11px">${dim.split(' · ')[1]||''}</span></td>`;
+function renderYoyTable(rows){
+  const el=document.getElementById('yoyTblScroll'); if(!el) return;
+  const years=yoyYears(rows);
+  if(!rows.length||!years.length){_tbl['yoyCmp']=null;el.innerHTML='<div style="text-align:center;padding:48px;color:#ccc;font-size:14px">Nessun dato</div>';return;}
+  const data=yoyAgg(rows,r=>(MESI[r.month]||'?')+' · '+(r.job||'?'));
+  const cols=[{label:'Mese',filter:'select'},{label:'Ruolo',filter:'select'}];
+  years.forEach(yr=>cols.push({label:'Dip. '+yr,align:'right',filter:'none'},{label:'Erogato '+yr+' €',align:'right',filter:'none'},{label:'Ach. '+yr+' %',align:'right',filter:'none'}));
+  const hasDelta=years.length>=2;
+  if(hasDelta) cols.push({label:'Δ Erogato %',align:'right',filter:'none'},{label:'Δ Ach. pp',align:'right',filter:'none'});
+  const trows=Object.keys(data).map(dim=>{
+    const mese=dim.split(' · ')[0], ruolo=dim.split(' · ')[1]||'';
+    const cells=[{disp:`<strong>${mese}</strong>`,val:(MESI_IDX[mese]??99)},
+                 {disp:`<span style="color:#888">${ruolo}</span>`,val:ruolo}];
     years.forEach(yr=>{
       const b=data[dim][yr];
       if(b){
-        const ach=b.massimale>0?(b.erogato/b.massimale*100).toFixed(1)+'%':'—';
-        h+=`<td style="text-align:right">${b.n}</td>`;
-        h+=`<td style="text-align:right">€ ${fmt(b.erogato)}</td>`;
-        h+=`<td style="text-align:right">${ach}</td>`;
-      }else{
-        h+='<td style="text-align:right;color:#ddd">—</td><td style="text-align:right;color:#ddd">—</td><td style="text-align:right;color:#ddd">—</td>';
+        const ach=b.massimale>0?+(b.erogato/b.massimale*100).toFixed(1):null;
+        cells.push({disp:String(b.n),val:b.n},
+                   {disp:'€ '+fmt(b.erogato),val:b.erogato},
+                   {disp:ach!=null?ach+'%':'—',val:ach});
+      } else {
+        cells.push({disp:'—',val:null,cls:'muted'},{disp:'—',val:null,cls:'muted'},{disp:'—',val:null,cls:'muted'});
       }
+    });
+    if(hasDelta){
+      const b0=data[dim][years[0]], b1=data[dim][years[years.length-1]];
+      const dEr=b0&&b1&&b0.erogato>0?(b1.erogato-b0.erogato)/b0.erogato*100:null;
+      const a0=b0&&b0.massimale>0?b0.erogato/b0.massimale*100:null;
+      const a1=b1&&b1.massimale>0?b1.erogato/b1.massimale*100:null;
+      const dAch=a0!=null&&a1!=null?a1-a0:null;
+      cells.push({disp:dEr!=null?(dEr>=0?'+':'')+dEr.toFixed(1)+'%':'—',val:dEr,cls:dEr==null?'':(dEr>=0?'pos':'neg')},
+                 {disp:dAch!=null?(dAch>=0?'+':'')+dAch.toFixed(1)+'pp':'—',val:dAch,cls:dAch==null?'':(dAch>=0?'pos':'neg')});
+    }
+    return {cells};
+  });
+  makeSortTable('yoyTblScroll','yoyCmp',cols,trows,{i:0,dir:1});
+}
+
+// ─── YOY DETTAGLIO PER DIPENDENTE ────────────────────────────
+// Aggrega le righe filtrate (getYoyRows) per dipendente × anno.
+// Erogato = compEro (riflette il filtro "Componente premio", come i grafici).
+function yoyDipAgg(rows){
+  const compInit=Object.fromEntries(COMP.map(c=>[c.k,0]));
+  const map={};
+  rows.forEach(r=>{
+    const er=compEro(r);
+    const key=(r.matricola||_empKey(r))+'#'+(r.year||'?')+'#'+(r.month||0);
+    if(!map[key]) map[key]={matricola:r.matricola||'',cognome:r.cognome||'',nome:r.nome||'',
+      store:r.store||'',job:r.job||'',_nazione:r._nazione||'',year:r.year||'',month:r.month||0,
+      massimale:0,erogato:0,rml:0,...compInit};
+    const a=map[key];
+    a.massimale+=r.massimale; a.erogato+=er; a.rml+=(r.rml_period||0);
+    COMP.forEach(c=>a[c.k]+=(r[c.k]||0));
+    a.store=r.store||a.store; a.job=r.job||a.job; a._nazione=r._nazione||a._nazione;
+  });
+  return Object.values(map).map(a=>{
+    a.pct=a.massimale>0?+(a.erogato/a.massimale*100).toFixed(1):0;
+    a.incidenza=a.rml>0?+(a.erogato/a.rml*100).toFixed(1):null;
+    a.meseLabel=MESI[a.month]||'?';
+    return a;
+  }).sort((x,y)=>(x.cognome+x.nome).localeCompare(y.cognome+y.nome)||(x.year-y.year)||(x.month-y.month));
+}
+
+function renderYoyDipTable(rows){
+  const el=document.getElementById('yoyDipTblScroll'); if(!el) return;
+  const data=yoyDipAgg(rows);
+  const meta=document.getElementById('yoyDipMeta');
+  if(meta) meta.textContent=data.length?('· '+data.length+' righe (dipendente × mese × anno)'):'';
+  if(!data.length){_tbl['yoyDip']=null;el.innerHTML='<div style="text-align:center;padding:48px;color:#ccc;font-size:14px">Nessun dato</div>';return;}
+  const cols=[{label:'Anno',filter:'select'},{label:'Mese',filter:'select'},
+              {label:'Matricola',filter:'text'},{label:'Cognome',filter:'text'},{label:'Nome',filter:'text'},
+              {label:'Negozio',filter:'text'},{label:'Ruolo',filter:'select'},{label:'Nazione',filter:'select'},
+              {label:'Massimale €',align:'right',filter:'none'},{label:'Erogato €',align:'right',filter:'none'},
+              {label:'Ach. %',align:'right',filter:'none'},{label:'Incidenza %',align:'right',filter:'none'}];
+  const trows=data.map(r=>({cells:[
+    {disp:`<strong>${r.year}</strong>`,val:r.year},
+    {disp:r.meseLabel,val:r.month},
+    {disp:r.matricola,val:r.matricola},
+    {disp:r.cognome,val:r.cognome},
+    {disp:r.nome,val:r.nome},
+    {disp:r.store,val:r.store},
+    {disp:`<span class="bjob">${r.job}</span>`,val:r.job},
+    {disp:r._nazione,val:r._nazione},
+    {disp:'€ '+fmt(r.massimale),val:r.massimale},
+    {disp:'€ '+fmt(r.erogato),val:r.erogato},
+    {disp:r.pct+'%',val:r.pct},
+    {disp:r.incidenza!=null?r.incidenza+'%':'—',val:r.incidenza},
+  ]}));
+  makeSortTable('yoyDipTblScroll','yoyDip',cols,trows,{i:3,dir:1});
+}
+
+// ─── YOY EXPORT EXCEL ────────────────────────────────────────
+function _writeXlsx(rows,sheet,prefix){
+  const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=Object.keys(rows[0]).map(k=>({wch:Math.max(k.length+2,12)}));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,sheet);
+  XLSX.writeFile(wb,prefix+new Date().toISOString().split('T')[0]+'.xlsx');
+}
+
+function exportYoyCompare(){
+  const rows=getYoyRows();
+  const years=yoyYears(rows);
+  if(!rows.length||!years.length){alert('Nessun dato da esportare.');return;}
+  const data=yoyAgg(rows,r=>(MESI[r.month]||'?')+' · '+(r.job||'?'));
+  const out=Object.keys(data).sort().map(dim=>{
+    const o={'Mese':dim.split(' · ')[0],'Ruolo':dim.split(' · ')[1]||''};
+    years.forEach(yr=>{
+      const b=data[dim][yr];
+      o['Dip. '+yr]=b?b.n:'';
+      o['Erogato '+yr+' EUR']=b?Math.round(b.erogato):'';
+      o['Ach. '+yr+' %']=b&&b.massimale>0?+(b.erogato/b.massimale*100).toFixed(1):'';
     });
     if(years.length>=2){
       const b0=data[dim][years[0]], b1=data[dim][years[years.length-1]];
-      const dEr=b0&&b1&&b0.erogato>0?((b1.erogato-b0.erogato)/b0.erogato*100):null;
-      const ach0=b0&&b0.massimale>0?b0.erogato/b0.massimale*100:null;
-      const ach1=b1&&b1.massimale>0?b1.erogato/b1.massimale*100:null;
-      const dAch=ach0!=null&&ach1!=null?ach1-ach0:null;
-      const cls=(v)=>v==null?'':(v>=0?' class="pos"':' class="neg"');
-      const sign=(v,sfx)=>v==null?'—':(v>=0?'+':'')+v.toFixed(1)+sfx;
-      h+=`<td style="text-align:right"${cls(dEr)}>${sign(dEr,'%')}</td>`;
-      h+=`<td style="text-align:right"${cls(dAch)}>${sign(dAch,'pp')}</td>`;
+      o['Δ Erogato %']=b0&&b1&&b0.erogato>0?+(((b1.erogato-b0.erogato)/b0.erogato)*100).toFixed(1):'';
+      const a0=b0&&b0.massimale>0?b0.erogato/b0.massimale*100:null;
+      const a1=b1&&b1.massimale>0?b1.erogato/b1.massimale*100:null;
+      o['Δ Ach. pp']=a0!=null&&a1!=null?+(a1-a0).toFixed(1):'';
     }
-    h+='</tr>';
+    return o;
   });
-  h+='</tbody></table>';
-  el.innerHTML=h;
+  _writeXlsx(out,'Confronto YoY','BoggiPremi_YoY_Confronto_');
+}
+
+function exportYoyDip(){
+  const data=yoyDipAgg(getYoyRows());
+  if(!data.length){alert('Nessun dato da esportare.');return;}
+  const rows=data.map(r=>({
+    'Anno':r.year,'Mese':r.meseLabel,'Matricola':r.matricola,'Cognome':r.cognome,'Nome':r.nome,
+    'Negozio':r.store,'Ruolo':r.job,'Nazione':r._nazione,
+    'Massimale EUR':Math.round(r.massimale),'Erogato EUR':Math.round(r.erogato),
+    'Achievement %':r.pct,'RML periodo EUR':r.rml>0?Math.round(r.rml):'',
+    'Incidenza % su stipendio':r.incidenza!=null?r.incidenza:'',
+    'BDG (lordo)':Math.round(r.cBdg),'Digital':Math.round(r.cDigital),'Shopper Yield':Math.round(r.cShopper),
+    'Nuove Privilege':Math.round(r.cPrivilege),'SAS':Math.round(r.cSas),'DCC':Math.round(r.cDcc),
+    'Customer Service':Math.round(r.cCs),'Art. Incentivati':Math.round(r.cArt),'Visual in Store':Math.round(r.cVisual),
+    'CR (sem.)':Math.round(r.cCrSem),'Shopper Yield (sem.)':Math.round(r.cSySem),
+    'Subscription Index (sem.)':Math.round(r.cSubSem),'SAS (sem.)':Math.round(r.cSasSem),
+  }));
+  _writeXlsx(rows,'Dipendenti YoY','BoggiPremi_YoY_Dipendenti_');
 }
 
 // ─── YOY MAIN RENDER ─────────────────────────────────────────
@@ -2399,6 +2574,7 @@ function renderYoy(){
   rcYoy('comp_ach',buildYoyCompAch,rows);
   rcYoy('comp_achself',buildYoyCompAchSelf,rows);
   renderYoyTable(rows);
+  renderYoyDipTable(rows);
 }
 
 // ═══════════════════════════════════════════════════════════════
