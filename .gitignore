@@ -47,6 +47,13 @@ audit_log.jsonl
 # ===== Snapshot storici (#9) — contengono PII (matricola, premio per dipendente) =====
 snapshots/
 
+# ===== Statistiche premi — dati locali (PII: nomi, matricole, premi) =====
+# Si versiona SOLO statistiche/statistiche.html. I file Excel di input e le
+# sessioni JSON esportate restano locali e non finiscono MAI in repo.
+statistiche/FILE/
+statistiche/*.xlsx
+statistiche/*.json
+
 # ===== OS =====
 Thumbs.db
 ehthumbs.db
