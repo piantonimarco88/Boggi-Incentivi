@@ -1956,11 +1956,13 @@ function _l4lAnniActive(){return yoyL4L!=='tutti'||yoyL4LDip!=='tutti';}
 
 function setL4L(val,noRender){
   yoyL4L=val; _applyL4LBtns('l4l',val); _updateL4LAnniWrap();
+  salL4L=val; _applyL4LBtns('sal-l4l',val);          // sync con tab Stipendi
   if(!noRender) renderYoy();
 }
 
 function setL4LDip(val,noRender){
   yoyL4LDip=val; _applyL4LBtns('yoy-l4ldip',val); _updateL4LAnniWrap();
+  salL4LDip=val; _applyL4LBtns('sal-l4ldip',val);    // sync con tab Stipendi
   if(!noRender) renderYoy();
 }
 
@@ -2960,11 +2962,13 @@ _setEurVisible('tabSal','salKpiToggleBtn','sal-eur-hidden',salShowKpis);
 
 function setSalL4L(val,noRender){
   salL4L=val; _applyL4LBtns('sal-l4l',val);
+  yoyL4L=val; _applyL4LBtns('l4l',val); _updateL4LAnniWrap();   // sync con tab Anno su Anno
   if(!noRender) renderSal();
 }
 
 function setSalL4LDip(val,noRender){
   salL4LDip=val; _applyL4LBtns('sal-l4ldip',val);
+  yoyL4LDip=val; _applyL4LBtns('yoy-l4ldip',val); _updateL4LAnniWrap();  // sync con tab Anno su Anno
   if(!noRender) renderSal();
 }
 
