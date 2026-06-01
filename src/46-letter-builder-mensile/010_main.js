@@ -715,10 +715,20 @@ function buildSeasonalLetter(e){
 // Check if we have enough data to produce letters
 function canProduceLetter(){
   var missing=[];
+  var isFcvm=PRIZE_MODE==="fcvm";
+  var isSeasonal=PRIZE_MODE==="seasonal";
+
+  if(isFcvm){
+    // Modalità FC+VM: controlla FC_EMP e FC_TARGETS invece di D.t
+    if(!Object.keys(FC_EMP||{}).length)missing.push("Anagrafica FC+VM (nessun dipendente)");
+    if(MODE==="preventivo"&&!Object.keys(FC_TARGETS||{}).length)missing.push("Target Fatturato FC+VM (nessun negozio)");
+    return missing;
+  }
+
+  // Modalità mensile / seasonal: check traduzioni e D.t
   if(Object.keys(D.tr||{}).length===0)missing.push("Traduzioni (nessuna lingua caricata)");
-  if(MODE==="preventivo"){
+  if(MODE==="preventivo"&&!isSeasonal){
     if(Object.keys(D.t||{}).length===0)missing.push("Target Fatturato (nessun negozio)");
-    // Check individual targets
     var tKeys=Object.keys(D.t||{});
     if(tKeys.length>0){
       if(!tKeys.some(function(k){return(D.t[k].sy||0)>0}))missing.push("Target SY (tutti a zero)");
@@ -726,7 +736,7 @@ function canProduceLetter(){
       if(!tKeys.some(function(k){return(D.t[k].pr||0)>0}))missing.push("Target Privilege (tutti a zero)");
     }
   }
-  // Check exchange rates for non-EUR employees
+  // Cambi valuta: solo per mensile/seasonal con dipendenti non-EUR
   var hasNonEUR=E.some(function(e){return e.cu&&e.cu!=="EUR"});
   if(hasNonEUR){
     var allOne=E.filter(function(e){return e.cu!=="EUR"}).every(function(e){return e.ex===1||!e.ex});
