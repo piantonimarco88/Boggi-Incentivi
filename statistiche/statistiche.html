@@ -275,6 +275,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
   <button class="tab-btn" data-tab="yoy" onclick="switchTab('yoy')">📅 Anno su Anno</button>
   <button class="tab-btn" data-tab="sal" onclick="switchTab('sal')">💶 Stipendi</button>
   <button class="tab-btn" data-tab="whatif" onclick="switchTab('whatif')">🔮 What-if</button>
+  <button class="tab-btn" data-tab="alert" onclick="switchTab('alert')">🚨 Alert</button>
 </div>
 
 <!-- ═══════════ DASHBOARD TAB ═══════════ -->
@@ -789,6 +790,66 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
     </div>
   </div>
 </div><!-- end #tabWhatif -->
+
+<!-- ═══════════ ALERT TAB ═══════════ -->
+<div id="tabAlert" style="display:none">
+  <div class="yoy-filters">
+    <div class="fg"><label>Mese</label>
+      <div class="ms-wrap" id="al-mese"><button class="ms-btn" id="al-mese-btn" onclick="toggleMs(event,'al-mese')">Tutti</button><div class="ms-panel" id="al-mese-panel" style="display:none"></div></div></div>
+    <div class="fg"><label>Anno</label>
+      <div class="ms-wrap" id="al-anno"><button class="ms-btn" id="al-anno-btn" onclick="toggleMs(event,'al-anno')">Tutti</button><div class="ms-panel" id="al-anno-panel" style="display:none"></div></div></div>
+    <div class="fg"><label>Nazione</label>
+      <div class="ms-wrap" id="al-naz"><button class="ms-btn" id="al-naz-btn" onclick="toggleMs(event,'al-naz')">Tutte</button><div class="ms-panel" id="al-naz-panel" style="display:none"></div></div></div>
+    <div class="fg"><label>Ruolo</label>
+      <div class="ms-wrap" id="al-job"><button class="ms-btn" id="al-job-btn" onclick="toggleMs(event,'al-job')">Tutti</button><div class="ms-panel" id="al-job-panel" style="display:none"></div></div></div>
+    <div class="fg"><label>Perimetro dipendenti</label>
+      <div class="l4l-toggle">
+        <button class="l4l-btn active" id="al-l4l-tutti" onclick="setAlertL4LDip('tutti')">Tutti</button>
+        <button class="l4l-btn" id="al-l4l-l4l" onclick="setAlertL4LDip('l4l')">L4L</button>
+        <button class="l4l-btn" id="al-l4l-new" onclick="setAlertL4LDip('new')">Nuovi</button>
+      </div></div>
+    <button class="btn-rst" onclick="resetAlertFilters()">↺ Reset filtri</button>
+  </div>
+
+  <div class="whatif">
+    <div class="whatif-body">
+      <div class="whatif-params">
+        <div class="wp-group">
+          <div class="wp-lbl">Incidenza % "sana" attesa per ruolo <span class="info-tip" data-tip="La % di premi erogati sullo stipendio che ritieni equa per ogni ruolo. Chi si discosta oltre la tolleranza viene segnalato.">i</span></div>
+          <div class="wp-roles">
+            <label class="wp-f"><span>SM</span><input type="number" id="al-th-SM" value="25" min="0" step="1" oninput="renderAlert()"></label>
+            <label class="wp-f"><span>VSM</span><input type="number" id="al-th-VSM" value="20" min="0" step="1" oninput="renderAlert()"></label>
+            <label class="wp-f"><span>SSAP</span><input type="number" id="al-th-SSAP" value="18" min="0" step="1" oninput="renderAlert()"></label>
+            <label class="wp-f"><span>SSA</span><input type="number" id="al-th-SSA" value="16" min="0" step="1" oninput="renderAlert()"></label>
+            <label class="wp-f"><span>SA</span><input type="number" id="al-th-SA" value="14" min="0" step="1" oninput="renderAlert()"></label>
+            <label class="wp-f"><span>JSA</span><input type="number" id="al-th-JSA" value="12" min="0" step="1" oninput="renderAlert()"></label>
+            <label class="wp-f"><span>SCS</span><input type="number" id="al-th-SCS" value="15" min="0" step="1" oninput="renderAlert()"></label>
+          </div>
+        </div>
+        <div class="wp-group">
+          <div class="wp-lbl">Tolleranza ± (punti)</div>
+          <div class="wp-roles">
+            <label class="wp-f"><span>banda di normalità</span><input type="number" id="al-tol" value="5" min="0" step="0.5" oninput="renderAlert()"></label>
+          </div>
+        </div>
+        <button class="btn-rst" onclick="resetAlertThresholds()">↺ Reset soglie</button>
+      </div>
+      <div id="alertKpiRow" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px"></div>
+      <div class="cc full" style="margin-top:4px">
+        <div class="cc-head"><div class="cc-title">Quadrante — Stipendio (RML) × scostamento incidenza dalla soglia (pp)</div></div>
+        <div class="cw tall"><canvas id="alert_c_quad"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="yoy-tbl">
+    <div class="yoy-tbl-head" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <h2>Dipendenti fuori soglia — dettaglio e motivi <span class="dip-meta" id="alertMeta" style="font-weight:400;text-transform:none;letter-spacing:0"></span></h2>
+      <button class="btn-exp" onclick="exportAlert()" title="Esporta in Excel">📊 Export Excel</button>
+    </div>
+    <div class="tbl-scroll" id="alertTbl"></div>
+  </div>
+</div><!-- end #tabAlert -->
 
 <!-- FULLSCREEN MODAL -->
 <div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
@@ -1323,6 +1384,7 @@ function refresh(){
   if(document.getElementById('tabYoy').style.display!=='none'){popYoyFilters();renderYoy();}
   if(document.getElementById('tabSal').style.display!=='none'){popSalFilters();renderSal();}
   if(document.getElementById('tabWhatif').style.display!=='none'){popWhatifFilters();renderWhatif();}
+  if(document.getElementById('tabAlert').style.display!=='none'){popAlertFilters();renderAlert();}
 }
 
 // ─── MULTI-SELECT HELPERS ─────────────────────────────────────
@@ -1854,10 +1916,12 @@ function switchTab(tab){
   document.getElementById('tabYoy').style.display=tab==='yoy'?'':'none';
   document.getElementById('tabSal').style.display=tab==='sal'?'':'none';
   document.getElementById('tabWhatif').style.display=tab==='whatif'?'':'none';
+  document.getElementById('tabAlert').style.display=tab==='alert'?'':'none';
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
   if(tab==='yoy'&&allData.length){popYoyFilters();renderYoy();}
   if(tab==='sal'&&allData.length){popSalFilters();renderSal();}
   if(tab==='whatif'&&allData.length){popWhatifFilters();renderWhatif();}
+  if(tab==='alert'&&allData.length){popAlertFilters();renderAlert();}
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -3267,6 +3331,183 @@ function renderWhatifTimeline(rows,newMonthly,oldMonthly,newRml,oldRml,startKey,
   }
   build(cvE,'future','eur',dHistE,dNewE,dOldE);
   if(cvI) build(cvI,'futureInc','pct',dHistI,dNewI,dOldI);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ─── ALERT TAB ────────────────────────────────────────────────
+// Segnala dipendenti la cui incidenza premi/stipendio si discosta dalla
+// soglia "sana" per ruolo, con motivazioni vs i pari ruolo.
+// ═══════════════════════════════════════════════════════════════
+const ALERT_DEF={SM:25,VSM:20,SSAP:18,SSA:16,SA:14,JSA:12,SCS:15};
+const ALERT_COMPL={cBdg:'BDG',cDigital:'Digital',cShopper:'Shopper Yield',cPrivilege:'Subscription',cSas:'SAS',cDcc:'DCC'};
+let alertL4LDip='tutti', alertCharts={};
+
+function popAlertFilters(){
+  const months=[...new Set(allData.map(r=>r.month).filter(Boolean))].sort((a,b)=>a-b);
+  const years=[...new Set(allData.map(r=>r.year).filter(Boolean))].sort();
+  const naz=[...new Set(allData.map(r=>r._nazione).filter(n=>n&&!n.startsWith('ENTE ')))].sort();
+  const jobs=[...new Set(allData.map(r=>r.job).filter(Boolean))].sort();
+  setMsOpts('al-mese',months.map(m=>({v:m,l:MESI[m]})),renderAlert);
+  setMsOpts('al-anno',years.map(y=>({v:y,l:String(y)})),renderAlert);
+  setMsOpts('al-naz',naz.map(n=>({v:n,l:n})),renderAlert);
+  setMsOpts('al-job',jobs.map(j=>({v:j,l:j})),renderAlert);
+}
+function setAlertL4LDip(v){alertL4LDip=v;['tutti','l4l','new'].forEach(x=>{const el=document.getElementById('al-l4l-'+x);if(el)el.classList.toggle('active',x===v);});renderAlert();}
+function resetAlertFilters(){
+  ['al-mese','al-anno','al-naz','al-job'].forEach(id=>{document.querySelectorAll('#'+id+'-panel input').forEach(i=>{i.checked=false;i.indeterminate=false;});updateMsLabel(id);});
+  setAlertL4LDip('tutti');
+}
+function resetAlertThresholds(){
+  Object.keys(ALERT_DEF).forEach(r=>{const el=document.getElementById('al-th-'+r);if(el)el.value=ALERT_DEF[r];});
+  const t=document.getElementById('al-tol'); if(t)t.value=5;
+  renderAlert();
+}
+function alertThresholds(){
+  const th={}; Object.keys(ALERT_DEF).forEach(r=>{const el=document.getElementById('al-th-'+r);th[r]=el&&el.value!==''?+el.value:ALERT_DEF[r];});
+  const tEl=document.getElementById('al-tol'); const tol=tEl&&tEl.value!==''?+tEl.value:5;
+  return {th,tol};
+}
+function getAlertRows(){
+  const meses=getMsVals('al-mese'),years=getMsVals('al-anno'),naz=getMsVals('al-naz'),jobs=getMsVals('al-job');
+  let base=allData.filter(r=>{
+    if(!rmlMonth(r)) return false;
+    if(meses.length&&!meses.includes(String(r.month))) return false;
+    if(years.length&&!years.includes(String(r.year))) return false;
+    if(naz.length&&!naz.includes(r._nazione)) return false;
+    if(jobs.length&&!jobs.includes(r.job)) return false;
+    return true;
+  });
+  if(alertL4LDip!=='tutti'){
+    const yrs=[...new Set(base.map(r=>r.year).filter(Boolean))].sort();
+    if(yrs.length>=2){
+      const empYrs={}; base.forEach(r=>{const nk=_empKey(r);if(nk!=='|'){(empYrs[nk]||(empYrs[nk]=new Set())).add(r.year);}});
+      if(alertL4LDip==='l4l') base=base.filter(r=>{const nk=_empKey(r);return nk!=='|'&&empYrs[nk]&&yrs.every(y=>empYrs[nk].has(y));});
+      else base=base.filter(r=>!empYrs[_empKey(r)]?.has(yrs[0]));
+    }
+  }
+  return base;
+}
+function alertCompute(){
+  const rows=getAlertRows(); const {th,tol}=alertThresholds();
+  const CK=Object.keys(ALERT_COMPL);
+  const map={};
+  rows.forEach(r=>{
+    const key=r.matricola||_empKey(r);
+    if(!map[key]){map[key]={matricola:r.matricola||'',cognome:r.cognome||'',nome:r.nome||'',store:r.store||'',job:r.job||'',_nazione:r._nazione||'',erogato:0,rml:0,months:new Set(),bdgMonths:0};CK.forEach(k=>map[key][k]=0);}
+    const a=map[key];
+    a.erogato+=r.erogato; a.rml+=(r.rml_period||0);
+    const mk=r.monthKey||0; if(mk)a.months.add(mk);
+    if((r.cBdg||0)>0)a.bdgMonths++;
+    CK.forEach(k=>a[k]+=(r[k]||0));
+    a.store=r.store||a.store; a.job=r.job||a.job; a._nazione=r._nazione||a._nazione;
+  });
+  const emps=Object.values(map).map(a=>{
+    a.nMonths=a.months.size||1; a.inc=a.rml>0?a.erogato/a.rml*100:0; a.bdgFreq=a.bdgMonths/a.nMonths*100;
+    a.compInc={}; CK.forEach(k=>a.compInc[k]=a.rml>0?a[k]/a.rml*100:0);
+    return a;
+  });
+  const byRole={};
+  emps.forEach(e=>{const b=byRole[e.job]||(byRole[e.job]={n:0,inc:0,bdgFreq:0,compInc:{}});b.n++;b.inc+=e.inc;b.bdgFreq+=e.bdgFreq;CK.forEach(k=>b.compInc[k]=(b.compInc[k]||0)+e.compInc[k]);});
+  Object.values(byRole).forEach(b=>{b.inc/=b.n;b.bdgFreq/=b.n;CK.forEach(k=>b.compInc[k]/=b.n);});
+  emps.forEach(e=>{
+    const healthy=th[e.job]!=null?th[e.job]:null;
+    e.healthy=healthy; e.dev=healthy!=null?+(e.inc-healthy).toFixed(1):null;
+    e.status=healthy==null?'na':(e.dev>tol?'sopra':e.dev<-tol?'sotto':'ok');
+    e.reasons=[];
+    const peer=byRole[e.job];
+    if((e.status==='sopra'||e.status==='sotto')&&peer){
+      const under=e.status==='sotto';
+      if(under&&e.bdgFreq<peer.bdgFreq-15) e.reasons.push('BDG preso di rado: '+e.bdgFreq.toFixed(0)+'% dei mesi (media ruolo '+peer.bdgFreq.toFixed(0)+'%)');
+      if(!under&&e.bdgFreq>peer.bdgFreq+15) e.reasons.push('BDG molto frequente: '+e.bdgFreq.toFixed(0)+'% dei mesi (media ruolo '+peer.bdgFreq.toFixed(0)+'%)');
+      const devs=CK.map(k=>({k,d:e.compInc[k]-(peer.compInc[k]||0)})).filter(x=>under?x.d<-0.3:x.d>0.3).sort((a,b)=>under?a.d-b.d:b.d-a.d);
+      devs.slice(0,2).forEach(x=>e.reasons.push(ALERT_COMPL[x.k]+(under?' sotto la media':' sopra la media')+' ('+e.compInc[x.k].toFixed(1)+'% vs '+(peer.compInc[x.k]||0).toFixed(1)+'% pari ruolo)'));
+      if(!e.reasons.length) e.reasons.push(under?'Incidenza complessiva sotto soglia':'Incidenza complessiva sopra soglia');
+    }
+  });
+  return {emps,tol};
+}
+function _alCard(lbl,val,sub,cls){return '<div class="kpi '+(cls||'')+'"><div class="kpi-lbl">'+lbl+'</div><div class="kpi-val">'+val+'</div><div class="kpi-sub">'+(sub||'')+'</div></div>';}
+function renderAlert(){
+  if(!allData.length) return;
+  const {emps,tol}=alertCompute();
+  const tot=emps.length;
+  const sotto=emps.filter(e=>e.status==='sotto').length, sopra=emps.filter(e=>e.status==='sopra').length, ok=emps.filter(e=>e.status==='ok').length;
+  const incAvg=tot?emps.reduce((s,e)=>s+e.inc,0)/tot:0;
+  const kpi=document.getElementById('alertKpiRow');
+  if(kpi) kpi.innerHTML=[
+    _alCard('Dipendenti analizzati',tot.toLocaleString('it-IT'),'nel perimetro filtrato',''),
+    _alCard('In linea',ok+' ('+(tot?(ok/tot*100).toFixed(0):0)+'%)','entro ±'+tol+' pp','g'),
+    _alCard('Sotto soglia',sotto+' ('+(tot?(sotto/tot*100).toFixed(0):0)+'%)','premi bassi vs stipendio','r'),
+    _alCard('Sopra soglia',sopra+' ('+(tot?(sopra/tot*100).toFixed(0):0)+'%)','premi alti vs stipendio','p'),
+    _alCard('Incidenza media',incAvg.toFixed(1)+'%','erogato / RML','a'),
+  ].join('');
+  renderAlertQuad(emps,tol);
+  renderAlertTable(emps);
+}
+const alertBandPlugin={
+  id:'alertBand',
+  beforeDatasetsDraw(chart,args,opts){
+    const tol=opts&&opts.tol; if(tol==null) return;
+    const ys=chart.scales.y, xs=chart.scales.x, ctx=chart.ctx;
+    const y0=ys.getPixelForValue(0), yp=ys.getPixelForValue(tol), ym=ys.getPixelForValue(-tol);
+    ctx.save();
+    ctx.fillStyle='rgba(34,197,94,.10)'; ctx.fillRect(xs.left,Math.min(yp,ym),xs.right-xs.left,Math.abs(ym-yp));
+    ctx.strokeStyle='#16a34a'; ctx.lineWidth=1.5; ctx.setLineDash([5,4]);
+    ctx.beginPath();ctx.moveTo(xs.left,y0);ctx.lineTo(xs.right,y0);ctx.stroke();ctx.setLineDash([]);
+    ctx.restore();
+  }
+};
+function renderAlertQuad(emps,tol){
+  if(alertCharts.quad){alertCharts.quad.destroy();delete alertCharts.quad;}
+  const cv=document.getElementById('alert_c_quad'); if(!cv) return;
+  const pt=e=>({x:Math.round(e.rml/e.nMonths),y:e.dev,e});
+  const valid=emps.filter(e=>e.dev!=null);
+  alertCharts.quad=new Chart(cv.getContext('2d'),{type:'scatter',
+    data:{datasets:[
+      {label:'In linea',data:valid.filter(e=>e.status==='ok').map(pt),backgroundColor:'rgba(34,197,94,.55)',pointRadius:4},
+      {label:'Sotto soglia',data:valid.filter(e=>e.status==='sotto').map(pt),backgroundColor:'#ef4444',pointRadius:5},
+      {label:'Sopra soglia',data:valid.filter(e=>e.status==='sopra').map(pt),backgroundColor:'#a855f7',pointRadius:5},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10}},
+        tooltip:{callbacks:{label:c=>{const e=c.raw.e;return e.cognome+' '+e.nome+' ('+e.job+'): inc '+e.inc.toFixed(1)+'% · soglia '+e.healthy+'% · RML € '+fmt(c.raw.x);}}},
+        alertBand:{tol},
+        zoom:{zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'xy'},pan:{enabled:true,mode:'xy'}}},
+      scales:{x:{title:{display:true,text:'RML mensile (€)'},ticks:{callback:v=>fmtEurAxis(v)}},
+              y:{title:{display:true,text:'scostamento incidenza dalla soglia (pp)'}}}},
+    plugins:[alertBandPlugin]});
+  cv.ondblclick=()=>{if(alertCharts.quad&&alertCharts.quad.resetZoom)alertCharts.quad.resetZoom();};
+}
+function renderAlertTable(emps){
+  const el=document.getElementById('alertTbl'); if(!el) return;
+  const out=emps.filter(e=>e.status==='sotto'||e.status==='sopra');
+  const meta=document.getElementById('alertMeta'); if(meta) meta.textContent=out.length?('· '+out.length+' fuori soglia'):'';
+  if(!out.length){_tbl['alert']=null;el.innerHTML='<div style="text-align:center;padding:40px;color:#ccc;font-size:14px">Nessun dipendente fuori soglia coi parametri correnti 🎉</div>';return;}
+  const cols=[{label:'Stato',filter:'select'},{label:'Matricola',filter:'text'},{label:'Cognome',filter:'text'},{label:'Nome',filter:'text'},
+    {label:'Ruolo',filter:'select'},{label:'Negozio',filter:'text'},{label:'Nazione',filter:'select'},
+    {label:'RML mens.',align:'right',filter:'none'},{label:'Inc. %',align:'right',filter:'none'},{label:'Soglia %',align:'right',filter:'none'},
+    {label:'Scost. pp',align:'right',filter:'none'},{label:'Motivi',filter:'text'}];
+  const trows=out.map(e=>({cells:[
+    {disp:e.status==='sotto'?'<span class="badge b1">SOTTO</span>':'<span class="badge b5">SOPRA</span>',val:e.status},
+    {disp:e.matricola,val:e.matricola},{disp:e.cognome,val:e.cognome},{disp:e.nome,val:e.nome},
+    {disp:'<span class="bjob">'+e.job+'</span>',val:e.job},{disp:e.store,val:e.store},{disp:e._nazione,val:e._nazione},
+    {disp:'€ '+fmt(e.rml/e.nMonths),val:Math.round(e.rml/e.nMonths)},
+    {disp:e.inc.toFixed(1)+'%',val:e.inc},{disp:e.healthy+'%',val:e.healthy},
+    {disp:'<span class="'+(e.dev>=0?'pos':'neg')+'">'+(e.dev>=0?'+':'')+e.dev+'pp</span>',val:e.dev},
+    {disp:'<span style="font-size:11px;color:#555">'+e.reasons.join('; ')+'</span>',val:e.reasons.join('; ')},
+  ]}));
+  makeSortTable('alertTbl','alert',cols,trows,{i:10,dir:-1});
+}
+function exportAlert(){
+  const {emps}=alertCompute();
+  const out=emps.filter(e=>e.status==='sotto'||e.status==='sopra').sort((a,b)=>Math.abs(b.dev)-Math.abs(a.dev));
+  if(!out.length){alert('Nessun dipendente fuori soglia da esportare.');return;}
+  const rows=out.map(e=>({
+    'Stato':e.status==='sotto'?'SOTTO':'SOPRA','Matricola':e.matricola,'Cognome':e.cognome,'Nome':e.nome,'Ruolo':e.job,
+    'Negozio':e.store,'Nazione':e._nazione,'RML mensile EUR':Math.round(e.rml/e.nMonths),
+    'Incidenza %':+e.inc.toFixed(1),'Soglia %':e.healthy,'Scostamento pp':e.dev,'Frequenza BDG %':+e.bdgFreq.toFixed(0),'Motivi':e.reasons.join('; '),
+  }));
+  _writeXlsx(rows,'Alert','BoggiPremi_Alert_');
 }
 
 // ═══════════════════════════════════════════════════════════════
