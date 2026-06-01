@@ -471,6 +471,11 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
       <label class="fg" style="font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.4px">Anni perimetro L4L <span class="info-tip" data-tip="Seleziona gli anni che definiscono il perimetro L4L.&#10;Tutti attivi = tutti gli anni caricati.&#10;Es: attiva solo 2025+2026 per confrontare solo quell'intervallo.">i</span></label>
       <div class="l4l-toggle" id="yoy-l4lanni-btns"></div>
     </div>
+    <div class="l4l-wrap"><label class="fg" style="font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.4px">Solo dipendenti attivi <span class="info-tip" data-tip="Attivi = presenti nel file del mese più recente caricato. Filtro condiviso fra Anno su Anno, Stipendi e Alert.">i</span></label>
+      <div class="l4l-toggle">
+        <button class="l4l-btn active" id="yoy-active-no" onclick="setActiveOnly(false)">No</button>
+        <button class="l4l-btn" id="yoy-active-si" onclick="setActiveOnly(true)">Sì</button>
+      </div></div>
     <button class="yoy-kpi-toggle" id="yoyKpiToggleBtn" onclick="toggleYoyKpis()">▤ Box KPI visibili</button>
     <button class="btn-rst" onclick="resetYoyFilters()">↺ Reset</button>
   </div>
@@ -602,6 +607,11 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
         <button class="l4l-btn active" id="sal-l4ldip-tutti" onclick="setSalL4LDip('tutti')">Tutti</button>
         <button class="l4l-btn" id="sal-l4ldip-l4l" onclick="setSalL4LDip('l4l')">L4L</button>
         <button class="l4l-btn" id="sal-l4ldip-new" onclick="setSalL4LDip('new')">Nuovi</button>
+      </div></div>
+    <div class="l4l-wrap"><label class="fg" style="font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.4px">Solo dipendenti attivi <span class="info-tip" data-tip="Attivi = presenti nel file del mese più recente caricato. Filtro condiviso fra Anno su Anno, Stipendi e Alert.">i</span></label>
+      <div class="l4l-toggle">
+        <button class="l4l-btn active" id="sal-active-no" onclick="setActiveOnly(false)">No</button>
+        <button class="l4l-btn" id="sal-active-si" onclick="setActiveOnly(true)">Sì</button>
       </div></div>
     <button class="yoy-kpi-toggle" id="salKpiToggleBtn" onclick="toggleSalKpis()">▤ € visibili</button>
     <button class="btn-rst" onclick="resetSalFilters()">↺ Reset</button>
@@ -806,11 +816,22 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
       <div class="ms-wrap" id="al-tipo"><button class="ms-btn" id="al-tipo-btn" onclick="toggleMs(event,'al-tipo')">Tutti i tipi</button><div class="ms-panel" id="al-tipo-panel" style="display:none"></div></div></div>
     <div class="fg"><label>Negozio</label>
       <div class="ms-wrap" id="al-store"><button class="ms-btn" id="al-store-btn" onclick="toggleMs(event,'al-store')">Tutti</button><div class="ms-panel" id="al-store-panel" style="display:none"></div></div></div>
+    <div class="fg"><label>Perimetro negozi</label>
+      <div class="l4l-toggle">
+        <button class="l4l-btn active" id="al-l4lstore-tutti" onclick="setAlertL4LStore('tutti')">Tutti</button>
+        <button class="l4l-btn" id="al-l4lstore-l4l" onclick="setAlertL4LStore('l4l')">L4L</button>
+        <button class="l4l-btn" id="al-l4lstore-new" onclick="setAlertL4LStore('new')">Nuovi</button>
+      </div></div>
     <div class="fg"><label>Perimetro dipendenti</label>
       <div class="l4l-toggle">
         <button class="l4l-btn active" id="al-l4l-tutti" onclick="setAlertL4LDip('tutti')">Tutti</button>
         <button class="l4l-btn" id="al-l4l-l4l" onclick="setAlertL4LDip('l4l')">L4L</button>
         <button class="l4l-btn" id="al-l4l-new" onclick="setAlertL4LDip('new')">Nuovi</button>
+      </div></div>
+    <div class="fg"><label>Solo dipendenti attivi <span class="info-tip" data-tip="Attivi = presenti nel file del mese più recente caricato. Filtro condiviso con Anno su Anno e Stipendi.">i</span></label>
+      <div class="l4l-toggle">
+        <button class="l4l-btn active" id="al-active-no" onclick="setActiveOnly(false)">No</button>
+        <button class="l4l-btn" id="al-active-si" onclick="setActiveOnly(true)">Sì</button>
       </div></div>
     <button class="btn-rst" onclick="resetAlertFilters()">↺ Reset filtri</button>
   </div>
@@ -2075,6 +2096,28 @@ let yoyL4LAnni=new Set(); // empty = tutti gli anni; altrimenti Set di anni nume
 // Chiave canonica dipendente: cognome|nome lowercase — invariante tra sistemi HR / formati file
 const _empKey=r=>((r.cognome||'')+'|'+(r.nome||'')).toLowerCase().trim();
 
+// ─── FILTRO GLOBALE "SOLO DIPENDENTI ATTIVI" (condiviso YoY/Stipendi/Alert) ───
+// Attivi = presenti nel file del mese più recente caricato.
+let activeOnly=false;
+function activeEmpSet(){
+  const latest=Math.max(0,...allData.map(r=>r.monthKey||0));
+  const set=new Set();
+  allData.forEach(r=>{if((r.monthKey||0)===latest) set.add(r.matricola||_empKey(r));});
+  return set;
+}
+function applyActiveOnly(rows){ if(!activeOnly) return rows; const s=activeEmpSet(); return rows.filter(r=>s.has(r.matricola||_empKey(r))); }
+function setActiveOnly(on){
+  activeOnly=!!on;
+  ['yoy','sal','al'].forEach(p=>{
+    const no=document.getElementById(p+'-active-no'), si=document.getElementById(p+'-active-si');
+    if(no) no.classList.toggle('active',!activeOnly);
+    if(si) si.classList.toggle('active',activeOnly);
+  });
+  if(document.getElementById('tabYoy').style.display!=='none') renderYoy();
+  if(document.getElementById('tabSal').style.display!=='none') renderSal();
+  if(document.getElementById('tabAlert').style.display!=='none') renderAlert();
+}
+
 function _l4lAnniActive(){return yoyL4L!=='tutti'||yoyL4LDip!=='tutti';}
 
 function setL4L(val,noRender){
@@ -2195,7 +2238,7 @@ function getYoyRows(){
       }
     }
   }
-  return filtered;
+  return applyActiveOnly(filtered);
 }
 
 let yoyShowKpis=false;
@@ -3344,7 +3387,7 @@ function renderWhatifTimeline(rows,newMonthly,oldMonthly,newRml,oldRml,startKey,
 // ═══════════════════════════════════════════════════════════════
 const ALERT_DEF={SM:25,VSM:20,SSAP:18,SSA:16,SA:14,JSA:12,SCS:15};
 const ALERT_COMPL={cBdg:'BDG',cDigital:'Digital',cShopper:'Shopper Yield',cPrivilege:'Subscription',cSas:'SAS',cDcc:'DCC'};
-let alertL4LDip='tutti', alertCharts={};
+let alertL4LDip='tutti', alertL4LStore='tutti', alertCharts={};
 
 function popAlertFilters(){
   const months=[...new Set(allData.map(r=>r.month).filter(Boolean))].sort((a,b)=>a-b);
@@ -3361,9 +3404,10 @@ function popAlertFilters(){
   setMsOpts('al-store',stores.map(s=>({v:s,l:s})),renderAlert);
 }
 function setAlertL4LDip(v){alertL4LDip=v;['tutti','l4l','new'].forEach(x=>{const el=document.getElementById('al-l4l-'+x);if(el)el.classList.toggle('active',x===v);});renderAlert();}
+function setAlertL4LStore(v){alertL4LStore=v;['tutti','l4l','new'].forEach(x=>{const el=document.getElementById('al-l4lstore-'+x);if(el)el.classList.toggle('active',x===v);});renderAlert();}
 function resetAlertFilters(){
   ['al-mese','al-anno','al-naz','al-job','al-tipo','al-store'].forEach(id=>{document.querySelectorAll('#'+id+'-panel input').forEach(i=>{i.checked=false;i.indeterminate=false;});updateMsLabel(id);});
-  setAlertL4LDip('tutti');
+  setAlertL4LStore('tutti'); setAlertL4LDip('tutti');
 }
 function resetAlertThresholds(){
   Object.keys(ALERT_DEF).forEach(r=>{const el=document.getElementById('al-th-'+r);if(el)el.value=ALERT_DEF[r];});
@@ -3387,6 +3431,14 @@ function getAlertRows(){
     if(stores.length&&!stores.includes(r.store)) return false;
     return true;
   });
+  if(alertL4LStore!=='tutti'){
+    const yrs=[...new Set(base.map(r=>r.year).filter(Boolean))].sort();
+    if(yrs.length>=2){
+      const storeYrs={}; base.filter(r=>r.erogato>0).forEach(r=>{(storeYrs[r.store]||(storeYrs[r.store]=new Set())).add(r.year);});
+      if(alertL4LStore==='l4l') base=base.filter(r=>yrs.every(y=>storeYrs[r.store]?.has(y)));
+      else base=base.filter(r=>!storeYrs[r.store]?.has(yrs[0]));
+    }
+  }
   if(alertL4LDip!=='tutti'){
     const yrs=[...new Set(base.map(r=>r.year).filter(Boolean))].sort();
     if(yrs.length>=2){
@@ -3395,7 +3447,7 @@ function getAlertRows(){
       else base=base.filter(r=>!empYrs[_empKey(r)]?.has(yrs[0]));
     }
   }
-  return base;
+  return applyActiveOnly(base);
 }
 function alertCompute(){
   const rows=getAlertRows(); const {th,tol}=alertThresholds();
@@ -3606,7 +3658,7 @@ function getSalRows(){
       else filtered=filtered.filter(r=>!inFirstYr(r.matricola,nk(r)));
     }
   }
-  return filtered;
+  return applyActiveOnly(filtered);
 }
 
 function resetSalFilters(){
