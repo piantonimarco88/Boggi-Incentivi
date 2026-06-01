@@ -675,9 +675,11 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
         <div class="ms-panel" id="wif-anno-panel" style="display:none"></div>
       </div></div>
     <button class="btn-rst" onclick="resetWhatifFilters()">↺ Reset filtri</button>
-    <div class="fg"><label>Modalità</label>
-      <label class="wif-toggle"><input type="checkbox" id="wi-future" onchange="onWhatifFutureToggle()"> 🔮 Previsione futura</label>
-    </div>
+    <div class="fg"><label>🔮 Previsione futura</label>
+      <div class="l4l-toggle">
+        <button class="l4l-btn active" id="wi-fut-off" onclick="setWhatifFuture(false)">No</button>
+        <button class="l4l-btn" id="wi-fut-on" onclick="setWhatifFuture(true)">Sì</button>
+      </div></div>
     <div class="fg wif-future-only" style="display:none"><label>Tipo dipendente</label>
       <div class="l4l-toggle">
         <button class="l4l-btn active" id="wi-hire-exist" onclick="setWhatifHire(false)">Esistente</button>
@@ -763,7 +765,8 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
       <div id="whatifFutureOut" class="wif-future-only" style="display:none">
         <div id="whatifFreqNote" class="whatif-freqnote"></div>
         <div class="tbl-scroll whatif-tbl" id="whatifFutureTbl"></div>
-        <div class="cc" style="margin-top:14px"><div class="cc-head"><div class="cc-title">Timeline mensile — storico e proiezione (€)</div></div><div class="cw tall"><canvas id="wi_c_future"></canvas></div></div>
+        <div class="cc" style="margin-top:14px"><div class="cc-head"><div class="cc-title">Erogato cumulato — storico e proiezione (€)</div></div><div class="cw tall"><canvas id="wi_c_future"></canvas></div></div>
+        <div class="cc" style="margin-top:14px"><div class="cc-head"><div class="cc-title">Incidenza % del premio variabile sullo stipendio — storico e proiezione</div></div><div class="cw tall"><canvas id="wi_c_future_inc"></canvas></div></div>
       </div>
     </div>
   </div>
@@ -1743,6 +1746,7 @@ function sortBy(col){ sDir=(sCol===col)?sDir*-1:1; sCol=col; renderTable(); }
 function fmt(n){return Math.round(n).toLocaleString('it-IT');}
 function fmtEur(n){return '€ '+fmt(n);}              // importo € arrotondato
 function fmtK(n){return '€ '+Math.round(n/1000)+'k';} // tick assi in migliaia
+function fmtEurAxis(v){return v>=1000?'€ '+(Math.round(v/100)/10)+'k':'€ '+Math.round(v);} // asse: € pieno sotto 1k, k sopra
 function achColor(v){return v>=100?'#a855f7':v>=75?'#22c55e':v>=50?'#3b82f6':v>=25?'#f59e0b':'#ef4444';}
 
 // ─── EXPORT EXCEL ─────────────────────────────────────────────
@@ -3059,13 +3063,15 @@ function applyWhatifModeVisibility(){
   const fut=whatifFuture;
   document.querySelectorAll('#tabWhatif .wif-future-only').forEach(el=>el.style.display=fut?'':'none');
   document.querySelectorAll('#tabWhatif .wif-normal-only').forEach(el=>el.style.display=fut?'none':'');
+  const fo=document.getElementById('wi-fut-off'), fn=document.getElementById('wi-fut-on');
+  if(fo) fo.classList.toggle('active',!whatifFuture);
+  if(fn) fn.classList.toggle('active',whatifFuture);
   const e=document.getElementById('wi-hire-exist'), n=document.getElementById('wi-hire-new');
   if(e) e.classList.toggle('active',!whatifNewHire);
   if(n) n.classList.toggle('active',whatifNewHire);
 }
-function onWhatifFutureToggle(){
-  const el=document.getElementById('wi-future'); whatifFuture=el?el.checked:false;
-  _whatifFreqSig=null;
+function setWhatifFuture(on){
+  whatifFuture=!!on; _whatifFreqSig=null;
   applyWhatifModeVisibility(); applyWhatifRoleVisibility(); renderWhatif();
 }
 function setWhatifHire(isNew){
@@ -3106,11 +3112,14 @@ function renderWhatifFuture(rows,p,role,scenarioRml,actualRml){
     fRoleComps(role).forEach(c=>{const el=document.getElementById('wi-freq-'+c.k);if(el)el.value=def[c.k]!=null?def[c.k]:'';});
   }
   const freq={}; fRoleComps(role).forEach(c=>{const el=document.getElementById('wi-freq-'+c.k);freq[c.k]=el&&el.value!==''?+el.value:0;});
-  const rml=scenarioRml||actualRml||0;
+  const rml=scenarioRml||actualRml||0;          // RML scenario (nuovi parametri)
+  const baseRml=actualRml||rml;                  // RML reale (vecchi parametri)
+  const baseFreq=fFrequencies(freqRows,role);    // frequenze storiche/medie (vecchi parametri)
   const today=whatifTodayKey(), startKey=today?mkAddMonths(today,1):0;
   const fend=document.getElementById('wi-future-end'), endKey=fend?+fend.value:0;
   const months=(startKey&&endKey&&endKey>=startKey)?mkDiffMonths(startKey,endKey)+1:0;
-  const fc=fForecast(role,rml,freq,months,p);
+  const fc=fForecast(role,rml,freq,months,p);                  // scenario (nuovi parametri)
+  const fcOld=fForecast(role,baseRml,baseFreq,months,null);    // vecchi parametri (default + storico)
   // storico (solo esistente)
   let hist=null;
   if(!whatifNewHire){
@@ -3126,7 +3135,7 @@ function renderWhatifFuture(rows,p,role,scenarioRml,actualRml){
   const fnote=document.getElementById('whatifFreqNote');
   if(fnote) fnote.innerHTML='ℹ️ Frequenze precompilate dalla <b>'+srcLabel+'</b> (% media con cui raggiunge ciascun premio nei dati caricati) — modificabili. Atteso = frequenza% × valore massimo del premio.';
   renderWhatifFutureTable(fc,months,rml,hist);
-  renderWhatifTimeline(rows,fc,startKey,endKey);
+  renderWhatifTimeline(rows,fc.monthlyTot,fcOld.monthlyTot,rml,baseRml,startKey,endKey);
 }
 
 function renderWhatifFutureTable(fc,months,rml,hist){
@@ -3148,32 +3157,50 @@ function renderWhatifFutureTable(fc,months,rml,hist){
   el.innerHTML=h;
 }
 
-function renderWhatifTimeline(rows,fc,startKey,endKey){
-  const key='future';
-  if(whatifCharts[key]){whatifCharts[key].destroy();delete whatifCharts[key];}
-  const cv=document.getElementById('wi_c_future'); if(!cv) return;
-  const histMap={};
-  if(!whatifNewHire) rows.forEach(r=>{const mk=r.monthKey||0;if(mk)histMap[mk]=(histMap[mk]||0)+r.erogato;});
-  const histKeys=Object.keys(histMap).map(Number).sort((a,b)=>a-b);
+// Timeline CUMULATA: storico + proiezione. Per i dipendenti esistenti due linee future
+// (nuovi parametri vs vecchi parametri); per i nuovi assunti una sola linea progressiva.
+function renderWhatifTimeline(rows,newMonthly,oldMonthly,newRml,oldRml,startKey,endKey){
+  ['future','futureInc'].forEach(k=>{if(whatifCharts[k]){whatifCharts[k].destroy();delete whatifCharts[k];}});
+  const cvE=document.getElementById('wi_c_future'), cvI=document.getElementById('wi_c_future_inc');
+  if(!cvE) return;
+  const histE={}, histR={};
+  if(!whatifNewHire) rows.forEach(r=>{const mk=r.monthKey||0;if(mk){histE[mk]=(histE[mk]||0)+r.erogato;histR[mk]=(histR[mk]||0)+(r.rml_period||0);}});
+  const histKeys=Object.keys(histE).map(Number).sort((a,b)=>a-b);
   const futKeys=[]; if(startKey&&endKey&&endKey>=startKey){for(let mk=startKey;mk<=endKey;mk=mkAddMonths(mk,1))futKeys.push(mk);}
-  const allKeys=histKeys.concat(futKeys);
-  if(!allKeys.length){return;}
-  const labels=allKeys.map(mk=>mkShort(mk));
-  const histData=histKeys.map(mk=>Math.round(histMap[mk])).concat(futKeys.map(()=>null));
-  const futData=histKeys.map(()=>null).concat(futKeys.map(()=>Math.round(fc.monthlyTot)));
-  if(histKeys.length&&futKeys.length) futData[histKeys.length-1]=histData[histKeys.length-1];
-  const boundaryIdx=histKeys.length;
-  whatifCharts[key]=new Chart(cv.getContext('2d'),{type:'line',
-    data:{labels,datasets:[
-      {label:'Storico (reale)',data:histData,borderColor:'#94a3b8',backgroundColor:'#cbd5e155',tension:.2,pointRadius:3,borderWidth:2,fill:false},
-      {label:'Proiezione',data:futData,borderColor:'#7c3aed',backgroundColor:'#7c3aed14',borderDash:[6,4],tension:.2,pointRadius:3,borderWidth:2,fill:true,spanGaps:true},
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10}},
-        tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw!=null?'€ '+Math.round(c.raw).toLocaleString('it-IT'):'—')}},
-        todayLine:{boundaryIdx}},
-      scales:{y:{beginAtZero:true,ticks:{callback:v=>fmtK(v)}},x:{ticks:{maxRotation:60,font:{size:9}}}}},
-    plugins:[whatifTodayLinePlugin]});
+  const H=histKeys.length, F=futKeys.length; if(!H&&!F) return;
+  const labels=histKeys.concat(futKeys).map(mk=>mkShort(mk));
+  // cumulati storici
+  let cE=0,cR=0; const histCumE=[],histCumI=[];
+  histKeys.forEach(mk=>{cE+=histE[mk];cR+=(histR[mk]||0);histCumE.push(Math.round(cE));histCumI.push(cR>0?+(cE/cR*100).toFixed(1):0);});
+  const baseE=cE, baseR=cR, lastE=H?histCumE[H-1]:0, lastI=H?histCumI[H-1]:0;
+  // cumulati futuri (nuovi vs vecchi parametri)
+  const fNewE=[],fOldE=[],fNewI=[],fOldI=[];
+  futKeys.forEach((mk,i)=>{const k=i+1,ne=baseE+newMonthly*k,oe=baseE+oldMonthly*k,nr=baseR+newRml*k,or=baseR+oldRml*k;
+    fNewE.push(Math.round(ne));fOldE.push(Math.round(oe));
+    fNewI.push(nr>0?+(ne/nr*100).toFixed(1):0);fOldI.push(or>0?+(oe/or*100).toFixed(1):0);});
+  const nul=n=>Array(n).fill(null);
+  const dHistE=histCumE.concat(nul(F)), dHistI=histCumI.concat(nul(F));
+  const dNewE=nul(H).concat(fNewE), dOldE=nul(H).concat(fOldE), dNewI=nul(H).concat(fNewI), dOldI=nul(H).concat(fOldI);
+  if(H&&F){dNewE[H-1]=lastE;dOldE[H-1]=lastE;dNewI[H-1]=lastI;dOldI[H-1]=lastI;}
+  const boundaryIdx=H;
+  const stHist={borderColor:'#94a3b8',backgroundColor:'#cbd5e133',tension:.15,pointRadius:2,borderWidth:2,fill:false};
+  const stNew={borderColor:'#7c3aed',backgroundColor:'#7c3aed14',borderDash:[6,4],tension:.15,pointRadius:2,borderWidth:2.5,fill:false};
+  const stOld={borderColor:'#f59e0b',borderDash:[3,3],tension:.15,pointRadius:2,borderWidth:2,fill:false};
+  function build(cv,key,unit,dHist,dNew,dOld){
+    const ds=[];
+    if(!whatifNewHire) ds.push(Object.assign({label:'Storico cumulato',data:dHist},stHist));
+    ds.push(Object.assign({label:whatifNewHire?'Proiezione':'Proiezione (nuovi parametri)',data:dNew},stNew));
+    if(!whatifNewHire) ds.push(Object.assign({label:'Proiezione (vecchi parametri)',data:dOld},stOld));
+    whatifCharts[key]=new Chart(cv.getContext('2d'),{type:'line',data:{labels,datasets:ds},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10}},
+          tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw!=null?(unit==='eur'?fmtEur(c.raw):c.raw+'%'):'—')}},
+          todayLine:{boundaryIdx}},
+        scales:{y:{beginAtZero:true,ticks:{callback:v=>unit==='eur'?fmtEurAxis(v):v+'%'}},x:{ticks:{maxRotation:60,font:{size:9}}}}},
+      plugins:[whatifTodayLinePlugin]});
+  }
+  build(cvE,'future','eur',dHistE,dNewE,dOldE);
+  if(cvI) build(cvI,'futureInc','pct',dHistI,dNewI,dOldI);
 }
 
 // ═══════════════════════════════════════════════════════════════
