@@ -802,6 +802,10 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
       <div class="ms-wrap" id="al-naz"><button class="ms-btn" id="al-naz-btn" onclick="toggleMs(event,'al-naz')">Tutte</button><div class="ms-panel" id="al-naz-panel" style="display:none"></div></div></div>
     <div class="fg"><label>Ruolo</label>
       <div class="ms-wrap" id="al-job"><button class="ms-btn" id="al-job-btn" onclick="toggleMs(event,'al-job')">Tutti</button><div class="ms-panel" id="al-job-panel" style="display:none"></div></div></div>
+    <div class="fg"><label>Tipo premio</label>
+      <div class="ms-wrap" id="al-tipo"><button class="ms-btn" id="al-tipo-btn" onclick="toggleMs(event,'al-tipo')">Tutti i tipi</button><div class="ms-panel" id="al-tipo-panel" style="display:none"></div></div></div>
+    <div class="fg"><label>Negozio</label>
+      <div class="ms-wrap" id="al-store"><button class="ms-btn" id="al-store-btn" onclick="toggleMs(event,'al-store')">Tutti</button><div class="ms-panel" id="al-store-panel" style="display:none"></div></div></div>
     <div class="fg"><label>Perimetro dipendenti</label>
       <div class="l4l-toggle">
         <button class="l4l-btn active" id="al-l4l-tutti" onclick="setAlertL4LDip('tutti')">Tutti</button>
@@ -3351,10 +3355,14 @@ function popAlertFilters(){
   setMsOpts('al-anno',years.map(y=>({v:y,l:String(y)})),renderAlert);
   setMsOpts('al-naz',naz.map(n=>({v:n,l:n})),renderAlert);
   setMsOpts('al-job',jobs.map(j=>({v:j,l:j})),renderAlert);
+  const tipi=[...new Set(allData.map(r=>r._tipo))].sort();
+  const stores=[...new Set(allData.map(r=>r.store).filter(Boolean))].sort();
+  setMsOpts('al-tipo',tipi.map(t=>({v:t,l:TIPO_LBL_MAP[t]||t})),renderAlert);
+  setMsOpts('al-store',stores.map(s=>({v:s,l:s})),renderAlert);
 }
 function setAlertL4LDip(v){alertL4LDip=v;['tutti','l4l','new'].forEach(x=>{const el=document.getElementById('al-l4l-'+x);if(el)el.classList.toggle('active',x===v);});renderAlert();}
 function resetAlertFilters(){
-  ['al-mese','al-anno','al-naz','al-job'].forEach(id=>{document.querySelectorAll('#'+id+'-panel input').forEach(i=>{i.checked=false;i.indeterminate=false;});updateMsLabel(id);});
+  ['al-mese','al-anno','al-naz','al-job','al-tipo','al-store'].forEach(id=>{document.querySelectorAll('#'+id+'-panel input').forEach(i=>{i.checked=false;i.indeterminate=false;});updateMsLabel(id);});
   setAlertL4LDip('tutti');
 }
 function resetAlertThresholds(){
@@ -3368,13 +3376,15 @@ function alertThresholds(){
   return {th,tol};
 }
 function getAlertRows(){
-  const meses=getMsVals('al-mese'),years=getMsVals('al-anno'),naz=getMsVals('al-naz'),jobs=getMsVals('al-job');
+  const meses=getMsVals('al-mese'),years=getMsVals('al-anno'),naz=getMsVals('al-naz'),jobs=getMsVals('al-job'),tipi=getMsVals('al-tipo'),stores=getMsVals('al-store');
   let base=allData.filter(r=>{
     if(!rmlMonth(r)) return false;
     if(meses.length&&!meses.includes(String(r.month))) return false;
     if(years.length&&!years.includes(String(r.year))) return false;
     if(naz.length&&!naz.includes(r._nazione)) return false;
     if(jobs.length&&!jobs.includes(r.job)) return false;
+    if(tipi.length&&!tipi.includes(r._tipo)) return false;
+    if(stores.length&&!stores.includes(r.store)) return false;
     return true;
   });
   if(alertL4LDip!=='tutti'){
@@ -3406,21 +3416,33 @@ function alertCompute(){
     a.compInc={}; CK.forEach(k=>a.compInc[k]=a.rml>0?a[k]/a.rml*100:0);
     return a;
   });
+  // piano del negozio (data-driven su TUTTI i dati): componenti mai attive = non previste.
+  // I dept store hanno solo BDG/QTY → niente SY/Subscription: non vanno segnalati per quelli.
+  const storeActive={};
+  allData.forEach(r=>{const s=r.store;if(!s)return;const set=storeActive[s]||(storeActive[s]=new Set());CK.forEach(k=>{if((r[k]||0)>0)set.add(k);});});
+  const isDept=s=>{const a=storeActive[s];return a?(!a.has('cShopper')&&!a.has('cPrivilege')):false;};
+  emps.forEach(e=>{e.dept=isDept(e.store);});
+  // medie per RUOLO × TIPO NEGOZIO (dept vs normale) → confronto equo
   const byRole={};
-  emps.forEach(e=>{const b=byRole[e.job]||(byRole[e.job]={n:0,inc:0,bdgFreq:0,compInc:{}});b.n++;b.inc+=e.inc;b.bdgFreq+=e.bdgFreq;CK.forEach(k=>b.compInc[k]=(b.compInc[k]||0)+e.compInc[k]);});
+  emps.forEach(e=>{const key=e.job+'|'+(e.dept?'D':'N');const b=byRole[key]||(byRole[key]={n:0,inc:0,bdgFreq:0,compInc:{}});b.n++;b.inc+=e.inc;b.bdgFreq+=e.bdgFreq;CK.forEach(k=>b.compInc[k]=(b.compInc[k]||0)+e.compInc[k]);});
   Object.values(byRole).forEach(b=>{b.inc/=b.n;b.bdgFreq/=b.n;CK.forEach(k=>b.compInc[k]/=b.n);});
   emps.forEach(e=>{
     const healthy=th[e.job]!=null?th[e.job]:null;
     e.healthy=healthy; e.dev=healthy!=null?+(e.inc-healthy).toFixed(1):null;
     e.status=healthy==null?'na':(e.dev>tol?'sopra':e.dev<-tol?'sotto':'ok');
     e.reasons=[];
-    const peer=byRole[e.job];
+    const peer=byRole[e.job+'|'+(e.dept?'D':'N')];
+    const active=storeActive[e.store]||new Set();
     if((e.status==='sopra'||e.status==='sotto')&&peer){
       const under=e.status==='sotto';
-      if(under&&e.bdgFreq<peer.bdgFreq-15) e.reasons.push('BDG preso di rado: '+e.bdgFreq.toFixed(0)+'% dei mesi (media ruolo '+peer.bdgFreq.toFixed(0)+'%)');
-      if(!under&&e.bdgFreq>peer.bdgFreq+15) e.reasons.push('BDG molto frequente: '+e.bdgFreq.toFixed(0)+'% dei mesi (media ruolo '+peer.bdgFreq.toFixed(0)+'%)');
-      const devs=CK.map(k=>({k,d:e.compInc[k]-(peer.compInc[k]||0)})).filter(x=>under?x.d<-0.3:x.d>0.3).sort((a,b)=>under?a.d-b.d:b.d-a.d);
-      devs.slice(0,2).forEach(x=>e.reasons.push(ALERT_COMPL[x.k]+(under?' sotto la media':' sopra la media')+' ('+e.compInc[x.k].toFixed(1)+'% vs '+(peer.compInc[x.k]||0).toFixed(1)+'% pari ruolo)'));
+      if(e.dept) e.reasons.push('Negozio dept store: piano solo BDG/QTY (SY/Subscription non previsti)');
+      if(active.has('cBdg')){
+        if(under&&e.bdgFreq<peer.bdgFreq-15) e.reasons.push('BDG preso di rado: '+e.bdgFreq.toFixed(0)+'% dei mesi (media simili '+peer.bdgFreq.toFixed(0)+'%)');
+        if(!under&&e.bdgFreq>peer.bdgFreq+15) e.reasons.push('BDG molto frequente: '+e.bdgFreq.toFixed(0)+'% dei mesi (media simili '+peer.bdgFreq.toFixed(0)+'%)');
+      }
+      // solo i premi previsti dal piano del negozio (attivi nei dati)
+      const devs=CK.filter(k=>active.has(k)).map(k=>({k,d:e.compInc[k]-(peer.compInc[k]||0)})).filter(x=>under?x.d<-0.3:x.d>0.3).sort((a,b)=>under?a.d-b.d:b.d-a.d);
+      devs.slice(0,2).forEach(x=>e.reasons.push(ALERT_COMPL[x.k]+(under?' sotto la media':' sopra la media')+' ('+e.compInc[x.k].toFixed(1)+'% vs '+(peer.compInc[x.k]||0).toFixed(1)+'% pari ruolo/tipo)'));
       if(!e.reasons.length) e.reasons.push(under?'Incidenza complessiva sotto soglia':'Incidenza complessiva sopra soglia');
     }
   });
