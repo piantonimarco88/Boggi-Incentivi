@@ -472,9 +472,9 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
       <div class="l4l-toggle" id="yoy-l4lanni-btns"></div>
     </div>
     <div class="l4l-wrap"><label class="fg" style="font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.4px">Solo dipendenti attivi <span class="info-tip" data-tip="Attivi = presenti nel file del mese più recente caricato. Filtro condiviso fra Anno su Anno, Stipendi e Alert.">i</span></label>
-      <div class="l4l-toggle">
-        <button class="l4l-btn active" id="yoy-active-no" onclick="setActiveOnly(false)">No</button>
-        <button class="l4l-btn" id="yoy-active-si" onclick="setActiveOnly(true)">Sì</button>
+      <div class="l4l-toggle" style="display:flex">
+        <button class="l4l-btn active" id="yoy-active-no" style="flex:1" onclick="setActiveOnly(false)">No</button>
+        <button class="l4l-btn" id="yoy-active-si" style="flex:1" onclick="setActiveOnly(true)">Sì</button>
       </div></div>
     <button class="yoy-kpi-toggle" id="yoyKpiToggleBtn" onclick="toggleYoyKpis()">▤ Box KPI visibili</button>
     <button class="btn-rst" onclick="resetYoyFilters()">↺ Reset</button>
@@ -609,9 +609,9 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
         <button class="l4l-btn" id="sal-l4ldip-new" onclick="setSalL4LDip('new')">Nuovi</button>
       </div></div>
     <div class="l4l-wrap"><label class="fg" style="font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.4px">Solo dipendenti attivi <span class="info-tip" data-tip="Attivi = presenti nel file del mese più recente caricato. Filtro condiviso fra Anno su Anno, Stipendi e Alert.">i</span></label>
-      <div class="l4l-toggle">
-        <button class="l4l-btn active" id="sal-active-no" onclick="setActiveOnly(false)">No</button>
-        <button class="l4l-btn" id="sal-active-si" onclick="setActiveOnly(true)">Sì</button>
+      <div class="l4l-toggle" style="display:flex">
+        <button class="l4l-btn active" id="sal-active-no" style="flex:1" onclick="setActiveOnly(false)">No</button>
+        <button class="l4l-btn" id="sal-active-si" style="flex:1" onclick="setActiveOnly(true)">Sì</button>
       </div></div>
     <button class="yoy-kpi-toggle" id="salKpiToggleBtn" onclick="toggleSalKpis()">▤ € visibili</button>
     <button class="btn-rst" onclick="resetSalFilters()">↺ Reset</button>
@@ -829,9 +829,9 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
         <button class="l4l-btn" id="al-l4l-new" onclick="setAlertL4LDip('new')">Nuovi</button>
       </div></div>
     <div class="fg"><label>Solo dipendenti attivi <span class="info-tip" data-tip="Attivi = presenti nel file del mese più recente caricato. Filtro condiviso con Anno su Anno e Stipendi.">i</span></label>
-      <div class="l4l-toggle">
-        <button class="l4l-btn active" id="al-active-no" onclick="setActiveOnly(false)">No</button>
-        <button class="l4l-btn" id="al-active-si" onclick="setActiveOnly(true)">Sì</button>
+      <div class="l4l-toggle" style="display:flex">
+        <button class="l4l-btn active" id="al-active-no" style="flex:1" onclick="setActiveOnly(false)">No</button>
+        <button class="l4l-btn" id="al-active-si" style="flex:1" onclick="setActiveOnly(true)">Sì</button>
       </div></div>
     <button class="btn-rst" onclick="resetAlertFilters()">↺ Reset filtri</button>
   </div>
@@ -860,6 +860,8 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
         <button class="btn-rst" onclick="resetAlertThresholds()">↺ Reset soglie</button>
       </div>
       <div id="alertKpiRow" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px"></div>
+      <div class="cc-title" id="alertCompHd" style="display:none;margin:2px 0 8px;font-size:11px;color:#9aa">Peso di ciascun tipo di premio sull'incidenza media <span class="info-tip" data-tip="Per ogni tipo di premio: incidenza media sul RML (premio del tipo / RML). 'Altri premi' raccoglie i premi non scomposti (QTY/pezzi, Customer Service, Articoli, Visual, semestrali). La somma di tutti i pesi è uguale all'Incidenza media totale.">i</span></div>
+      <div id="alertKpiComp" style="display:none;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px"></div>
       <div class="cc full" style="margin-top:4px">
         <div class="cc-head"><div class="cc-title">Quadrante — Stipendio (RML) × scostamento incidenza dalla soglia (pp)</div></div>
         <div class="cw tall"><canvas id="alert_c_quad"></canvas></div>
@@ -969,7 +971,11 @@ const ENTE_CAMBI={
 // Enti per cui si usa SEMPRE il cambio statico, ignorando quello dei file:
 // i consuntivi riportano per il CHF un fattore 1.3756 (gross-up costo lavoro,
 // non un cambio valuta reale) → forziamo 1.10.
-const RATE_FORCE_STATIC=new Set([209]); // 209 = Svizzera (CHF → 1.10)
+// 209 = Svizzera: i consuntivi riportano 1.3756 (gross-up costo lavoro, non un
+//        cambio reale) → forziamo 1.10.
+// 240 = Danimarca: alcuni file lasciano la DKK non convertita (rapporto 1.0) →
+//        forziamo sempre 0.13 EUR per 1 DKK (richiesta utente).
+const RATE_FORCE_STATIC=new Set([209,240]);
 // ═══════════════════════════════════════════════════════════════
 
 // Risolve la nazione di un ente a partire dalla config sopra.
@@ -1092,6 +1098,14 @@ function applyUniformRates(){
   });
   // 2. TARGET[ente] = cambio del periodo più recente, con override CHF e guardrail
   const TARGET={};
+  // Baseline statico per ogni ente non-EUR: garantisce la conversione anche per le
+  // righe prive di RML grezzo (es. vecchie sessioni o file che lasciano la valuta
+  // locale senza conversione, vedi DKK Aprile) che altrimenti resterebbero in LC.
+  // Le righe con dati grezzi affidabili sovrascrivono questo valore qui sotto.
+  Object.keys(ENTE_CAMBI).forEach(eStr=>{
+    const e=+eStr, c=ENTE_CAMBI[e];
+    if(c&&c.valuta!=='EUR'&&c.cambio>0) TARGET[e]=c.cambio;
+  });
   Object.keys(src).forEach(eStr=>{
     const e=+eStr;
     const topMk=Object.keys(src[e]).map(Number).sort((a,b)=>b-a)[0];
@@ -3515,6 +3529,26 @@ function renderAlert(){
     _alCard('Sopra soglia',sopra+' ('+(tot?(sopra/tot*100).toFixed(0):0)+'%)','premi alti vs stipendio','p'),
     _alCard('Incidenza media',incAvg.toFixed(1)+'%','erogato / RML','a'),
   ].join('');
+  // KPI peso per tipo di premio: media su tutti i dipendenti dell'incidenza di
+  // ogni componente (comp/RML). La somma dei pesi = Incidenza media (incAvg).
+  const CK=Object.keys(ALERT_COMPL);
+  const compAvg={}; CK.forEach(k=>compAvg[k]=tot?emps.reduce((s,e)=>s+(e.compInc[k]||0),0)/tot:0);
+  const sumComp=CK.reduce((s,k)=>s+compAvg[k],0);
+  // "Altri premi" = residuo per chiudere la somma sull'Incidenza media: copre i
+  // premi non scomposti (QTY/pezzi dept store, Customer Service, Articoli, Visual,
+  // semestrali). Così la somma di tutte le card = Incidenza media (erogato/RML).
+  const resid=incAvg-sumComp;
+  const compHd=document.getElementById('alertCompHd'), compRow=document.getElementById('alertKpiComp');
+  if(compRow){
+    const cards=CK.map(k=>{
+      const v=compAvg[k], share=incAvg>0?(v/incAvg*100):0;
+      return _alCard(ALERT_COMPL[k],v.toFixed(1)+'%',share.toFixed(0)+'% dell’incidenza','');
+    });
+    if(Math.abs(resid)>0.05) cards.push(_alCard('Altri premi',resid.toFixed(1)+'%',(incAvg>0?(resid/incAvg*100):0).toFixed(0)+'% dell’incidenza','a'));
+    compRow.innerHTML=cards.join('');
+    compRow.style.display=tot?'grid':'none';
+    if(compHd) compHd.style.display=tot?'block':'none';
+  }
   renderAlertQuad(emps,tol);
   renderAlertTable(emps);
 }
