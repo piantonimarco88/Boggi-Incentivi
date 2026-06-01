@@ -570,7 +570,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='8.56'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='8.57'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -4030,20 +4030,68 @@ function exportMidSeasonExcel(){
   var isP=MODE==="preventivo";
   var smvsm=E.filter(function(e){return isSMVSM(e);});
   var stagione=CFG_SEASON+String(CFG_YEAR).slice(-2);
-  var headers=["STAGIONE","STORE ID","NEGOZIO","MATRICOLA","COGNOME","NOME","RUOLO","RML","BASE KPI","MAX MID-SEASON (30%)","MID-SEASON EARNED","VALUTA","MID-SEASON EUR","ESCLUSO"];
+  var kpiCols=SEAS_CFG.kpi.filter(function(kd){return kd.weight>0;});
+
+  // Build header
+  var headers=["STAGIONE","STORE ID","NEGOZIO","MATRICOLA","COGNOME","NOME","RUOLO","VALUTA",
+    "RML","RML x6","BASE PREMIO (RML×6×"+Math.round(SEAS_CFG.basePct*100)+"%)",
+    "MAX MID-SEASON (30%)"];
+  if(!isP){
+    headers.push("SBARRAMENTO FAT OK","SCOSTAMENTO FAT%","SBARRAMENTO CR OK","CR CONSUNTIVO","CR TARGET");
+  }
+  kpiCols.forEach(function(kd){
+    headers.push(kd.label.toUpperCase()+" (PESO "+Math.round(kd.weight*100)+"%)");
+    if(!isP)headers.push(kd.label.toUpperCase()+" % RAGGIUNTO");
+  });
+  headers.push("KPI SCORE","MID-SEASON LC","MID-SEASON EUR","ESCLUSO");
+
   var rows=[headers];
   smvsm.forEach(function(e){
     var rlSem=(e.rl||0)*6;
-    var base=rlSem*SEAS_CFG.basePct;
+    var base=Math.round(rlSem*SEAS_CFG.basePct*100)/100;
     var kpiSet=seasGetKpiSet(e);
     var w=0;kpiSet.forEach(function(kd){if(seasKpiActive(kd.k,e))w+=kd.weight;});
     var midMax=Math.round(base*0.30*w*100)/100;
     var midEarned=calcMidSeason(e);
-    var excl=(SEAS[e.m]&&SEAS[e.m].excluded)?1:0;
+    var excl=(SEAS[e.m]&&SEAS[e.m].excluded);
     var totLC=excl?0:midEarned;
-    var totEUR=totLC*(e.ex||1);
-    rows.push([stagione,e.si,e.s,e.m,e.c,e.n,e.f||e.j,e.rl,Math.round(base*100)/100,midMax,totLC,e.cu||'EUR',Math.round(totEUR*100)/100,excl?'SI':'NO']);
+    var totEUR=Math.round(totLC*(e.ex||1)*100)/100;
+    var auto=isP?null:seasAutoData(e);
+
+    var r=[stagione,e.si,e.s,e.m,e.c,e.n,e.f||e.j,e.cu||'EUR',
+      e.rl,rlSem,base,midMax];
+
+    if(!isP){
+      var fatOk=auto&&auto.scost>=0;
+      var crT=auto?auto.cr_target:null, crA=auto?auto.cr_actual:null;
+      var crOk=(crT===null||crA===null)?true:(crA>=crT);
+      r.push(fatOk?'SI':'NO', auto?Math.round(auto.scost*100)/100:0,
+             crOk?'SI':'NO', crA!==null?crA:'', crT!==null?crT:'');
+    }
+
+    var kpiScore=0;
+    kpiCols.forEach(function(kd){
+      var active=seasKpiActive(kd.k,e);
+      var inSet=kpiSet.some(function(x){return x.k===kd.k&&x.weight>0;});
+      if(!active||!inSet){r.push('N/A');if(!isP)r.push('');}
+      else if(isP){
+        r.push('SI (preventivo)');
+        kpiScore+=kd.weight;
+      } else {
+        var sbarOk=(auto&&auto.scost>=0);
+        var achieved=sbarOk&&seasIsKpiAchieved(kd,auto);
+        if(achieved)kpiScore+=kd.weight;
+        r.push(achieved?'SI':'NO');
+        // pct value
+        var pct=auto&&auto[kd.k+'_pct']!==undefined?Math.round(auto[kd.k+'_pct']*100)/100:0;
+        r.push(pct);
+      }
+    });
+
+    r.push(Math.round(kpiScore*100)/100, totLC, totEUR, excl?'SI':'NO');
+    rows.push(r);
   });
+
   var ws=XLSX.utils.aoa_to_sheet(rows);
   var wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Mid-Season");
@@ -4259,24 +4307,104 @@ function exportSeasonalExcel(){
   var isP=MODE==="preventivo";
   var smvsm=E.filter(function(e){return isSMVSM(e);});
   var stagione=CFG_SEASON+String(CFG_YEAR).slice(-2);
-  var headers=["STAGIONE","STORE ID","NEGOZIO","MATRICOLA","COGNOME","NOME","RUOLO","RML","RML x6","KPI SCORE","M.TURNOVER","M.INVENTARIO","BOOST","TOTALE","VALUTA","TOTALE EUR","ESCLUSO"];
-  var rows=[headers];
-  smvsm.forEach(function(e){
-    var rlSem=(e.rl||0)*6;
-    var base=rlSem*SEAS_CFG.basePct;
-    var kpiSet=seasGetKpiSet(e);
-    var kpiScore=0;
-    var auto=(!isP)?seasAutoData(e):null;
-    if(isP){kpiSet.forEach(function(kd){if(seasKpiActive(kd.k,e))kpiScore+=kd.weight;});}
-    else{kpiSet.forEach(function(kd){if(!seasKpiActive(kd.k,e))return;if(seasIsKpiAchieved(kd,auto))kpiScore+=kd.weight;});}
-    var m1=isP?seasMoltTurnover(3.01):seasMoltTurnover(auto?auto.scost:0);
-    var m2=isP?seasMoltInventarioV(0):seasMoltInventarioV(auto?auto.inv:0);
-    var val=Math.round(base*kpiScore*m1*m2*100)/100;
-    var excl=(SEAS[e.m]&&SEAS[e.m].excluded)?1:0;
-    var totLC=excl?0:val;
-    var totEUR=totLC*(e.ex||1);
-    rows.push([stagione,e.si,e.s,e.m,e.c,e.n,e.f||e.j,e.rl,rlSem,Math.round(kpiScore*100)/100,m1,m2,Math.round(m1*m2*100)/100,totLC,e.cu||'EUR',totEUR,excl?'SI':'NO']);
+  var kpiCols=SEAS_CFG.kpi;
+  var maxM1=seasMoltTurnover(3.01), maxM2=seasMoltInventarioV(0);
+
+  // ── Header ───────────────────────────────────────────────────
+  var headers=["STAGIONE","STORE ID","NEGOZIO","MATRICOLA","COGNOME","NOME","RUOLO","VALUTA",
+    "RML","RML x6","BASE PREMIO (RML×6×"+Math.round(SEAS_CFG.basePct*100)+"%)",
+    "MAX PREMIO (base×boost_max)","DEPT STORE"];
+  // KPI columns
+  kpiCols.forEach(function(kd){
+    headers.push(kd.label.toUpperCase()+" (PESO "+Math.round(kd.weight*100)+"%)");
+    if(!isP)headers.push(kd.label.toUpperCase()+" % RAGGIUNTO");
   });
+  // Multiplier columns
+  if(!isP)headers.push("SCOSTAMENTO FATTURATO %");
+  headers.push("MOLTIPLICATORE TURNOVER");
+  if(!isP)headers.push("INC. INVENTARIALE (cogs)");
+  headers.push("MOLTIPLICATORE INVENTARIO","BOOST (M.Turn×M.Inv)","KPI SCORE");
+  // Result columns
+  headers.push("TOTALE LORDO LC","MID-SEASON GIÀ EROGATO LC","TOTALE NETTO LC",
+               "TOTALE NETTO EUR","ESCLUSO");
+  // Dept extra
+  headers.push("DEPT: BDG MENSILE","DEPT: BDG×6","DEPT: QUOTA QTY (50%)");
+
+  var rows=[headers];
+
+  smvsm.forEach(function(e){
+    var cu=e.cu||'EUR', ex=e.ex||1;
+    var excl=!!(SEAS[e.m]&&SEAS[e.m].excluded);
+    var midPaid=(!isP&&SEAS[e.m]&&SEAS[e.m].midPaid>0)?SEAS[e.m].midPaid:0;
+    var isDept=isD(e.si);
+
+    var rlSem=(e.rl||0)*6;
+    var base=Math.round(rlSem*SEAS_CFG.basePct*100)/100;
+    var maxBoost=Math.round(maxM1*maxM2*100)/100;
+    var maxPremio=isDept?Math.round((e.ib||0)*6*1.5*100)/100:Math.round(base*maxBoost*100)/100;
+
+    var kpiSet=seasGetKpiSet(e);
+    var auto=isP?null:seasAutoData(e);
+    var kpiScore=0;
+
+    var r=[stagione,e.si,e.s,e.m,e.c,e.n,e.f||e.j,cu,
+      e.rl,rlSem,isDept?'':base, isDept?'':maxPremio, isDept?'SI':'NO'];
+
+    // KPI per-column
+    kpiCols.forEach(function(kd){
+      if(isDept){r.push('');if(!isP)r.push('');return;}
+      var active=seasKpiActive(kd.k,e);
+      var inSet=kpiSet.some(function(x){return x.k===kd.k&&x.weight>0;});
+      if(!active||!inSet){r.push('N/A');if(!isP)r.push('');return;}
+      if(isP){r.push('SI (preventivo)');kpiScore+=kd.weight;}
+      else{
+        var achieved=seasIsKpiAchieved(kd,auto);
+        if(achieved)kpiScore+=kd.weight;
+        r.push(achieved?'SI':'NO');
+        var pct=auto&&auto[kd.k+'_pct']!==undefined?Math.round(auto[kd.k+'_pct']*100)/100:0;
+        r.push(pct);
+      }
+    });
+
+    // Multipliers
+    var m1,m2,scost=0,inv=0;
+    if(isDept){
+      m1=1;m2=1;
+      if(!isP)r.push('');
+      r.push(m1);
+      if(!isP)r.push('');
+      r.push(m2,1,1);
+    } else {
+      if(isP){
+        m1=maxM1;m2=maxM2;
+        r.push(m1);r.push(m2);
+      } else {
+        m1=seasMoltTurnover(auto?auto.scost:0);
+        m2=seasMoltInventarioV(auto?auto.inv:0);
+        scost=auto?auto.scost:0;inv=auto?auto.inv:0;
+        r.push(Math.round(scost*100)/100);
+        r.push(m1);
+        r.push(Math.round(inv*10000)/10000);
+        r.push(m2);
+      }
+      r.push(Math.round(m1*m2*100)/100);
+      r.push(Math.round(kpiScore*100)/100);
+    }
+
+    // Results
+    var gross=isDept?Math.round((e.ib||0)*6*1.5*100)/100:Math.round(base*kpiScore*m1*m2*100)/100;
+    var net=Math.max(0,Math.round((gross-midPaid)*100)/100);
+    var totLC=excl?0:net;
+    var totEUR=Math.round(totLC*ex*100)/100;
+    r.push(excl?0:gross, midPaid, totLC, totEUR, excl?'SI':'NO');
+
+    // Dept breakdown (blank for normal stores)
+    if(isDept){r.push(e.ib||0,Math.round((e.ib||0)*6*100)/100,Math.round((e.ib||0)*6*0.5*100)/100);}
+    else{r.push('','','');}
+
+    rows.push(r);
+  });
+
   var ws=XLSX.utils.aoa_to_sheet(rows);
   var wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Seasonal");
