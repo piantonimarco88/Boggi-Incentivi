@@ -675,28 +675,42 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
       <div class="whatif-note" id="whatifNote"></div>
       <div class="whatif-params">
         <div class="wp-group">
-          <div class="wp-lbl">BDG base € per ruolo</div>
+          <div class="wp-lbl">Ruolo <span id="wi-role-hint" style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb"></span></div>
           <div class="wp-roles">
-            <label class="wp-f"><span>SM</span><input type="number" id="wi-base-SM" value="300" min="0" step="10" oninput="onWhatifInput()"></label>
-            <label class="wp-f"><span>VSM</span><input type="number" id="wi-base-VSM" value="250" min="0" step="10" oninput="onWhatifInput()"></label>
-            <label class="wp-f"><span>SSAP</span><input type="number" id="wi-base-SSAP" value="250" min="0" step="10" oninput="onWhatifInput()"></label>
-            <label class="wp-f"><span>SSA</span><input type="number" id="wi-base-SSA" value="200" min="0" step="10" oninput="onWhatifInput()"></label>
-            <label class="wp-f"><span>SA</span><input type="number" id="wi-base-SA" value="150" min="0" step="10" oninput="onWhatifInput()"></label>
-            <label class="wp-f"><span>JSA</span><input type="number" id="wi-base-JSA" value="100" min="0" step="10" oninput="onWhatifInput()"></label>
+            <label class="wp-f"><span>conferma o cambia</span>
+              <select id="wi-role" onchange="onWhatifRoleChange()">
+                <option value="SM">SM</option><option value="VSM">VSM</option><option value="SSAP">SSAP</option>
+                <option value="SSA">SSA</option><option value="SA">SA</option><option value="JSA">JSA</option>
+                <option value="SCS">SCS (cassa)</option>
+              </select></label>
           </div>
         </div>
         <div class="wp-group">
-          <div class="wp-lbl">Incidenze %</div>
+          <div class="wp-lbl">BDG base € (ruolo)</div>
           <div class="wp-roles">
-            <label class="wp-f"><span>Shopper Yield % (su RML)</span><input type="number" id="wi-sy" value="3" min="0" step="0.5" oninput="onWhatifInput()"></label>
-            <label class="wp-f"><span>Subscription % (su RML)</span><input type="number" id="wi-sub" value="2" min="0" step="0.5" oninput="onWhatifInput()"></label>
-            <label class="wp-f"><span>Digital % (su BDG)</span><input type="number" id="wi-dig" value="30" min="0" step="5" oninput="onWhatifInput()"></label>
+            <label class="wp-f" data-role="SM"><span>SM</span><input type="number" id="wi-base-SM" value="300" min="0" step="10" oninput="onWhatifInput()"></label>
+            <label class="wp-f" data-role="VSM"><span>VSM</span><input type="number" id="wi-base-VSM" value="250" min="0" step="10" oninput="onWhatifInput()"></label>
+            <label class="wp-f" data-role="SSAP"><span>SSAP</span><input type="number" id="wi-base-SSAP" value="250" min="0" step="10" oninput="onWhatifInput()"></label>
+            <label class="wp-f" data-role="SSA"><span>SSA</span><input type="number" id="wi-base-SSA" value="200" min="0" step="10" oninput="onWhatifInput()"></label>
+            <label class="wp-f" data-role="SA"><span>SA</span><input type="number" id="wi-base-SA" value="150" min="0" step="10" oninput="onWhatifInput()"></label>
+            <label class="wp-f" data-role="JSA"><span>JSA</span><input type="number" id="wi-base-JSA" value="100" min="0" step="10" oninput="onWhatifInput()"></label>
+            <label class="wp-f" data-role="SCS"><span>SCS</span><input type="number" id="wi-base-SCS" value="150" min="0" step="10" oninput="onWhatifInput()"></label>
+          </div>
+        </div>
+        <div class="wp-group">
+          <div class="wp-lbl">Parametri premi</div>
+          <div class="wp-roles">
+            <label class="wp-f" data-comp="digital"><span>Digital % (su BDG)</span><input type="number" id="wi-dig" value="30" min="0" step="5" oninput="onWhatifInput()"></label>
+            <label class="wp-f" data-comp="sy"><span>Shopper Yield % (su RML)</span><input type="number" id="wi-sy" value="3" min="0" step="0.5" oninput="onWhatifInput()"></label>
+            <label class="wp-f" data-comp="sub"><span>Subscription % (su RML)</span><input type="number" id="wi-sub" value="2" min="0" step="0.5" oninput="onWhatifInput()"></label>
+            <label class="wp-f" data-comp="sas"><span>SAS €/unità (max 200€)</span><input type="number" id="wi-sas" value="2" min="0" step="0.5" oninput="onWhatifInput()"></label>
+            <label class="wp-f" data-comp="dcc"><span>DCC % transazioni (max 100€)</span><input type="number" id="wi-dcc" value="0.2" min="0" step="0.05" oninput="onWhatifInput()"></label>
           </div>
         </div>
         <div class="wp-group">
           <div class="wp-lbl">Stipendio <span id="wi-rml-hint" style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb"></span></div>
           <div class="wp-roles">
-            <label class="wp-f"><span>RML mensile scenario (€)</span><input type="number" id="wi-rml" min="0" step="50" oninput="onWhatifInput()"></label>
+            <label class="wp-f" data-comp="rml"><span>RML mensile scenario (€)</span><input type="number" id="wi-rml" min="0" step="50" oninput="onWhatifInput()"></label>
           </div>
         </div>
         <button class="btn-rst" onclick="resetWhatif()">↺ Reset default PDF</button>
@@ -2671,7 +2685,8 @@ function renderYoy(){
 // (parametro_nuovo / default). Erogato esatto su tutti i formati; tetti
 // ricostruiti dalle regole (mBdg per BDG/Digital, RML per SY/Subscription).
 // ═══════════════════════════════════════════════════════════════
-const WHATIF_DEF={base:{SM:300,VSM:250,SSAP:250,SSA:200,SA:150,JSA:100},sy:0.03,sub:0.02,dig:0.30};
+const WHATIF_DEF={base:{SM:300,VSM:250,SSAP:250,SSA:200,SA:150,JSA:100,SCS:150},sy:0.03,sub:0.02,dig:0.30,sas:2,dcc:0.002};
+const CASHIER_ROLES=['SCS','ISO']; // ruoli cassa (SAS/DCC); gli altri = vendita (Digital/SY)
 let whatifCharts={}, _whatifSig=null;
 
 // ─── FILTRI TAB WHAT-IF (Dipendente + Mese + Anno) ───────────
@@ -2709,8 +2724,29 @@ function whatifParams(){
     base[r]=el&&el.value!==''?+el.value:WHATIF_DEF.base[r];
   });
   const num=(id,d)=>{const el=document.getElementById(id);return el&&el.value!==''?+el.value/100:d;};
-  return {base, sy:num('wi-sy',0.03), sub:num('wi-sub',0.02), dig:num('wi-dig',0.30)};
+  const raw=(id,d)=>{const el=document.getElementById(id);return el&&el.value!==''?+el.value:d;};
+  return {base, sy:num('wi-sy',0.03), sub:num('wi-sub',0.02), dig:num('wi-dig',0.30),
+          sas:raw('wi-sas',2), dcc:num('wi-dcc',0.002)};
 }
+
+// Ruolo prevalente fra le righe del dipendente selezionato.
+function detectRole(rows){
+  const cnt={}; rows.forEach(r=>{if(r.job)cnt[r.job]=(cnt[r.job]||0)+1;});
+  return Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0]||'';
+}
+function currentWhatifRole(){const el=document.getElementById('wi-role');return el?el.value:'';}
+// Mostra solo i parametri dei premi pertinenti al ruolo (es. SCS → SAS+DCC, no Digital/SY).
+function applyWhatifRoleVisibility(){
+  const role=currentWhatifRole(), cashier=CASHIER_ROLES.includes(role);
+  document.querySelectorAll('#whatifPanel [data-role]').forEach(el=>{
+    el.style.display=el.getAttribute('data-role')===role?'':'none';
+  });
+  const show={digital:!cashier, sy:!cashier, sub:true, sas:cashier, dcc:cashier, rml:true};
+  document.querySelectorAll('#whatifPanel [data-comp]').forEach(el=>{
+    el.style.display=show[el.getAttribute('data-comp')]?'':'none';
+  });
+}
+function onWhatifRoleChange(){applyWhatifRoleVisibility();renderWhatif();}
 
 // Aggrega per anno erogato/massimale Reale e Scenario per le righe filtrate.
 // kRml = stipendio scenario / stipendio reale → scala SY/Subscription (incidenze su RML)
@@ -2719,15 +2755,22 @@ function whatifAgg(rows,p,kRml){
   kRml=kRml||1;
   const dB=WHATIF_DEF.base, dSy=WHATIF_DEF.sy, dSub=WHATIF_DEF.sub, dDig=WHATIF_DEF.dig;
   const by={};
+  const dSas=WHATIF_DEF.sas, dDcc=WHATIF_DEF.dcc;
   rows.forEach(r=>{
     const role=r.job, defB=dB[role]||0, newB=(p.base[role]!=null)?p.base[role]:defB;
+    const cashier=CASHIER_ROLES.includes(role);
     const rB=defB>0?newB/defB:1;
     const rDig=(p.dig/dDig)*rB, rSy=(p.sy/dSy)*kRml, rSub=(p.sub/dSub)*kRml;
+    const rSas=p.sas/dSas, rDcc=p.dcc/dDcc;
     const mBdg=r.mBdg||0, rml=r.rml_period||0;
-    // tetti per componente (ricostruiti dalle regole)
-    const capBdg=mBdg, capDig=dDig*mBdg, capSy=dSy*rml, capSub=dSub*rml;
-    const dErog=(r.cBdg||0)*(rB-1)+(r.cDigital||0)*(rDig-1)+(r.cShopper||0)*(rSy-1)+(r.cPrivilege||0)*(rSub-1);
-    const dMass=capBdg*(rB-1)+capDig*(rDig-1)+capSy*(rSy-1)+capSub*(rSub-1);
+    // tetti per componente (ricostruiti dalle regole), gated per famiglia di ruolo
+    const capBdg=mBdg, capSub=dSub*rml;
+    const capDig=cashier?0:dDig*mBdg, capSy=cashier?0:dSy*rml;
+    const capSas=cashier?200:0, capDcc=cashier?100:0;
+    const dErog=(r.cBdg||0)*(rB-1)+(r.cDigital||0)*(rDig-1)+(r.cShopper||0)*(rSy-1)+(r.cPrivilege||0)*(rSub-1)
+                +(r.cSas||0)*(rSas-1)+(r.cDcc||0)*(rDcc-1);
+    const dMass=capBdg*(rB-1)+capDig*(rDig-1)+capSy*(rSy-1)+capSub*(rSub-1)
+                +capSas*(rSas-1)+capDcc*(rDcc-1);
     const y=r.year||'?';
     if(!by[y]) by[y]={erR:0,maR:0,erS:0,maS:0,rmlR:0,rmlS:0,keys:new Set()};
     const b=by[y];
@@ -2742,8 +2785,9 @@ function resetWhatif(){
   Object.keys(WHATIF_DEF.base).forEach(r=>{const el=document.getElementById('wi-base-'+r);if(el)el.value=WHATIF_DEF.base[r];});
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v;};
   set('wi-sy',WHATIF_DEF.sy*100); set('wi-sub',WHATIF_DEF.sub*100); set('wi-dig',WHATIF_DEF.dig*100);
+  set('wi-sas',WHATIF_DEF.sas); set('wi-dcc',WHATIF_DEF.dcc*100);
   const rmlEl=document.getElementById('wi-rml'); if(rmlEl) rmlEl.value='';
-  _whatifSig=null; // forza ricarico dello stipendio reale
+  _whatifSig=null; // forza ricarico dello stipendio reale + ruolo
   renderWhatif();
 }
 function onWhatifInput(){renderWhatif();}
@@ -2766,7 +2810,15 @@ function renderWhatif(){
   const q=(document.getElementById('wif-dip')||{value:''}).value;
   const sig=Math.round(actualRml)+'|'+dips.size+'|'+q;
   const rmlEl=document.getElementById('wi-rml');
-  if(_whatifSig!==sig){ _whatifSig=sig; if(rmlEl) rmlEl.value=actualRml?Math.round(actualRml):''; } // reset su cambio selezione
+  if(_whatifSig!==sig){ // cambio selezione → reset RML reale + riconosci ruolo
+    _whatifSig=sig;
+    if(rmlEl) rmlEl.value=actualRml?Math.round(actualRml):'';
+    const det=detectRole(rows);
+    const roleEl=document.getElementById('wi-role'), hintEl=document.getElementById('wi-role-hint');
+    if(roleEl&&det&&[...roleEl.options].some(o=>o.value===det)) roleEl.value=det;
+    if(hintEl) hintEl.textContent=det?'(riconosciuto: '+det+')':'';
+    applyWhatifRoleVisibility();
+  }
   const scenarioRml=rmlEl&&rmlEl.value!==''?+rmlEl.value:actualRml;
   const kRml=actualRml>0?scenarioRml/actualRml:1;
   const hint=document.getElementById('wi-rml-hint');
