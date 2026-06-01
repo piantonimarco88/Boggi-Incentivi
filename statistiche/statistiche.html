@@ -689,13 +689,14 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
         <div class="wp-group">
           <div class="wp-lbl">BDG base € (ruolo)</div>
           <div class="wp-roles">
-            <label class="wp-f" data-role="SM"><span>SM</span><input type="number" id="wi-base-SM" value="300" min="0" step="10" oninput="onWhatifInput()"><span class="wp-hist">storico 300</span></label>
-            <label class="wp-f" data-role="VSM"><span>VSM</span><input type="number" id="wi-base-VSM" value="250" min="0" step="10" oninput="onWhatifInput()"><span class="wp-hist">storico 250</span></label>
-            <label class="wp-f" data-role="SSAP"><span>SSAP</span><input type="number" id="wi-base-SSAP" value="250" min="0" step="10" oninput="onWhatifInput()"><span class="wp-hist">storico 250</span></label>
-            <label class="wp-f" data-role="SSA"><span>SSA</span><input type="number" id="wi-base-SSA" value="200" min="0" step="10" oninput="onWhatifInput()"><span class="wp-hist">storico 200</span></label>
-            <label class="wp-f" data-role="SA"><span>SA</span><input type="number" id="wi-base-SA" value="150" min="0" step="10" oninput="onWhatifInput()"><span class="wp-hist">storico 150</span></label>
-            <label class="wp-f" data-role="JSA"><span>JSA</span><input type="number" id="wi-base-JSA" value="100" min="0" step="10" oninput="onWhatifInput()"><span class="wp-hist">storico 100</span></label>
-            <label class="wp-f" data-role="SCS"><span>SCS</span><input type="number" id="wi-base-SCS" value="150" min="0" step="10" oninput="onWhatifInput()"><span class="wp-hist">storico 150</span></label>
+            <label class="wp-f" data-role="SM"><span>SM</span><input type="number" id="wi-base-SM" value="300" min="0" step="10" oninput="onWhatifInput()"></label>
+            <label class="wp-f" data-role="VSM"><span>VSM</span><input type="number" id="wi-base-VSM" value="250" min="0" step="10" oninput="onWhatifInput()"></label>
+            <label class="wp-f" data-role="SSAP"><span>SSAP</span><input type="number" id="wi-base-SSAP" value="250" min="0" step="10" oninput="onWhatifInput()"></label>
+            <label class="wp-f" data-role="SSA"><span>SSA</span><input type="number" id="wi-base-SSA" value="200" min="0" step="10" oninput="onWhatifInput()"></label>
+            <label class="wp-f" data-role="SA"><span>SA</span><input type="number" id="wi-base-SA" value="150" min="0" step="10" oninput="onWhatifInput()"></label>
+            <label class="wp-f" data-role="JSA"><span>JSA</span><input type="number" id="wi-base-JSA" value="100" min="0" step="10" oninput="onWhatifInput()"></label>
+            <label class="wp-f" data-role="SCS"><span>SCS</span><input type="number" id="wi-base-SCS" value="150" min="0" step="10" oninput="onWhatifInput()"></label>
+            <span class="wp-hist" id="wi-hist-base" style="align-self:center">storico —</span>
           </div>
         </div>
         <div class="wp-group">
@@ -2840,6 +2841,9 @@ function renderWhatif(){
     const roleEl=document.getElementById('wi-role'), hintEl=document.getElementById('wi-role-hint');
     if(roleEl&&det&&[...roleEl.options].some(o=>o.value===det)) roleEl.value=det;
     if(hintEl) hintEl.textContent=det?'(riconosciuto: '+det+')':'';
+    // storico BDG ancorato al ruolo RICONOSCIUTO (resta anche se cambio il ruolo scenario)
+    const baseHist=document.getElementById('wi-hist-base');
+    if(baseHist) baseHist.textContent=det?('storico '+det+': '+(WHATIF_DEF.base[det]!=null?WHATIF_DEF.base[det]+'€':'—')):'storico —';
     applyWhatifRoleVisibility();
   }
   const scenarioRml=rmlEl&&rmlEl.value!==''?+rmlEl.value:actualRml;
