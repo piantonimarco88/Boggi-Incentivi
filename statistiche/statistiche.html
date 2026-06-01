@@ -220,7 +220,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 .wp-f{display:flex;flex-direction:column;gap:2px;font-size:10px;color:#666}
 .wp-f span{font-size:9px;color:#999}
 .wp-f input{width:90px;padding:4px 7px;border:1px solid #dde1ea;border-radius:6px;font-size:12px;color:#222}
-.wp-hist{font-size:9px;color:#aaa;margin-top:3px;white-space:nowrap}
+.wp-hist{font-size:9px;color:#6366f1;background:#eef2ff;border:1px solid #e0e7ff;border-radius:4px;padding:2px 6px;margin-top:4px;white-space:nowrap;font-weight:700;align-self:flex-start}
 .wp-f input:focus{outline:none;border-color:#7c3aed}
 .whatif-charts{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:16px}
 .whatif-tbl table{width:100%;border-collapse:collapse;font-size:12px}
@@ -2881,12 +2881,34 @@ function renderWhatif(){
   // ── grafici Reale vs Scenario ──
   const achR=b=>b.maR>0?+(b.erR/b.maR*100).toFixed(1):0, achS=b=>b.maS>0?+(b.erS/b.maS*100).toFixed(1):0;
   const incR=b=>b.rmlR>0?+(b.erR/b.rmlR*100).toFixed(1):0, incS=b=>b.rmlS>0?+(b.erS/b.rmlS*100).toFixed(1):0;
-  rcWhatif('erog','wi_c_erog',years,years.map(y=>Math.round(by[y].erR)),years.map(y=>Math.round(by[y].erS)),'eur');
-  rcWhatif('ach','wi_c_ach',years,years.map(y=>achR(by[y])),years.map(y=>achS(by[y])),'pct');
-  rcWhatif('inc','wi_c_inc',years,years.map(y=>incR(by[y])),years.map(y=>incS(by[y])),'pct');
+  rcWhatif('erog','wi_c_erog',years,years.map(y=>Math.round(by[y].erR)),years.map(y=>Math.round(by[y].erS)),'eur',fromKey);
+  rcWhatif('ach','wi_c_ach',years,years.map(y=>achR(by[y])),years.map(y=>achS(by[y])),'pct',fromKey);
+  rcWhatif('inc','wi_c_inc',years,years.map(y=>incR(by[y])),years.map(y=>incS(by[y])),'pct',fromKey);
 }
 
-function rcWhatif(key,canvasId,labels,reale,scenario,unit){
+// Plugin: linea verticale tratteggiata sulla data di decorrenza (posizione = mese nell'anno).
+const whatifFromLinePlugin={
+  id:'fromLine',
+  afterDatasetsDraw(chart,args,opts){
+    const fk=opts&&opts.fromKey; if(!fk) return;
+    const fy=Math.floor(fk/100), fm=fk%100;
+    const labels=chart.data.labels||[];
+    const idx=labels.indexOf(String(fy)); if(idx<0) return;
+    const xs=chart.scales.x, ys=chart.scales.y;
+    const center=xs.getPixelForValue(idx);
+    const band=labels.length>1?Math.abs(xs.getPixelForValue(1)-xs.getPixelForValue(0)):(xs.width||60);
+    const x=center-band/2+((fm-1)/12)*band;
+    const ctx=chart.ctx;
+    ctx.save();
+    ctx.strokeStyle='#7c3aed'; ctx.lineWidth=1.5; ctx.setLineDash([5,4]);
+    ctx.beginPath(); ctx.moveTo(x,ys.top); ctx.lineTo(x,ys.bottom); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#7c3aed'; ctx.font='bold 9px "Segoe UI",Arial';
+    ctx.fillText('▸ da '+(MESI[fm]||'').slice(0,3)+" '"+String(fy).slice(2), Math.min(x+3,xs.right-50), ys.top+9);
+    ctx.restore();
+  }
+};
+function rcWhatif(key,canvasId,labels,reale,scenario,unit,fromKey){
   if(whatifCharts[key]){whatifCharts[key].destroy();delete whatifCharts[key];}
   const cv=document.getElementById(canvasId); if(!cv) return;
   const fmtv=v=>unit==='eur'?fmtEur(v):(v+'%');
@@ -2897,8 +2919,10 @@ function rcWhatif(key,canvasId,labels,reale,scenario,unit){
     ]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10}},
-               tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtv(c.raw)}}},
-      scales:{y:{beginAtZero:true,ticks:{callback:v=>unit==='eur'?fmtK(v):v+'%'}}}}});
+               tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtv(c.raw)}},
+               fromLine:{fromKey:fromKey||0}},
+      scales:{y:{beginAtZero:true,ticks:{callback:v=>unit==='eur'?fmtK(v):v+'%'}}}},
+    plugins:[whatifFromLinePlugin]});
 }
 
 // ═══════════════════════════════════════════════════════════════
