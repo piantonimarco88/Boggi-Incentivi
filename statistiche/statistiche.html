@@ -228,6 +228,10 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 .wif-toggle input{width:15px;height:15px;accent-color:#7c3aed;cursor:pointer}
 .whatif-freqnote{font-size:11px;color:#475569;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:7px 12px;margin-bottom:12px}
 .whatif-freqnote b{color:#334155}
+.chart-hint{font-size:10px;color:#94a3b8;margin:2px 0 8px;text-align:right}
+.chart-hint b{color:#64748b}
+.whatif-charts canvas,#whatifFutureOut canvas{cursor:grab}
+.whatif-charts canvas:active,#whatifFutureOut canvas:active{cursor:grabbing}
 .wp-f input:focus{outline:none;border-color:#7c3aed}
 .wp-f input.wi-edited{border-color:#f59e0b;background:#fff7ed;box-shadow:0 0 0 2px rgba(253,230,138,.6);font-weight:700}
 .whatif-charts{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:16px}
@@ -768,6 +772,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
       <div id="whatifNormalOut" class="wif-normal-only">
         <div id="whatifFromNote" style="font-size:11px;color:#7c3aed;font-weight:600;margin-bottom:10px;display:none"></div>
         <div class="tbl-scroll whatif-tbl" id="whatifTbl"></div>
+        <div class="chart-hint">🔍 <b>rotella</b> = zoom · <b>trascina</b> = scorri · <b>doppio clic</b> = reset</div>
         <div class="whatif-charts">
           <div class="cc"><div class="cc-head"><div class="cc-title">Erogato per anno — Reale vs Scenario (€)</div></div><div class="cw tall"><canvas id="wi_c_erog"></canvas></div></div>
           <div class="cc"><div class="cc-head"><div class="cc-title">Achievement % per anno — Reale vs Scenario</div></div><div class="cw tall"><canvas id="wi_c_ach"></canvas></div></div>
@@ -777,7 +782,8 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
       <div id="whatifFutureOut" class="wif-future-only" style="display:none">
         <div id="whatifFreqNote" class="whatif-freqnote"></div>
         <div class="tbl-scroll whatif-tbl" id="whatifFutureTbl"></div>
-        <div class="cc" style="margin-top:14px"><div class="cc-head"><div class="cc-title">Erogato cumulato — storico e proiezione (€)</div></div><div class="cw tall"><canvas id="wi_c_future"></canvas></div></div>
+        <div class="chart-hint">🔍 <b>rotella</b> = zoom · <b>trascina</b> = scorri a destra/sinistra · <b>doppio clic</b> = reset</div>
+        <div class="cc" style="margin-top:6px"><div class="cc-head"><div class="cc-title">Erogato cumulato — storico e proiezione (€)</div></div><div class="cw tall"><canvas id="wi_c_future"></canvas></div></div>
         <div class="cc" style="margin-top:14px"><div class="cc-head"><div class="cc-title">Incidenza % mensile del premio variabile sullo stipendio — storico e proiezione</div></div><div class="cw tall"><canvas id="wi_c_future_inc"></canvas></div></div>
       </div>
     </div>
