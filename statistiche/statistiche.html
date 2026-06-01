@@ -693,6 +693,12 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
             <label class="wp-f"><span>Digital % (su BDG)</span><input type="number" id="wi-dig" value="30" min="0" step="5" oninput="onWhatifInput()"></label>
           </div>
         </div>
+        <div class="wp-group">
+          <div class="wp-lbl">Stipendio <span id="wi-rml-hint" style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb"></span></div>
+          <div class="wp-roles">
+            <label class="wp-f"><span>RML mensile scenario (€)</span><input type="number" id="wi-rml" min="0" step="50" oninput="onWhatifInput()"></label>
+          </div>
+        </div>
         <button class="btn-rst" onclick="resetWhatif()">↺ Reset default PDF</button>
       </div>
       <div class="tbl-scroll whatif-tbl" id="whatifTbl"></div>
@@ -1237,6 +1243,7 @@ function refresh(){
   // refresh yoy tab if open
   if(document.getElementById('tabYoy').style.display!=='none'){popYoyFilters();renderYoy();}
   if(document.getElementById('tabSal').style.display!=='none'){popSalFilters();renderSal();}
+  if(document.getElementById('tabWhatif').style.display!=='none'){popWhatifFilters();renderWhatif();}
 }
 
 // ─── MULTI-SELECT HELPERS ─────────────────────────────────────
@@ -2665,7 +2672,7 @@ function renderYoy(){
 // ricostruiti dalle regole (mBdg per BDG/Digital, RML per SY/Subscription).
 // ═══════════════════════════════════════════════════════════════
 const WHATIF_DEF={base:{SM:300,VSM:250,SSAP:250,SSA:200,SA:150,JSA:100},sy:0.03,sub:0.02,dig:0.30};
-let whatifCharts={};
+let whatifCharts={}, _whatifSig=null;
 
 // ─── FILTRI TAB WHAT-IF (Dipendente + Mese + Anno) ───────────
 function popWhatifFilters(){
@@ -2706,24 +2713,27 @@ function whatifParams(){
 }
 
 // Aggrega per anno erogato/massimale Reale e Scenario per le righe filtrate.
-function whatifAgg(rows,p){
+// kRml = stipendio scenario / stipendio reale → scala SY/Subscription (incidenze su RML)
+// e il denominatore dell'incidenza.
+function whatifAgg(rows,p,kRml){
+  kRml=kRml||1;
   const dB=WHATIF_DEF.base, dSy=WHATIF_DEF.sy, dSub=WHATIF_DEF.sub, dDig=WHATIF_DEF.dig;
   const by={};
   rows.forEach(r=>{
     const role=r.job, defB=dB[role]||0, newB=(p.base[role]!=null)?p.base[role]:defB;
     const rB=defB>0?newB/defB:1;
-    const rDig=(p.dig/dDig)*rB, rSy=p.sy/dSy, rSub=p.sub/dSub;
+    const rDig=(p.dig/dDig)*rB, rSy=(p.sy/dSy)*kRml, rSub=(p.sub/dSub)*kRml;
     const mBdg=r.mBdg||0, rml=r.rml_period||0;
     // tetti per componente (ricostruiti dalle regole)
     const capBdg=mBdg, capDig=dDig*mBdg, capSy=dSy*rml, capSub=dSub*rml;
     const dErog=(r.cBdg||0)*(rB-1)+(r.cDigital||0)*(rDig-1)+(r.cShopper||0)*(rSy-1)+(r.cPrivilege||0)*(rSub-1);
     const dMass=capBdg*(rB-1)+capDig*(rDig-1)+capSy*(rSy-1)+capSub*(rSub-1);
     const y=r.year||'?';
-    if(!by[y]) by[y]={erR:0,maR:0,erS:0,maS:0,rml:0,keys:new Set()};
+    if(!by[y]) by[y]={erR:0,maR:0,erS:0,maS:0,rmlR:0,rmlS:0,keys:new Set()};
     const b=by[y];
     b.erR+=r.erogato; b.maR+=r.massimale;
     b.erS+=r.erogato+dErog; b.maS+=r.massimale+dMass;
-    b.rml+=rml; b.keys.add(r.matricola||_empKey(r));
+    b.rmlR+=rml; b.rmlS+=rml*kRml; b.keys.add(r.matricola||_empKey(r));
   });
   return by;
 }
@@ -2732,6 +2742,8 @@ function resetWhatif(){
   Object.keys(WHATIF_DEF.base).forEach(r=>{const el=document.getElementById('wi-base-'+r);if(el)el.value=WHATIF_DEF.base[r];});
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v;};
   set('wi-sy',WHATIF_DEF.sy*100); set('wi-sub',WHATIF_DEF.sub*100); set('wi-dig',WHATIF_DEF.dig*100);
+  const rmlEl=document.getElementById('wi-rml'); if(rmlEl) rmlEl.value='';
+  _whatifSig=null; // forza ricarico dello stipendio reale
   renderWhatif();
 }
 function onWhatifInput(){renderWhatif();}
@@ -2748,14 +2760,25 @@ function renderWhatif(){
       :'⚠️ '+dips.size+' dipendenti nei filtri correnti: simulazione aggregata. Seleziona un singolo Dipendente nel filtro per analizzarlo da solo.';
   }
   const p=whatifParams();
-  const by=whatifAgg(rows,p);
+  // ── Stipendio: media mensile reale della selezione, campo editabile (scenario) ──
+  const rmlRows=rows.filter(r=>(r.rml_period||0)>0);
+  const actualRml=rmlRows.length?rmlRows.reduce((s,r)=>s+r.rml_period,0)/rmlRows.length:0;
+  const q=(document.getElementById('wif-dip')||{value:''}).value;
+  const sig=Math.round(actualRml)+'|'+dips.size+'|'+q;
+  const rmlEl=document.getElementById('wi-rml');
+  if(_whatifSig!==sig){ _whatifSig=sig; if(rmlEl) rmlEl.value=actualRml?Math.round(actualRml):''; } // reset su cambio selezione
+  const scenarioRml=rmlEl&&rmlEl.value!==''?+rmlEl.value:actualRml;
+  const kRml=actualRml>0?scenarioRml/actualRml:1;
+  const hint=document.getElementById('wi-rml-hint');
+  if(hint) hint.textContent=actualRml?'(reale ≈ € '+fmt(actualRml)+'/mese)':'(n/d)';
+  const by=whatifAgg(rows,p,kRml);
   const years=Object.keys(by).filter(y=>y!=='?').sort();
   // ── tabella Reale vs Scenario ──
   const el=document.getElementById('whatifTbl');
   if(!years.length){el.innerHTML='<div style="text-align:center;padding:32px;color:#ccc;font-size:13px">Nessun dato</div>';}
   else{
     const achR=b=>b.maR>0?b.erR/b.maR*100:0, achS=b=>b.maS>0?b.erS/b.maS*100:0;
-    const incR=b=>b.rml>0?b.erR/b.rml*100:0, incS=b=>b.rml>0?b.erS/b.rml*100:0;
+    const incR=b=>b.rmlR>0?b.erR/b.rmlR*100:0, incS=b=>b.rmlS>0?b.erS/b.rmlS*100:0;
     const sg=(v,s)=>(v>=0?'+':'')+v.toFixed(1)+s, dcl=v=>v==null?'':(v>=0?'pos':'neg');
     let h='<table><thead><tr><th>Anno</th><th>Dip.</th>'
       +'<th style="text-align:right">Erogato Reale</th><th style="text-align:right">Erogato Scenario</th><th style="text-align:right">Δ €</th>'
@@ -2772,7 +2795,7 @@ function renderWhatif(){
   }
   // ── grafici Reale vs Scenario ──
   const achR=b=>b.maR>0?+(b.erR/b.maR*100).toFixed(1):0, achS=b=>b.maS>0?+(b.erS/b.maS*100).toFixed(1):0;
-  const incR=b=>b.rml>0?+(b.erR/b.rml*100).toFixed(1):0, incS=b=>b.rml>0?+(b.erS/b.rml*100).toFixed(1):0;
+  const incR=b=>b.rmlR>0?+(b.erR/b.rmlR*100).toFixed(1):0, incS=b=>b.rmlS>0?+(b.erS/b.rmlS*100).toFixed(1):0;
   rcWhatif('erog','wi_c_erog',years,years.map(y=>Math.round(by[y].erR)),years.map(y=>Math.round(by[y].erS)),'eur');
   rcWhatif('ach','wi_c_ach',years,years.map(y=>achR(by[y])),years.map(y=>achS(by[y])),'pct');
   rcWhatif('inc','wi_c_inc',years,years.map(y=>incR(by[y])),years.map(y=>incS(by[y])),'pct');
