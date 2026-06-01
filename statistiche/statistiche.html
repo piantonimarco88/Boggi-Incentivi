@@ -268,7 +268,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
   <button class="tab-btn active" data-tab="dash" onclick="switchTab('dash')">📊 Dashboard</button>
   <button class="tab-btn" data-tab="yoy" onclick="switchTab('yoy')">📅 Anno su Anno</button>
   <button class="tab-btn" data-tab="sal" onclick="switchTab('sal')">💶 Stipendi</button>
-  <button class="tab-btn" data-tab="whatif" onclick="switchTab('whatif')">🧪 What-if</button>
+  <button class="tab-btn" data-tab="whatif" onclick="switchTab('whatif')">🔮 What-if</button>
 </div>
 
 <!-- ═══════════ DASHBOARD TAB ═══════════ -->
@@ -674,11 +674,21 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
         <button class="ms-btn" id="wif-anno-btn" onclick="toggleMs(event,'wif-anno')">Tutti</button>
         <div class="ms-panel" id="wif-anno-panel" style="display:none"></div>
       </div></div>
+    <div class="fg"><label>Nazione</label>
+      <div class="ms-wrap" id="wif-naz">
+        <button class="ms-btn" id="wif-naz-btn" onclick="toggleMs(event,'wif-naz')">Tutte</button>
+        <div class="ms-panel" id="wif-naz-panel" style="display:none"></div>
+      </div></div>
+    <div class="fg"><label>Negozio</label>
+      <div class="ms-wrap" id="wif-store">
+        <button class="ms-btn" id="wif-store-btn" onclick="toggleMs(event,'wif-store')">Tutti</button>
+        <div class="ms-panel" id="wif-store-panel" style="display:none"></div>
+      </div></div>
     <button class="btn-rst" onclick="resetWhatifFilters()">↺ Reset filtri</button>
     <div class="fg"><label>🔮 Previsione futura</label>
-      <div class="l4l-toggle">
-        <button class="l4l-btn active" id="wi-fut-off" onclick="setWhatifFuture(false)">No</button>
-        <button class="l4l-btn" id="wi-fut-on" onclick="setWhatifFuture(true)">Sì</button>
+      <div class="l4l-toggle" style="display:flex">
+        <button class="l4l-btn active" id="wi-fut-off" style="flex:1" onclick="setWhatifFuture(false)">No</button>
+        <button class="l4l-btn" id="wi-fut-on" style="flex:1" onclick="setWhatifFuture(true)">Sì</button>
       </div></div>
     <div class="fg wif-future-only" style="display:none"><label>Tipo dipendente</label>
       <div class="l4l-toggle">
@@ -2746,6 +2756,10 @@ function popWhatifFilters(){
   const years=[...new Set(allData.map(r=>r.year).filter(Boolean))].sort();
   setMsOpts('wif-mese',months.map(m=>({v:m,l:MESI[m]})),renderWhatif);
   setMsOpts('wif-anno',years.map(y=>({v:y,l:String(y)})),renderWhatif);
+  const naz=[...new Set(allData.map(r=>r._nazione).filter(n=>n&&!n.startsWith('ENTE ')))].sort();
+  const stores=[...new Set(allData.map(r=>r.store).filter(Boolean))].sort();
+  setMsOpts('wif-naz',naz.map(n=>({v:n,l:n})),renderWhatif);
+  setMsOpts('wif-store',stores.map(s=>({v:s,l:s})),renderWhatif);
   // selettore "decorrenza modifiche" (monthKey)
   const fromEl=document.getElementById('wi-from');
   if(fromEl){
@@ -2764,19 +2778,33 @@ function popWhatifFilters(){
   }
 }
 function getWhatifRows(){
-  const meses=getMsVals('wif-mese'), years=getMsVals('wif-anno');
+  const meses=getMsVals('wif-mese'), years=getMsVals('wif-anno'), naz=getMsVals('wif-naz'), stores=getMsVals('wif-store');
   const q=(document.getElementById('wif-dip')||{value:''}).value.toLowerCase().trim();
   return allData.filter(r=>{
     if(meses.length&&!meses.includes(String(r.month))) return false;
     if(years.length&&!years.includes(String(r.year))) return false;
+    if(naz.length&&!naz.includes(r._nazione)) return false;
+    if(stores.length&&!stores.includes(r.store)) return false;
     if(q){const h=(r.cognome+' '+r.nome+' '+r.matricola).toLowerCase();if(!h.includes(q)) return false;}
+    return true;
+  });
+}
+// righe di contesto per il NUOVO ASSUNTO: stessi filtri (mese/anno/nazione/negozio) + ruolo, senza dipendente
+function whatifRoleContextRows(role){
+  const meses=getMsVals('wif-mese'), years=getMsVals('wif-anno'), naz=getMsVals('wif-naz'), stores=getMsVals('wif-store');
+  return allData.filter(r=>{
+    if(r.job!==role) return false;
+    if(meses.length&&!meses.includes(String(r.month))) return false;
+    if(years.length&&!years.includes(String(r.year))) return false;
+    if(naz.length&&!naz.includes(r._nazione)) return false;
+    if(stores.length&&!stores.includes(r.store)) return false;
     return true;
   });
 }
 function wifDipAutocomplete(val){_dipAutocomplete(val,'wif-dip-ac-list','wifSelectDip',renderWhatif);}
 function wifSelectDip(name){_selectDip(name,'wif-dip','wif-dip-ac-list',renderWhatif);}
 function resetWhatifFilters(){
-  ['wif-mese','wif-anno'].forEach(id=>{
+  ['wif-mese','wif-anno','wif-naz','wif-store'].forEach(id=>{
     document.querySelectorAll('#'+id+'-panel input').forEach(i=>{i.checked=false;i.indeterminate=false;});
     updateMsLabel(id);
   });
@@ -2909,8 +2937,9 @@ function renderWhatif(){
     if(rmlEl) rmlEl.value=actualRml?Math.round(actualRml):'';
     const det=detectRole(rows);
     const roleEl=document.getElementById('wi-role'), hintEl=document.getElementById('wi-role-hint');
-    if(roleEl&&det&&[...roleEl.options].some(o=>o.value===det)) roleEl.value=det;
-    if(hintEl) hintEl.textContent=det?'(riconosciuto: '+det+')':'';
+    // nuovo assunto: il ruolo lo sceglie l'utente (niente auto-rilevamento)
+    if(!whatifNewHire && roleEl&&det&&[...roleEl.options].some(o=>o.value===det)) roleEl.value=det;
+    if(hintEl) hintEl.textContent=whatifNewHire?'(scegli il ruolo)':(det?'(riconosciuto: '+det+')':'');
     // riga storico ancorata al ruolo RICONOSCIUTO (premi originali, resta al cambio ruolo scenario)
     renderWhatifHistorical(det, actualRml);
     applyWhatifRoleVisibility();
@@ -3069,13 +3098,15 @@ function applyWhatifModeVisibility(){
   const e=document.getElementById('wi-hire-exist'), n=document.getElementById('wi-hire-new');
   if(e) e.classList.toggle('active',!whatifNewHire);
   if(n) n.classList.toggle('active',whatifNewHire);
+  const hist=document.getElementById('whatifHist'); // niente storico per il nuovo assunto
+  if(hist) hist.style.display=(whatifFuture&&whatifNewHire)?'none':'';
 }
 function setWhatifFuture(on){
-  whatifFuture=!!on; _whatifFreqSig=null;
+  whatifFuture=!!on; _whatifFreqSig=null; _whatifSig=null;
   applyWhatifModeVisibility(); applyWhatifRoleVisibility(); renderWhatif();
 }
 function setWhatifHire(isNew){
-  whatifNewHire=!!isNew; _whatifFreqSig=null;
+  whatifNewHire=!!isNew; _whatifFreqSig=null; _whatifSig=null;
   applyWhatifModeVisibility(); renderWhatif();
 }
 
@@ -3100,21 +3131,26 @@ const whatifTodayLinePlugin={
 
 function renderWhatifFuture(rows,p,role,scenarioRml,actualRml){
   const dipQ=(document.getElementById('wif-dip')||{value:''}).value;
-  // sorgente frequenze: esistente = righe del dipendente; nuovo = tutte le righe del ruolo
+  // sorgente frequenze (dati storici): esistente = righe del dipendente; nuovo = righe del ruolo nel contesto filtrato
   let freqRows, srcLabel;
-  if(whatifNewHire){ freqRows=allData.filter(r=>r.job===role); srcLabel='media del ruolo '+role+' su '+new Set(freqRows.map(r=>r.matricola)).size+' dipendenti'; }
+  if(whatifNewHire){ freqRows=whatifRoleContextRows(role); srcLabel='media del ruolo '+role+(freqRows.length?' ('+new Set(freqRows.map(r=>r.matricola)).size+' dip. nel contesto filtrato)':''); }
   else { freqRows=rows; srcLabel='media storica del dipendente selezionato'; }
-  // precompila le frequenze al cambio di ruolo/dipendente/tipo
-  const freqSig=role+'|'+dipQ+'|'+(whatifNewHire?'N':'E');
+  // precompila frequenze (e RML per il nuovo assunto) al cambio di ruolo/dipendente/tipo/FILTRI
+  const filtSig=getMsVals('wif-mese').join()+'#'+getMsVals('wif-anno').join()+'#'+getMsVals('wif-naz').join()+'#'+getMsVals('wif-store').join();
+  const freqSig=role+'|'+dipQ+'|'+(whatifNewHire?'N':'E')+'|'+filtSig;
   if(_whatifFreqSig!==freqSig){
     _whatifFreqSig=freqSig;
     const def=fFrequencies(freqRows,role);
     fRoleComps(role).forEach(c=>{const el=document.getElementById('wi-freq-'+c.k);if(el)el.value=def[c.k]!=null?def[c.k]:'';});
+    if(whatifNewHire){ const rr=freqRows.filter(r=>(r.rml_period||0)>0); const avgR=rr.length?rr.reduce((s,r)=>s+r.rml_period,0)/rr.length:0; const re=document.getElementById('wi-rml'); if(re) re.value=avgR?Math.round(avgR):''; }
   }
   const freq={}; fRoleComps(role).forEach(c=>{const el=document.getElementById('wi-freq-'+c.k);freq[c.k]=el&&el.value!==''?+el.value:0;});
-  const rml=scenarioRml||actualRml||0;          // RML scenario (nuovi parametri)
-  const baseRml=actualRml||rml;                  // RML reale (vecchi parametri)
-  const baseFreq=fFrequencies(freqRows,role);    // frequenze storiche/medie (vecchi parametri)
+  const rmlField=document.getElementById('wi-rml');
+  const rml=(rmlField&&rmlField.value!=='')?+rmlField.value:(actualRml||0);   // RML scenario
+  const baseRml=whatifNewHire?rml:(actualRml||rml);                            // RML "vecchi parametri"
+  const baseFreq=fFrequencies(freqRows,role);
+  const hintEl=document.getElementById('wi-rml-hint');
+  if(hintEl) hintEl.textContent=whatifNewHire?'(scenario — dall\'assunzione)':(actualRml?'(reale ≈ € '+fmt(actualRml)+'/mese)':'(n/d)');
   const today=whatifTodayKey(), startKey=today?mkAddMonths(today,1):0;
   const fend=document.getElementById('wi-future-end'), endKey=fend?+fend.value:0;
   const months=(startKey&&endKey&&endKey>=startKey)?mkDiffMonths(startKey,endKey)+1:0;
@@ -3133,7 +3169,7 @@ function renderWhatifFuture(rows,p,role,scenarioRml,actualRml){
       ?('Previsione NUOVO ASSUNTO — ruolo '+role+', '+months+' mesi'+(startKey?' ('+mkLabel(startKey)+' → '+mkLabel(endKey)+')':'')+'. Nessuno storico.')
       :('Previsione dipendente ESISTENTE — storico ricevuto + proiezione '+months+' mesi'+(startKey?' ('+mkLabel(startKey)+' → '+mkLabel(endKey)+')':')')); }
   const fnote=document.getElementById('whatifFreqNote');
-  if(fnote) fnote.innerHTML='ℹ️ Frequenze precompilate dalla <b>'+srcLabel+'</b> (% media con cui raggiunge ciascun premio nei dati caricati) — modificabili. Atteso = frequenza% × valore massimo del premio.';
+  if(fnote) fnote.innerHTML='ℹ️ Frequenze calcolate sui <b>dati storici caricati</b> ('+srcLabel+'): % media con cui raggiunge ciascun premio. Si aggiornano coi filtri sopra (nazione/negozio/periodo). Modificabili. Atteso = frequenza% × valore massimo del premio.';
   renderWhatifFutureTable(fc,months,rml,hist);
   renderWhatifTimeline(rows,fc.monthlyTot,fcOld.monthlyTot,rml,baseRml,startKey,endKey);
 }
