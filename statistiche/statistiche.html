@@ -221,6 +221,8 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 .wp-f span{font-size:9px;color:#999}
 .wp-f input{width:90px;padding:4px 7px;border:1px solid #dde1ea;border-radius:6px;font-size:12px;color:#222}
 .wp-hist{font-size:9px;color:#6366f1;background:#eef2ff;border:1px solid #e0e7ff;border-radius:4px;padding:2px 6px;margin-top:4px;white-space:nowrap;font-weight:700;align-self:flex-start}
+.whatif-hist{font-size:11px;color:#4338ca;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;padding:7px 12px;margin-bottom:12px}
+.whatif-hist b{color:#3730a3}
 .wp-f input:focus{outline:none;border-color:#7c3aed}
 .whatif-charts{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:16px}
 .whatif-tbl table{width:100%;border-collapse:collapse;font-size:12px}
@@ -696,23 +698,22 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
             <label class="wp-f" data-role="SA"><span>SA</span><input type="number" id="wi-base-SA" value="150" min="0" step="10" oninput="onWhatifInput()"></label>
             <label class="wp-f" data-role="JSA"><span>JSA</span><input type="number" id="wi-base-JSA" value="100" min="0" step="10" oninput="onWhatifInput()"></label>
             <label class="wp-f" data-role="SCS"><span>SCS</span><input type="number" id="wi-base-SCS" value="150" min="0" step="10" oninput="onWhatifInput()"></label>
-            <span class="wp-hist" id="wi-hist-base" style="align-self:center">storico —</span>
           </div>
         </div>
         <div class="wp-group">
           <div class="wp-lbl">Parametri premi</div>
           <div class="wp-roles">
-            <label class="wp-f" data-comp="digital"><span>Digital % (su BDG)</span><input type="number" id="wi-dig" value="30" min="0" step="5" oninput="onWhatifInput()"><span class="wp-hist">storico 30%</span></label>
-            <label class="wp-f" data-comp="sy"><span>Shopper Yield % (su RML)</span><input type="number" id="wi-sy" value="3" min="0" step="0.5" oninput="onWhatifInput()"><span class="wp-hist">storico 3%</span></label>
-            <label class="wp-f" data-comp="sub"><span>Subscription % (su RML)</span><input type="number" id="wi-sub" value="2" min="0" step="0.5" oninput="onWhatifInput()"><span class="wp-hist">storico 2%</span></label>
-            <label class="wp-f" data-comp="sas"><span>SAS €/unità (max 200€)</span><input type="number" id="wi-sas" value="2" min="0" step="0.5" oninput="onWhatifInput()"><span class="wp-hist">storico 2€</span></label>
-            <label class="wp-f" data-comp="dcc"><span>DCC % transazioni (max 100€)</span><input type="number" id="wi-dcc" value="0.2" min="0" step="0.05" oninput="onWhatifInput()"><span class="wp-hist">storico 0,2%</span></label>
+            <label class="wp-f" data-comp="digital"><span>Digital % (su BDG)</span><input type="number" id="wi-dig" value="30" min="0" step="5" oninput="onWhatifInput()"></label>
+            <label class="wp-f" data-comp="sy"><span>Shopper Yield % (su RML)</span><input type="number" id="wi-sy" value="3" min="0" step="0.5" oninput="onWhatifInput()"></label>
+            <label class="wp-f" data-comp="sub"><span>Subscription % (su RML)</span><input type="number" id="wi-sub" value="2" min="0" step="0.5" oninput="onWhatifInput()"></label>
+            <label class="wp-f" data-comp="sas"><span>SAS €/unità (max 200€)</span><input type="number" id="wi-sas" value="2" min="0" step="0.5" oninput="onWhatifInput()"></label>
+            <label class="wp-f" data-comp="dcc"><span>DCC % transazioni (max 100€)</span><input type="number" id="wi-dcc" value="0.2" min="0" step="0.05" oninput="onWhatifInput()"></label>
           </div>
         </div>
         <div class="wp-group">
           <div class="wp-lbl">Stipendio <span id="wi-rml-hint" style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb"></span></div>
           <div class="wp-roles">
-            <label class="wp-f" data-comp="rml"><span>RML mensile scenario (€)</span><input type="number" id="wi-rml" min="0" step="50" oninput="onWhatifInput()"><span class="wp-hist" id="wi-hist-rml">storico —</span></label>
+            <label class="wp-f" data-comp="rml"><span>RML mensile scenario (€)</span><input type="number" id="wi-rml" min="0" step="50" oninput="onWhatifInput()"></label>
           </div>
         </div>
         <div class="wp-group">
@@ -723,6 +724,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
         </div>
         <button class="btn-rst" onclick="resetWhatif()">↺ Reset default PDF</button>
       </div>
+      <div class="whatif-hist" id="whatifHist"></div>
       <div id="whatifFromNote" style="font-size:11px;color:#7c3aed;font-weight:600;margin-bottom:10px;display:none"></div>
       <div class="tbl-scroll whatif-tbl" id="whatifTbl"></div>
       <div class="whatif-charts">
@@ -2765,6 +2767,19 @@ function applyWhatifRoleVisibility(){
 }
 function onWhatifRoleChange(){applyWhatifRoleVisibility();renderWhatif();}
 
+// Riga storico: premi del ruolo RICONOSCIUTO (resta anche cambiando il ruolo scenario).
+function renderWhatifHistorical(det,actualRml){
+  const el=document.getElementById('whatifHist'); if(!el) return;
+  if(!det){el.innerHTML='<b>Storico</b>: —';return;}
+  const D=WHATIF_DEF, cashier=CASHIER_ROLES.includes(det), parts=[];
+  parts.push('BDG '+(D.base[det]!=null?D.base[det]+'€':'—'));
+  if(cashier){ parts.push('SAS '+D.sas+'€'); parts.push('DCC '+(+(D.dcc*100).toFixed(2))+'%'); }
+  else { parts.push('Digital '+(D.dig*100)+'%'); parts.push('Shopper Yield '+(D.sy*100)+'%'); }
+  parts.push('Subscription '+(D.sub*100)+'%');
+  parts.push('RML '+(actualRml?'≈ '+fmt(actualRml)+'€':'—'));
+  el.innerHTML='📌 <b>Storico — '+det+'</b> (premi del ruolo riconosciuto): '+parts.join(' · ');
+}
+
 // Aggrega per anno erogato/massimale Reale e Scenario per le righe filtrate.
 // kRml = stipendio scenario / stipendio reale → scala SY/Subscription (incidenze su RML)
 // e il denominatore dell'incidenza.
@@ -2841,17 +2856,14 @@ function renderWhatif(){
     const roleEl=document.getElementById('wi-role'), hintEl=document.getElementById('wi-role-hint');
     if(roleEl&&det&&[...roleEl.options].some(o=>o.value===det)) roleEl.value=det;
     if(hintEl) hintEl.textContent=det?'(riconosciuto: '+det+')':'';
-    // storico BDG ancorato al ruolo RICONOSCIUTO (resta anche se cambio il ruolo scenario)
-    const baseHist=document.getElementById('wi-hist-base');
-    if(baseHist) baseHist.textContent=det?('storico '+det+': '+(WHATIF_DEF.base[det]!=null?WHATIF_DEF.base[det]+'€':'—')):'storico —';
+    // riga storico ancorata al ruolo RICONOSCIUTO (premi originali, resta al cambio ruolo scenario)
+    renderWhatifHistorical(det, actualRml);
     applyWhatifRoleVisibility();
   }
   const scenarioRml=rmlEl&&rmlEl.value!==''?+rmlEl.value:actualRml;
   const kRml=actualRml>0?scenarioRml/actualRml:1;
   const hint=document.getElementById('wi-rml-hint');
   if(hint) hint.textContent=actualRml?'(reale ≈ € '+fmt(actualRml)+'/mese)':'(n/d)';
-  const histRml=document.getElementById('wi-hist-rml');
-  if(histRml) histRml.textContent=actualRml?'storico ≈ '+fmt(actualRml)+'€':'storico —';
   const selRole=currentWhatifRole();
   const fromEl=document.getElementById('wi-from');
   const fromKey=fromEl?(+fromEl.value||0):0;
