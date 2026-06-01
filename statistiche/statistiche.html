@@ -2916,13 +2916,24 @@ const whatifFromLinePlugin={
     const center=xs.getPixelForValue(idx);
     const band=labels.length>1?Math.abs(xs.getPixelForValue(1)-xs.getPixelForValue(0)):(xs.width||60);
     const x=center-band/2+((fm-1)/12)*band;
-    const ctx=chart.ctx;
+    const ctx=chart.ctx, top=ys.top, bottom=ys.bottom;
     ctx.save();
-    ctx.strokeStyle='#7c3aed'; ctx.lineWidth=1.5; ctx.setLineDash([5,4]);
-    ctx.beginPath(); ctx.moveTo(x,ys.top); ctx.lineTo(x,ys.bottom); ctx.stroke();
+    // alone bianco per restare leggibile anche sopra le barre
+    ctx.strokeStyle='rgba(255,255,255,.95)'; ctx.lineWidth=4.5; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(x,top); ctx.lineTo(x,bottom); ctx.stroke();
+    // linea principale arancione (contrasta su grigio e viola)
+    ctx.strokeStyle='#ea580c'; ctx.lineWidth=2; ctx.setLineDash([6,4]);
+    ctx.beginPath(); ctx.moveTo(x,top); ctx.lineTo(x,bottom); ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillStyle='#7c3aed'; ctx.font='bold 9px "Segoe UI",Arial';
-    ctx.fillText('▸ da '+(MESI[fm]||'').slice(0,3)+" '"+String(fy).slice(2), Math.min(x+3,xs.right-50), ys.top+9);
+    // etichetta a pillola
+    const lbl='▸ da '+(MESI[fm]||'').slice(0,3)+" '"+String(fy).slice(2);
+    ctx.font='bold 9px "Segoe UI",Arial';
+    const w=ctx.measureText(lbl).width+8, ph=14;
+    let lx=x+5; if(lx+w>xs.right) lx=x-5-w;
+    ctx.fillStyle='#ea580c';
+    if(ctx.roundRect){ctx.beginPath();ctx.roundRect(lx,top+2,w,ph,4);ctx.fill();}
+    else ctx.fillRect(lx,top+2,w,ph);
+    ctx.fillStyle='#fff'; ctx.fillText(lbl, lx+4, top+12);
     ctx.restore();
   }
 };
