@@ -1058,8 +1058,30 @@ function loadFiles(files){
   }
 }
 
+// Dedup globale: lo stesso dipendente × mese × tipo deve esistere una sola
+// volta. Protegge da fonti sovrapposte (es. una sessione ricaricata insieme
+// ai file originali, o lo stesso mese caricato due volte): senza questo i
+// totali aggregati risulterebbero raddoppiati. A parità di chiave tiene la
+// riga più completa (nuovo formato e/o più premi valorizzati, es. QTY).
+function _rowScore(r){
+  let sc=r._isNewFmt?1e9:0;
+  sc+=(r.massimale||0)+(r.erogato||0);
+  COMP.forEach(c=>sc+=(r[c.k]||0));
+  return sc;
+}
+function dedupData(){
+  const best=new Map();
+  for(const r of allData){
+    const k=(r.matricola||_empKey(r))+'|'+(r.monthKey||0)+'|'+(r._tipo||'');
+    const ex=best.get(k);
+    if(!ex||_rowScore(r)>_rowScore(ex)) best.set(k,r);
+  }
+  if(best.size<allData.length) allData=[...best.values()];
+}
+
 function rebuild(){
   allData=Object.values(fileMap).flat();
+  dedupData();
   applyUniformRates();
   const warn=document.getElementById('currWarn');
   const msgs=[];
