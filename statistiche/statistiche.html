@@ -3578,27 +3578,18 @@ function renderAlert(){
     // Sezione "Premi mensili"
     const mensile=COMP.filter(c=>c.tipo==='mensile');
     const semest=COMP.filter(c=>c.tipo==='semestrale');
-    // Separator = riga flex intera; card = flex:1 per riempire orizzontalmente
-    const sep=(lbl)=>'<div style="flex-basis:100%;width:100%;font-size:10px;font-weight:700;color:#9aa;text-transform:uppercase;letter-spacing:.6px;margin:4px 0 2px">'+lbl+'</div>';
-    const fc=(card)=>'<div style="flex:1;min-width:120px">'+card+'</div>';
-    let html=sep('Premi mensili');
-    mensile.forEach(c=>{
-      const v=compAvg[c.k], share=incAvg>0?(v/incAvg*100):0;
+    // Tutte le card su una sola riga flex (mensili + semestrali + residuo)
+    const fc=(card)=>'<div style="flex:1;min-width:80px">'+card+'</div>';
+    let html='';
+    [...mensile,...semest].forEach(c=>{
+      const v=compAvg[c.k]; if(v<0.005&&c.tipo==='semestrale') return;
+      const share=incAvg>0?(v/incAvg*100):0;
       html+=fc(_alCard(c.l,v.toFixed(2)+'%',share.toFixed(0)+'% dell\'incidenza',''));
     });
-    const hasSem=semest.some(c=>compAvg[c.k]>0.005);
-    if(hasSem){
-      html+=sep('Premi semestrali');
-      semest.forEach(c=>{
-        const v=compAvg[c.k]; if(v<0.005) return;
-        const share=incAvg>0?(v/incAvg*100):0;
-        html+=fc(_alCard(c.l,v.toFixed(2)+'%',share.toFixed(0)+'% dell\'incidenza',''));
-      });
-    }
     // Residuo positivo = premi in erogato non coperti da nessun COMP (es. QTY dept store)
     const sumAll=COMP.reduce((s,c)=>s+compAvg[c.k],0);
     const resid=incAvg-sumAll;
-    if(resid>0.05) html+=sep('Non scomposti')+fc(_alCard('QTY / altri',resid.toFixed(2)+'%',(resid/incAvg*100).toFixed(0)+'% dell\'incidenza','a'));
+    if(resid>0.05) html+=fc(_alCard('QTY / altri',resid.toFixed(2)+'%',(resid/incAvg*100).toFixed(0)+'% dell\'incidenza','a'));
     compRow.innerHTML=html;
     compRow.style.display='flex';
     if(compHd) compHd.style.display='block';
