@@ -860,8 +860,8 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
         <button class="btn-rst" onclick="resetAlertThresholds()">↺ Reset soglie</button>
       </div>
       <div id="alertKpiRow" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px"></div>
-      <div class="cc-title" id="alertCompHd" style="display:none;margin:2px 0 8px;font-size:11px;color:#9aa">Peso di ciascun tipo di premio sull'incidenza media <span class="info-tip" data-tip="Per ogni tipo di premio: incidenza media sul RML (premio del tipo / RML). 'Altri premi' raccoglie i premi non scomposti (QTY/pezzi, Customer Service, Articoli, Visual, semestrali). La somma di tutti i pesi è uguale all'Incidenza media totale.">i</span></div>
-      <div id="alertKpiComp" style="display:none;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px"></div>
+      <div class="cc-title" id="alertCompHd" style="display:none;margin:2px 0 8px;font-size:11px;color:#9aa">Peso di ciascun tipo di premio sull'incidenza media <span class="info-tip" data-tip="Per ogni tipo di premio: incidenza media sul RML (comp / RML, mediata sui dipendenti). I premi semestrali compaiono solo se presenti nei dati del periodo filtrato. La somma può leggermente superare l'Incidenza media per righe in vecchio formato in cui le singole componenti non sono scomposte.">i</span></div>
+      <div id="alertKpiComp" style="display:none;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px 10px;margin-bottom:14px;align-items:start"></div>
       <div class="cc full" style="margin-top:4px">
         <div class="cc-head"><div class="cc-title">Quadrante — Stipendio (RML) × scostamento incidenza dalla soglia (pp)</div></div>
         <div class="cw tall"><canvas id="alert_c_quad"></canvas></div>
@@ -3401,6 +3401,19 @@ function renderWhatifTimeline(rows,newMonthly,oldMonthly,newRml,oldRml,startKey,
 // ═══════════════════════════════════════════════════════════════
 const ALERT_DEF={SM:25,VSM:20,SSAP:18,SSA:16,SA:14,JSA:12,SCS:15};
 const ALERT_COMPL={cBdg:'BDG',cDigital:'Digital',cShopper:'Shopper Yield',cPrivilege:'Subscription',cSas:'SAS',cDcc:'DCC'};
+// Dept store non-USA (da file QTY TARGET GIUGNO 2026): identificati per ID
+// numerico prefisso del nome negozio (es. "1187 ECI POZUELO" → 1187).
+// USA esclusi dal perimetro analisi.
+const DEPT_STORE_IDS=new Set([
+  1187,1188,1189,1190,1191,1192,1194,1197,1198, // ECI Spagna
+  1303,1304,1305,1326,1327,1328,1329,1339,1347,1348,1349, // ECI Spagna (2)
+  1338, // ECI Porto (Portogallo)
+  1310,1311, // ILLUM Copenaghen (Danimarca) — 1311 = stessa location formato alternativo
+  1312,1344, // Selfridges UK
+  1318, // KaDeWe Berlino (Germania)
+  1319, // NK Nordiska Stoccolma (Svezia)
+  1355, // Breuninger Stoccarda (Germania)
+]);
 let alertL4LDip='tutti', alertL4LStore='tutti', alertCharts={};
 
 function popAlertFilters(){
@@ -3465,33 +3478,54 @@ function getAlertRows(){
 }
 function alertCompute(){
   const rows=getAlertRows(); const {th,tol}=alertThresholds();
-  const CK=Object.keys(ALERT_COMPL);
+  // CK_ALERT = componenti per le motivazioni (ALERT_COMPL keys)
+  // CK_ALL   = tutti i COMP keys per aggregazione e KPI card
+  const CK_ALERT=Object.keys(ALERT_COMPL);
+  const CK_ALL=COMP.map(c=>c.k);
   const map={};
   rows.forEach(r=>{
     const key=r.matricola||_empKey(r);
-    if(!map[key]){map[key]={matricola:r.matricola||'',cognome:r.cognome||'',nome:r.nome||'',store:r.store||'',job:r.job||'',_nazione:r._nazione||'',erogato:0,rml:0,months:new Set(),bdgMonths:0};CK.forEach(k=>map[key][k]=0);}
+    if(!map[key]){
+      map[key]={matricola:r.matricola||'',cognome:r.cognome||'',nome:r.nome||'',
+                store:r.store||'',job:r.job||'',_nazione:r._nazione||'',
+                erogato:0,rml:0,months:new Set(),bdgMonths:0,malattie:0};
+      CK_ALL.forEach(k=>map[key][k]=0);
+    }
     const a=map[key];
     a.erogato+=r.erogato; a.rml+=(r.rml_period||0);
     const mk=r.monthKey||0; if(mk)a.months.add(mk);
     if((r.cBdg||0)>0)a.bdgMonths++;
-    CK.forEach(k=>a[k]+=(r[k]||0));
+    CK_ALL.forEach(k=>a[k]+=(r[k]||0));
+    a.malattie+=(r.malattie||0);
     a.store=r.store||a.store; a.job=r.job||a.job; a._nazione=r._nazione||a._nazione;
   });
   const emps=Object.values(map).map(a=>{
-    a.nMonths=a.months.size||1; a.inc=a.rml>0?a.erogato/a.rml*100:0; a.bdgFreq=a.bdgMonths/a.nMonths*100;
-    a.compInc={}; CK.forEach(k=>a.compInc[k]=a.rml>0?a[k]/a.rml*100:0);
+    a.nMonths=a.months.size||1;
+    a.inc=a.rml>0?a.erogato/a.rml*100:0;
+    a.bdgFreq=a.bdgMonths/a.nMonths*100;
+    a.malattiePerMonth=a.malattie/a.nMonths;
+    a.compInc={}; CK_ALL.forEach(k=>a.compInc[k]=a.rml>0?a[k]/a.rml*100:0);
     return a;
   });
-  // piano del negozio (data-driven su TUTTI i dati): componenti mai attive = non previste.
-  // I dept store hanno solo BDG/QTY → niente SY/Subscription: non vanno segnalati per quelli.
-  const storeActive={};
-  allData.forEach(r=>{const s=r.store;if(!s)return;const set=storeActive[s]||(storeActive[s]=new Set());CK.forEach(k=>{if((r[k]||0)>0)set.add(k);});});
-  const isDept=s=>{const a=storeActive[s];return a?(!a.has('cShopper')&&!a.has('cPrivilege')):false;};
+  // Dept store: lista esplicita da file QTY TARGET (non-USA). Il prefisso numerico
+  // del nome negozio (es. "1187 ECI POZUELO" → 1187) è confrontato con DEPT_STORE_IDS.
+  function isDept(st){const m=String(st||'').match(/^(\d+)\s/);return m?DEPT_STORE_IDS.has(+m[1]):false;}
   emps.forEach(e=>{e.dept=isDept(e.store);});
-  // medie per RUOLO × TIPO NEGOZIO (dept vs normale) → confronto equo
+  // Componenti attive per negozio (su TUTTI i dati): usato per il filtro nelle motivazioni
+  const storeActive={};
+  allData.forEach(r=>{const s=r.store;if(!s)return;const set=storeActive[s]||(storeActive[s]=new Set());CK_ALERT.forEach(k=>{if((r[k]||0)>0)set.add(k);});});
+  // Medie per RUOLO × TIPO NEGOZIO (dept vs normale) → confronto equo
   const byRole={};
-  emps.forEach(e=>{const key=e.job+'|'+(e.dept?'D':'N');const b=byRole[key]||(byRole[key]={n:0,inc:0,bdgFreq:0,compInc:{}});b.n++;b.inc+=e.inc;b.bdgFreq+=e.bdgFreq;CK.forEach(k=>b.compInc[k]=(b.compInc[k]||0)+e.compInc[k]);});
-  Object.values(byRole).forEach(b=>{b.inc/=b.n;b.bdgFreq/=b.n;CK.forEach(k=>b.compInc[k]/=b.n);});
+  emps.forEach(e=>{
+    const key=e.job+'|'+(e.dept?'D':'N');
+    const b=byRole[key]||(byRole[key]={n:0,inc:0,bdgFreq:0,malattiePerMonth:0,compInc:{}});
+    b.n++; b.inc+=e.inc; b.bdgFreq+=e.bdgFreq; b.malattiePerMonth+=e.malattiePerMonth;
+    CK_ALERT.forEach(k=>b.compInc[k]=(b.compInc[k]||0)+e.compInc[k]);
+  });
+  Object.values(byRole).forEach(b=>{
+    b.inc/=b.n; b.bdgFreq/=b.n; b.malattiePerMonth/=b.n;
+    CK_ALERT.forEach(k=>b.compInc[k]/=b.n);
+  });
   emps.forEach(e=>{
     const healthy=th[e.job]!=null?th[e.job]:null;
     e.healthy=healthy; e.dev=healthy!=null?+(e.inc-healthy).toFixed(1):null;
@@ -3506,8 +3540,12 @@ function alertCompute(){
         if(under&&e.bdgFreq<peer.bdgFreq-15) e.reasons.push('BDG preso di rado: '+e.bdgFreq.toFixed(0)+'% dei mesi (media simili '+peer.bdgFreq.toFixed(0)+'%)');
         if(!under&&e.bdgFreq>peer.bdgFreq+15) e.reasons.push('BDG molto frequente: '+e.bdgFreq.toFixed(0)+'% dei mesi (media simili '+peer.bdgFreq.toFixed(0)+'%)');
       }
-      // solo i premi previsti dal piano del negozio (attivi nei dati)
-      const devs=CK.filter(k=>active.has(k)).map(k=>({k,d:e.compInc[k]-(peer.compInc[k]||0)})).filter(x=>under?x.d<-0.3:x.d>0.3).sort((a,b)=>under?a.d-b.d:b.d-a.d);
+      // Malattia: se superiore alla media pari ruolo di almeno 30% e > 1.5 gg/mese
+      if(under&&e.malattiePerMonth>1.5&&peer.malattiePerMonth>=0&&e.malattiePerMonth>peer.malattiePerMonth*1.3){
+        e.reasons.push('Malattie: '+Math.round(e.malattie)+' gg nei '+e.nMonths+' mesi ('+e.malattiePerMonth.toFixed(1)+' gg/mese vs '+peer.malattiePerMonth.toFixed(1)+' media) — la policy dimezza/azzera i premi nelle assenze');
+      }
+      // Componenti che si discostano dalla media (solo premi previsti dal piano)
+      const devs=CK_ALERT.filter(k=>active.has(k)).map(k=>({k,d:e.compInc[k]-(peer.compInc[k]||0)})).filter(x=>under?x.d<-0.3:x.d>0.3).sort((a,b)=>under?a.d-b.d:b.d-a.d);
       devs.slice(0,2).forEach(x=>e.reasons.push(ALERT_COMPL[x.k]+(under?' sotto la media':' sopra la media')+' ('+e.compInc[x.k].toFixed(1)+'% vs '+(peer.compInc[x.k]||0).toFixed(1)+'% pari ruolo/tipo)'));
       if(!e.reasons.length) e.reasons.push(under?'Incidenza complessiva sotto soglia':'Incidenza complessiva sopra soglia');
     }
@@ -3529,25 +3567,40 @@ function renderAlert(){
     _alCard('Sopra soglia',sopra+' ('+(tot?(sopra/tot*100).toFixed(0):0)+'%)','premi alti vs stipendio','p'),
     _alCard('Incidenza media',incAvg.toFixed(1)+'%','erogato / RML','a'),
   ].join('');
-  // KPI peso per tipo di premio: media su tutti i dipendenti dell'incidenza di
-  // ogni componente (comp/RML). La somma dei pesi = Incidenza media (incAvg).
-  const CK=Object.keys(ALERT_COMPL);
-  const compAvg={}; CK.forEach(k=>compAvg[k]=tot?emps.reduce((s,e)=>s+(e.compInc[k]||0),0)/tot:0);
-  const sumComp=CK.reduce((s,k)=>s+compAvg[k],0);
-  // "Altri premi" = residuo per chiudere la somma sull'Incidenza media: copre i
-  // premi non scomposti (QTY/pezzi dept store, Customer Service, Articoli, Visual,
-  // semestrali). Così la somma di tutte le card = Incidenza media (erogato/RML).
-  const resid=incAvg-sumComp;
+  // KPI peso per tipo di premio: un card per ciascun COMP, raggruppati in
+  // Premi mensili e Premi semestrali. La somma può leggermente superare incAvg
+  // per righe in vecchio formato (componenti non scomposti).
   const compHd=document.getElementById('alertCompHd'), compRow=document.getElementById('alertKpiComp');
-  if(compRow){
-    const cards=CK.map(k=>{
-      const v=compAvg[k], share=incAvg>0?(v/incAvg*100):0;
-      return _alCard(ALERT_COMPL[k],v.toFixed(1)+'%',share.toFixed(0)+'% dell’incidenza','');
+  if(compRow&&tot){
+    const compAvg={}; COMP.forEach(c=>compAvg[c.k]=emps.reduce((s,e)=>s+(e.compInc[c.k]||0),0)/tot);
+    // Sezione "Premi mensili"
+    const mensile=COMP.filter(c=>c.tipo==='mensile');
+    const semest=COMP.filter(c=>c.tipo==='semestrale');
+    const sep=(lbl)=>'<div style="grid-column:1/-1;font-size:10px;font-weight:700;color:#9aa;text-transform:uppercase;letter-spacing:.6px;margin:4px 0 2px">'+lbl+'</div>';
+    let html=sep('Premi mensili');
+    mensile.forEach(c=>{
+      const v=compAvg[c.k], share=incAvg>0?(v/incAvg*100):0;
+      html+=_alCard(c.l,v.toFixed(2)+'%',share.toFixed(0)+'% dell\'incidenza','');
     });
-    if(Math.abs(resid)>0.05) cards.push(_alCard('Altri premi',resid.toFixed(1)+'%',(incAvg>0?(resid/incAvg*100):0).toFixed(0)+'% dell’incidenza','a'));
-    compRow.innerHTML=cards.join('');
-    compRow.style.display=tot?'grid':'none';
-    if(compHd) compHd.style.display=tot?'block':'none';
+    const hasSem=semest.some(c=>compAvg[c.k]>0.005);
+    if(hasSem){
+      html+=sep('Premi semestrali');
+      semest.forEach(c=>{
+        const v=compAvg[c.k]; if(v<0.005) return;
+        const share=incAvg>0?(v/incAvg*100):0;
+        html+=_alCard(c.l,v.toFixed(2)+'%',share.toFixed(0)+'% dell\'incidenza','');
+      });
+    }
+    // Residuo positivo = premi in erogato non coperti da nessun COMP (es. QTY dept store)
+    const sumAll=COMP.reduce((s,c)=>s+compAvg[c.k],0);
+    const resid=incAvg-sumAll;
+    if(resid>0.05) html+=sep('Non scomposti')+_alCard('QTY / altri',resid.toFixed(2)+'%',(resid/incAvg*100).toFixed(0)+'% dell\'incidenza','a');
+    compRow.innerHTML=html;
+    compRow.style.display='grid';
+    if(compHd) compHd.style.display='block';
+  } else if(compRow){
+    compRow.style.display='none';
+    if(compHd) compHd.style.display='none';
   }
   renderAlertQuad(emps,tol);
   renderAlertTable(emps);
