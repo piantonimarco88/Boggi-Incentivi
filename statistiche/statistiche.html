@@ -2135,14 +2135,18 @@ const _empKey=r=>((r.cognome||'')+'|'+(r.nome||'')).toLowerCase().trim();
 
 // ─── FILTRO GLOBALE "SOLO DIPENDENTI ATTIVI" (condiviso YoY/Stipendi/Alert) ───
 // Attivi = presenti nel file del mese più recente caricato.
+// Chiave canonica = _empKey (cognome|nome), la stessa usata da L4L e dai
+// conteggi: usare la matricola scarterebbe le righe degli anni in cui la
+// persona aveva una matricola diversa (cambio nazione/sistema HR), falsando i
+// conteggi per anno (es. 147/148/152 invece di 152/152/152).
 let activeOnly=false;
 function activeEmpSet(){
   const latest=Math.max(0,...allData.map(r=>r.monthKey||0));
   const set=new Set();
-  allData.forEach(r=>{if((r.monthKey||0)===latest) set.add(r.matricola||_empKey(r));});
+  allData.forEach(r=>{if((r.monthKey||0)===latest) set.add(_empKey(r));});
   return set;
 }
-function applyActiveOnly(rows){ if(!activeOnly) return rows; const s=activeEmpSet(); return rows.filter(r=>s.has(r.matricola||_empKey(r))); }
+function applyActiveOnly(rows){ if(!activeOnly) return rows; const s=activeEmpSet(); return rows.filter(r=>s.has(_empKey(r))); }
 function setActiveOnly(on){
   activeOnly=!!on;
   ['yoy','sal','al'].forEach(p=>{
