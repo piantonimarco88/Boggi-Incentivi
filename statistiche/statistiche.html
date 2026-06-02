@@ -44,7 +44,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:13px;padding:18px 28px 0}
 .kpi{background:#fff;border-radius:12px;padding:16px 18px;border-left:4px solid #4f46e5;box-shadow:0 1px 5px rgba(0,0,0,.06)}
 .kpi.g{border-left-color:#22c55e}.kpi.a{border-left-color:#f59e0b}.kpi.r{border-left-color:#ef4444}.kpi.p{border-left-color:#a855f7}
-.kpi-lbl{font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.5px}
+.kpi-lbl{font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .kpi-val{font-size:20px;font-weight:700;margin:4px 0 2px;color:#111}
 .kpi-sub{font-size:10px;color:#bbb}
 
@@ -3554,7 +3554,7 @@ function alertCompute(){
   });
   return {emps,tol};
 }
-function _alCard(lbl,val,sub,cls){return '<div class="kpi '+(cls||'')+'"><div class="kpi-lbl">'+lbl+'</div><div class="kpi-val">'+val+'</div><div class="kpi-sub">'+(sub||'')+'</div></div>';}
+function _alCard(lbl,val,sub,cls){return '<div class="kpi '+(cls||'')+'" title="'+lbl+'"><div class="kpi-lbl">'+lbl+'</div><div class="kpi-val">'+val+'</div><div class="kpi-sub">'+(sub||'')+'</div></div>';}
 function renderAlert(){
   if(!allData.length) return;
   const {emps,tol}=alertCompute();
@@ -3586,10 +3586,6 @@ function renderAlert(){
       const share=incAvg>0?(v/incAvg*100):0;
       html+=fc(_alCard(c.l,v.toFixed(2)+'%',share.toFixed(0)+'% dell\'incidenza',''));
     });
-    // Residuo positivo = premi in erogato non coperti da nessun COMP (es. QTY dept store)
-    const sumAll=COMP.reduce((s,c)=>s+compAvg[c.k],0);
-    const resid=incAvg-sumAll;
-    if(resid>0.05) html+=fc(_alCard('QTY / altri',resid.toFixed(2)+'%',(resid/incAvg*100).toFixed(0)+'% dell\'incidenza','a'));
     compRow.innerHTML=html;
     compRow.style.display='flex';
     if(compHd) compHd.style.display='block';
