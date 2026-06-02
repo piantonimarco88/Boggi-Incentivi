@@ -842,13 +842,13 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
         <div class="wp-group">
           <div class="wp-lbl">Incidenza % "sana" attesa per ruolo <span class="info-tip" data-tip="La % di premi erogati sullo stipendio che ritieni equa per ogni ruolo. Chi si discosta oltre la tolleranza viene segnalato.">i</span></div>
           <div class="wp-roles">
-            <label class="wp-f"><span>SM</span><input type="number" id="al-th-SM" value="25" min="0" step="1" oninput="renderAlert()"></label>
-            <label class="wp-f"><span>VSM</span><input type="number" id="al-th-VSM" value="20" min="0" step="1" oninput="renderAlert()"></label>
-            <label class="wp-f"><span>SSAP</span><input type="number" id="al-th-SSAP" value="18" min="0" step="1" oninput="renderAlert()"></label>
-            <label class="wp-f"><span>SSA</span><input type="number" id="al-th-SSA" value="16" min="0" step="1" oninput="renderAlert()"></label>
-            <label class="wp-f"><span>SA</span><input type="number" id="al-th-SA" value="14" min="0" step="1" oninput="renderAlert()"></label>
-            <label class="wp-f"><span>JSA</span><input type="number" id="al-th-JSA" value="12" min="0" step="1" oninput="renderAlert()"></label>
-            <label class="wp-f"><span>SCS</span><input type="number" id="al-th-SCS" value="15" min="0" step="1" oninput="renderAlert()"></label>
+            <label class="wp-f"><span>SM</span><input type="number" id="al-th-SM" value="15" min="0" step="1" oninput="renderAlert()"></label>
+            <label class="wp-f"><span>VSM</span><input type="number" id="al-th-VSM" value="15" min="0" step="1" oninput="renderAlert()"></label>
+            <label class="wp-f"><span>SSAP</span><input type="number" id="al-th-SSAP" value="14" min="0" step="1" oninput="renderAlert()"></label>
+            <label class="wp-f"><span>SSA</span><input type="number" id="al-th-SSA" value="12" min="0" step="1" oninput="renderAlert()"></label>
+            <label class="wp-f"><span>SA</span><input type="number" id="al-th-SA" value="10" min="0" step="1" oninput="renderAlert()"></label>
+            <label class="wp-f"><span>JSA</span><input type="number" id="al-th-JSA" value="10" min="0" step="1" oninput="renderAlert()"></label>
+            <label class="wp-f"><span>SCS</span><input type="number" id="al-th-SCS" value="12" min="0" step="1" oninput="renderAlert()"></label>
           </div>
         </div>
         <div class="wp-group">
@@ -3399,7 +3399,7 @@ function renderWhatifTimeline(rows,newMonthly,oldMonthly,newRml,oldRml,startKey,
 // Segnala dipendenti la cui incidenza premi/stipendio si discosta dalla
 // soglia "sana" per ruolo, con motivazioni vs i pari ruolo.
 // ═══════════════════════════════════════════════════════════════
-const ALERT_DEF={SM:25,VSM:20,SSAP:18,SSA:16,SA:14,JSA:12,SCS:15};
+const ALERT_DEF={SM:15,VSM:15,SSAP:14,SSA:12,SA:10,JSA:10,SCS:12};
 const ALERT_COMPL={cBdg:'BDG',cDigital:'Digital',cShopper:'Shopper Yield',cPrivilege:'Subscription',cSas:'SAS',cDcc:'DCC'};
 // Dept store non-USA (da file QTY TARGET GIUGNO 2026): identificati per ID
 // numerico prefisso del nome negozio (es. "1187 ECI POZUELO" → 1187).
