@@ -242,6 +242,9 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 .wp-line{display:flex;gap:14px;align-items:flex-start;padding:5px 0}
 .wp-line+.wp-line{border-top:1px dashed #eef0f5;margin-top:3px}
 .wp-line-lbl{font-size:9px;font-weight:700;color:#b3b3c2;text-transform:uppercase;min-width:74px;padding-top:7px;letter-spacing:.3px}
+.cmp-chip{display:inline-flex;align-items:center;gap:2px;background:#ede9fe;border:1px solid #ddd6fe;color:#5b21b6;border-radius:12px;padding:1px 4px 1px 9px;font-size:10px;font-weight:600}
+.cmp-chip .x{cursor:pointer;font-weight:700;color:#7c3aed;padding:0 3px;font-size:12px}
+.cmp-chip .x:hover{color:#ef4444}
 .whatif-hist{font-size:11px;color:#4338ca;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;padding:7px 12px;margin-bottom:12px}
 .whatif-hist b{color:#3730a3}
 .wif-toggle{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#4338ca;cursor:pointer}
@@ -1051,8 +1054,12 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
       <div class="ms-wrap" id="cmp-naz"><button class="ms-btn" id="cmp-naz-btn" onclick="toggleMs(event,'cmp-naz')">Tutte</button><div class="ms-panel" id="cmp-naz-panel" style="display:none"></div></div></div>
     <div class="fg"><label>Negozio</label>
       <div class="ms-wrap" id="cmp-store"><button class="ms-btn" id="cmp-store-btn" onclick="toggleMs(event,'cmp-store')">Tutti</button><div class="ms-panel" id="cmp-store-panel" style="display:none"></div></div></div>
-    <div class="fg"><label>Dipendenti (specifici)</label>
-      <div class="ms-wrap" id="cmp-emp"><button class="ms-btn" id="cmp-emp-btn" onclick="toggleMs(event,'cmp-emp')">Tutti</button><div class="ms-panel" id="cmp-emp-panel" style="display:none"></div></div></div>
+    <div class="fg" style="min-width:230px"><label>Dipendenti (specifici)</label>
+      <div class="dip-ac-wrap">
+        <input type="text" id="cmp-emp-inp" placeholder="cerca e aggiungi…" oninput="cmpEmpInput(this.value)" onblur="setTimeout(()=>{const l=document.getElementById('cmp-emp-list');if(l)l.style.display='none'},180)" autocomplete="off" style="min-width:200px">
+        <div id="cmp-emp-list" class="dip-ac-list" style="display:none"></div>
+      </div>
+      <div id="cmp-emp-chips" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px"></div></div>
     <div class="fg"><label>Tipo premio</label>
       <div class="ms-wrap" id="cmp-tipo"><button class="ms-btn" id="cmp-tipo-btn" onclick="toggleMs(event,'cmp-tipo')">Tutti</button><div class="ms-panel" id="cmp-tipo-panel" style="display:none"></div></div></div>
     <div class="fg"><label>Tipo negozio</label>
@@ -4167,7 +4174,19 @@ function exportAlert(){
 // ═══════════════════════════════════════════════════════════════
 // ─── CONFRONTA TAB (soggetto vs gruppo) ──────────────────────
 // ═══════════════════════════════════════════════════════════════
-let cmpBase='mese', cmpDept='tutti', cmpCharts={};
+let cmpBase='mese', cmpDept='tutti', cmpCharts={}, cmpEmpSel=new Set(), cmpEmpMap={};
+function cmpEmpInput(val){
+  const list=document.getElementById('cmp-emp-list'); if(!list) return;
+  const q=val.toLowerCase().trim(); if(q.length<2){list.style.display='none';return;}
+  const matches=Object.keys(cmpEmpMap).filter(k=>!cmpEmpSel.has(k)&&cmpEmpMap[k].toLowerCase().includes(q)).slice(0,12);
+  if(!matches.length){list.style.display='none';return;}
+  list.innerHTML=matches.map(k=>'<div class="dip-ac-item" data-k="'+encodeURIComponent(k)+'" onmousedown="cmpEmpAdd(decodeURIComponent(this.dataset.k))"><span class="dip-ac-name">'+cmpEmpMap[k]+'</span></div>').join('');
+  list.style.display='block';
+}
+function cmpEmpAdd(k){cmpEmpSel.add(k);const inp=document.getElementById('cmp-emp-inp');if(inp)inp.value='';const l=document.getElementById('cmp-emp-list');if(l)l.style.display='none';renderCmpChips();renderCmp();}
+function cmpEmpRemove(k){cmpEmpSel.delete(k);renderCmpChips();renderCmp();}
+function renderCmpChips(){const c=document.getElementById('cmp-emp-chips');if(!c)return;
+  c.innerHTML=[...cmpEmpSel].map(k=>'<span class="cmp-chip">'+(cmpEmpMap[k]||k)+'<span class="x" data-k="'+encodeURIComponent(k)+'" onclick="cmpEmpRemove(decodeURIComponent(this.dataset.k))">×</span></span>').join('');}
 function _cmpDestroy(){Object.keys(cmpCharts).forEach(k=>{if(cmpCharts[k]){cmpCharts[k].destroy();delete cmpCharts[k];}});}
 function setCmpBase(b){cmpBase=b;['mese','tot'].forEach(x=>{const el=document.getElementById('cmp-base-'+x);if(el)el.classList.toggle('active',x===b);});renderCmp();}
 function setCmpDept(v){cmpDept=v;['tutti','norm','dept'].forEach(x=>{const el=document.getElementById('cmp-dt-'+x);if(el)el.classList.toggle('active',x===v);});renderCmp();}
@@ -4194,8 +4213,9 @@ function popCmpFilters(){
   setMsOpts('cmp-naz',naz.map(n=>({v:n,l:n})),renderCmp);
   setMsOpts('cmp-store',stores.map(s=>({v:s,l:s})),renderCmp);
   setMsOpts('cmp-tipo',tipi.map(t=>({v:t,l:TIPO_LBL_MAP[t]||t})),renderCmp);
-  const em={}; allData.forEach(r=>{const k=r.matricola||_empKey(r);if(!em[k])em[k]=((r.cognome||'')+' '+(r.nome||'')).trim()+(r.matricola?' · '+r.matricola:'');});
-  setMsOpts('cmp-emp',Object.keys(em).map(k=>({v:k,l:em[k]})).sort((a,b)=>a.l.localeCompare(b.l)),renderCmp);
+  cmpEmpMap={}; allData.forEach(r=>{const k=r.matricola||_empKey(r);if(!cmpEmpMap[k])cmpEmpMap[k]=((r.cognome||'')+' '+(r.nome||'')).trim()+(r.matricola?' · '+r.matricola:'');});
+  // rimuovi dalle selezioni eventuali chiavi non più presenti
+  [...cmpEmpSel].forEach(k=>{if(!cmpEmpMap[k])cmpEmpSel.delete(k);}); renderCmpChips();
   const mks=[...new Set(allData.map(r=>r.monthKey).filter(Boolean))].sort((a,b)=>a-b);
   const opts=mks.map(mk=>'<option value="'+mk+'">'+mkLabel(mk)+'</option>').join('');
   const fEl=document.getElementById('cmp-from'), tEl=document.getElementById('cmp-to');
@@ -4203,7 +4223,8 @@ function popCmpFilters(){
   if(tEl&&tEl.options.length<=0){tEl.innerHTML=opts;if(mks.length)tEl.value=mks[mks.length-1];}
 }
 function resetCmpFilters(){
-  ['cmp-job','cmp-naz','cmp-store','cmp-emp','cmp-tipo'].forEach(id=>{document.querySelectorAll('#'+id+'-panel input').forEach(i=>{i.checked=false;i.indeterminate=false;});updateMsLabel(id);});
+  ['cmp-job','cmp-naz','cmp-store','cmp-tipo'].forEach(id=>{document.querySelectorAll('#'+id+'-panel input').forEach(i=>{i.checked=false;i.indeterminate=false;});updateMsLabel(id);});
+  cmpEmpSel.clear(); renderCmpChips(); const ei=document.getElementById('cmp-emp-inp'); if(ei)ei.value='';
   const s=document.getElementById('cmp-subj'); if(s)s.value='';
   setCmpDept('tutti');
   const mks=[...new Set(allData.map(r=>r.monthKey).filter(Boolean))].sort((a,b)=>a-b);
@@ -4258,7 +4279,7 @@ function cmpComputeGroups(){
   const inScope=r=>{const mk=r.monthKey||0;if(mk<from||mk>to)return false;if(tipi.size&&!tipi.has(r._tipo))return false;return true;};
   const subjRows=allData.filter(r=>inScope(r)&&(r.matricola||_empKey(r))===subjKey);
   const subj=cmpAggByEmp(subjRows)[0]||null;
-  const jobs=new Set(getMsVals('cmp-job')),naz=new Set(getMsVals('cmp-naz')),stores=new Set(getMsVals('cmp-store')),emps=new Set(getMsVals('cmp-emp'));
+  const jobs=new Set(getMsVals('cmp-job')),naz=new Set(getMsVals('cmp-naz')),stores=new Set(getMsVals('cmp-store')),emps=cmpEmpSel;
   const groupRows=allData.filter(r=>{
     if(!inScope(r))return false;
     const k=r.matricola||_empKey(r); if(k===subjKey)return false;
