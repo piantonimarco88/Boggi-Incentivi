@@ -296,6 +296,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
   <button class="tab-btn" data-tab="sal" onclick="switchTab('sal')">💶 Stipendi</button>
   <button class="tab-btn" data-tab="whatif" onclick="switchTab('whatif')">🔮 What-if</button>
   <button class="tab-btn" data-tab="alert" onclick="switchTab('alert')">🚨 Alert</button>
+  <button class="tab-btn" data-tab="cmp" onclick="switchTab('cmp')">⚖️ Confronta</button>
   <button class="tab-btn" data-tab="gloss" onclick="switchTab('gloss')">📖 Glossario</button>
 </div>
 
@@ -1009,8 +1010,63 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
    <div class="gloss-row"><div class="gloss-term">Decorrenza modifiche</div><div class="gloss-def">Mese dal quale le modifiche dello scenario diventano attive; prima di tale data Scenario = Reale.</div></div>
    <div class="gloss-row"><div class="gloss-term">Tipo premio "Tutti"</div><div class="gloss-def">Mostra e calcola insieme sia i premi mensili sia il semestrale (parametri e risultati).</div></div>
   </div>
+
+  <div class="gloss-sec">
+   <h3>⚖️ Tab Confronta</h3>
+   <div class="gloss-row"><div class="gloss-term">Soggetto vs Gruppo</div><div class="gloss-def">Confronta un singolo dipendente (soggetto) con un gruppo di pari definito dai filtri (ruolo, nazione, negozio, dipendenti specifici, tipo premio) su un periodo Da→A. Il soggetto è <b>escluso</b> dalla media del gruppo.</div></div>
+   <div class="gloss-row"><div class="gloss-term">Valori monetari</div><div class="gloss-def">Toggle <b>Media/mese</b> (erogato per mese-dipendente, confronto equo) o <b>Totale periodo</b> (somma sul periodo, media per dipendente del gruppo). Incidenze e achievement % sono invarianti.</div></div>
+   <div class="gloss-row"><div class="gloss-term">Viste</div><div class="gloss-def">Card KPI (soggetto vs media gruppo + delta) · grafico incidenza per tipo di premio · andamento mensile · posizionamento del soggetto nel gruppo (RML × incidenza).</div></div>
+  </div>
  </div>
 </div><!-- end #tabGloss -->
+
+<!-- ═══════════ CONFRONTA TAB ═══════════ -->
+<div id="tabCmp" style="display:none">
+  <div class="yoy-filters">
+    <div class="fg"><label>Dipendente (soggetto)</label>
+      <div class="dip-ac-wrap">
+        <input type="text" id="cmp-subj" placeholder="Nome, cognome, matricola…" oninput="cmpSubjAutocomplete(this.value)" onblur="setTimeout(()=>{const l=document.getElementById('cmp-subj-ac-list');if(l)l.style.display='none'},180)" autocomplete="off" style="min-width:210px">
+        <div id="cmp-subj-ac-list" class="dip-ac-list" style="display:none"></div>
+      </div></div>
+    <div class="fg"><label>Periodo da</label>
+      <select id="cmp-from" onchange="renderCmp()" style="padding:5px 8px;border:1px solid #dde1ea;border-radius:6px;font-size:11px;background:#fff;color:#222"></select></div>
+    <div class="fg"><label>Periodo a</label>
+      <select id="cmp-to" onchange="renderCmp()" style="padding:5px 8px;border:1px solid #dde1ea;border-radius:6px;font-size:11px;background:#fff;color:#222"></select></div>
+    <div class="fg"><label>Valori monetari</label>
+      <div class="l4l-toggle" style="display:flex">
+        <button class="l4l-btn active" id="cmp-base-mese" style="flex:1" onclick="setCmpBase('mese')">Media/mese</button>
+        <button class="l4l-btn" id="cmp-base-tot" style="flex:1" onclick="setCmpBase('tot')">Totale periodo</button>
+      </div></div>
+    <button class="btn-rst" onclick="resetCmpFilters()">↺ Reset filtri</button>
+  </div>
+  <div class="yoy-filters" style="margin-top:-6px">
+    <div class="fg" style="font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.4px;align-self:center">Gruppo di confronto →</div>
+    <div class="fg"><label>Ruolo</label>
+      <div class="ms-wrap" id="cmp-job"><button class="ms-btn" id="cmp-job-btn" onclick="toggleMs(event,'cmp-job')">Tutti</button><div class="ms-panel" id="cmp-job-panel" style="display:none"></div></div></div>
+    <div class="fg"><label>Nazione</label>
+      <div class="ms-wrap" id="cmp-naz"><button class="ms-btn" id="cmp-naz-btn" onclick="toggleMs(event,'cmp-naz')">Tutte</button><div class="ms-panel" id="cmp-naz-panel" style="display:none"></div></div></div>
+    <div class="fg"><label>Negozio</label>
+      <div class="ms-wrap" id="cmp-store"><button class="ms-btn" id="cmp-store-btn" onclick="toggleMs(event,'cmp-store')">Tutti</button><div class="ms-panel" id="cmp-store-panel" style="display:none"></div></div></div>
+    <div class="fg"><label>Dipendenti (specifici)</label>
+      <div class="ms-wrap" id="cmp-emp"><button class="ms-btn" id="cmp-emp-btn" onclick="toggleMs(event,'cmp-emp')">Tutti</button><div class="ms-panel" id="cmp-emp-panel" style="display:none"></div></div></div>
+    <div class="fg"><label>Tipo premio</label>
+      <div class="ms-wrap" id="cmp-tipo"><button class="ms-btn" id="cmp-tipo-btn" onclick="toggleMs(event,'cmp-tipo')">Tutti</button><div class="ms-panel" id="cmp-tipo-panel" style="display:none"></div></div></div>
+  </div>
+
+  <div id="cmpNote" class="whatif-note" style="margin:0 28px 12px"></div>
+  <div id="cmpKpiRow" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:0 28px 16px"></div>
+
+  <div class="whatif" style="margin-bottom:16px"><div class="whatif-body">
+    <div class="cc full"><div class="cc-head"><div class="cc-title">Incidenza % su RML per tipo di premio — Soggetto vs media Gruppo</div></div><div class="cw tall"><canvas id="cmp_c_comp"></canvas></div></div>
+  </div></div>
+  <div class="whatif" style="margin-bottom:16px"><div class="whatif-body">
+    <div class="chart-hint">🔍 <b>rotella</b> = zoom · <b>trascina</b> = scorri · <b>doppio clic</b> = reset</div>
+    <div class="cc full"><div class="cc-head"><div class="cc-title">Andamento mensile incidenza % — Soggetto vs media Gruppo</div></div><div class="cw tall"><canvas id="cmp_c_trend"></canvas></div></div>
+  </div></div>
+  <div class="whatif"><div class="whatif-body">
+    <div class="cc full"><div class="cc-head"><div class="cc-title">Posizionamento nel gruppo — Stipendio (RML mensile) × Incidenza % (soggetto evidenziato)</div></div><div class="cw tall"><canvas id="cmp_c_pos"></canvas></div></div>
+  </div></div>
+</div><!-- end #tabCmp -->
 
 <!-- FULLSCREEN MODAL -->
 <div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
@@ -2121,12 +2177,14 @@ function switchTab(tab){
   document.getElementById('tabSal').style.display=tab==='sal'?'':'none';
   document.getElementById('tabWhatif').style.display=tab==='whatif'?'':'none';
   document.getElementById('tabAlert').style.display=tab==='alert'?'':'none';
+  document.getElementById('tabCmp').style.display=tab==='cmp'?'':'none';
   document.getElementById('tabGloss').style.display=tab==='gloss'?'':'none';
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
   if(tab==='yoy'&&allData.length){popYoyFilters();renderYoy();}
   if(tab==='sal'&&allData.length){popSalFilters();renderSal();}
   if(tab==='whatif'&&allData.length){popWhatifFilters();renderWhatif();}
   if(tab==='alert'&&allData.length){popAlertFilters();renderAlert();}
+  if(tab==='cmp'&&allData.length){popCmpFilters();renderCmp();}
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -4070,6 +4128,152 @@ function exportAlert(){
     'Incidenza %':+e.inc.toFixed(1),'Soglia %':e.healthy,'Scostamento pp':e.dev,'Frequenza BDG %':+e.bdgFreq.toFixed(0),'Motivi':e.reasons.join('; '),
   }));
   _writeXlsx(rows,'Alert','BoggiPremi_Alert_');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ─── CONFRONTA TAB (soggetto vs gruppo) ──────────────────────
+// ═══════════════════════════════════════════════════════════════
+let cmpBase='mese', cmpCharts={};
+function _cmpDestroy(){Object.keys(cmpCharts).forEach(k=>{if(cmpCharts[k]){cmpCharts[k].destroy();delete cmpCharts[k];}});}
+function setCmpBase(b){cmpBase=b;['mese','tot'].forEach(x=>{const el=document.getElementById('cmp-base-'+x);if(el)el.classList.toggle('active',x===b);});renderCmp();}
+function cmpSubjAutocomplete(val){_dipAutocomplete(val,'cmp-subj-ac-list','cmpSelectSubj',renderCmp);}
+function cmpSelectSubj(name){_selectDip(name,'cmp-subj','cmp-subj-ac-list',renderCmp);}
+function popCmpFilters(){
+  const jobs=[...new Set(allData.map(r=>r.job).filter(Boolean))].sort();
+  const naz=[...new Set(allData.map(r=>r._nazione).filter(n=>n&&!n.startsWith('ENTE ')))].sort();
+  const stores=[...new Set(allData.map(r=>r.store).filter(Boolean))].sort();
+  const tipi=[...new Set(allData.map(r=>r._tipo))].sort();
+  setMsOpts('cmp-job',jobs.map(j=>({v:j,l:j})),renderCmp);
+  setMsOpts('cmp-naz',naz.map(n=>({v:n,l:n})),renderCmp);
+  setMsOpts('cmp-store',stores.map(s=>({v:s,l:s})),renderCmp);
+  setMsOpts('cmp-tipo',tipi.map(t=>({v:t,l:TIPO_LBL_MAP[t]||t})),renderCmp);
+  const em={}; allData.forEach(r=>{const k=r.matricola||_empKey(r);if(!em[k])em[k]=((r.cognome||'')+' '+(r.nome||'')).trim()+(r.matricola?' · '+r.matricola:'');});
+  setMsOpts('cmp-emp',Object.keys(em).map(k=>({v:k,l:em[k]})).sort((a,b)=>a.l.localeCompare(b.l)),renderCmp);
+  const mks=[...new Set(allData.map(r=>r.monthKey).filter(Boolean))].sort((a,b)=>a-b);
+  const opts=mks.map(mk=>'<option value="'+mk+'">'+mkLabel(mk)+'</option>').join('');
+  const fEl=document.getElementById('cmp-from'), tEl=document.getElementById('cmp-to');
+  if(fEl&&fEl.options.length<=0){fEl.innerHTML=opts;if(mks.length)fEl.value=mks[0];}
+  if(tEl&&tEl.options.length<=0){tEl.innerHTML=opts;if(mks.length)tEl.value=mks[mks.length-1];}
+}
+function resetCmpFilters(){
+  ['cmp-job','cmp-naz','cmp-store','cmp-emp','cmp-tipo'].forEach(id=>{document.querySelectorAll('#'+id+'-panel input').forEach(i=>{i.checked=false;i.indeterminate=false;});updateMsLabel(id);});
+  const s=document.getElementById('cmp-subj'); if(s)s.value='';
+  const mks=[...new Set(allData.map(r=>r.monthKey).filter(Boolean))].sort((a,b)=>a-b);
+  const fEl=document.getElementById('cmp-from'),tEl=document.getElementById('cmp-to');
+  if(fEl&&mks.length)fEl.value=mks[0]; if(tEl&&mks.length)tEl.value=mks[mks.length-1];
+  renderCmp();
+}
+function cmpSubjectKey(){
+  const q=(document.getElementById('cmp-subj')||{value:''}).value.toLowerCase().trim();
+  if(!q) return null;
+  for(const r of allData){const h=((r.cognome||'')+' '+(r.nome||'')+' '+(r.matricola||'')).toLowerCase();if(h.includes(q))return r.matricola||_empKey(r);}
+  return null;
+}
+function cmpPeriod(){const f=+((document.getElementById('cmp-from')||{}).value)||0,t=+((document.getElementById('cmp-to')||{}).value)||99999999;return f<=t?[f,t]:[t,f];}
+// Aggrega per dipendente sul set di righe dato.
+function cmpAggByEmp(rows){
+  const map={};
+  rows.forEach(r=>{
+    const k=r.matricola||_empKey(r);
+    if(!map[k]){map[k]={key:k,cognome:r.cognome||'',nome:r.nome||'',store:r.store||'',job:r.job||'',erogato:0,massimale:0,_rmlM:0,_rmlS:0,_rmlMeseSum:0,_rmlMeseN:0,months:new Set()};COMP.forEach(c=>map[k][c.k]=0);}
+    const a=map[k];
+    a.erogato+=r.erogato||0; a.massimale+=r.massimale||0;
+    const v=r.rml_period||0; if(isSemRow(r))a._rmlS+=v; else a._rmlM+=v;
+    const vm=rmlMonth(r); if(vm>0){a._rmlMeseSum+=vm;a._rmlMeseN++;}
+    const mk=r.monthKey||0; if(mk)a.months.add(mk);
+    COMP.forEach(c=>a[c.k]+=(r[c.k]||0));
+    a.store=r.store||a.store; a.job=r.job||a.job;
+  });
+  return Object.values(map).map(a=>{
+    a.rmlBase=a._rmlM||a._rmlS;
+    a.nMonths=a.months.size||1;
+    a.inc=a.rmlBase>0?a.erogato/a.rmlBase*100:0;
+    a.ach=a.massimale>0?a.erogato/a.massimale*100:0;
+    a.rmlMese=a._rmlMeseN?a._rmlMeseSum/a._rmlMeseN:0;
+    a.erogMese=a.erogato/a.nMonths;
+    a.compInc={}; COMP.forEach(c=>a.compInc[c.k]=a.rmlBase>0?a[c.k]/a.rmlBase*100:0);
+    return a;
+  });
+}
+const _cmpAvg=(arr,f)=>arr.length?arr.reduce((s,e)=>s+f(e),0)/arr.length:0;
+function _cmpFmt(v,u){return u==='eur'?'€ '+fmt(v):(v||0).toFixed(1)+'%';}
+function _cmpCard(lbl,s,g,unit){
+  const d=s-g, sign=d>=0?'+':'';
+  return '<div class="kpi a"><div class="kpi-lbl">'+lbl+'</div><div class="kpi-val">'+_cmpFmt(s,unit)+'</div>'
+    +'<div class="kpi-sub">gruppo '+_cmpFmt(g,unit)+' · <b class="'+(d>=0?'pos':'neg')+'">'+sign+_cmpFmt(d,unit)+'</b></div></div>';
+}
+function renderCmp(){
+  if(!allData.length) return;
+  const note=document.getElementById('cmpNote'), kpi=document.getElementById('cmpKpiRow');
+  const subjKey=cmpSubjectKey();
+  if(!subjKey){ if(note){note.className='whatif-note';note.textContent='Seleziona un dipendente soggetto per avviare il confronto.';} if(kpi)kpi.innerHTML=''; _cmpDestroy(); return; }
+  const [from,to]=cmpPeriod();
+  const tipi=new Set(getMsVals('cmp-tipo'));
+  const inScope=r=>{const mk=r.monthKey||0;if(mk<from||mk>to)return false;if(tipi.size&&!tipi.has(r._tipo))return false;return true;};
+  const subjRows=allData.filter(r=>inScope(r)&&(r.matricola||_empKey(r))===subjKey);
+  const subj=cmpAggByEmp(subjRows)[0];
+  const jobs=new Set(getMsVals('cmp-job')),naz=new Set(getMsVals('cmp-naz')),stores=new Set(getMsVals('cmp-store')),emps=new Set(getMsVals('cmp-emp'));
+  const groupRows=allData.filter(r=>{
+    if(!inScope(r))return false;
+    const k=r.matricola||_empKey(r); if(k===subjKey)return false;
+    if(emps.size) return emps.has(k);
+    if(jobs.size&&!jobs.has(r.job))return false;
+    if(naz.size&&!naz.has(r._nazione))return false;
+    if(stores.size&&!stores.has(r.store))return false;
+    return true;
+  });
+  const group=cmpAggByEmp(groupRows);
+  const subjName=subj?(subj.cognome+' '+subj.nome).trim():(document.getElementById('cmp-subj')||{}).value;
+  if(note){
+    note.className='whatif-note';
+    note.innerHTML=!subj?'⚠️ Nessun dato per il soggetto nel periodo selezionato.'
+      :'<b>'+subjName+'</b> ('+subj.job+') confrontato con <b>'+group.length+'</b> dipendenti del gruppo · periodo '+mkLabel(from)+' → '+mkLabel(to)+(group.length?'':' — nessun dipendente nel gruppo: allarga i filtri.');
+  }
+  if(!subj){ if(kpi)kpi.innerHTML=''; _cmpDestroy(); return; }
+  // ── Card KPI ──
+  const gN=group.length;
+  const subjErog=cmpBase==='mese'?subj.erogMese:subj.erogato;
+  const grpErog=cmpBase==='mese'?_cmpAvg(group,e=>e.erogMese):_cmpAvg(group,e=>e.erogato);
+  if(kpi) kpi.innerHTML=[
+    _cmpCard('Erogato '+(cmpBase==='mese'?'medio / mese':'totale periodo'),subjErog,grpErog,'eur'),
+    _cmpCard('Incidenza % su RML',subj.inc,_cmpAvg(group,e=>e.inc),'pct'),
+    _cmpCard('Achievement %',subj.ach,_cmpAvg(group,e=>e.ach),'pct'),
+    '<div class="kpi"><div class="kpi-lbl">Gruppo di confronto</div><div class="kpi-val">'+gN+'</div><div class="kpi-sub">dipendenti · RML medio soggetto € '+fmt(subj.rmlMese)+'</div></div>',
+  ].join('');
+  // ── Grafico per componente premio (incidenza %) ──
+  _cmpDestroy();
+  const comps=COMP.filter(c=>(subj.compInc[c.k]>0.05)||_cmpAvg(group,e=>e.compInc[c.k])>0.05);
+  const cc=document.getElementById('cmp_c_comp');
+  if(cc) cmpCharts.comp=new Chart(cc.getContext('2d'),{type:'bar',
+    data:{labels:comps.map(c=>c.l),datasets:[
+      {label:'Soggetto',data:comps.map(c=>+subj.compInc[c.k].toFixed(2)),backgroundColor:'#7c3aed',borderRadius:4},
+      {label:'Media gruppo',data:comps.map(c=>+_cmpAvg(group,e=>e.compInc[c.k]).toFixed(2)),backgroundColor:'#cbd5e1',borderColor:'#94a3b8',borderWidth:1,borderRadius:4},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.raw+'%'}}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v+'%'}}}}});
+  // ── Trend mensile incidenza (% su RML mensile-equivalente) ──
+  const mksAll=[...new Set(subjRows.concat(groupRows).map(r=>r.monthKey).filter(Boolean))].sort((a,b)=>a-b);
+  const sBy={},gBy={};
+  subjRows.forEach(r=>{const mk=r.monthKey;if(!mk)return;(sBy[mk]||(sBy[mk]={er:0,rml:0}));sBy[mk].er+=r.erogato||0;sBy[mk].rml+=rmlMonth(r);});
+  groupRows.forEach(r=>{const mk=r.monthKey;if(!mk)return;(gBy[mk]||(gBy[mk]={er:0,rml:0}));gBy[mk].er+=r.erogato||0;gBy[mk].rml+=rmlMonth(r);});
+  const inc=(o)=>o&&o.rml>0?+(o.er/o.rml*100).toFixed(1):null;
+  const ct=document.getElementById('cmp_c_trend');
+  if(ct) cmpCharts.trend=new Chart(ct.getContext('2d'),{type:'line',
+    data:{labels:mksAll.map(mk=>mkShort(mk)),datasets:[
+      {label:'Soggetto',data:mksAll.map(mk=>inc(sBy[mk])),borderColor:'#7c3aed',backgroundColor:'#7c3aed14',borderWidth:2.5,tension:.3,spanGaps:true,pointRadius:3},
+      {label:'Media gruppo',data:mksAll.map(mk=>inc(gBy[mk])),borderColor:'#94a3b8',borderWidth:2,tension:.3,spanGaps:true,pointRadius:2},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+(c.raw!=null?c.raw+'%':'—')}},zoom:{zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'},pan:{enabled:true,mode:'x'}}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v+'%'}},x:{ticks:{maxRotation:60,font:{size:9}}}}}});
+  if(ct) ct.ondblclick=()=>{if(cmpCharts.trend&&cmpCharts.trend.resetZoom)cmpCharts.trend.resetZoom();};
+  // ── Posizionamento nel gruppo (scatter RML mensile × incidenza) ──
+  const cp=document.getElementById('cmp_c_pos');
+  const pt=e=>({x:Math.round(e.rmlMese),y:+e.inc.toFixed(1),nm:(e.cognome+' '+e.nome).trim()});
+  if(cp) cmpCharts.pos=new Chart(cp.getContext('2d'),{type:'scatter',
+    data:{datasets:[
+      {label:'Gruppo',data:group.map(pt),backgroundColor:'rgba(148,163,184,.55)',pointRadius:4},
+      {label:'Soggetto',data:[pt(subj)],backgroundColor:'#7c3aed',pointRadius:8,pointStyle:'rectRot'},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10}},tooltip:{callbacks:{label:c=>c.raw.nm+': RML € '+fmt(c.raw.x)+' · inc '+c.raw.y+'%'}}},
+      scales:{x:{title:{display:true,text:'RML mensile (€)'},ticks:{callback:v=>fmtEurAxis(v)}},y:{title:{display:true,text:'Incidenza % su RML'},beginAtZero:true,ticks:{callback:v=>v+'%'}}}}});
 }
 
 // ═══════════════════════════════════════════════════════════════
