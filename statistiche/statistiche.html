@@ -3284,9 +3284,14 @@ function renderWhatifSem(rows){
     const hint=document.getElementById('wi-rml-hint');
     if(hint) hint.textContent=actualRml?'(reale ≈ € '+fmt(actualRml)+'/mese · semestre × 6)':'(n/d)';
   }
-  // scenarioRml: campo wi-rml (mensile); in 'all' è già impostato dal flusso mensile
+  // scenarioRml: campo wi-rml (mensile); in 'all' è già impostato dal flusso mensile.
   const scenarioRml=rmlEl&&rmlEl.value!==''?+rmlEl.value:actualRml;
-  const kRml=actualRml>0?scenarioRml/actualRml:1;
+  // kRml = variazione dello stipendio scenario rispetto al valore di partenza del
+  // campo. In 'all' il campo parte dal RML MENSILE (che può differire dal RML dei
+  // file semestrali per lo stesso dipendente): usiamo il default del campo come
+  // base, così senza modifiche kRml=1 e Scenario=Reale anche nel semestrale.
+  const baseRmlK=isAll?(parseFloat(_wiDefaults['wi-rml'])||scenarioRml):actualRml;
+  const kRml=baseRmlK>0?scenarioRml/baseRmlK:1;
   const sp=semParams();
   if(whatifFuture){ renderWhatifSemFuture(sem,actualRml,scenarioRml,sp); return; }
   const semNote=document.getElementById('whatifSemNote');
