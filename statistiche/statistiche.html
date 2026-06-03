@@ -1327,7 +1327,36 @@ function rebuild(){
   } else {
     warn.style.display='none';
   }
+  if(allData.length) idbAutoSave(); else idbClearSession();
 }
+
+// ─── PERSISTENZA AUTOMATICA (IndexedDB) ──────────────────────
+// Salva lo stato corrente nel browser (la sessione ~7 MB supera localStorage)
+// e lo ripristina all'apertura, così non serve ricaricare i file ogni volta.
+const IDB_NAME='boggiPremiDB', IDB_STORE='session';
+function idbOpen(){return new Promise((res,rej)=>{const r=indexedDB.open(IDB_NAME,1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains(IDB_STORE))r.result.createObjectStore(IDB_STORE);};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+let _idbT=null;
+function idbAutoSave(){clearTimeout(_idbT);_idbT=setTimeout(async()=>{try{const db=await idbOpen();db.transaction(IDB_STORE,'readwrite').objectStore(IDB_STORE).put({rows:allData,savedAt:new Date().toISOString()},'current');}catch(e){console.warn('IDB save fallito',e);}},1500);}
+async function idbLoadSession(){try{const db=await idbOpen();return await new Promise(res=>{const r=db.transaction(IDB_STORE,'readonly').objectStore(IDB_STORE).get('current');r.onsuccess=()=>res(r.result||null);r.onerror=()=>res(null);});}catch(e){return null;}}
+async function idbClearSession(){try{const db=await idbOpen();db.transaction(IDB_STORE,'readwrite').objectStore(IDB_STORE).delete('current');}catch(e){}}
+async function tryRestoreSession(){
+  if(allData.length) return;
+  const s=await idbLoadSession();
+  if(!s||!s.rows||!s.rows.length) return;
+  const compKeys=Object.fromEntries(COMP.map(c=>[c.k,0]));
+  s.rows.forEach(r=>{
+    if(!r._tipo)r._tipo='mensile';
+    Object.keys(compKeys).forEach(k=>{if(r[k]==null)r[k]=0;});
+    if(!r.year&&r.month)r.year=2026; if(!r.monthKey&&r.month)r.monthKey=r.year*100+r.month;
+    if(!r.monthLabel&&r.monthKey)r.monthLabel=mkLabel(r.monthKey);
+    if(r.rml_period==null)r.rml_period=0; if(r.mBdg==null)r.mBdg=0; if(r.cambio==null)r.cambio=1;
+    delete r._appliedCambio; r._nazione=enteNazione(r._ente||0);
+  });
+  const label='♻️ Ripristino automatico '+(s.savedAt||'').split('T')[0]+' ('+s.rows.length+' righe)';
+  fileMap[label]=s.rows;
+  rebuild(); addChip(label,s.rows.length,true,'mensile'); refresh();
+}
+window.addEventListener('load',()=>{try{tryRestoreSession();}catch(e){console.warn(e);}});
 
 // Applica, per ente, il cambio ricavato dal file più recente (periodo massimo),
 // uniformandolo a TUTTE le righe di quell'ente (vecchie e nuove). Riscala i campi €
