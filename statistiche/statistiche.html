@@ -165,6 +165,15 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 .tab-btn{padding:9px 22px;border:2px solid transparent;border-bottom:none;border-radius:10px 10px 0 0;background:#e4e7ef;color:#888;cursor:pointer;font-size:12px;font-weight:700;letter-spacing:.2px;transition:.15s}
 .tab-btn.active{background:#fff;color:#4f46e5;border-color:#dde1ea;border-bottom:2px solid #fff;position:relative;top:1px}
 .tab-btn:hover:not(.active){background:#d8dce8;color:#444}
+.gloss-wrap{max-width:1080px;margin:0 auto;padding:6px 2px}
+.gloss-sec{background:#fff;border:1px solid #e6e9f0;border-radius:12px;padding:14px 20px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.gloss-sec h3{margin:2px 0 10px;font-size:14px;color:#4f46e5;letter-spacing:.2px}
+.gloss-row{display:grid;grid-template-columns:210px 1fr;gap:14px;padding:8px 0;border-top:1px solid #f1f3f8;font-size:12.5px}
+.gloss-row:first-of-type{border-top:none}
+.gloss-term{font-weight:700;color:#222}
+.gloss-def{color:#555;line-height:1.55}
+.gloss-f{font-family:Consolas,Menlo,monospace;background:#f5f6fa;padding:1px 6px;border-radius:4px;color:#7c3aed;font-size:11.5px;white-space:nowrap}
+@media(max-width:680px){.gloss-row{grid-template-columns:1fr}}
 
 /* ── YOY SECTION ───────────────────────────────────────────── */
 .yoy-filters{background:#fff;border-radius:12px;padding:12px 18px;margin:18px 28px 0;box-shadow:0 1px 5px rgba(0,0,0,.06);display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
@@ -276,6 +285,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
   <button class="tab-btn" data-tab="sal" onclick="switchTab('sal')">💶 Stipendi</button>
   <button class="tab-btn" data-tab="whatif" onclick="switchTab('whatif')">🔮 What-if</button>
   <button class="tab-btn" data-tab="alert" onclick="switchTab('alert')">🚨 Alert</button>
+  <button class="tab-btn" data-tab="gloss" onclick="switchTab('gloss')">📖 Glossario</button>
 </div>
 
 <!-- ═══════════ DASHBOARD TAB ═══════════ -->
@@ -915,6 +925,76 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
     <div class="tbl-scroll" id="alertTbl"></div>
   </div>
 </div><!-- end #tabAlert -->
+
+<!-- ═══════════ GLOSSARIO TAB ═══════════ -->
+<div id="tabGloss" style="display:none">
+ <div class="gloss-wrap">
+  <div class="gloss-sec">
+   <h3>📐 Concetti base</h3>
+   <div class="gloss-row"><div class="gloss-term">RML</div><div class="gloss-def">Retribuzione Mensile Lorda: lo stipendio base mensile del dipendente. Per i premi <b>semestrali</b> il calcolo usa <span class="gloss-f">RML × 6</span> (stipendio del semestre).</div></div>
+   <div class="gloss-row"><div class="gloss-term">Erogato</div><div class="gloss-def">Premio effettivamente maturato/pagato nel periodo.</div></div>
+   <div class="gloss-row"><div class="gloss-term">Massimale</div><div class="gloss-def">Premio massimo teorico raggiungibile (100% di tutti gli obiettivi).</div></div>
+   <div class="gloss-row"><div class="gloss-term">Achievement %</div><div class="gloss-def"><span class="gloss-f">Erogato / Massimale × 100</span>. Quanto del premio possibile è stato realizzato.</div></div>
+   <div class="gloss-row"><div class="gloss-term">Incidenza % su stipendio</div><div class="gloss-def"><span class="gloss-f">Erogato / RML × 100</span>. Su selezioni miste mensile+semestrale il denominatore usa solo i RML mensili (il RML semestrale è già ×6 e ri-sommarlo sarebbe un doppio conteggio dello stesso stipendio).</div></div>
+  </div>
+
+  <div class="gloss-sec">
+   <h3>🗓️ Premi mensili (regole del piano)</h3>
+   <div class="gloss-row"><div class="gloss-term">BDG (lordo)</div><div class="gloss-def">Premio budget base per ruolo a fatturato ≥ 99,5%: <span class="gloss-f">SM 300 · VSM 250 · SSAP 250 · SSA 200 · SA 150 · JSA 100 · SCS ≈150 €</span>.</div></div>
+   <div class="gloss-row"><div class="gloss-term">Digital (DSS)</div><div class="gloss-def"><span class="gloss-f">30% del BDG base</span> (a fatturato 100% e quota web ≥ 3%).</div></div>
+   <div class="gloss-row"><div class="gloss-term">Shopper Yield</div><div class="gloss-def"><span class="gloss-f">3% della RML mensile</span>.</div></div>
+   <div class="gloss-row"><div class="gloss-term">Subscription / Nuove Privilege</div><div class="gloss-def"><span class="gloss-f">2% della RML mensile</span>.</div></div>
+   <div class="gloss-row"><div class="gloss-term">SAS</div><div class="gloss-def"><span class="gloss-f">2 €/unità, max 200 €</span> (ruoli cassa).</div></div>
+   <div class="gloss-row"><div class="gloss-term">DCC</div><div class="gloss-def"><span class="gloss-f">0,2% delle transazioni, max 100 €</span> (ruoli cassa).</div></div>
+   <div class="gloss-row"><div class="gloss-term">Premio QTY</div><div class="gloss-def">Premio sui pezzi venduti nei <b>department store</b> (piano dedicato BDG + QTY).</div></div>
+   <div class="gloss-row"><div class="gloss-term">Customer Service · Articoli Incentivati · Visual in Store</div><div class="gloss-def">Premi addizionali presenti in alcuni piani/periodi.</div></div>
+  </div>
+
+  <div class="gloss-sec">
+   <h3>📅 Premio semestrale (SM / VSM)</h3>
+   <div class="gloss-row"><div class="gloss-term">Base (MAX per KPI)</div><div class="gloss-def"><span class="gloss-f">Incidenza (20%) × RML mensile × 6</span> = premio massimo se tutti i KPI sono raggiunti (prima dei moltiplicatori).</div></div>
+   <div class="gloss-row"><div class="gloss-term">MAX TOTALE</div><div class="gloss-def"><span class="gloss-f">Base × 1,5</span> (moltiplicatore massimo).</div></div>
+   <div class="gloss-row"><div class="gloss-term">KPI premianti</div><div class="gloss-def">Pesi (somma 100%): <b>KPI principale 50%</b> · Subscription 35% · SAS 15%. Il KPI principale è <b>Shopper Yield</b> (dal 2025) o <b>UPT — Units Per Transaction</b> (2024). <b>CR</b> è monitorato ma non pagato.</div></div>
+   <div class="gloss-row"><div class="gloss-term">Premio per KPI</div><div class="gloss-def"><span class="gloss-f">Base × Σ(peso dei KPI raggiunti)</span>. Un KPI è "raggiunto" se il consuntivo supera il target.</div></div>
+   <div class="gloss-row"><div class="gloss-term">Moltiplicatori</div><div class="gloss-def">Fatturato (0 / 0,8 / 1,5) × Inventario (0 / 0,5 / 0,8 / 1). <span class="gloss-f">Premio finale = Premio KPI × molt.Fatturato × molt.Inventario</span>.</div></div>
+   <div class="gloss-row"><div class="gloss-term">Periodi</div><div class="gloss-def">SS (primavera/estate) pagato ad agosto · FW/AI (autunno/inverno) pagato a febbraio dell'anno successivo.</div></div>
+  </div>
+
+  <div class="gloss-sec">
+   <h3>💱 Cambi valuta</h3>
+   <div class="gloss-row"><div class="gloss-term">Logica generale</div><div class="gloss-def">Per ogni ente si usa il cambio del file più recente, uniformato a tutte le righe (vecchie e nuove).</div></div>
+   <div class="gloss-row"><div class="gloss-term">CHF (Svizzera)</div><div class="gloss-def">Forzato a <span class="gloss-f">1,10</span>: i file riportano 1,3756 (gross-up del costo del lavoro, non un cambio valuta reale).</div></div>
+   <div class="gloss-row"><div class="gloss-term">DKK (Danimarca)</div><div class="gloss-def">Forzato a <span class="gloss-f">0,13 EUR/DKK</span> (alcuni file lasciano la valuta locale non convertita).</div></div>
+  </div>
+
+  <div class="gloss-sec">
+   <h3>🔎 Filtri</h3>
+   <div class="gloss-row"><div class="gloss-term">Tipo premio</div><div class="gloss-def">Mensile · Semestrale (standard / dept store) · FC/VM. Permette di analizzare i premi singolarmente o insieme.</div></div>
+   <div class="gloss-row"><div class="gloss-term">Componente premio</div><div class="gloss-def">Isola uno o più tipi di premio (BDG, Digital, SY, …) all'interno del tipo selezionato.</div></div>
+   <div class="gloss-row"><div class="gloss-term">L4L negozi</div><div class="gloss-def">Like-for-Like: solo i <b>negozi</b> presenti (con premi) in tutti gli anni del perimetro selezionato. "Nuovi" = il complemento.</div></div>
+   <div class="gloss-row"><div class="gloss-term">L4L dipendenti</div><div class="gloss-def">Solo i <b>dipendenti</b> (per cognome|nome) presenti in tutti gli anni del perimetro. Confronto omogeneo anno su anno.</div></div>
+   <div class="gloss-row"><div class="gloss-term">Solo dipendenti attivi</div><div class="gloss-def">Solo chi è presente nel file del <b>mese più recente</b> caricato. Filtro condiviso fra Anno su Anno, Stipendi e Alert.</div></div>
+  </div>
+
+  <div class="gloss-sec">
+   <h3>🚨 Tab Alert</h3>
+   <div class="gloss-row"><div class="gloss-term">Soglia "sana" per ruolo</div><div class="gloss-def">Incidenza premi/stipendio ritenuta equa, editabile (default SM 15 · VSM 15 · SSAP 14 · SSA 12 · SA 10 · JSA 10 · SCS 12 %).</div></div>
+   <div class="gloss-row"><div class="gloss-term">Tolleranza ±</div><div class="gloss-def">Banda di normalità attorno alla soglia: oltre la banda il dipendente è segnalato.</div></div>
+   <div class="gloss-row"><div class="gloss-term">Scostamento (pp)</div><div class="gloss-def"><span class="gloss-f">Incidenza dipendente − soglia del ruolo</span>, in punti percentuali.</div></div>
+   <div class="gloss-row"><div class="gloss-term">Motivazioni</div><div class="gloss-def">Confronto coi pari ruolo × tipo negozio: frequenza BDG, KPI sopra/sotto media, malattie (vs media globale; la policy dimezza/azzera i premi), dept store. Considerano solo i premi coerenti col Tipo premio filtrato.</div></div>
+   <div class="gloss-row"><div class="gloss-term">Peso per tipo premio</div><div class="gloss-def">Incidenza media di ciascun premio sul RML; la somma ≈ Incidenza media totale.</div></div>
+   <div class="gloss-row"><div class="gloss-term">Quadrante</div><div class="gloss-def">Stipendio mensile (RML, per i semestrali normalizzato ÷6) × scostamento dalla soglia; la banda verde è la zona "in linea".</div></div>
+  </div>
+
+  <div class="gloss-sec">
+   <h3>🔮 Tab What-if</h3>
+   <div class="gloss-row"><div class="gloss-term">Simulatore</div><div class="gloss-def">Modifichi i parametri di piano (BDG, %, pesi KPI, RML) e vedi <b>Reale vs Scenario</b>. Lo scenario riscala i premi reali per il rapporto parametro/default, mantenendo ciò che il dipendente ha effettivamente raggiunto.</div></div>
+   <div class="gloss-row"><div class="gloss-term">Previsione futura</div><div class="gloss-def">Proietta i premi futuri in base alla <b>frequenza storica</b> di raggiungimento: media del dipendente (Esistente) o del ruolo (Nuovo assunto). <span class="gloss-f">Atteso = frequenza% × valore massimo</span>.</div></div>
+   <div class="gloss-row"><div class="gloss-term">Decorrenza modifiche</div><div class="gloss-def">Mese dal quale le modifiche dello scenario diventano attive; prima di tale data Scenario = Reale.</div></div>
+   <div class="gloss-row"><div class="gloss-term">Tipo premio "Tutti"</div><div class="gloss-def">Mostra e calcola insieme sia i premi mensili sia il semestrale (parametri e risultati).</div></div>
+  </div>
+ </div>
+</div><!-- end #tabGloss -->
 
 <!-- FULLSCREEN MODAL -->
 <div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
@@ -2025,6 +2105,7 @@ function switchTab(tab){
   document.getElementById('tabSal').style.display=tab==='sal'?'':'none';
   document.getElementById('tabWhatif').style.display=tab==='whatif'?'':'none';
   document.getElementById('tabAlert').style.display=tab==='alert'?'':'none';
+  document.getElementById('tabGloss').style.display=tab==='gloss'?'':'none';
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
   if(tab==='yoy'&&allData.length){popYoyFilters();renderYoy();}
   if(tab==='sal'&&allData.length){popSalFilters();renderSal();}
@@ -3674,6 +3755,8 @@ function renderWhatifTimeline(rows,newMonthly,oldMonthly,newRml,oldRml,startKey,
 // ═══════════════════════════════════════════════════════════════
 const ALERT_DEF={SM:15,VSM:15,SSAP:14,SSA:12,SA:10,JSA:10,SCS:12};
 const ALERT_COMPL={cBdg:'BDG',cDigital:'Digital',cShopper:'Shopper Yield',cPrivilege:'Subscription',cSas:'SAS',cDcc:'DCC'};
+// Componenti semestrali per le motivazioni (CR escluso: monitorato ma non pagato).
+const ALERT_COMPL_SEM={cSySem:'Shopper Yield (sem.)',cUptSem:'UPT (sem.)',cSubSem:'Subscription (sem.)',cSasSem:'SAS (sem.)'};
 // Dept store non-USA (da file QTY TARGET GIUGNO 2026): identificati per ID
 // numerico prefisso del nome negozio (es. "1187 ECI POZUELO" → 1187).
 // USA esclusi dal perimetro analisi.
@@ -3751,10 +3834,16 @@ function getAlertRows(){
 }
 function alertCompute(){
   const rows=getAlertRows(); const {th,tol}=alertThresholds();
-  // CK_ALERT = componenti per le motivazioni (ALERT_COMPL keys)
-  // CK_ALL   = tutti i COMP keys per aggregazione e KPI card
-  const CK_ALERT=Object.keys(ALERT_COMPL);
+  // CK_ALL = tutti i COMP keys per aggregazione e KPI card.
+  // CK_MOT = componenti per le MOTIVAZIONI, coerenti col filtro Tipo premio:
+  // mensili e/o semestrali a seconda della selezione (vuoto = entrambi). Così
+  // se è filtrato solo Mensile non si propongono scostamenti su KPI semestrali.
   const CK_ALL=COMP.map(c=>c.k);
+  const _selTipi=new Set(getMsVals('al-tipo'));
+  const _wantMens=!_selTipi.size||_selTipi.has('mensile')||_selTipi.has('fc vm');
+  const _wantSem =!_selTipi.size||_selTipi.has('semestrale')||_selTipi.has('semestrale eci');
+  const COMPL_USE=Object.assign({}, _wantMens?ALERT_COMPL:{}, _wantSem?ALERT_COMPL_SEM:{});
+  const CK_MOT=Object.keys(COMPL_USE);
   const map={};
   rows.forEach(r=>{
     const key=r.matricola||_empKey(r);
@@ -3790,18 +3879,18 @@ function alertCompute(){
   emps.forEach(e=>{e.dept=isDept(e.store);});
   // Componenti attive per negozio (su TUTTI i dati): usato per il filtro nelle motivazioni
   const storeActive={};
-  allData.forEach(r=>{const s=r.store;if(!s)return;const set=storeActive[s]||(storeActive[s]=new Set());CK_ALERT.forEach(k=>{if((r[k]||0)>0)set.add(k);});});
+  allData.forEach(r=>{const s=r.store;if(!s)return;const set=storeActive[s]||(storeActive[s]=new Set());CK_MOT.forEach(k=>{if((r[k]||0)>0)set.add(k);});});
   // Medie per RUOLO × TIPO NEGOZIO (dept vs normale) → confronto equo
   const byRole={};
   emps.forEach(e=>{
     const key=e.job+'|'+(e.dept?'D':'N');
     const b=byRole[key]||(byRole[key]={n:0,inc:0,bdgFreq:0,malattiePerMonth:0,compInc:{}});
     b.n++; b.inc+=e.inc; b.bdgFreq+=e.bdgFreq; b.malattiePerMonth+=e.malattiePerMonth;
-    CK_ALERT.forEach(k=>b.compInc[k]=(b.compInc[k]||0)+e.compInc[k]);
+    CK_MOT.forEach(k=>b.compInc[k]=(b.compInc[k]||0)+e.compInc[k]);
   });
   Object.values(byRole).forEach(b=>{
     b.inc/=b.n; b.bdgFreq/=b.n; b.malattiePerMonth/=b.n;
-    CK_ALERT.forEach(k=>b.compInc[k]/=b.n);
+    CK_MOT.forEach(k=>b.compInc[k]/=b.n);
   });
   // Media globale giorni malattia/mese su tutti i dipendenti (non per ruolo)
   const globalMalAvg=emps.length>0?emps.reduce((s,e)=>s+e.malattiePerMonth,0)/emps.length:0;
@@ -3823,9 +3912,12 @@ function alertCompute(){
       if(under&&e.malattiePerMonth>1.5&&e.malattiePerMonth>globalMalAvg*1.3){
         e.reasons.push('Malattie: '+Math.round(e.malattie)+' gg nei '+e.nMonths+' mesi ('+e.malattiePerMonth.toFixed(1)+' gg/mese vs '+globalMalAvg.toFixed(1)+' media globale) — la policy dimezza/azzera i premi nelle assenze');
       }
-      // Componenti che si discostano dalla media (solo premi previsti dal piano)
-      const devs=CK_ALERT.filter(k=>active.has(k)).map(k=>({k,d:e.compInc[k]-(peer.compInc[k]||0)})).filter(x=>under?x.d<-0.3:x.d>0.3).sort((a,b)=>under?a.d-b.d:b.d-a.d);
-      devs.slice(0,2).forEach(x=>e.reasons.push(ALERT_COMPL[x.k]+(under?' sotto la media':' sopra la media')+' ('+e.compInc[x.k].toFixed(1)+'% vs '+(peer.compInc[x.k]||0).toFixed(1)+'% pari ruolo/tipo)'));
+      // Componenti che si discostano dalla media (solo premi previsti dal piano e
+      // coerenti col filtro Tipo premio: mensili e/o semestrali)
+      // i KPI semestrali (ALERT_COMPL_SEM) sono in piano per definizione per SM/VSM:
+      // non dipendono da storeActive (il nome negozio può differire fra file mensili e semestrali)
+      const devs=CK_MOT.filter(k=>ALERT_COMPL_SEM[k]||active.has(k)).map(k=>({k,d:e.compInc[k]-(peer.compInc[k]||0)})).filter(x=>under?x.d<-0.3:x.d>0.3).sort((a,b)=>under?a.d-b.d:b.d-a.d);
+      devs.slice(0,2).forEach(x=>e.reasons.push(COMPL_USE[x.k]+(under?' sotto la media':' sopra la media')+' ('+e.compInc[x.k].toFixed(1)+'% vs '+(peer.compInc[x.k]||0).toFixed(1)+'% pari ruolo/tipo)'));
       if(!e.reasons.length) e.reasons.push(under?'Incidenza complessiva sotto soglia':'Incidenza complessiva sopra soglia');
     }
   });
