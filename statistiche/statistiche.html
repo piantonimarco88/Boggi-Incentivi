@@ -704,8 +704,9 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
     <button class="btn-rst" onclick="resetWhatifFilters()">↺ Reset filtri</button>
     <div class="fg"><label>Tipo premio</label>
       <div class="l4l-toggle" style="display:flex">
-        <button class="l4l-btn active" id="wi-tp-mens" style="flex:1" onclick="setWhatifSem(false)">Mensile</button>
-        <button class="l4l-btn" id="wi-tp-sem" style="flex:1" onclick="setWhatifSem(true)">Semestrale</button>
+        <button class="l4l-btn active" id="wi-tp-mens" style="flex:1" onclick="setWhatifTipo('mens')">Mensile</button>
+        <button class="l4l-btn" id="wi-tp-sem" style="flex:1" onclick="setWhatifTipo('sem')">Semestrale</button>
+        <button class="l4l-btn" id="wi-tp-all" style="flex:1" onclick="setWhatifTipo('all')">Tutti</button>
       </div></div>
     <div class="fg"><label>🔮 Previsione futura</label>
       <div class="l4l-toggle" style="display:flex">
@@ -2959,7 +2960,7 @@ const WHATIF_DEF={base:{SM:300,VSM:250,SSAP:250,SSA:200,SA:150,JSA:100,SCS:150},
 const CASHIER_ROLES=['SCS','ISO']; // ruoli cassa (SAS/DCC); gli altri = vendita (Digital/SY)
 let whatifCharts={}, _whatifSig=null;
 let whatifFuture=false, whatifNewHire=false, _whatifFreqSig=null, _wiDefaults={};
-let whatifSem=false; // modalità premi semestrali (toggle Mensile/Semestrale)
+let whatifTipo='mens'; // 'mens' | 'sem' | 'all' (toggle Tipo premio nel What-if)
 // Default di piano del premio semestrale SM/VSM: incidenza base 20%, pesi KPI
 // SY/UPT 50% · Subscription 35% · SAS 15% (CR monitorato ma non pagato → 0).
 const SEM_DEF={incid:0.20, wMain:0.50, wSub:0.35, wSas:0.15};
@@ -3170,33 +3171,41 @@ function semAgg(rows,sp,kRml){
   return by;
 }
 function renderWhatifSem(rows){
+  // In modalità 'all' il flusso mensile gestisce già nota, RML scenario e ruolo:
+  // qui non li sovrascriviamo, usiamo il valore del campo wi-rml.
+  const isAll=whatifTipo==='all';
   const sem=rows.filter(isSemRow);
   const dips=new Set(sem.map(r=>r.matricola||_empKey(r)));
-  const note=document.getElementById('whatifNote');
-  if(note){
-    note.className='whatif-note'+(dips.size>1?' multi':'');
-    note.textContent=dips.size===0?'Nessun premio semestrale nei filtri correnti (solo SM/VSM hanno il semestrale).'
-      :dips.size===1?'Simulazione semestrale sul dipendente selezionato — Reale vs Scenario.'
-      :'⚠️ '+dips.size+' dipendenti nei filtri: simulazione semestrale aggregata. Seleziona un singolo dipendente per analizzarlo.';
+  if(!isAll){
+    const note=document.getElementById('whatifNote');
+    if(note){
+      note.className='whatif-note'+(dips.size>1?' multi':'');
+      note.textContent=dips.size===0?'Nessun premio semestrale nei filtri correnti (solo SM/VSM hanno il semestrale).'
+        :dips.size===1?'Simulazione semestrale sul dipendente selezionato — Reale vs Scenario.'
+        :'⚠️ '+dips.size+' dipendenti nei filtri: simulazione semestrale aggregata. Seleziona un singolo dipendente per analizzarlo.';
+    }
   }
   // RML mensile reale = rml_period semestrale / 6 (rmlMonth)
   const rmlRows=sem.filter(r=>(r.rml_period||0)>0);
   const actualRml=rmlRows.length?rmlRows.reduce((s,r)=>s+rmlMonth(r),0)/rmlRows.length:0;
-  const q=(document.getElementById('wif-dip')||{value:''}).value;
-  const sig='SEM|'+Math.round(actualRml)+'|'+dips.size+'|'+q;
   const rmlEl=document.getElementById('wi-rml');
-  if(_whatifSig!==sig){
-    _whatifSig=sig;
-    if(rmlEl){ rmlEl.value=actualRml?Math.round(actualRml):''; _wiDefaults['wi-rml']=rmlEl.value; }
-    const det=detectRole(sem);
-    const roleEl=document.getElementById('wi-role'), hintEl=document.getElementById('wi-role-hint');
-    if(roleEl&&det&&[...roleEl.options].some(o=>o.value===det)) roleEl.value=det;
-    if(hintEl) hintEl.textContent=det?'(riconosciuto: '+det+')':'';
+  if(!isAll){
+    const q=(document.getElementById('wif-dip')||{value:''}).value;
+    const sig='SEM|'+Math.round(actualRml)+'|'+dips.size+'|'+q;
+    if(_whatifSig!==sig){
+      _whatifSig=sig;
+      if(rmlEl){ rmlEl.value=actualRml?Math.round(actualRml):''; _wiDefaults['wi-rml']=rmlEl.value; }
+      const det=detectRole(sem);
+      const roleEl=document.getElementById('wi-role'), hintEl=document.getElementById('wi-role-hint');
+      if(roleEl&&det&&[...roleEl.options].some(o=>o.value===det)) roleEl.value=det;
+      if(hintEl) hintEl.textContent=det?'(riconosciuto: '+det+')':'';
+    }
+    const hint=document.getElementById('wi-rml-hint');
+    if(hint) hint.textContent=actualRml?'(reale ≈ € '+fmt(actualRml)+'/mese · semestre × 6)':'(n/d)';
   }
+  // scenarioRml: campo wi-rml (mensile); in 'all' è già impostato dal flusso mensile
   const scenarioRml=rmlEl&&rmlEl.value!==''?+rmlEl.value:actualRml;
   const kRml=actualRml>0?scenarioRml/actualRml:1;
-  const hint=document.getElementById('wi-rml-hint');
-  if(hint) hint.textContent=actualRml?'(reale ≈ € '+fmt(actualRml)+'/mese · semestre × 6)':'(n/d)';
   const sp=semParams();
   if(whatifFuture){ renderWhatifSemFuture(sem,actualRml,scenarioRml,sp); return; }
   const semNote=document.getElementById('whatifSemNote');
@@ -3308,7 +3317,7 @@ function renderWhatif(){
   if(!allData.length) return;
   applyWhatifModeVisibility();
   const rows=getWhatifRows();
-  if(whatifSem){ renderWhatifSem(rows); return; }
+  if(whatifTipo==='sem'){ renderWhatifSem(rows); return; }
   const dips=new Set(rows.map(r=>r.matricola||_empKey(r)));
   const note=document.getElementById('whatifNote');
   if(note){
@@ -3341,7 +3350,7 @@ function renderWhatif(){
   const hint=document.getElementById('wi-rml-hint');
   if(hint) hint.textContent=actualRml?'(reale ≈ € '+fmt(actualRml)+'/mese)':'(n/d)';
   const selRole=currentWhatifRole();
-  if(whatifFuture){ renderWhatifFuture(rows,p,selRole,scenarioRml,actualRml); return; }
+  if(whatifFuture){ renderWhatifFuture(rows,p,selRole,scenarioRml,actualRml); if(whatifTipo==='all') renderWhatifSem(rows); return; }
   const fromEl=document.getElementById('wi-from');
   const fromKey=fromEl?(+fromEl.value||0):0;
   const fromNote=document.getElementById('whatifFromNote');
@@ -3377,6 +3386,7 @@ function renderWhatif(){
   rcWhatif('erog','wi_c_erog',years,years.map(y=>Math.round(by[y].erR)),years.map(y=>Math.round(by[y].erS)),'eur',fromKey);
   rcWhatif('ach','wi_c_ach',years,years.map(y=>achR(by[y])),years.map(y=>achS(by[y])),'pct',fromKey);
   rcWhatif('inc','wi_c_inc',years,years.map(y=>incR(by[y])),years.map(y=>incS(by[y])),'pct',fromKey);
+  if(whatifTipo==='all') renderWhatifSem(rows); // modalità Tutti: anche il semestrale
 }
 
 // Plugin: linea verticale tratteggiata sulla data di decorrenza (posizione = mese nell'anno).
@@ -3482,36 +3492,35 @@ function mkDiffMonths(a,b){return (Math.floor(b/100)*12+b%100)-(Math.floor(a/100
 function whatifTodayKey(){const mks=allData.map(r=>r.monthKey||0).filter(Boolean);return mks.length?Math.max(...mks):0;}
 
 // Mostra/nasconde gli elementi del What-if combinando 2 dimensioni:
-//   sem/mens (whatifSem) e normale/futuro (whatifFuture).
+//   tipo premio (whatifTipo: mens/sem/all) e normale/futuro (whatifFuture).
 // Le classi agiscono come filtri AND: un elemento con più classi wif-* è
 // visibile solo se TUTTE le condizioni sono soddisfatte. Classi:
 //   wif-mens-only (solo mensile) · wif-sem-only (solo semestrale)
 //   wif-normal-only (solo simulatore) · wif-future-only (solo previsione)
 function applyWhatifModeVisibility(){
-  const sem=whatifSem, fut=whatifFuture;
+  const t=whatifTipo, fut=whatifFuture;
+  const showMens=t!=='sem', showSem=t!=='mens'; // 'all' mostra entrambi
   const vis=el=>{
-    if(el.classList.contains('wif-mens-only')&&sem) return false;
-    if(el.classList.contains('wif-sem-only')&&!sem) return false;
+    if(el.classList.contains('wif-mens-only')&&!showMens) return false;
+    if(el.classList.contains('wif-sem-only')&&!showSem) return false;
     if(el.classList.contains('wif-normal-only')&&fut) return false;
     if(el.classList.contains('wif-future-only')&&!fut) return false;
     return true;
   };
   document.querySelectorAll('#tabWhatif .wif-mens-only, #tabWhatif .wif-sem-only, #tabWhatif .wif-normal-only, #tabWhatif .wif-future-only')
     .forEach(el=>{el.style.display=vis(el)?'':'none';});
-  const tpM=document.getElementById('wi-tp-mens'), tpS=document.getElementById('wi-tp-sem');
-  if(tpM) tpM.classList.toggle('active',!sem);
-  if(tpS) tpS.classList.toggle('active',sem);
+  ['mens','sem','all'].forEach(k=>{const b=document.getElementById('wi-tp-'+k);if(b)b.classList.toggle('active',t===k);});
   const fo=document.getElementById('wi-fut-off'), fn=document.getElementById('wi-fut-on');
   if(fo) fo.classList.toggle('active',!fut);
   if(fn) fn.classList.toggle('active',fut);
   const e=document.getElementById('wi-hire-exist'), n=document.getElementById('wi-hire-new');
   if(e) e.classList.toggle('active',!whatifNewHire);
   if(n) n.classList.toggle('active',whatifNewHire);
-  const hist=document.getElementById('whatifHist'); // niente storico per nuovo assunto o semestrale
-  if(hist) hist.style.display=((fut&&whatifNewHire)||sem)?'none':'';
+  const hist=document.getElementById('whatifHist'); // storico solo se c'è il mensile e non nuovo-assunto
+  if(hist) hist.style.display=(showMens&&!(fut&&whatifNewHire))?'':'none';
 }
-function setWhatifSem(on){
-  whatifSem=!!on; _whatifSig=null;
+function setWhatifTipo(t){
+  whatifTipo=t; _whatifSig=null;
   applyWhatifModeVisibility(); renderWhatif();
 }
 function setWhatifFuture(on){
