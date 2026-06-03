@@ -928,7 +928,10 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
       <div class="cc-title" id="alertCompHd" style="display:none;margin:2px 0 8px;font-size:11px;color:#9aa">Peso di ciascun tipo di premio sull'incidenza media <span class="info-tip" data-tip="Per ogni tipo di premio: incidenza media sul RML (comp / RML, mediata sui dipendenti). I premi semestrali compaiono solo se presenti nei dati del periodo filtrato. La somma può leggermente superare l'Incidenza media per righe in vecchio formato in cui le singole componenti non sono scomposte.">i</span></div>
       <div id="alertKpiComp" style="display:none;flex-wrap:wrap;gap:8px;margin-bottom:14px"></div>
       <div class="cc full" style="margin-top:4px">
-        <div class="cc-head"><div class="cc-title">Quadrante — Stipendio (RML) × scostamento incidenza dalla soglia (pp)</div></div>
+        <div class="cc-head" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <div class="cc-title">Quadrante — Stipendio (RML) × scostamento incidenza dalla soglia (pp)</div>
+          <input type="text" id="al-hl" placeholder="🔍 evidenzia dipendente…" oninput="renderAlert()" autocomplete="off" style="padding:4px 8px;border:1px solid #dde1ea;border-radius:6px;font-size:11px;min-width:180px">
+        </div>
         <div class="cw tall"><canvas id="alert_c_quad"></canvas></div>
       </div>
     </div>
@@ -1051,6 +1054,12 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
       <div class="ms-wrap" id="cmp-emp"><button class="ms-btn" id="cmp-emp-btn" onclick="toggleMs(event,'cmp-emp')">Tutti</button><div class="ms-panel" id="cmp-emp-panel" style="display:none"></div></div></div>
     <div class="fg"><label>Tipo premio</label>
       <div class="ms-wrap" id="cmp-tipo"><button class="ms-btn" id="cmp-tipo-btn" onclick="toggleMs(event,'cmp-tipo')">Tutti</button><div class="ms-panel" id="cmp-tipo-panel" style="display:none"></div></div></div>
+    <div class="fg"><label>Tipo negozio</label>
+      <div class="l4l-toggle" style="display:flex">
+        <button class="l4l-btn active" id="cmp-dt-tutti" style="flex:1" onclick="setCmpDept('tutti')">Tutti</button>
+        <button class="l4l-btn" id="cmp-dt-norm" style="flex:1" onclick="setCmpDept('norm')">Normali</button>
+        <button class="l4l-btn" id="cmp-dt-dept" style="flex:1" onclick="setCmpDept('dept')">Dept store</button>
+      </div></div>
   </div>
 
   <div id="cmpNote" class="whatif-note" style="margin:0 28px 12px"></div>
@@ -3881,6 +3890,8 @@ const DEPT_STORE_IDS=new Set([
   1319, // NK Nordiska Stoccolma (Svezia)
   1355, // Breuninger Stoccarda (Germania)
 ]);
+// True se il negozio è un dept store (per store ID = cifre iniziali del nome).
+function isDeptStore(store){const m=String(store||'').match(/^(\d{3,4})\b/);return m?DEPT_STORE_IDS.has(+m[1]):false;}
 let alertL4LDip='tutti', alertL4LStore='tutti', alertCharts={};
 
 function popAlertFilters(){
@@ -4100,12 +4111,17 @@ function renderAlertQuad(emps,tol){
   const cv=document.getElementById('alert_c_quad'); if(!cv) return;
   const pt=e=>({x:Math.round(e.rmlMese||0),y:e.dev,e});
   const valid=emps.filter(e=>e.dev!=null);
+  const hlq=(document.getElementById('al-hl')||{value:''}).value.toLowerCase().trim();
+  const hlMatch=e=>hlq&&((e.cognome+' '+e.nome+' '+(e.matricola||'')).toLowerCase().includes(hlq));
+  const hlPts=hlq?valid.filter(hlMatch).map(pt):[];
+  const ds=[
+    {label:'In linea',data:valid.filter(e=>e.status==='ok').map(pt),backgroundColor:'rgba(34,197,94,.55)',pointRadius:4},
+    {label:'Sotto soglia',data:valid.filter(e=>e.status==='sotto').map(pt),backgroundColor:'#ef4444',pointRadius:5},
+    {label:'Sopra soglia',data:valid.filter(e=>e.status==='sopra').map(pt),backgroundColor:'#a855f7',pointRadius:5},
+  ];
+  if(hlPts.length) ds.push({label:'🔍 Evidenziato',data:hlPts,backgroundColor:'#f59e0b',borderColor:'#b45309',borderWidth:2,pointRadius:10,pointStyle:'rectRot'});
   alertCharts.quad=new Chart(cv.getContext('2d'),{type:'scatter',
-    data:{datasets:[
-      {label:'In linea',data:valid.filter(e=>e.status==='ok').map(pt),backgroundColor:'rgba(34,197,94,.55)',pointRadius:4},
-      {label:'Sotto soglia',data:valid.filter(e=>e.status==='sotto').map(pt),backgroundColor:'#ef4444',pointRadius:5},
-      {label:'Sopra soglia',data:valid.filter(e=>e.status==='sopra').map(pt),backgroundColor:'#a855f7',pointRadius:5},
-    ]},
+    data:{datasets:ds},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10}},
         tooltip:{callbacks:{label:c=>{const e=c.raw.e;return e.cognome+' '+e.nome+' ('+e.job+'): inc '+e.inc.toFixed(1)+'% · soglia '+e.healthy+'% · RML € '+fmt(c.raw.x);}}},
@@ -4151,9 +4167,22 @@ function exportAlert(){
 // ═══════════════════════════════════════════════════════════════
 // ─── CONFRONTA TAB (soggetto vs gruppo) ──────────────────────
 // ═══════════════════════════════════════════════════════════════
-let cmpBase='mese', cmpCharts={};
+let cmpBase='mese', cmpDept='tutti', cmpCharts={};
 function _cmpDestroy(){Object.keys(cmpCharts).forEach(k=>{if(cmpCharts[k]){cmpCharts[k].destroy();delete cmpCharts[k];}});}
 function setCmpBase(b){cmpBase=b;['mese','tot'].forEach(x=>{const el=document.getElementById('cmp-base-'+x);if(el)el.classList.toggle('active',x===b);});renderCmp();}
+function setCmpDept(v){cmpDept=v;['tutti','norm','dept'].forEach(x=>{const el=document.getElementById('cmp-dt-'+x);if(el)el.classList.toggle('active',x===v);});renderCmp();}
+// Plugin: croce tratteggiata alla media (x,y) del gruppo nel grafico posizionamento.
+const cmpMeanPlugin={id:'cmpMean',afterDatasetsDraw(chart,a,opts){
+  const mx=opts&&opts.mx, my=opts&&opts.my; if(mx==null||my==null) return;
+  const xs=chart.scales.x, ys=chart.scales.y, ctx=chart.ctx;
+  const px=xs.getPixelForValue(mx), py=ys.getPixelForValue(my);
+  ctx.save(); ctx.strokeStyle='#0891b2'; ctx.lineWidth=1.5; ctx.setLineDash([5,4]);
+  ctx.beginPath(); ctx.moveTo(xs.left,py); ctx.lineTo(xs.right,py); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(px,ys.top); ctx.lineTo(px,ys.bottom); ctx.stroke();
+  ctx.setLineDash([]); ctx.fillStyle='#0891b2'; ctx.font='bold 9px "Segoe UI",Arial';
+  ctx.fillText('media gruppo',Math.min(px+5,xs.right-70),ys.top+10);
+  ctx.restore();
+}};
 function cmpSubjAutocomplete(val){_dipAutocomplete(val,'cmp-subj-ac-list','cmpSelectSubj',renderCmp);}
 function cmpSelectSubj(name){_selectDip(name,'cmp-subj','cmp-subj-ac-list',renderCmp);}
 function popCmpFilters(){
@@ -4176,6 +4205,7 @@ function popCmpFilters(){
 function resetCmpFilters(){
   ['cmp-job','cmp-naz','cmp-store','cmp-emp','cmp-tipo'].forEach(id=>{document.querySelectorAll('#'+id+'-panel input').forEach(i=>{i.checked=false;i.indeterminate=false;});updateMsLabel(id);});
   const s=document.getElementById('cmp-subj'); if(s)s.value='';
+  setCmpDept('tutti');
   const mks=[...new Set(allData.map(r=>r.monthKey).filter(Boolean))].sort((a,b)=>a-b);
   const fEl=document.getElementById('cmp-from'),tEl=document.getElementById('cmp-to');
   if(fEl&&mks.length)fEl.value=mks[0]; if(tEl&&mks.length)tEl.value=mks[mks.length-1];
@@ -4234,6 +4264,8 @@ function renderCmp(){
   const groupRows=allData.filter(r=>{
     if(!inScope(r))return false;
     const k=r.matricola||_empKey(r); if(k===subjKey)return false;
+    if(cmpDept==='dept'&&!isDeptStore(r.store))return false;
+    if(cmpDept==='norm'&&isDeptStore(r.store))return false;
     if(emps.size) return emps.has(k);
     if(jobs.size&&!jobs.has(r.job))return false;
     if(naz.size&&!naz.has(r._nazione))return false;
@@ -4285,13 +4317,18 @@ function renderCmp(){
   // ── Posizionamento nel gruppo (scatter RML mensile × incidenza) ──
   const cp=document.getElementById('cmp_c_pos');
   const pt=e=>({x:Math.round(e.rmlMese),y:+e.inc.toFixed(1),nm:(e.cognome+' '+e.nome).trim()});
+  const meanX=_cmpAvg(group,e=>e.rmlMese), meanY=_cmpAvg(group,e=>e.inc);
   if(cp) cmpCharts.pos=new Chart(cp.getContext('2d'),{type:'scatter',
     data:{datasets:[
       {label:'Gruppo',data:group.map(pt),backgroundColor:'rgba(148,163,184,.55)',pointRadius:4},
+      {label:'Media gruppo',data:group.length?[{x:Math.round(meanX),y:+meanY.toFixed(1),nm:'Media gruppo'}]:[],backgroundColor:'#0891b2',pointRadius:9,pointStyle:'triangle'},
       {label:'Soggetto',data:[pt(subj)],backgroundColor:'#7c3aed',pointRadius:8,pointStyle:'rectRot'},
     ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10}},tooltip:{callbacks:{label:c=>c.raw.nm+': RML € '+fmt(c.raw.x)+' · inc '+c.raw.y+'%'}}},
-      scales:{x:{title:{display:true,text:'RML mensile (€)'},ticks:{callback:v=>fmtEurAxis(v)}},y:{title:{display:true,text:'Incidenza % su RML'},beginAtZero:true,ticks:{callback:v=>v+'%'}}}}});
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10}},
+      cmpMean:{mx:group.length?meanX:null,my:group.length?meanY:null},
+      tooltip:{callbacks:{label:c=>c.raw.nm+': RML € '+fmt(c.raw.x)+' · inc '+c.raw.y+'%'}}},
+      scales:{x:{title:{display:true,text:'RML mensile (€)'},ticks:{callback:v=>fmtEurAxis(v)}},y:{title:{display:true,text:'Incidenza % su RML'},beginAtZero:true,ticks:{callback:v=>v+'%'}}}},
+    plugins:[cmpMeanPlugin]});
 }
 
 // ═══════════════════════════════════════════════════════════════
