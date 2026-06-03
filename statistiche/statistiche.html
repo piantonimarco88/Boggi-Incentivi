@@ -4560,6 +4560,24 @@ function asstAnalyze(q){
   const gComp=Object.fromEntries(COMP.map(c=>[c.k,asstGAvg(grp,e=>e.compInc[c.k])]));
   const head='<b>'+subj.cognome+' '+subj.nome+'</b> ('+subj.job+', '+subj.store+') · '+mkLabel(from)+'→'+mkLabel(to)+' · gruppo '+grp.length+' pari '+subj.job+'.<br>';
 
+  // Focus su un TIPO DI PREMIO specifico se nominato (es. "lo Shopper Yield di X è basso?")
+  const focus=asstCompByLabel(q);
+  if(focus&&['low','high','cmp','trend','summary'].includes(it)){
+    const sv=subj.compInc[focus.k]||0, gv=gComp[focus.k]||0, d=sv-gv, ftol=0.4;
+    const all=cmpAggByEmp(allData.filter(r=>{const mk=r.monthKey||0;return mk>=from&&mk<=to&&r.job===subj.job;})).sort((a,b)=>(b.compInc[focus.k]||0)-(a.compInc[focus.k]||0));
+    const pos=all.findIndex(x=>x.key===subj.key)+1;
+    if(it==='trend'){
+      const rows=asstRows(e0.key,from,to),by={};rows.forEach(r=>{const mk=r.monthKey;if(!mk)return;(by[mk]||(by[mk]={c:0,rml:0}));by[mk].c+=r[focus.k]||0;by[mk].rml+=rmlMonth(r);});
+      const mks=Object.keys(by).map(Number).sort((a,b)=>a-b),ser=mks.map(mk=>by[mk].rml?by[mk].c/by[mk].rml*100:0);
+      return head+'Andamento incidenza <b>'+focus.l+'</b> mensile:'+mks.map((mk,i)=>asstBar(mkShort(mk),ser[i],Math.max(...ser,0.5)*1.1,'#7c3aed')).join('');
+    }
+    let v=''; if(it==='low'||it==='high'){const claim=it==='low'?(d<-ftol):(d>ftol);v='<div class="as-v '+(claim?'as-yes':'as-no')+'">'+(claim?'✔ Lamentela FONDATA':'✘ Lamentela NON fondata')+'</div><br>';}
+    const mx=Math.max(sv,gv,0.5)*1.2;
+    return head+v+'Premio <b>'+focus.l+'</b> — incidenza su RML: <b>'+sv.toFixed(2)+'%</b> vs media gruppo <b>'+gv.toFixed(2)+'%</b> ('+(d>=0?'+':'')+d.toFixed(2)+' pp). Posizione: <b>'+pos+'° su '+all.length+'</b> nel ruolo per questo premio.'
+      +'<br><br>'+asstBar('Soggetto',sv,mx,'#7c3aed')+asstBar('Media gruppo',gv,mx,'#cbd5e1')
+      +(focus.tipo==='semestrale'||focus.k==='cBdg'?'<br><small class="as-dim">🛠 premio con leva di piano (BDG base / incidenza semestrale).</small>':'<br><small class="as-dim">premio di performance: % uguale per tutti, dipende dal dipendente.</small>');
+  }
+
   if(it==='rank'||it==='toppremio'){
     const ck=it==='toppremio'?(asstCompByLabel(q)||COMP[0]):null;
     const all=cmpAggByEmp(allData.filter(r=>{const mk=r.monthKey||0;return mk>=from&&mk<=to&&r.job===subj.job;})).sort((a,b)=>(ck?b.compInc[ck.k]-a.compInc[ck.k]:b.inc-a.inc));
@@ -4661,7 +4679,8 @@ function asstInit(){
   if(exs){ exs.innerHTML=!ex?'':[
     'I premi di '+ex+' sono bassi negli ultimi 12 mesi?','Cosa modificare per riallineare '+ex+' ai pari ruolo?',
     'Di cosa è fatto il premio di '+ex+'?','Classifica del ruolo di '+ex,'Previsione prossimo semestre per '+ex,
-    'Le assenze hanno penalizzato '+ex+'?',ex+' è migliorato rispetto all\'anno scorso?','Come va '+ex+' rispetto al suo negozio?'
+    'Le assenze hanno penalizzato '+ex+'?',ex+' è migliorato rispetto all\'anno scorso?','Come va '+ex+' rispetto al suo negozio?',
+    'Lo Shopper Yield di '+ex+' negli ultimi 6 mesi è in linea coi pari?','Il BDG di '+ex+' è basso?'
   ].map(t=>'<span class="as-ex" onclick="asstEx(this)">'+t+'</span>').join(''); }
   if(!chat.children.length) asstAdd('as-bot',allData.length?'Ciao! Chiedimi un\'analisi su un dipendente (verifica lamentele, confronto, classifica, andamento, previsione semestre, consigli sulle leve…). Clicca un esempio o scrivi una domanda.':'Carica prima i dati per usare l\'assistente.');
 }
