@@ -3043,7 +3043,7 @@ function renderYoy(){
 const WHATIF_DEF={base:{SM:300,VSM:250,SSAP:250,SSA:200,SA:150,JSA:100,SCS:150},sy:0.03,sub:0.02,dig:0.30,sas:2,dcc:0.002};
 const CASHIER_ROLES=['SCS','ISO']; // ruoli cassa (SAS/DCC); gli altri = vendita (Digital/SY)
 let whatifCharts={}, _whatifSig=null;
-let whatifFuture=false, whatifNewHire=false, _whatifFreqSig=null, _wiDefaults={};
+let whatifFuture=false, whatifNewHire=false, _whatifFreqSig=null, _whatifSemFreqSig=null, _wiDefaults={};
 let whatifTipo='mens'; // 'mens' | 'sem' | 'all' (toggle Tipo premio nel What-if)
 // Default di piano del premio semestrale SM/VSM: incidenza base 20%, pesi KPI
 // SY/UPT 50% · Subscription 35% · SAS 15% (CR monitorato ma non pagato → 0).
@@ -3360,8 +3360,8 @@ function renderWhatifSemFuture(sem,actualRml,scenarioRml,sp){
   const histRows=whatifNewHire?whatifRoleContextRows(role).filter(isSemRow):sem;
   const q=(document.getElementById('wif-dip')||{value:''}).value;
   const fsig='SEMF|'+role+'|'+q+'|'+whatifNewHire+'|'+histRows.length;
-  if(_whatifFreqSig!==fsig){
-    _whatifFreqSig=fsig;
+  if(_whatifSemFreqSig!==fsig){
+    _whatifSemFreqSig=fsig;
     const fr=semFrequencies(histRows);
     SEM_FCOMP.forEach(c=>{const el=document.getElementById('wi-semfreq-'+c.k);if(el){el.value=fr[c.k];_wiDefaults['wi-semfreq-'+c.k]=String(fr[c.k]);}});
   }
@@ -3397,7 +3397,7 @@ function resetWhatif(){
   set('wi-sem-incid',SEM_DEF.incid*100); set('wi-sem-wmain',SEM_DEF.wMain*100); set('wi-sem-wsub',SEM_DEF.wSub*100); set('wi-sem-wsas',SEM_DEF.wSas*100);
   const rmlEl=document.getElementById('wi-rml'); if(rmlEl) rmlEl.value='';
   ['bdg','digital','sy','sub','sas','dcc'].forEach(k=>{const el=document.getElementById('wi-freq-'+k);if(el)el.value='';});
-  _whatifSig=null; _whatifFreqSig=null; // ricarica stipendio reale + ruolo + frequenze
+  _whatifSig=null; _whatifFreqSig=null; _whatifSemFreqSig=null; // ricarica stipendio reale + ruolo + frequenze
   renderWhatif();
 }
 function onWhatifInput(){renderWhatif();markWhatifEdited();}
@@ -3613,11 +3613,11 @@ function setWhatifTipo(t){
   applyWhatifModeVisibility(); renderWhatif();
 }
 function setWhatifFuture(on){
-  whatifFuture=!!on; _whatifFreqSig=null; _whatifSig=null;
+  whatifFuture=!!on; _whatifFreqSig=null; _whatifSemFreqSig=null; _whatifSig=null;
   applyWhatifModeVisibility(); applyWhatifRoleVisibility(); renderWhatif();
 }
 function setWhatifHire(isNew){
-  whatifNewHire=!!isNew; _whatifFreqSig=null; _whatifSig=null;
+  whatifNewHire=!!isNew; _whatifFreqSig=null; _whatifSemFreqSig=null; _whatifSig=null;
   applyWhatifModeVisibility(); renderWhatif();
 }
 
@@ -3724,9 +3724,23 @@ function renderWhatifTimeline(rows,newMonthly,oldMonthly,newRml,oldRml,startKey,
   histKeys.forEach(mk=>{cE+=histE[mk];histCumE.push(Math.round(cE));histMonI.push(histR[mk]>0?+(histE[mk]/histR[mk]*100).toFixed(1):0);});
   const baseE=cE, lastE=H?histCumE[H-1]:0, lastI=H?histMonI[H-1]:0;
   const newMonI=newRml>0?+(newMonthly/newRml*100).toFixed(1):0, oldMonI=oldRml>0?+(oldMonthly/oldRml*100).toFixed(1):0;
+  // In modalità 'Tutti' la proiezione cumulata include anche il premio SEMESTRALE
+  // atteso, aggiunto nei mesi di pagamento (agosto/febbraio). 'Nuovi parametri'
+  // usa i parametri/RML scenario; 'vecchi parametri' usa i default + RML reale,
+  // così cambiando incidenza/pesi semestrali la linea nuova si distingue.
+  let semTotNew=0, semTotOld=0;
+  if(whatifTipo==='all'){
+    const sp=semParams();
+    const freq={}; SEM_FCOMP.forEach(c=>{const el=document.getElementById('wi-semfreq-'+c.k);freq[c.k]=el&&el.value!==''?+el.value:0;});
+    semTotNew=semForecast(newRml,freq,sp).tot;
+    semTotOld=semForecast(oldRml,freq,SEM_DEF).tot;
+  }
   const fNewE=[],fOldE=[],fNewI=[],fOldI=[];
+  let semCumNew=0, semCumOld=0;
   futKeys.forEach((mk,i)=>{const k=i+1;
-    fNewE.push(Math.round(baseE+newMonthly*k)); fOldE.push(Math.round(baseE+oldMonthly*k));
+    const mese=mk%100;
+    if(whatifTipo==='all'&&(mese===8||mese===2)){ semCumNew+=semTotNew; semCumOld+=semTotOld; }
+    fNewE.push(Math.round(baseE+newMonthly*k+semCumNew)); fOldE.push(Math.round(baseE+oldMonthly*k+semCumOld));
     fNewI.push(newMonI); fOldI.push(oldMonI);});                 // incidenza mensile = costante
   const nul=n=>Array(n).fill(null);
   const dHistE=histCumE.concat(nul(F)), dHistI=histMonI.concat(nul(F));
