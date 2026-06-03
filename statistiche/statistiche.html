@@ -4672,17 +4672,19 @@ function asstAnalyze(q){
 }
 function asstAdd(cls,html){const c=document.getElementById('asstChat');if(!c)return;const d=document.createElement('div');d.className='as-msg '+cls;d.innerHTML=html;c.appendChild(d);c.scrollTop=c.scrollHeight;}
 function asstAsk(){const i=document.getElementById('asstQ');const q=(i.value||'').trim();if(!q)return;asstAdd('as-user',q);i.value='';setTimeout(()=>{try{asstAdd('as-bot',asstAnalyze(q));}catch(e){asstAdd('as-bot','Errore nell\'analisi: '+e.message);}},120);}
-function asstEx(el){document.getElementById('asstQ').value=el.textContent;asstAsk();}
+function asstEx(el){const t=el.textContent,i=document.getElementById('asstQ');if(!i)return;i.value=t;
+  // gli esempi sono modelli col segnaposto: inseriscili e lascia che l'utente metta il nome reale
+  if(/nome cognome dipendente/i.test(t)){i.focus&&i.focus();i.select&&i.select();} else asstAsk();}
 function asstInit(){
   const chat=document.getElementById('asstChat'),exs=document.getElementById('asstExs');if(!chat)return;
-  const ex=(allData.find(r=>r.cognome)||{}).cognome||'';
-  if(exs){ exs.innerHTML=!ex?'':[
-    'I premi di '+ex+' sono bassi negli ultimi 12 mesi?','Cosa modificare per riallineare '+ex+' ai pari ruolo?',
-    'Di cosa è fatto il premio di '+ex+'?','Classifica del ruolo di '+ex,'Previsione prossimo semestre per '+ex,
-    'Le assenze hanno penalizzato '+ex+'?',ex+' è migliorato rispetto all\'anno scorso?','Come va '+ex+' rispetto al suo negozio?',
-    'Lo Shopper Yield di '+ex+' negli ultimi 6 mesi è in linea coi pari?','Il BDG di '+ex+' è basso?'
+  const PH='nome cognome dipendente';
+  if(exs){ exs.innerHTML=[
+    'I premi di '+PH+' sono bassi negli ultimi 12 mesi?','Cosa modificare per riallineare '+PH+' ai pari ruolo?',
+    'Di cosa è fatto il premio di '+PH+'?','Classifica del ruolo di '+PH,'Previsione prossimo semestre per '+PH,
+    'Le assenze hanno penalizzato '+PH+'?',PH+' è migliorato rispetto all\'anno scorso?','Come va '+PH+' rispetto al suo negozio?',
+    'Lo Shopper Yield di '+PH+' negli ultimi 6 mesi è in linea coi pari?','Il BDG di '+PH+' è basso?'
   ].map(t=>'<span class="as-ex" onclick="asstEx(this)">'+t+'</span>').join(''); }
-  if(!chat.children.length) asstAdd('as-bot',allData.length?'Ciao! Chiedimi un\'analisi su un dipendente (verifica lamentele, confronto, classifica, andamento, previsione semestre, consigli sulle leve…). Clicca un esempio o scrivi una domanda.':'Carica prima i dati per usare l\'assistente.');
+  if(!chat.children.length) asstAdd('as-bot',allData.length?'Ciao! Chiedimi un\'analisi su un dipendente (verifica lamentele, confronto, classifica, andamento, previsione semestre, consigli sulle leve…). Negli esempi qui sotto sostituisci «nome cognome dipendente» con la persona reale, poi premi Invio.':'Carica prima i dati per usare l\'assistente.');
 }
 
 // ═══════════════════════════════════════════════════════════════
