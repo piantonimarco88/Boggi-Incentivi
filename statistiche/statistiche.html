@@ -273,6 +273,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
   </div>
   <div class="hbtns">
     <button class="hbtn" onclick="document.getElementById('sfi').click()" title="Carica una sessione precedentemente salvata">📥 Carica sessione</button>
+    <button class="hbtn" id="btnQuality" onclick="showQualityReport()" style="display:none" title="Controllo qualità dei dati caricati: anomalie, valori sospetti, dati mancanti">🔎 Qualità dati</button>
     <button class="hbtn primary" id="btnSave" onclick="saveSession()" style="display:none" title="Salva i dati correnti in un file JSON da condividere con i colleghi">💾 Salva sessione</button>
     <input type="file" id="sfi" accept=".json" style="display:none" onchange="loadSession(event)">
   </div>
@@ -1675,6 +1676,7 @@ function refresh(){
   if(!allData.length) return;
   ['kpiRow','chartsRow','dipSection','kpiExpandWrap'].forEach(id=>document.getElementById(id).style.display='');
   document.getElementById('btnSave').style.display='';
+  document.getElementById('btnQuality').style.display='';
   popFilters(); filter();
   // refresh yoy tab if open
   if(document.getElementById('tabYoy').style.display!=='none'){popYoyFilters();renderYoy();}
@@ -2005,6 +2007,50 @@ function closeModal(){
 }
 
 function closeModalOutside(e){if(e.target===document.getElementById('modalOverlay')) closeModal();}
+
+// ─── QUALITÀ DATI ────────────────────────────────────────────
+// Cruscotto di anomalie a monte: aiuta a trovare errori nei file sorgente.
+function showQualityReport(){
+  if(!allData.length) return;
+  const med=arr=>{const a=arr.slice().sort((x,y)=>x-y),n=a.length;return n?(n%2?a[(n-1)/2]:(a[n/2-1]+a[n/2])/2):0;};
+  const nm=r=>(r.cognome+' '+r.nome).trim();
+  // aggrega per dipendente
+  const byEmp={}; allData.forEach(r=>{const k=r.matricola||_empKey(r);(byEmp[k]||(byEmp[k]={cognome:r.cognome,nome:r.nome,rows:[]})).rows.push(r);});
+  // 1) RML mensile anomalo (> 3× o < 1/3 della mediana personale)
+  const rmlOut=[];
+  Object.values(byEmp).forEach(e=>{
+    const vals=e.rows.map(r=>({mk:r.monthKey,v:rmlMonth(r),store:r.store,tipo:r._tipo})).filter(x=>x.v>0);
+    if(vals.length<3)return; const m=med(vals.map(x=>x.v)); if(!(m>0))return;
+    vals.forEach(x=>{if(x.v>m*3||x.v<m/3) rmlOut.push({nm:(e.cognome+' '+e.nome).trim(),mk:x.mk,v:x.v,med:m,store:x.store});});
+  });
+  // 2) Achievement > 200% (erogato/massimale)
+  const achOut=allData.filter(r=>r.massimale>0&&r.erogato/r.massimale>2).map(r=>({nm:nm(r),mk:r.monthKey,pct:r.erogato/r.massimale*100,store:r.store}));
+  // 3) Enti senza cambio (valuta locale, cambio 1)
+  const unk=[...new Set(allData.filter(r=>r._unknownEnte).map(r=>r.store))];
+  // 4) Stesso dipendente (cognome|nome) con piu matricole (cambio matricola/sistema HR)
+  const byName={}; allData.forEach(r=>{if(!r.matricola)return;const k=_empKey(r);(byName[k]||(byName[k]=new Set())).add(r.matricola);});
+  const multiMatr=Object.entries(byName).filter(([k,s])=>s.size>1).map(([k,s])=>({nm:k.replace('|',' '),matr:[...s]}));
+  // ── render ──
+  const sev=n=>n>0?'#ef4444':'#22c55e';
+  const sec=(icon,title,n,html)=>'<div style="margin:14px 0 6px;font-weight:700;font-size:13px;color:'+sev(n)+'">'+icon+' '+title+' — '+n+'</div>'+(n?html:'<div style="color:#22c55e;font-size:12px">Nessuna anomalia ✓</div>');
+  const tbl=(head,rows)=>'<table style="width:100%;border-collapse:collapse;font-size:11.5px"><thead><tr>'+head.map(h=>'<th style="text-align:left;border-bottom:1px solid #eee;padding:3px 6px;color:#888">'+h+'</th>').join('')+'</tr></thead><tbody>'+rows.join('')+'</tbody></table>';
+  const cap=(a,n)=>a.length>n?a.slice(0,n).concat([null]):a; // null = riga "...altri"
+  let h='<div style="font-size:12px;color:#666;margin-bottom:8px">Righe: <b>'+allData.length.toLocaleString('it-IT')+'</b> · Dipendenti: <b>'+Object.keys(byEmp).length+'</b> · Negozi: <b>'+new Set(allData.map(r=>r.store)).size+'</b></div>';
+  h+=sec('⚠️','RML mensile anomalo (vs mediana personale)',rmlOut.length,
+    tbl(['Dipendente','Periodo','Negozio','RML','Mediana'],cap(rmlOut.sort((a,b)=>b.v/b.med-a.v/a.med),40).map(x=>x?'<tr><td style="padding:3px 6px">'+x.nm+'</td><td style="padding:3px 6px">'+mkLabel(x.mk)+'</td><td style="padding:3px 6px">'+x.store+'</td><td style="padding:3px 6px;color:#ef4444;font-weight:700">€ '+fmt(x.v)+'</td><td style="padding:3px 6px">€ '+fmt(x.med)+'</td></tr>':'<tr><td colspan="5" style="padding:3px 6px;color:#999">…e altri</td></tr>')));
+  h+=sec('⚠️','Achievement oltre 200% (erogato &gt; 2× massimale)',achOut.length,
+    tbl(['Dipendente','Periodo','Negozio','Achievement'],cap(achOut.sort((a,b)=>b.pct-a.pct),30).map(x=>x?'<tr><td style="padding:3px 6px">'+x.nm+'</td><td style="padding:3px 6px">'+mkLabel(x.mk)+'</td><td style="padding:3px 6px">'+x.store+'</td><td style="padding:3px 6px;color:#ef4444;font-weight:700">'+x.pct.toFixed(0)+'%</td></tr>':'<tr><td colspan="4" style="padding:3px 6px;color:#999">…e altri</td></tr>')));
+  h+=sec('⚠️','Enti senza cambio valuta (valori in valuta locale)',unk.length,
+    '<div style="font-size:12px;color:#555">'+unk.join(' · ')+'</div>');
+  h+=sec('ℹ️','Dipendenti con più matricole (cambio matricola/HR)',multiMatr.length,
+    tbl(['Dipendente','Matricole'],cap(multiMatr,30).map(x=>x?'<tr><td style="padding:3px 6px;text-transform:capitalize">'+x.nm+'</td><td style="padding:3px 6px;color:#6366f1">'+x.matr.join(' · ')+'</td></tr>':'<tr><td colspan="2" style="padding:3px 6px;color:#999">…e altri</td></tr>')));
+  h+='<div style="margin-top:14px;font-size:11px;color:#aaa">Le anomalie indicano possibili errori nei file sorgente (da correggere a monte con chi li produce). Le matricole multiple sono gestite automaticamente tramite chiave canonica cognome|nome.</div>';
+  document.getElementById('modalBody').innerHTML=h;
+  document.getElementById('modalTitle').textContent='🔎 Qualità dati';
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+  if(modalChart){modalChart.destroy();modalChart=null;}
+}
 document.addEventListener('keydown',e=>{if(e.key==='Escape') closeModal();});
 
 // ─── TABLE ────────────────────────────────────────────────────
