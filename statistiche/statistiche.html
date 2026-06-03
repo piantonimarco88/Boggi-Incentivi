@@ -234,6 +234,14 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 .wp-f span{font-size:9px;color:#999}
 .wp-f input{width:90px;padding:4px 7px;border:1px solid #dde1ea;border-radius:6px;font-size:12px;color:#222}
 .wp-hist{font-size:9px;color:#6366f1;background:#eef2ff;border:1px solid #e0e7ff;border-radius:4px;padding:2px 6px;margin-top:4px;white-space:nowrap;font-weight:700;align-self:flex-start}
+.wp-cols{display:flex;gap:14px;flex-wrap:wrap;flex-basis:100%;width:100%;margin-top:6px}
+.wp-box{flex:1;min-width:320px;border:1px solid #e6e9f0;border-radius:10px;padding:10px 13px 12px;background:#fcfcff}
+.wp-box.sem{background:#faf8ff;border-color:#e9def7}
+.wp-box-title{font-size:11px;font-weight:800;letter-spacing:.3px;margin-bottom:8px;color:#4f46e5;display:flex;align-items:center;gap:6px}
+.wp-box.sem .wp-box-title{color:#6d28d9}
+.wp-line{display:flex;gap:14px;align-items:flex-start;padding:5px 0}
+.wp-line+.wp-line{border-top:1px dashed #eef0f5;margin-top:3px}
+.wp-line-lbl{font-size:9px;font-weight:700;color:#b3b3c2;text-transform:uppercase;min-width:74px;padding-top:7px;letter-spacing:.3px}
 .whatif-hist{font-size:11px;color:#4338ca;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;padding:7px 12px;margin-bottom:12px}
 .whatif-hist b{color:#3730a3}
 .wif-toggle{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#4338ca;cursor:pointer}
@@ -740,6 +748,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
     <div class="whatif-body">
       <div class="whatif-note" id="whatifNote"></div>
       <div class="whatif-params">
+        <!-- Riga comune: Ruolo · Stipendio · Decorrenza -->
         <div class="wp-group">
           <div class="wp-lbl">Ruolo <span id="wi-role-hint" style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb"></span></div>
           <div class="wp-roles">
@@ -749,56 +758,6 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
                 <option value="SSA">SSA</option><option value="SA">SA</option><option value="JSA">JSA</option>
                 <option value="SCS">SCS (cassa)</option>
               </select></label>
-          </div>
-        </div>
-        <div class="wp-group wif-mens-only">
-          <div class="wp-lbl">BDG base € (ruolo)</div>
-          <div class="wp-roles">
-            <label class="wp-f" data-role="SM"><span>SM</span><input type="number" id="wi-base-SM" value="300" min="0" step="10" oninput="onWhatifInput()"></label>
-            <label class="wp-f" data-role="VSM"><span>VSM</span><input type="number" id="wi-base-VSM" value="250" min="0" step="10" oninput="onWhatifInput()"></label>
-            <label class="wp-f" data-role="SSAP"><span>SSAP</span><input type="number" id="wi-base-SSAP" value="250" min="0" step="10" oninput="onWhatifInput()"></label>
-            <label class="wp-f" data-role="SSA"><span>SSA</span><input type="number" id="wi-base-SSA" value="200" min="0" step="10" oninput="onWhatifInput()"></label>
-            <label class="wp-f" data-role="SA"><span>SA</span><input type="number" id="wi-base-SA" value="150" min="0" step="10" oninput="onWhatifInput()"></label>
-            <label class="wp-f" data-role="JSA"><span>JSA</span><input type="number" id="wi-base-JSA" value="100" min="0" step="10" oninput="onWhatifInput()"></label>
-            <label class="wp-f" data-role="SCS"><span>SCS</span><input type="number" id="wi-base-SCS" value="150" min="0" step="10" oninput="onWhatifInput()"></label>
-          </div>
-        </div>
-        <div class="wp-group wif-mens-only">
-          <div class="wp-lbl">Parametri premi</div>
-          <div class="wp-roles">
-            <label class="wp-f" data-comp="digital"><span>Digital % (su BDG)</span><input type="number" id="wi-dig" value="30" min="0" step="5" oninput="onWhatifInput()"></label>
-            <label class="wp-f" data-comp="sy"><span>Shopper Yield % (su RML)</span><input type="number" id="wi-sy" value="3" min="0" step="0.5" oninput="onWhatifInput()"></label>
-            <label class="wp-f" data-comp="sub"><span>Subscription % (su RML)</span><input type="number" id="wi-sub" value="2" min="0" step="0.5" oninput="onWhatifInput()"></label>
-            <label class="wp-f" data-comp="sas"><span>SAS €/unità (max 200€)</span><input type="number" id="wi-sas" value="2" min="0" step="0.5" oninput="onWhatifInput()"></label>
-            <label class="wp-f" data-comp="dcc"><span>DCC % transazioni (max 100€)</span><input type="number" id="wi-dcc" value="0.2" min="0" step="0.05" oninput="onWhatifInput()"></label>
-          </div>
-        </div>
-        <div class="wp-group wif-sem-only" style="display:none">
-          <div class="wp-lbl">Parametri semestrale <span class="info-tip" data-tip="Premio semestrale SM/VSM. Base = Incidenza × RML mensile × 6. Pesi dei KPI premianti (somma tipicamente 100%): KPI principale = Shopper Yield (dal 2025) o UPT (2024). CR è monitorato ma non pagato. Lo scenario riscala i premi reali per il rapporto parametro/default, mantenendo quali KPI il dipendente ha raggiunto.">i</span></div>
-          <div class="wp-roles">
-            <label class="wp-f"><span>Incidenza base % (su RML)</span><input type="number" id="wi-sem-incid" value="20" min="0" step="1" oninput="onWhatifInput()"></label>
-            <label class="wp-f"><span>Peso KPI principale % (SY/UPT)</span><input type="number" id="wi-sem-wmain" value="50" min="0" step="5" oninput="onWhatifInput()"></label>
-            <label class="wp-f"><span>Peso Subscription %</span><input type="number" id="wi-sem-wsub" value="35" min="0" step="5" oninput="onWhatifInput()"></label>
-            <label class="wp-f"><span>Peso SAS %</span><input type="number" id="wi-sem-wsas" value="15" min="0" step="5" oninput="onWhatifInput()"></label>
-          </div>
-        </div>
-        <div class="wp-group wif-sem-only wif-future-only" id="wi-semfreq-group" style="display:none">
-          <div class="wp-lbl">Frequenza raggiungimento KPI % <span class="info-tip" data-tip="Quanto spesso (su base storica) il KPI viene raggiunto nei semestri. Precompilata: ESISTENTE = % di semestri storici in cui il dipendente l'ha raggiunto; NUOVO ASSUNTO = media del ruolo. Atteso = frequenza% × peso × base. Modificabile.">i</span></div>
-          <div class="wp-roles">
-            <label class="wp-f"><span>SY/UPT %</span><input type="number" id="wi-semfreq-main" min="0" max="100" step="5" oninput="onWhatifInput()"></label>
-            <label class="wp-f"><span>Subscription %</span><input type="number" id="wi-semfreq-sub" min="0" max="100" step="5" oninput="onWhatifInput()"></label>
-            <label class="wp-f"><span>SAS %</span><input type="number" id="wi-semfreq-sas" min="0" max="100" step="5" oninput="onWhatifInput()"></label>
-          </div>
-        </div>
-        <div class="wp-group wif-mens-only wif-future-only" id="wi-freq-group" style="display:none">
-          <div class="wp-lbl">Frequenza raggiungimento % <span class="info-tip" data-tip="Quanto spesso (in media) il dipendente raggiunge ciascun premio.&#10;Precompilata: ESISTENTE = sua media storica; NUOVO ASSUNTO = media del ruolo nei dati caricati. Modificabile.&#10;Atteso = frequenza% × valore massimo del premio.">i</span></div>
-          <div class="wp-roles">
-            <label class="wp-f" data-fcomp="bdg"><span>BDG %</span><input type="number" id="wi-freq-bdg" min="0" max="200" step="5" oninput="onWhatifInput()"></label>
-            <label class="wp-f" data-fcomp="digital"><span>Digital %</span><input type="number" id="wi-freq-digital" min="0" max="200" step="5" oninput="onWhatifInput()"></label>
-            <label class="wp-f" data-fcomp="sy"><span>Shopper Yield %</span><input type="number" id="wi-freq-sy" min="0" max="200" step="5" oninput="onWhatifInput()"></label>
-            <label class="wp-f" data-fcomp="sub"><span>Subscription %</span><input type="number" id="wi-freq-sub" min="0" max="200" step="5" oninput="onWhatifInput()"></label>
-            <label class="wp-f" data-fcomp="sas"><span>SAS %</span><input type="number" id="wi-freq-sas" min="0" max="200" step="5" oninput="onWhatifInput()"></label>
-            <label class="wp-f" data-fcomp="dcc"><span>DCC %</span><input type="number" id="wi-freq-dcc" min="0" max="200" step="5" oninput="onWhatifInput()"></label>
           </div>
         </div>
         <div class="wp-group">
@@ -811,6 +770,60 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
           <div class="wp-lbl">Decorrenza modifiche</div>
           <div class="wp-roles">
             <label class="wp-f"><span>attive dal mese</span><select id="wi-from" onchange="onWhatifInput()" style="padding:4px 7px;border:1px solid #dde1ea;border-radius:6px;font-size:12px"></select><span class="wp-hist">prima: invariato</span></label>
+          </div>
+        </div>
+        <!-- Box affiancati: Premi mensili · Premio semestrale -->
+        <div class="wp-cols">
+          <div class="wp-box mens wif-mens-only">
+            <div class="wp-box-title">🗓️ Premi mensili</div>
+            <div class="wp-line">
+              <div class="wp-line-lbl">Parametri</div>
+              <div class="wp-roles">
+                <label class="wp-f" data-role="SM"><span>BDG base € · SM</span><input type="number" id="wi-base-SM" value="300" min="0" step="10" oninput="onWhatifInput()"></label>
+                <label class="wp-f" data-role="VSM"><span>BDG base € · VSM</span><input type="number" id="wi-base-VSM" value="250" min="0" step="10" oninput="onWhatifInput()"></label>
+                <label class="wp-f" data-role="SSAP"><span>BDG base € · SSAP</span><input type="number" id="wi-base-SSAP" value="250" min="0" step="10" oninput="onWhatifInput()"></label>
+                <label class="wp-f" data-role="SSA"><span>BDG base € · SSA</span><input type="number" id="wi-base-SSA" value="200" min="0" step="10" oninput="onWhatifInput()"></label>
+                <label class="wp-f" data-role="SA"><span>BDG base € · SA</span><input type="number" id="wi-base-SA" value="150" min="0" step="10" oninput="onWhatifInput()"></label>
+                <label class="wp-f" data-role="JSA"><span>BDG base € · JSA</span><input type="number" id="wi-base-JSA" value="100" min="0" step="10" oninput="onWhatifInput()"></label>
+                <label class="wp-f" data-role="SCS"><span>BDG base € · SCS</span><input type="number" id="wi-base-SCS" value="150" min="0" step="10" oninput="onWhatifInput()"></label>
+                <label class="wp-f" data-comp="digital"><span>Digital % (su BDG)</span><input type="number" id="wi-dig" value="30" min="0" step="5" oninput="onWhatifInput()"></label>
+                <label class="wp-f" data-comp="sy"><span>Shopper Yield % (su RML)</span><input type="number" id="wi-sy" value="3" min="0" step="0.5" oninput="onWhatifInput()"></label>
+                <label class="wp-f" data-comp="sub"><span>Subscription % (su RML)</span><input type="number" id="wi-sub" value="2" min="0" step="0.5" oninput="onWhatifInput()"></label>
+                <label class="wp-f" data-comp="sas"><span>SAS €/unità (max 200€)</span><input type="number" id="wi-sas" value="2" min="0" step="0.5" oninput="onWhatifInput()"></label>
+                <label class="wp-f" data-comp="dcc"><span>DCC % transazioni (max 100€)</span><input type="number" id="wi-dcc" value="0.2" min="0" step="0.05" oninput="onWhatifInput()"></label>
+              </div>
+            </div>
+            <div class="wp-line wif-future-only" id="wi-freq-group" style="display:none">
+              <div class="wp-line-lbl">Frequenze % <span class="info-tip" data-tip="Quanto spesso (in media) il dipendente raggiunge ciascun premio.&#10;Precompilata: ESISTENTE = sua media storica; NUOVO ASSUNTO = media del ruolo nei dati caricati. Modificabile.&#10;Atteso = frequenza% × valore massimo del premio.">i</span></div>
+              <div class="wp-roles">
+                <label class="wp-f" data-fcomp="bdg"><span>BDG %</span><input type="number" id="wi-freq-bdg" min="0" max="200" step="5" oninput="onWhatifInput()"></label>
+                <label class="wp-f" data-fcomp="digital"><span>Digital %</span><input type="number" id="wi-freq-digital" min="0" max="200" step="5" oninput="onWhatifInput()"></label>
+                <label class="wp-f" data-fcomp="sy"><span>Shopper Yield %</span><input type="number" id="wi-freq-sy" min="0" max="200" step="5" oninput="onWhatifInput()"></label>
+                <label class="wp-f" data-fcomp="sub"><span>Subscription %</span><input type="number" id="wi-freq-sub" min="0" max="200" step="5" oninput="onWhatifInput()"></label>
+                <label class="wp-f" data-fcomp="sas"><span>SAS %</span><input type="number" id="wi-freq-sas" min="0" max="200" step="5" oninput="onWhatifInput()"></label>
+                <label class="wp-f" data-fcomp="dcc"><span>DCC %</span><input type="number" id="wi-freq-dcc" min="0" max="200" step="5" oninput="onWhatifInput()"></label>
+              </div>
+            </div>
+          </div>
+          <div class="wp-box sem wif-sem-only" style="display:none">
+            <div class="wp-box-title">📅 Premio semestrale <span class="info-tip" data-tip="Premio semestrale SM/VSM. Base = Incidenza × RML mensile × 6. Pesi dei KPI premianti (somma tipicamente 100%): KPI principale = Shopper Yield (dal 2025) o UPT (2024). CR è monitorato ma non pagato. Lo scenario riscala i premi reali per il rapporto parametro/default, mantenendo quali KPI il dipendente ha raggiunto.">i</span></div>
+            <div class="wp-line">
+              <div class="wp-line-lbl">Parametri</div>
+              <div class="wp-roles">
+                <label class="wp-f"><span>Incidenza base % (su RML)</span><input type="number" id="wi-sem-incid" value="20" min="0" step="1" oninput="onWhatifInput()"></label>
+                <label class="wp-f"><span>Peso KPI principale % (SY/UPT)</span><input type="number" id="wi-sem-wmain" value="50" min="0" step="5" oninput="onWhatifInput()"></label>
+                <label class="wp-f"><span>Peso Subscription %</span><input type="number" id="wi-sem-wsub" value="35" min="0" step="5" oninput="onWhatifInput()"></label>
+                <label class="wp-f"><span>Peso SAS %</span><input type="number" id="wi-sem-wsas" value="15" min="0" step="5" oninput="onWhatifInput()"></label>
+              </div>
+            </div>
+            <div class="wp-line wif-future-only" id="wi-semfreq-group" style="display:none">
+              <div class="wp-line-lbl">Frequenze % <span class="info-tip" data-tip="Quanto spesso (su base storica) il KPI viene raggiunto nei semestri. Precompilata: ESISTENTE = % di semestri storici in cui il dipendente l'ha raggiunto; NUOVO ASSUNTO = media del ruolo. Atteso = frequenza% × peso × base. Modificabile.">i</span></div>
+              <div class="wp-roles">
+                <label class="wp-f"><span>SY/UPT %</span><input type="number" id="wi-semfreq-main" min="0" max="100" step="5" oninput="onWhatifInput()"></label>
+                <label class="wp-f"><span>Subscription %</span><input type="number" id="wi-semfreq-sub" min="0" max="100" step="5" oninput="onWhatifInput()"></label>
+                <label class="wp-f"><span>SAS %</span><input type="number" id="wi-semfreq-sas" min="0" max="100" step="5" oninput="onWhatifInput()"></label>
+              </div>
+            </div>
           </div>
         </div>
         <button class="btn-rst" onclick="resetWhatif()">↺ Reset default PDF</button>
