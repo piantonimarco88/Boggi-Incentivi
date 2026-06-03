@@ -707,7 +707,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
         <button class="l4l-btn active" id="wi-tp-mens" style="flex:1" onclick="setWhatifSem(false)">Mensile</button>
         <button class="l4l-btn" id="wi-tp-sem" style="flex:1" onclick="setWhatifSem(true)">Semestrale</button>
       </div></div>
-    <div class="fg wif-mens-only"><label>🔮 Previsione futura</label>
+    <div class="fg"><label>🔮 Previsione futura</label>
       <div class="l4l-toggle" style="display:flex">
         <button class="l4l-btn active" id="wi-fut-off" style="flex:1" onclick="setWhatifFuture(false)">No</button>
         <button class="l4l-btn" id="wi-fut-on" style="flex:1" onclick="setWhatifFuture(true)">Sì</button>
@@ -768,7 +768,15 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
             <label class="wp-f"><span>Peso SAS %</span><input type="number" id="wi-sem-wsas" value="15" min="0" step="5" oninput="onWhatifInput()"></label>
           </div>
         </div>
-        <div class="wp-group wif-future-only" id="wi-freq-group" style="display:none">
+        <div class="wp-group wif-sem-only wif-future-only" id="wi-semfreq-group" style="display:none">
+          <div class="wp-lbl">Frequenza raggiungimento KPI % <span class="info-tip" data-tip="Quanto spesso (su base storica) il KPI viene raggiunto nei semestri. Precompilata: ESISTENTE = % di semestri storici in cui il dipendente l'ha raggiunto; NUOVO ASSUNTO = media del ruolo. Atteso = frequenza% × peso × base. Modificabile.">i</span></div>
+          <div class="wp-roles">
+            <label class="wp-f"><span>SY/UPT %</span><input type="number" id="wi-semfreq-main" min="0" max="100" step="5" oninput="onWhatifInput()"></label>
+            <label class="wp-f"><span>Subscription %</span><input type="number" id="wi-semfreq-sub" min="0" max="100" step="5" oninput="onWhatifInput()"></label>
+            <label class="wp-f"><span>SAS %</span><input type="number" id="wi-semfreq-sas" min="0" max="100" step="5" oninput="onWhatifInput()"></label>
+          </div>
+        </div>
+        <div class="wp-group wif-mens-only wif-future-only" id="wi-freq-group" style="display:none">
           <div class="wp-lbl">Frequenza raggiungimento % <span class="info-tip" data-tip="Quanto spesso (in media) il dipendente raggiunge ciascun premio.&#10;Precompilata: ESISTENTE = sua media storica; NUOVO ASSUNTO = media del ruolo nei dati caricati. Modificabile.&#10;Atteso = frequenza% × valore massimo del premio.">i</span></div>
           <div class="wp-roles">
             <label class="wp-f" data-fcomp="bdg"><span>BDG %</span><input type="number" id="wi-freq-bdg" min="0" max="200" step="5" oninput="onWhatifInput()"></label>
@@ -785,7 +793,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
             <label class="wp-f" data-comp="rml"><span>RML mensile scenario (€)</span><input type="number" id="wi-rml" min="0" step="50" oninput="onWhatifInput()"></label>
           </div>
         </div>
-        <div class="wp-group wif-normal-only">
+        <div class="wp-group wif-mens-only wif-normal-only">
           <div class="wp-lbl">Decorrenza modifiche</div>
           <div class="wp-roles">
             <label class="wp-f"><span>attive dal mese</span><select id="wi-from" onchange="onWhatifInput()" style="padding:4px 7px;border:1px solid #dde1ea;border-radius:6px;font-size:12px"></select><span class="wp-hist">prima: invariato</span></label>
@@ -794,7 +802,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
         <button class="btn-rst" onclick="resetWhatif()">↺ Reset default PDF</button>
       </div>
       <div class="whatif-hist" id="whatifHist"></div>
-      <div id="whatifNormalOut" class="wif-normal-only">
+      <div id="whatifNormalOut" class="wif-mens-only wif-normal-only">
         <div id="whatifFromNote" style="font-size:11px;color:#7c3aed;font-weight:600;margin-bottom:10px;display:none"></div>
         <div class="tbl-scroll whatif-tbl" id="whatifTbl"></div>
         <div class="chart-hint">🔍 <b>rotella</b> = zoom · <b>trascina</b> = scorri · <b>doppio clic</b> = reset</div>
@@ -804,21 +812,27 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
           <div class="cc"><div class="cc-head"><div class="cc-title">Incidenza % su stipendio per anno — Reale vs Scenario</div></div><div class="cw tall"><canvas id="wi_c_inc"></canvas></div></div>
         </div>
       </div>
-      <div id="whatifFutureOut" class="wif-future-only" style="display:none">
+      <div id="whatifFutureOut" class="wif-mens-only wif-future-only" style="display:none">
         <div id="whatifFreqNote" class="whatif-freqnote"></div>
         <div class="tbl-scroll whatif-tbl" id="whatifFutureTbl"></div>
         <div class="chart-hint">🔍 <b>rotella</b> = zoom · <b>trascina</b> = scorri a destra/sinistra · <b>doppio clic</b> = reset</div>
         <div class="cc" style="margin-top:6px"><div class="cc-head"><div class="cc-title">Erogato cumulato — storico e proiezione (€)</div></div><div class="cw tall"><canvas id="wi_c_future"></canvas></div></div>
         <div class="cc" style="margin-top:14px"><div class="cc-head"><div class="cc-title">Incidenza % mensile del premio variabile sullo stipendio — storico e proiezione</div></div><div class="cw tall"><canvas id="wi_c_future_inc"></canvas></div></div>
       </div>
-      <div id="whatifSemOut" class="wif-sem-only" style="display:none">
+      <div id="whatifSemOut" class="wif-sem-only wif-normal-only" style="display:none">
         <div id="whatifSemNote" style="font-size:11px;color:#7c3aed;font-weight:600;margin-bottom:10px"></div>
         <div class="tbl-scroll whatif-tbl" id="whatifSemTbl"></div>
         <div class="chart-hint">🔍 <b>rotella</b> = zoom · <b>trascina</b> = scorri · <b>doppio clic</b> = reset</div>
         <div class="whatif-charts">
           <div class="cc"><div class="cc-head"><div class="cc-title">Erogato per KPI — Reale vs Scenario (€)</div></div><div class="cw tall"><canvas id="wi_c_sem_kpi"></canvas></div></div>
-          <div class="cc"><div class="cc-head"><div class="cc-title">Incidenza % su stipendio per anno — Reale vs Scenario</div></div><div class="cw tall"><canvas id="wi_c_sem_inc"></canvas></div></div>
+          <div class="cc"><div class="cc-head"><div class="cc-title">Incidenza % su stipendio semestrale (RML×6) per periodo — Reale vs Scenario</div></div><div class="cw tall"><canvas id="wi_c_sem_inc"></canvas></div></div>
         </div>
+      </div>
+      <div id="whatifSemFutOut" class="wif-sem-only wif-future-only" style="display:none">
+        <div id="whatifSemFutNote" class="whatif-freqnote"></div>
+        <div class="tbl-scroll whatif-tbl" id="whatifSemFutTbl"></div>
+        <div class="chart-hint">🔍 <b>rotella</b> = zoom · <b>trascina</b> = scorri · <b>doppio clic</b> = reset</div>
+        <div class="cc" style="margin-top:6px"><div class="cc-head"><div class="cc-title">Premio semestrale per KPI — storico e prossimo semestre atteso (€)</div></div><div class="cw tall"><canvas id="wi_c_semfut"></canvas></div></div>
       </div>
     </div>
   </div>
@@ -2950,6 +2964,7 @@ let whatifSem=false; // modalità premi semestrali (toggle Mensile/Semestrale)
 // SY/UPT 50% · Subscription 35% · SAS 15% (CR monitorato ma non pagato → 0).
 const SEM_DEF={incid:0.20, wMain:0.50, wSub:0.35, wSas:0.15};
 const SEM_KPI=[{k:'main',l:'Shopper Yield / UPT',c:'#059669'},{k:'sub',l:'Subscription',c:'#7c3aed'},{k:'sas',l:'SAS',c:'#ef4444'},{k:'cr',l:'CR (non pagato)',c:'#94a3b8'}];
+const SEM_FCOMP=[{k:'main',l:'Shopper Yield / UPT',w:'wMain',c:'#059669'},{k:'sub',l:'Subscription',w:'wSub',c:'#7c3aed'},{k:'sas',l:'SAS',w:'wSas',c:'#ef4444'}];
 // Ultimi 12 mesi disponibili (per il trend recente delle frequenze).
 function whatifLast12(rows){
   const mks=[...new Set(rows.map(r=>r.monthKey||0).filter(Boolean))].sort((a,b)=>b-a).slice(0,12);
@@ -3182,8 +3197,9 @@ function renderWhatifSem(rows){
   const kRml=actualRml>0?scenarioRml/actualRml:1;
   const hint=document.getElementById('wi-rml-hint');
   if(hint) hint.textContent=actualRml?'(reale ≈ € '+fmt(actualRml)+'/mese · semestre × 6)':'(n/d)';
-  const semNote=document.getElementById('whatifSemNote');
   const sp=semParams();
+  if(whatifFuture){ renderWhatifSemFuture(sem,actualRml,scenarioRml,sp); return; }
+  const semNote=document.getElementById('whatifSemNote');
   const wSum=Math.round((sp.wMain+sp.wSub+sp.wSas)*100);
   if(semNote) semNote.textContent='Base = Incidenza '+(+(sp.incid*100).toFixed(0))+'% × RML × 6 · pesi KPI somma '+wSum+'%'+(wSum!==100?' (≠100%)':'')+'. Lo Scenario riscala i premi reali mantenendo i KPI effettivamente raggiunti.';
   const by=semAgg(sem,sp,kRml);
@@ -3221,6 +3237,58 @@ function renderWhatifSemTable(by){
       +`<td style="text-align:right">${incR.toFixed(1)}%</td><td style="text-align:right">${incS.toFixed(1)}%</td><td style="text-align:right" class="${dcl(dIn)}">${sg(dIn,'pp')}</td></tr>`;
   });
   el.innerHTML=h+'</tbody></table>';
+}
+
+// ─── Previsione futura semestrale ────────────────────────────
+// Frequenza % di raggiungimento di ciascun KPI sui semestri storici forniti.
+function semFrequencies(rows){
+  const out={main:0,sub:0,sas:0}; const n=rows.length; if(!n) return out;
+  let cm=0,cs=0,ca=0;
+  rows.forEach(r=>{ if(((r.cSySem||0)+(r.cUptSem||0))>0)cm++; if((r.cSubSem||0)>0)cs++; if((r.cSasSem||0)>0)ca++; });
+  out.main=Math.round(cm/n*100); out.sub=Math.round(cs/n*100); out.sas=Math.round(ca/n*100);
+  return out;
+}
+// Prossimo semestre atteso: per ogni KPI, atteso = base × peso × frequenza%.
+function semForecast(rmlMese,freq,sp){
+  const base=sp.incid*rmlMese*6; // MAX PER KPI
+  const W={main:sp.wMain,sub:sp.wSub,sas:sp.wSas};
+  const per=SEM_FCOMP.map(c=>{const mx=base*W[c.k], fr=(freq[c.k]||0)/100; return {k:c.k,l:c.l,c:c.c,max:mx,freq:freq[c.k]||0,exp:mx*fr};});
+  const tot=per.reduce((s,p)=>s+p.exp,0), maxTot=per.reduce((s,p)=>s+p.max,0), rmlSem=rmlMese*6;
+  return {per,tot,maxTot,base,achievement:maxTot>0?tot/maxTot*100:0,incidence:rmlSem>0?tot/rmlSem*100:0};
+}
+function renderWhatifSemFuture(sem,actualRml,scenarioRml,sp){
+  const role=currentWhatifRole();
+  // righe storiche per le frequenze: dipendente (esistente) o media ruolo (nuovo assunto)
+  const histRows=whatifNewHire?whatifRoleContextRows(role).filter(isSemRow):sem;
+  const q=(document.getElementById('wif-dip')||{value:''}).value;
+  const fsig='SEMF|'+role+'|'+q+'|'+whatifNewHire+'|'+histRows.length;
+  if(_whatifFreqSig!==fsig){
+    _whatifFreqSig=fsig;
+    const fr=semFrequencies(histRows);
+    SEM_FCOMP.forEach(c=>{const el=document.getElementById('wi-semfreq-'+c.k);if(el){el.value=fr[c.k];_wiDefaults['wi-semfreq-'+c.k]=String(fr[c.k]);}});
+  }
+  const freq={}; SEM_FCOMP.forEach(c=>{const el=document.getElementById('wi-semfreq-'+c.k);freq[c.k]=el&&el.value!==''?+el.value:0;});
+  const fc=semForecast(scenarioRml||actualRml,freq,sp);
+  const note=document.getElementById('whatifSemFutNote');
+  if(note) note.innerHTML='🔮 Prossimo semestre atteso — '+(whatifNewHire?'nuovo assunto '+role+' (frequenze = media del ruolo nei semestri caricati)':'frequenze dallo storico del dipendente')+'. Base = Incidenza '+(+(sp.incid*100).toFixed(0))+'% × RML '+fmt(scenarioRml||actualRml)+'€ × 6. Calcoli su dati storici.';
+  // tabella per KPI
+  const el=document.getElementById('whatifSemFutTbl');
+  if(el){
+    let h='<table><thead><tr><th>KPI</th><th style="text-align:right">Frequenza %</th><th style="text-align:right">Max semestre</th><th style="text-align:right">Atteso</th></tr></thead><tbody>';
+    fc.per.forEach(p=>{h+=`<tr><td><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${p.c};margin-right:6px"></span>${p.l}</td><td style="text-align:right">${p.freq}%</td><td style="text-align:right">€ ${fmt(p.max)}</td><td style="text-align:right"><strong>€ ${fmt(p.exp)}</strong></td></tr>`;});
+    h+=`<tr style="background:#faf8ff;font-weight:700"><td>TOTALE</td><td style="text-align:right">—</td><td style="text-align:right">€ ${fmt(fc.maxTot)}</td><td style="text-align:right">€ ${fmt(fc.tot)}</td></tr>`;
+    h+=`<tr><td colspan="2">Achievement atteso</td><td colspan="2" style="text-align:right;color:#22c55e;font-weight:700">${fc.achievement.toFixed(1)}%</td></tr>`;
+    h+=`<tr><td colspan="2">Incidenza su stipendio semestrale (RML×6)</td><td colspan="2" style="text-align:right;color:#0891b2;font-weight:700">${fc.incidence.toFixed(1)}%</td></tr>`;
+    el.innerHTML=h+'</tbody></table>';
+  }
+  // grafico: media storica per KPI vs atteso
+  const hist=semFrequencies(histRows); // riusato solo per coerenza display
+  const histAvg={main:0,sub:0,sas:0}; const n=histRows.length||1;
+  histRows.forEach(r=>{histAvg.main+=(r.cSySem||0)+(r.cUptSem||0);histAvg.sub+=(r.cSubSem||0);histAvg.sas+=(r.cSasSem||0);});
+  const labels=SEM_FCOMP.map(c=>c.l);
+  const histData=SEM_FCOMP.map(c=>Math.round(histAvg[c.k]/n));
+  const futData=fc.per.map(p=>Math.round(p.exp));
+  rcWhatif('semfut','wi_c_semfut',labels,histData,futData,'eur',0);
 }
 
 function resetWhatif(){
@@ -3413,35 +3481,37 @@ function mkAddMonths(mk,n){const t=Math.floor(mk/100)*12+(mk%100-1)+n;return Mat
 function mkDiffMonths(a,b){return (Math.floor(b/100)*12+b%100)-(Math.floor(a/100)*12+a%100);}
 function whatifTodayKey(){const mks=allData.map(r=>r.monthKey||0).filter(Boolean);return mks.length?Math.max(...mks):0;}
 
-// Mostra/nasconde gli elementi specifici della modalità (semestrale vs mensile; futuro vs normale).
+// Mostra/nasconde gli elementi del What-if combinando 2 dimensioni:
+//   sem/mens (whatifSem) e normale/futuro (whatifFuture).
+// Le classi agiscono come filtri AND: un elemento con più classi wif-* è
+// visibile solo se TUTTE le condizioni sono soddisfatte. Classi:
+//   wif-mens-only (solo mensile) · wif-sem-only (solo semestrale)
+//   wif-normal-only (solo simulatore) · wif-future-only (solo previsione)
 function applyWhatifModeVisibility(){
-  const sem=whatifSem;
+  const sem=whatifSem, fut=whatifFuture;
+  const vis=el=>{
+    if(el.classList.contains('wif-mens-only')&&sem) return false;
+    if(el.classList.contains('wif-sem-only')&&!sem) return false;
+    if(el.classList.contains('wif-normal-only')&&fut) return false;
+    if(el.classList.contains('wif-future-only')&&!fut) return false;
+    return true;
+  };
+  document.querySelectorAll('#tabWhatif .wif-mens-only, #tabWhatif .wif-sem-only, #tabWhatif .wif-normal-only, #tabWhatif .wif-future-only')
+    .forEach(el=>{el.style.display=vis(el)?'':'none';});
   const tpM=document.getElementById('wi-tp-mens'), tpS=document.getElementById('wi-tp-sem');
   if(tpM) tpM.classList.toggle('active',!sem);
   if(tpS) tpS.classList.toggle('active',sem);
-  document.querySelectorAll('#tabWhatif .wif-sem-only').forEach(el=>el.style.display=sem?'':'none');
-  document.querySelectorAll('#tabWhatif .wif-mens-only').forEach(el=>el.style.display=sem?'none':'');
-  if(sem){
-    // in modalità semestrale: nascondi tutti i blocchi mensili (normale + futuro)
-    document.querySelectorAll('#tabWhatif .wif-future-only, #tabWhatif .wif-normal-only').forEach(el=>el.style.display='none');
-    const hist=document.getElementById('whatifHist'); if(hist) hist.style.display='none';
-    return;
-  }
-  const fut=whatifFuture;
-  document.querySelectorAll('#tabWhatif .wif-future-only').forEach(el=>el.style.display=fut?'':'none');
-  document.querySelectorAll('#tabWhatif .wif-normal-only').forEach(el=>el.style.display=fut?'none':'');
   const fo=document.getElementById('wi-fut-off'), fn=document.getElementById('wi-fut-on');
-  if(fo) fo.classList.toggle('active',!whatifFuture);
-  if(fn) fn.classList.toggle('active',whatifFuture);
+  if(fo) fo.classList.toggle('active',!fut);
+  if(fn) fn.classList.toggle('active',fut);
   const e=document.getElementById('wi-hire-exist'), n=document.getElementById('wi-hire-new');
   if(e) e.classList.toggle('active',!whatifNewHire);
   if(n) n.classList.toggle('active',whatifNewHire);
-  const hist=document.getElementById('whatifHist'); // niente storico per il nuovo assunto
-  if(hist) hist.style.display=(whatifFuture&&whatifNewHire)?'none':'';
+  const hist=document.getElementById('whatifHist'); // niente storico per nuovo assunto o semestrale
+  if(hist) hist.style.display=((fut&&whatifNewHire)||sem)?'none':'';
 }
 function setWhatifSem(on){
   whatifSem=!!on; _whatifSig=null;
-  if(whatifSem) whatifFuture=false; // la previsione mensile non si applica al semestrale
   applyWhatifModeVisibility(); renderWhatif();
 }
 function setWhatifFuture(on){
