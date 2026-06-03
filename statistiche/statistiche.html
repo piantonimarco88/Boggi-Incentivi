@@ -3758,6 +3758,7 @@ function alertCompute(){
     const a=map[key];
     a.erogato+=r.erogato;
     {const _v=r.rml_period||0; if(isSemRow(r)) a._rmlS+=_v; else a._rmlM+=_v;}
+    {const _vm=rmlMonth(r); if(_vm>0){a._rmlMeseSum=(a._rmlMeseSum||0)+_vm; a._rmlMeseN=(a._rmlMeseN||0)+1;}}
     const mk=r.monthKey||0; if(mk)a.months.add(mk);
     if((r.cBdg||0)>0)a.bdgMonths++;
     CK_ALL.forEach(k=>a[k]+=(r[k]||0));
@@ -3766,6 +3767,7 @@ function alertCompute(){
   });
   const emps=Object.values(map).map(a=>{
     a.rml=a._rmlM||a._rmlS; // base coerente per l'incidenza (no doppio conteggio sem.)
+    a.rmlMese=a._rmlMeseN?a._rmlMeseSum/a._rmlMeseN:0; // RML mensile-equivalente (sem. /6) per il quadrante
     a.nMonths=a.months.size||1;
     a.inc=a.rml>0?a.erogato/a.rml*100:0;
     a.bdgFreq=a.bdgMonths/a.nMonths*100;
@@ -3841,20 +3843,26 @@ function renderAlert(){
   const compHd=document.getElementById('alertCompHd'), compRow=document.getElementById('alertKpiComp');
   if(compRow&&tot){
     const compAvg={}; COMP.forEach(c=>compAvg[c.k]=emps.reduce((s,e)=>s+(e.compInc[c.k]||0),0)/tot);
-    // Sezione "Premi mensili"
-    const mensile=COMP.filter(c=>c.tipo==='mensile');
-    const semest=COMP.filter(c=>c.tipo==='semestrale');
-    // Tutte le card su una sola riga flex (mensili + semestrali + residuo)
-    const fc=(card)=>'<div style="flex:1;min-width:80px">'+card+'</div>';
-    let html='';
-    [...mensile,...semest].forEach(c=>{
-      const v=compAvg[c.k]; if(v<0.005&&c.tipo==='semestrale') return;
-      const share=incAvg>0?(v/incAvg*100):0;
-      html+=fc(_alCard(c.l,v.toFixed(2)+'%',share.toFixed(0)+'% dell\'incidenza',''));
+    // Mostra solo le card coerenti col filtro Tipo premio: se è selezionato solo
+    // mensile non mostrare i premi semestrali e viceversa (vuoto = tutti).
+    const selTipi=new Set(getMsVals('al-tipo'));
+    const wantMens=!selTipi.size||selTipi.has('mensile')||selTipi.has('fc vm');
+    const wantSem =!selTipi.size||selTipi.has('semestrale')||selTipi.has('semestrale eci');
+    const shown=COMP.filter(c=>{
+      if(c.tipo==='mensile') return wantMens;            // mensili: sempre se richiesti
+      return wantSem && compAvg[c.k]>=0.005;             // semestrali: solo se richiesti e valorizzati
     });
-    compRow.innerHTML=html;
-    compRow.style.display='flex';
-    if(compHd) compHd.style.display='block';
+    // Layout: 1 riga se poche card, altrimenti 2 righe bilanciate che occupano
+    // tutta la larghezza (flex-grow su una base = 100%/cardPerRiga).
+    const n=shown.length, perRow=n<=6?Math.max(n,1):Math.ceil(n/2);
+    const basis='calc('+(100/perRow).toFixed(4)+'% - '+((perRow-1)*8/perRow).toFixed(2)+'px)';
+    const fc=(card)=>'<div style="flex:1 1 '+basis+';min-width:110px">'+card+'</div>';
+    compRow.innerHTML=shown.map(c=>{
+      const v=compAvg[c.k], share=incAvg>0?(v/incAvg*100):0;
+      return fc(_alCard(c.l,v.toFixed(2)+'%',share.toFixed(0)+'% dell\'incidenza',''));
+    }).join('');
+    compRow.style.display=n?'flex':'none';
+    if(compHd) compHd.style.display=n?'block':'none';
   } else if(compRow){
     compRow.style.display='none';
     if(compHd) compHd.style.display='none';
@@ -3878,7 +3886,7 @@ const alertBandPlugin={
 function renderAlertQuad(emps,tol){
   if(alertCharts.quad){alertCharts.quad.destroy();delete alertCharts.quad;}
   const cv=document.getElementById('alert_c_quad'); if(!cv) return;
-  const pt=e=>({x:Math.round(e.rml/e.nMonths),y:e.dev,e});
+  const pt=e=>({x:Math.round(e.rmlMese||0),y:e.dev,e});
   const valid=emps.filter(e=>e.dev!=null);
   alertCharts.quad=new Chart(cv.getContext('2d'),{type:'scatter',
     data:{datasets:[
