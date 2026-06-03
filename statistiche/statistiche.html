@@ -4023,7 +4023,7 @@ function renderAlertTable(emps){
     {disp:e.status==='sotto'?'<span class="badge b1">SOTTO</span>':'<span class="badge b5">SOPRA</span>',val:e.status},
     {disp:e.matricola,val:e.matricola},{disp:e.cognome,val:e.cognome},{disp:e.nome,val:e.nome},
     {disp:'<span class="bjob">'+e.job+'</span>',val:e.job},{disp:e.store,val:e.store},{disp:e._nazione,val:e._nazione},
-    {disp:'€ '+fmt(e.rml/e.nMonths),val:Math.round(e.rml/e.nMonths)},
+    {disp:'€ '+fmt(e.rmlMese),val:Math.round(e.rmlMese)},
     {disp:e.inc.toFixed(1)+'%',val:e.inc},{disp:e.healthy+'%',val:e.healthy},
     {disp:'<span class="'+(e.dev>=0?'pos':'neg')+'">'+(e.dev>=0?'+':'')+e.dev+'pp</span>',val:e.dev},
     {disp:'<span style="font-size:11px;color:#555">'+e.reasons.join('; ')+'</span>',val:e.reasons.join('; ')},
@@ -4036,7 +4036,7 @@ function exportAlert(){
   if(!out.length){alert('Nessun dipendente fuori soglia da esportare.');return;}
   const rows=out.map(e=>({
     'Stato':e.status==='sotto'?'SOTTO':'SOPRA','Matricola':e.matricola,'Cognome':e.cognome,'Nome':e.nome,'Ruolo':e.job,
-    'Negozio':e.store,'Nazione':e._nazione,'RML mensile EUR':Math.round(e.rml/e.nMonths),
+    'Negozio':e.store,'Nazione':e._nazione,'RML mensile EUR':Math.round(e.rmlMese),
     'Incidenza %':+e.inc.toFixed(1),'Soglia %':e.healthy,'Scostamento pp':e.dev,'Frequenza BDG %':+e.bdgFreq.toFixed(0),'Motivi':e.reasons.join('; '),
   }));
   _writeXlsx(rows,'Alert','BoggiPremi_Alert_');
