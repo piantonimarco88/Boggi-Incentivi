@@ -245,6 +245,23 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 .cmp-chip{display:inline-flex;align-items:center;gap:2px;background:#ede9fe;border:1px solid #ddd6fe;color:#5b21b6;border-radius:12px;padding:1px 4px 1px 9px;font-size:10px;font-weight:600}
 .cmp-chip .x{cursor:pointer;font-weight:700;color:#7c3aed;padding:0 3px;font-size:12px}
 .cmp-chip .x:hover{color:#ef4444}
+.as-chat{background:#fff;border:1px solid #e4e7ef;border-radius:14px;box-shadow:0 1px 8px rgba(0,0,0,.06);height:58vh;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;margin:0 28px}
+.as-msg{max-width:90%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.55}
+.as-user{align-self:flex-end;background:#7c3aed;color:#fff;border-bottom-right-radius:4px}
+.as-bot{align-self:flex-start;background:#f5f6fa;border:1px solid #eceef4;border-bottom-left-radius:4px}
+.as-bot b{color:#4f46e5}
+.as-v{display:inline-block;padding:2px 10px;border-radius:10px;font-weight:700;font-size:12px;margin-bottom:6px}
+.as-yes{background:#fee2e2;color:#b91c1c}.as-no{background:#dcfce7;color:#166534}.as-mid{background:#fef9c3;color:#854d0e}
+.as-bar-row{display:grid;grid-template-columns:150px 1fr 60px;gap:8px;align-items:center;font-size:11px;margin:3px 0}
+.as-bar{height:14px;border-radius:7px;background:#e5e7eb;position:relative;overflow:hidden}.as-bar>i{position:absolute;left:0;top:0;bottom:0;border-radius:7px}
+.as-rl{margin:6px 0 0;padding-left:18px}.as-rl li{margin:3px 0}
+.as-lev{background:#eef2ff;border:1px solid #e0e7ff;border-radius:8px;padding:6px 10px;margin:5px 0;font-size:12px}
+.as-perf{background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:6px 10px;margin:5px 0;font-size:12px}
+.as-ex{font-size:11px;background:#ede9fe;border:1px solid #ddd6fe;color:#5b21b6;border-radius:12px;padding:4px 10px;cursor:pointer}.as-ex:hover{background:#ddd6fe}
+.as-in{display:flex;gap:8px;margin:12px 28px 4px}.as-in input{flex:1;padding:10px 14px;border:1px solid #dde1ea;border-radius:10px;font-size:13px}
+.as-in button{padding:10px 18px;border:none;border-radius:10px;background:#4f46e5;color:#fff;font-weight:700;cursor:pointer}
+.as-rk{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:4px}.as-rk td{padding:2px 6px;border-bottom:1px solid #f0f2f7}
+.as-dim{color:#999}
 .whatif-hist{font-size:11px;color:#4338ca;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;padding:7px 12px;margin-bottom:12px}
 .whatif-hist b{color:#3730a3}
 .wif-toggle{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#4338ca;cursor:pointer}
@@ -301,6 +318,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
   <button class="tab-btn" data-tab="whatif" onclick="switchTab('whatif')">🔮 What-if</button>
   <button class="tab-btn" data-tab="alert" onclick="switchTab('alert')">🚨 Alert</button>
   <button class="tab-btn" data-tab="cmp" onclick="switchTab('cmp')">⚖️ Confronta</button>
+  <button class="tab-btn" data-tab="asst" onclick="switchTab('asst')">🤖 Assistente</button>
   <button class="tab-btn" data-tab="gloss" onclick="switchTab('gloss')">📖 Glossario</button>
 </div>
 
@@ -1024,6 +1042,13 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
    <div class="gloss-row"><div class="gloss-term">Valori monetari</div><div class="gloss-def">Toggle <b>Media/mese</b> (erogato per mese-dipendente, confronto equo) o <b>Totale periodo</b> (somma sul periodo, media per dipendente del gruppo). Incidenze e achievement % sono invarianti.</div></div>
    <div class="gloss-row"><div class="gloss-term">Viste</div><div class="gloss-def">Card KPI (soggetto vs media gruppo + delta) · grafico incidenza per tipo di premio · andamento mensile · posizionamento del soggetto nel gruppo (RML × incidenza).</div></div>
   </div>
+
+  <div class="gloss-sec">
+   <h3>🤖 Tab Assistente</h3>
+   <div class="gloss-row"><div class="gloss-term">Cos'è</div><div class="gloss-def">Interfaccia in linguaggio naturale (rule-based, tutto in locale): riconosce dipendente, periodo, mese e intento dalla domanda, poi esegue le analisi sui dati reali. Nessun dato esce dal PC.</div></div>
+   <div class="gloss-row"><div class="gloss-term">Cosa puoi chiedere</div><div class="gloss-def">Verifica lamentele (premi bassi/alti), confronto coi pari o col negozio, andamento, classifica/posizione, scomposizione del premio, spiegazione di un mese, impatto malattia, evoluzione anno su anno, confronto fra periodi, previsione del prossimo semestre, consigli e simulazioni.</div></div>
+   <div class="gloss-row"><div class="gloss-term">Leve di piano vs performance</div><div class="gloss-def">Nei consigli/simulazioni distingue le <b>leve modificabili dall'azienda</b> (BDG base €, % incidenza semestrale) dalle <b>aree di performance</b> (Digital, Shopper Yield, Subscription… — % uguale per tutti, dipendono dal dipendente).</div></div>
+  </div>
  </div>
 </div><!-- end #tabGloss -->
 
@@ -1086,6 +1111,17 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
     <div class="cc full"><div class="cc-head"><div class="cc-title">Posizionamento nel gruppo — Stipendio (RML mensile) × Incidenza % (soggetto evidenziato)</div></div><div class="cw tall"><canvas id="cmp_c_pos"></canvas></div></div>
   </div></div>
 </div><!-- end #tabCmp -->
+
+<!-- ═══════════ ASSISTENTE TAB ═══════════ -->
+<div id="tabAsst" style="display:none">
+  <div style="margin:4px 28px 10px;font-size:12px;color:#666;line-height:1.5">🤖 Descrivi una situazione in linguaggio naturale: l'assistente riconosce <b>dipendente</b>, <b>periodo</b>, <b>mese</b> e <b>intento</b>, poi analizza i dati reali caricati. <b>Leve di piano</b> (modificabili): BDG base e % incidenza semestrale; gli altri premi sono performance del dipendente. <span class="as-dim">Tutto in locale, nessun dato esce.</span></div>
+  <div class="as-chat" id="asstChat"></div>
+  <div class="as-in">
+    <input id="asstQ" placeholder="Es: i premi di Rossi sono bassi negli ultimi 12 mesi? · cosa modificare per riallinearlo?" onkeydown="if(event.key==='Enter')asstAsk()">
+    <button onclick="asstAsk()">Invia</button>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 28px 16px" id="asstExs"></div>
+</div><!-- end #tabAsst -->
 
 <!-- FULLSCREEN MODAL -->
 <div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
@@ -2289,6 +2325,7 @@ function switchTab(tab){
   document.getElementById('tabWhatif').style.display=tab==='whatif'?'':'none';
   document.getElementById('tabAlert').style.display=tab==='alert'?'':'none';
   document.getElementById('tabCmp').style.display=tab==='cmp'?'':'none';
+  document.getElementById('tabAsst').style.display=tab==='asst'?'':'none';
   document.getElementById('tabGloss').style.display=tab==='gloss'?'':'none';
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
   if(tab==='yoy'&&allData.length){popYoyFilters();renderYoy();}
@@ -2296,6 +2333,7 @@ function switchTab(tab){
   if(tab==='whatif'&&allData.length){popWhatifFilters();renderWhatif();}
   if(tab==='alert'&&allData.length){popAlertFilters();renderAlert();}
   if(tab==='cmp'&&allData.length){popCmpFilters();renderCmp();}
+  if(tab==='asst'){asstInit();}
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -4459,6 +4497,173 @@ function exportCmp(){
     'Incidenza %':+e.inc.toFixed(1),'Achievement %':+e.ach.toFixed(1),'Mesi':e.nMonths});
   const rows=[row(subj,'SOGGETTO')].concat(group.slice().sort((a,b)=>b.inc-a.inc).map(e=>row(e,'gruppo')));
   _writeXlsx(rows,'Confronta','BoggiPremi_Confronta_');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ─── ASSISTENTE (rule-based, sui dati reali) ─────────────────
+// ═══════════════════════════════════════════════════════════════
+const ASST_PERF_TIP={cDigital:'spingere vendite web/digitali (DSS)',cShopper:'alzare scontrino medio / upselling',cPrivilege:'acquisire nuove iscrizioni Privilege',cSas:'servizio sartoria (SAS)',cDcc:'DCC',cArt:'articoli incentivati',cCs:'customer service',cVisual:'visual in store',cQty:'pezzi venduti (dept store)'};
+function _asstMaxMk(){return Math.max(0,...allData.map(r=>r.monthKey||0));}
+function asstEmps(q){const u=q.toUpperCase(),seen={},res=[];for(const r of allData){const k=r.matricola||_empKey(r);if(seen[k])continue;const cog=(r.cognome||'').toUpperCase();if(cog.length>=3&&u.includes(cog)){seen[k]=1;res.push({key:k,cog:r.cognome,nome:r.nome});}}return res;}
+function asstPeriod(q){
+  const mx=_asstMaxMk(); if(!mx)return[0,99999999];
+  const ym=q.match(/ultim[io]?\s*(\d{1,2})\s*mes/i); if(ym)return[mkAddMonths(mx,-(Math.min(24,+ym[1])-1)),mx];
+  const yrs=(q.match(/\b(20\d\d)\b/g)||[]).map(Number);
+  if(yrs.length===1)return[yrs[0]*100+1,yrs[0]*100+12];
+  return [mkAddMonths(mx,-11),mx];
+}
+function asstMonth(q){const M=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];for(let i=0;i<12;i++)if(new RegExp('\\b'+M[i],'i').test(q))return i+1;return 0;}
+function asstNum(q){const m=q.match(/\b(\d{2,5})\b/);return m?+m[1]:null;}
+function asstCompByLabel(q){const u=q.toLowerCase();return COMP.find(c=>{const l=c.l.toLowerCase().replace(/\(.*\)/,'').trim();return u.includes(l)||(c.k==='cShopper'&&/shopper|yield/.test(u))||(c.k==='cBdg'&&/\bbdg\b|budget/.test(u))||(c.k==='cPrivilege'&&/privilege|subscription/.test(u))||(c.k==='cDigital'&&/digital/.test(u));});}
+function asstIntent(q){const u=q.toLowerCase(),emps=asstEmps(q);
+  if(/se\s+(alz|port|met|aument|cambi)|simul/.test(u)&&/(tutt|gli|ruolo|negozio|\bsa\b|\bsm\b|\bvsm\b|spesa)/.test(u))return 'simgroup';
+  if(/se\s+(alz|port|met|aument|cambi)|simul|quanto prend.*(se|con)/.test(u))return 'sim';
+  if(/prevision|prossimo semestre|stim.*futur|si prevede|prossim.*premi/.test(u))return 'forecast';
+  if(/malatt|assenz|giorni di mal|gg di mal/.test(u))return 'malattia';
+  if(/anno scorso|anno precedente|anno su anno|migliorat|peggiorat|rispetto all.anno/.test(u))return 'yoy';
+  if((q.match(/\b20\d\d\b/g)||[]).length>=2)return 'periodi';
+  if(/negozio|punto vendita|\bstore\b/.test(u)&&/(confront|rispetto|come va|vs|media)/.test(u))return 'cmpstore';
+  if(/(chi|miglior|peggior|top|bottom).*(su |sul |nel premio|in )/.test(u)&&asstCompByLabel(q))return 'toppremio';
+  if(/classifica|ranking|posizion|chi prende|chi guadagna|migliore|peggiore|primo|ultimo|\btop\b/.test(u))return 'rank';
+  if(/di cosa|com'?è fatto|scompos|composizione|quali premi|da quali|peso dei premi/.test(u))return 'breakdown';
+  if(/perch[eé]|come mai|spiega/.test(u)&&(/poco|basso|calo|sceso|meno|crollo/.test(u)||asstMonth(q)))return 'why';
+  if(/aument|consigl|modific|\bleva|tornare in linea|riallinea|cosa dovre|cosa posso|differenza pi|migliorar|su cosa interv|come.*(linea|recuper)/.test(u))return 'advice';
+  if(emps.length>=2)return 'cmp2';
+  if(/bass|poc|scars|insuffic|penaliz/.test(u))return 'low';
+  if(/alt[oi]|troppi|elevat|gonfiat/.test(u))return 'high';
+  if(/andament|trend|nel tempo|evoluz/.test(u))return 'trend';
+  if(/riepilog|quadro|panoramica|riassunt|profilo|scheda|come va/.test(u))return 'summary';
+  if(/confront|rispetto|pari|colleg|media|simil/.test(u))return 'cmp';
+  return 'summary';
+}
+function asstRows(key,from,to){return allData.filter(r=>{const mk=r.monthKey||0;return mk>=from&&mk<=to&&(r.matricola||_empKey(r))===key;});}
+function asstGroup(job,exclKey,from,to,store){return cmpAggByEmp(allData.filter(r=>{const mk=r.monthKey||0;if(mk<from||mk>to)return false;const k=r.matricola||_empKey(r);if(k===exclKey)return false;if(store)return r.store===store;return r.job===job;}));}
+function asstGAvg(a,f){return a.length?a.reduce((s,e)=>s+f(e),0)/a.length:0;}
+function asstBar(l,v,mx,c){const w=Math.max(2,Math.min(100,v/mx*100));return '<div class="as-bar-row"><span>'+l+'</span><div class="as-bar"><i style="width:'+w+'%;background:'+c+'"></i></div><span style="text-align:right">'+v.toFixed(1)+'%</span></div>';}
+function asstActiveComps(emps,subj){return COMP.filter(c=>subj.compInc[c.k]>0.05||asstGAvg(emps,e=>e.compInc[c.k])>0.05);}
+function asstCompChart(subj,emps){const comps=asstActiveComps(emps,subj);const mx=Math.max(...comps.map(c=>Math.max(subj.compInc[c.k],asstGAvg(emps,e=>e.compInc[c.k]))),1)*1.1;
+  return '<br><br><b>Per tipo di premio</b> (soggetto):'+comps.map(c=>asstBar(c.l,subj.compInc[c.k],mx,'#7c3aed')).join('')+'<small class="as-dim">media gruppo:</small>'+comps.map(c=>asstBar(c.l,asstGAvg(emps,e=>e.compInc[c.k]),mx,'#cbd5e1')).join('');}
+
+function asstAnalyze(q){
+  if(!allData.length)return 'Carica prima i dati.';
+  const it=asstIntent(q);
+  if(it==='cmp2'){const es=asstEmps(q),[f,t]=asstPeriod(q);const a=cmpAggByEmp(asstRows(es[0].key,f,t))[0],b=cmpAggByEmp(asstRows(es[1].key,f,t))[0];
+    if(!a||!b)return 'Dati insufficienti per uno dei due dipendenti nel periodo.';
+    const comps=COMP.filter(c=>a.compInc[c.k]>0.05||b.compInc[c.k]>0.05);const mx=Math.max(...comps.map(c=>Math.max(a.compInc[c.k],b.compInc[c.k])),1)*1.1;
+    return '<b>'+a.cognome+' '+a.nome+'</b> vs <b>'+b.cognome+' '+b.nome+'</b> ('+mkLabel(f)+'→'+mkLabel(t)+'):<br>Incidenza <b>'+a.inc.toFixed(1)+'%</b> vs <b>'+b.inc.toFixed(1)+'%</b>.<br><br>'+(a.cognome)+':'+comps.map(c=>asstBar(c.l,a.compInc[c.k],mx,'#7c3aed')).join('')+'<small class="as-dim">'+b.cognome+':</small>'+comps.map(c=>asstBar(c.l,b.compInc[c.k],mx,'#0891b2')).join('');}
+  const e0=asstEmps(q)[0]; if(!e0)return 'Non ho riconosciuto il dipendente. Scrivi un cognome presente nei dati.';
+  const [from,to]=asstPeriod(q);
+  const subj=cmpAggByEmp(asstRows(e0.key,from,to))[0];
+  if(!subj)return 'Nessun dato per <b>'+e0.cog+' '+e0.nome+'</b> nel periodo selezionato.';
+  const grp=asstGroup(subj.job,e0.key,from,to,null);
+  const gInc=asstGAvg(grp,e=>e.inc), delta=subj.inc-gInc, tol=2;
+  const gComp=Object.fromEntries(COMP.map(c=>[c.k,asstGAvg(grp,e=>e.compInc[c.k])]));
+  const head='<b>'+subj.cognome+' '+subj.nome+'</b> ('+subj.job+', '+subj.store+') · '+mkLabel(from)+'→'+mkLabel(to)+' · gruppo '+grp.length+' pari '+subj.job+'.<br>';
+
+  if(it==='rank'||it==='toppremio'){
+    const ck=it==='toppremio'?(asstCompByLabel(q)||COMP[0]):null;
+    const all=cmpAggByEmp(allData.filter(r=>{const mk=r.monthKey||0;return mk>=from&&mk<=to&&r.job===subj.job;})).sort((a,b)=>(ck?b.compInc[ck.k]-a.compInc[ck.k]:b.inc-a.inc));
+    const val=x=>ck?x.compInc[ck.k]:x.inc;
+    const pos=all.findIndex(x=>x.key===subj.key)+1;
+    let h=head+'Classifica '+(ck?'per <b>'+ck.l+'</b>':'per incidenza')+' nel ruolo '+subj.job+' — <b>'+subj.cognome+' è '+pos+'° su '+all.length+'</b>.<table class="as-rk">';
+    all.slice(0,12).forEach((x,i)=>h+='<tr><td>'+(i+1)+'°</td><td'+(x.key===subj.key?' style="font-weight:700;color:#7c3aed"':'')+'>'+x.cognome+' '+x.nome+'</td><td style="text-align:right">'+val(x).toFixed(1)+'%</td></tr>');
+    return h+'</table>';
+  }
+  if(it==='breakdown'){const comps=COMP.filter(c=>subj.compInc[c.k]>0.05);const mx=Math.max(...comps.map(c=>subj.compInc[c.k]),1)*1.1;
+    return head+'Composizione del premio (incidenza % su RML · totale '+subj.inc.toFixed(1)+'%):'+comps.map(c=>asstBar(c.l+(c.k==='cBdg'||c.tipo==='semestrale'?' 🛠':''),subj.compInc[c.k],mx,(c.k==='cBdg'||c.tipo==='semestrale')?'#4f46e5':'#94a3b8')).join('')+'<small class="as-dim">🛠 = leva di piano (BDG base / incidenza semestrale). Gli altri sono performance.</small>';}
+  if(it==='why'){const mi=asstMonth(q);if(!mi)return head+'Indica il mese (es. "perché a marzo ha preso poco?").';
+    const rows=allData.filter(r=>(r.matricola||_empKey(r))===e0.key&&r.month===mi);
+    if(!rows.length)return head+'Nessun dato per '+e0.cog+' nel mese indicato.';
+    const er=rows.reduce((s,r)=>s+r.erogato,0),rml=rows.reduce((s,r)=>s+rmlMonth(r),0),mal=rows.reduce((s,r)=>s+(r.malattie||0),0);
+    const incM=rml?er/rml*100:0;
+    let h=head+'<b>'+MESI[mi]+'</b>: incidenza <b>'+incM.toFixed(1)+'%</b> (media ruolo nel periodo '+gInc.toFixed(1)+'%). Cause:<ul class="as-rl">';
+    if(mal>0)h+='<li>Assenze: '+Math.round(mal)+' gg di malattia — la policy riduce/azzera i premi del mese</li>';
+    const zero=COMP.filter(c=>rows.reduce((s,r)=>s+(r[c.k]||0),0)<1&&gComp[c.k]>0.3);
+    if(zero.length)h+='<li>Premi non maturati: '+zero.slice(0,4).map(c=>c.l).join(', ')+'</li>';
+    if(!mal&&!zero.length)h+='<li>Performance complessiva sotto la media</li>';
+    return h+'</ul>';}
+  if(it==='malattia'){const rows=asstRows(e0.key,from,to);const mal=rows.reduce((s,r)=>s+(r.malattie||0),0);
+    const gMal=asstGAvg(grp,e=>0); // gruppo malattia non in aggregato → calcolo diretto
+    const grpMalRows=allData.filter(r=>{const mk=r.monthKey||0;return mk>=from&&mk<=to&&r.job===subj.job&&(r.matricola||_empKey(r))!==e0.key;});
+    const grpEmps={};grpMalRows.forEach(r=>{const k=r.matricola||_empKey(r);grpEmps[k]=(grpEmps[k]||0)+(r.malattie||0);});
+    const gAvgMal=Object.keys(grpEmps).length?Object.values(grpEmps).reduce((a,b)=>a+b,0)/Object.keys(grpEmps).length:0;
+    let h=head+'Assenze per malattia: <b>'+Math.round(mal)+' gg</b> nel periodo (media pari ruolo '+gAvgMal.toFixed(0)+' gg).<br>';
+    if(mal<=0)h+='Nessuna assenza registrata: non incide sui premi.';
+    else if(mal>gAvgMal*1.3)h+='<div class="as-v as-yes">⚠ Assenze sopra la media</div><br>Le assenze probabilmente hanno <b>penalizzato</b> i premi (la policy dimezza/azzera i premi nei periodi di malattia). Incidenza attuale '+subj.inc.toFixed(1)+'% vs media '+gInc.toFixed(1)+'%.';
+    else h+='Assenze in linea con i pari ruolo: impatto limitato.';
+    return h;}
+  if(it==='cmpstore'){const gs=asstGroup(null,e0.key,from,to,subj.store);const gsInc=asstGAvg(gs,e=>e.inc);
+    return head.replace('pari '+subj.job,'colleghi del negozio')+'Incidenza <b>'+subj.inc.toFixed(1)+'%</b> vs media negozio <b>'+gsInc.toFixed(1)+'%</b> ('+(subj.inc-gsInc>=0?'+':'')+(subj.inc-gsInc).toFixed(1)+' pp · '+gs.length+' colleghi).'+asstCompChart(subj,gs);}
+  if(it==='forecast'){const sem=asstRows(e0.key,0,99999999).filter(isSemRow);
+    if(!sem.length)return head+'Nessun premio semestrale storico per '+e0.cog+': impossibile prevedere il prossimo semestre.';
+    const freq=semFrequencies(sem);const rmlMese=subj.rmlMese||(sem.reduce((s,r)=>s+rmlMonth(r),0)/sem.length);
+    const fc=semForecast(rmlMese,freq,SEM_DEF);
+    let h=head+'🔮 <b>Prossimo semestre atteso</b> (frequenze storiche · RML '+fmt(rmlMese)+'€):<ul class="as-rl">';
+    fc.per.forEach(p=>h+='<li>'+p.l+': freq '+p.freq+'% → atteso € '+fmt(p.exp)+' (max € '+fmt(p.max)+')</li>');
+    return h+'</ul><b>Totale atteso: € '+fmt(fc.tot)+'</b> · achievement '+fc.achievement.toFixed(0)+'% · incidenza '+fc.incidence.toFixed(1)+'% sullo stipendio semestrale.';}
+  if(it==='yoy'){const mx=_asstMaxMk(),yCur=Math.floor(mx/100),yPrev=yCur-1;
+    const cur=cmpAggByEmp(allData.filter(r=>r.year===yCur&&(r.matricola||_empKey(r))===e0.key))[0];
+    const prev=cmpAggByEmp(allData.filter(r=>r.year===yPrev&&(r.matricola||_empKey(r))===e0.key))[0];
+    if(!cur||!prev)return head+'Servono dati su due anni per il confronto (trovato solo '+(cur?yCur:prev?yPrev:'nessuno')+').';
+    const d=cur.inc-prev.inc;
+    return '<b>'+subj.cognome+' '+subj.nome+'</b> — '+yPrev+' vs '+yCur+':<br><div class="as-v '+(d>=0?'as-no':'as-yes')+'">'+(d>=0?'▲ Migliorato':'▼ Peggiorato')+' di '+Math.abs(d).toFixed(1)+' pp</div><br>Incidenza '+prev.inc.toFixed(1)+'% ('+yPrev+') → '+cur.inc.toFixed(1)+'% ('+yCur+'). Erogato medio/mese € '+fmt(prev.erogMese)+' → € '+fmt(cur.erogMese)+'.';}
+  if(it==='periodi'){const yrs=(q.match(/\b20\d\d\b/g)||[]).map(Number);
+    const a=cmpAggByEmp(allData.filter(r=>r.year===yrs[0]&&(r.matricola||_empKey(r))===e0.key))[0];
+    const b=cmpAggByEmp(allData.filter(r=>r.year===yrs[1]&&(r.matricola||_empKey(r))===e0.key))[0];
+    if(!a||!b)return head+'Dati insufficienti per i due anni '+yrs.join(' e ')+'.';
+    const d=b.inc-a.inc;
+    return '<b>'+subj.cognome+'</b> — '+yrs[0]+' vs '+yrs[1]+':<br>Incidenza '+a.inc.toFixed(1)+'% → '+b.inc.toFixed(1)+'% ('+(d>=0?'+':'')+d.toFixed(1)+' pp). Erogato medio/mese € '+fmt(a.erogMese)+' → € '+fmt(b.erogMese)+'.';}
+  if(it==='simgroup'){const n=asstNum(q);if(n==null)return head+'Indica un valore (es. "se alzo il BDG base degli '+subj.job+' a 250").';
+    const grpAll=cmpAggByEmp(allData.filter(r=>{const mk=r.monthKey||0;return mk>=from&&mk<=to&&r.job===subj.job;}));
+    let oldTot=0,newTot=0;grpAll.forEach(e=>{oldTot+=e.erogato; const bdg=e.compInc.cBdg/100*e.rmlBase; const ratio=2; /*placeholder*/});
+    // stima: BDG scala col rapporto n / BDG medio attuale (uso mBdg medio ~ incidenza BDG)
+    const curBdgEur=grpAll.reduce((s,e)=>s+e.compInc.cBdg/100*e.rmlBase,0);
+    const baseNow=WHATIF_DEF.base[subj.job]||200; const ratio=baseNow>0?n/baseNow:1;
+    const deltaEur=curBdgEur*(ratio-1);
+    const tot=grpAll.reduce((s,e)=>s+e.erogato,0);
+    return head+'🛠 <b>Simulazione di piano</b> sul ruolo '+subj.job+' ('+grpAll.length+' dip., periodo selezionato):<br>Portando il <b>BDG base</b> da ~'+baseNow+'€ a <b>'+n+'€</b> (×'+ratio.toFixed(2)+'), il premio BDG del gruppo passerebbe da € '+fmt(curBdgEur)+' a € '+fmt(curBdgEur*ratio)+' (<b>'+(deltaEur>=0?'+':'')+'€ '+fmt(Math.abs(deltaEur))+'</b>). Spesa premi totale stimata: da € '+fmt(tot)+' a ~€ '+fmt(tot+deltaEur)+'. <small class="as-dim">(stima; il What-if dà il calcolo esatto per singolo dipendente)</small>';}
+  if(it==='sim'){const n=asstNum(q),u=q.toLowerCase();
+    if(n==null)return head+'Indica un valore (es. "se alzo il BDG di '+e0.cog+' a 250?" o "se porto l\'incidenza semestrale al 22%?").';
+    if(/semestral|incidenza/.test(u))return head+'🛠 <b>Leva semestrale</b>: portando l\'incidenza semestrale a <b>'+n+'%</b>, il premio semestrale cresce proporzionalmente. <small class="as-dim">Per la stima precisa usa il tab What-if (modalità Semestrale) sul dipendente.</small>';
+    const baseNow=WHATIF_DEF.base[subj.job]||200,ratio=baseNow>0?n/baseNow:1;
+    const newBdgInc=subj.compInc.cBdg*ratio, newInc=subj.inc-subj.compInc.cBdg+newBdgInc;
+    return head+'🛠 <b>Leva BDG base</b>: da ~'+baseNow+'€ a <b>'+n+'€</b> (×'+ratio.toFixed(2)+') il premio BDG passa da '+subj.compInc.cBdg.toFixed(1)+'% a '+newBdgInc.toFixed(1)+'% di incidenza. Incidenza complessiva stimata: da '+subj.inc.toFixed(1)+'% a ~<b>'+newInc.toFixed(1)+'%</b> (media gruppo '+gInc.toFixed(1)+'%). <small class="as-dim">(stima; il What-if calcola l\'esatto)</small>';}
+  if(it==='advice'){
+    if(delta>=-tol)return head+'<div class="as-v as-no">✔ Già in linea</div><br>Incidenza '+subj.inc.toFixed(1)+'% vs media '+gInc.toFixed(1)+'%: allineato o sopra. Nessun intervento di piano necessario.';
+    let h=head+'<div class="as-v as-mid">▲ Sotto la media di '+Math.abs(delta).toFixed(1)+' pp</div><br>Per riallineare alla media del ruolo ('+gInc.toFixed(1)+'%):';
+    h+='<div class="as-lev"><b>🛠 Leve di piano (modificabili)</b><ul class="as-rl">';
+    const bdgGap=subj.compInc.cBdg-(gComp.cBdg||0);
+    if(bdgGap<-0.2)h+='<li><b>BDG base</b>: premio BDG '+subj.compInc.cBdg.toFixed(1)+'% vs '+(gComp.cBdg||0).toFixed(1)+'% del gruppo — alzare il BDG base di ruolo aiuterebbe.</li>';
+    else h+='<li>BDG in linea col gruppo.</li>';
+    const semGap=COMP.filter(c=>c.tipo==='semestrale').reduce((s,c)=>s+(subj.compInc[c.k]-(gComp[c.k]||0)),0);
+    if(semGap<-0.2)h+='<li><b>Incidenza semestrale</b>: premi semestrali sotto la media — valutare di alzarne l\'incidenza per il ruolo.</li>';
+    h+='</ul></div>';
+    const perf=COMP.filter(c=>c.tipo==='mensile'&&c.k!=='cBdg').map(c=>({c,d:subj.compInc[c.k]-(gComp[c.k]||0)})).filter(x=>x.d<-0.2).sort((a,b)=>a.d-b.d);
+    if(perf.length){h+='<div class="as-perf"><b>📈 Performance (% uguale per tutti — non leve di piano)</b><ul class="as-rl">';
+      perf.slice(0,3).forEach(x=>h+='<li><b>'+x.c.l+'</b> sotto di '+Math.abs(x.d).toFixed(1)+' pp — '+(ASST_PERF_TIP[x.c.k]||'')+'</li>');h+='</ul></div>';}
+    return h+'<small class="as-dim">Intervento diretto: leve di piano (BDG/semestrale). Il resto dipende dalla performance del dipendente.</small>';}
+  if(it==='trend'){const rows=asstRows(e0.key,from,to);const by={};rows.forEach(r=>{const mk=r.monthKey;if(!mk)return;(by[mk]||(by[mk]={er:0,rml:0}));by[mk].er+=r.erogato||0;by[mk].rml+=rmlMonth(r);});
+    const mks=Object.keys(by).map(Number).sort((a,b)=>a-b);const ser=mks.map(mk=>by[mk].rml?by[mk].er/by[mk].rml*100:0);
+    return head+'Andamento incidenza mensile:'+mks.map((mk,i)=>asstBar(mkShort(mk),ser[i],Math.max(...ser,1)*1.1,'#7c3aed')).join('');}
+  if(it==='low'||it==='high'){const claim=it==='low'?(delta<-tol):(delta>tol);
+    return head+'<div class="as-v '+(claim?'as-yes':'as-no')+'">'+(claim?'✔ Lamentela FONDATA':'✘ Lamentela NON fondata')+'</div><br>Incidenza <b>'+subj.inc.toFixed(1)+'%</b> vs media gruppo <b>'+gInc.toFixed(1)+'%</b> ('+(delta>=0?'+':'')+delta.toFixed(1)+' pp).'+asstCompChart(subj,grp);}
+  // cmp / summary
+  const all=cmpAggByEmp(allData.filter(r=>{const mk=r.monthKey||0;return mk>=from&&mk<=to&&r.job===subj.job;})).sort((a,b)=>b.inc-a.inc);
+  const pos=all.findIndex(x=>x.key===subj.key)+1;
+  return head+'Incidenza <b>'+subj.inc.toFixed(1)+'%</b> vs media gruppo <b>'+gInc.toFixed(1)+'%</b> ('+(delta>=0?'+':'')+delta.toFixed(1)+' pp). Posizione: '+pos+'° su '+all.length+' nel ruolo · achievement '+subj.ach.toFixed(0)+'%.'+asstCompChart(subj,grp);
+}
+function asstAdd(cls,html){const c=document.getElementById('asstChat');if(!c)return;const d=document.createElement('div');d.className='as-msg '+cls;d.innerHTML=html;c.appendChild(d);c.scrollTop=c.scrollHeight;}
+function asstAsk(){const i=document.getElementById('asstQ');const q=(i.value||'').trim();if(!q)return;asstAdd('as-user',q);i.value='';setTimeout(()=>{try{asstAdd('as-bot',asstAnalyze(q));}catch(e){asstAdd('as-bot','Errore nell\'analisi: '+e.message);}},120);}
+function asstEx(el){document.getElementById('asstQ').value=el.textContent;asstAsk();}
+function asstInit(){
+  const chat=document.getElementById('asstChat'),exs=document.getElementById('asstExs');if(!chat)return;
+  const ex=(allData.find(r=>r.cognome)||{}).cognome||'';
+  if(exs){ exs.innerHTML=!ex?'':[
+    'I premi di '+ex+' sono bassi negli ultimi 12 mesi?','Cosa modificare per riallineare '+ex+' ai pari ruolo?',
+    'Di cosa è fatto il premio di '+ex+'?','Classifica del ruolo di '+ex,'Previsione prossimo semestre per '+ex,
+    'Le assenze hanno penalizzato '+ex+'?',ex+' è migliorato rispetto all\'anno scorso?','Come va '+ex+' rispetto al suo negozio?'
+  ].map(t=>'<span class="as-ex" onclick="asstEx(this)">'+t+'</span>').join(''); }
+  if(!chat.children.length) asstAdd('as-bot',allData.length?'Ciao! Chiedimi un\'analisi su un dipendente (verifica lamentele, confronto, classifica, andamento, previsione semestre, consigli sulle leve…). Clicca un esempio o scrivi una domanda.':'Carica prima i dati per usare l\'assistente.');
 }
 
 // ═══════════════════════════════════════════════════════════════
