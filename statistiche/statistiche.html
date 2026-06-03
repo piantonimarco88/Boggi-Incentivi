@@ -1041,6 +1041,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
         <button class="l4l-btn" id="cmp-base-tot" style="flex:1" onclick="setCmpBase('tot')">Totale periodo</button>
       </div></div>
     <button class="btn-rst" onclick="resetCmpFilters()">↺ Reset filtri</button>
+    <button class="btn-exp" onclick="exportCmp()" title="Esporta in Excel">📊 Export Excel</button>
   </div>
   <div class="yoy-filters" style="margin-top:-6px">
     <div class="fg" style="font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.4px;align-self:center">Gruppo di confronto →</div>
@@ -1063,7 +1064,8 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
   </div>
 
   <div id="cmpNote" class="whatif-note" style="margin:0 28px 12px"></div>
-  <div id="cmpKpiRow" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:0 28px 16px"></div>
+  <div id="cmpKpiRow" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:0 28px 12px"></div>
+  <div id="cmpInsight" style="margin:0 28px 16px;font-size:12.5px;color:#444;background:#f5f4ff;border:1px solid #e9def7;border-left:4px solid #7c3aed;border-radius:10px;padding:10px 14px;line-height:1.6;display:none"></div>
 
   <div class="whatif" style="margin-bottom:16px"><div class="whatif-body">
     <div class="cc full"><div class="cc-head"><div class="cc-title">Incidenza % su RML per tipo di premio — Soggetto vs media Gruppo</div></div><div class="cw tall"><canvas id="cmp_c_comp"></canvas></div></div>
@@ -3995,10 +3997,8 @@ function alertCompute(){
     a.compInc={}; CK_ALL.forEach(k=>a.compInc[k]=a.rml>0?a[k]/a.rml*100:0);
     return a;
   });
-  // Dept store: lista esplicita da file QTY TARGET (non-USA). Il prefisso numerico
-  // del nome negozio (es. "1187 ECI POZUELO" → 1187) è confrontato con DEPT_STORE_IDS.
-  function isDept(st){const m=String(st||'').match(/^(\d+)\s/);return m?DEPT_STORE_IDS.has(+m[1]):false;}
-  emps.forEach(e=>{e.dept=isDept(e.store);});
+  // Dept store: helper globale isDeptStore (lista esplicita da file QTY TARGET, non-USA).
+  emps.forEach(e=>{e.dept=isDeptStore(e.store);});
   // Componenti attive per negozio (su TUTTI i dati): usato per il filtro nelle motivazioni
   const storeActive={};
   allData.forEach(r=>{const s=r.store;if(!s)return;const set=storeActive[s]||(storeActive[s]=new Set());CK_MOT.forEach(k=>{if((r[k]||0)>0)set.add(k);});});
@@ -4250,16 +4250,14 @@ function _cmpCard(lbl,s,g,unit){
   return '<div class="kpi a"><div class="kpi-lbl">'+lbl+'</div><div class="kpi-val">'+_cmpFmt(s,unit)+'</div>'
     +'<div class="kpi-sub">gruppo '+_cmpFmt(g,unit)+' · <b class="'+(d>=0?'pos':'neg')+'">'+sign+_cmpFmt(d,unit)+'</b></div></div>';
 }
-function renderCmp(){
-  if(!allData.length) return;
-  const note=document.getElementById('cmpNote'), kpi=document.getElementById('cmpKpiRow');
-  const subjKey=cmpSubjectKey();
-  if(!subjKey){ if(note){note.className='whatif-note';note.textContent='Seleziona un dipendente soggetto per avviare il confronto.';} if(kpi)kpi.innerHTML=''; _cmpDestroy(); return; }
+// Calcola soggetto + gruppo di confronto secondo i filtri correnti (riusato da render ed export).
+function cmpComputeGroups(){
+  const subjKey=cmpSubjectKey(); if(!subjKey) return null;
   const [from,to]=cmpPeriod();
   const tipi=new Set(getMsVals('cmp-tipo'));
   const inScope=r=>{const mk=r.monthKey||0;if(mk<from||mk>to)return false;if(tipi.size&&!tipi.has(r._tipo))return false;return true;};
   const subjRows=allData.filter(r=>inScope(r)&&(r.matricola||_empKey(r))===subjKey);
-  const subj=cmpAggByEmp(subjRows)[0];
+  const subj=cmpAggByEmp(subjRows)[0]||null;
   const jobs=new Set(getMsVals('cmp-job')),naz=new Set(getMsVals('cmp-naz')),stores=new Set(getMsVals('cmp-store')),emps=new Set(getMsVals('cmp-emp'));
   const groupRows=allData.filter(r=>{
     if(!inScope(r))return false;
@@ -4272,14 +4270,22 @@ function renderCmp(){
     if(stores.size&&!stores.has(r.store))return false;
     return true;
   });
-  const group=cmpAggByEmp(groupRows);
+  return {subjKey,subj,group:cmpAggByEmp(groupRows),from,to,subjRows,groupRows};
+}
+function renderCmp(){
+  if(!allData.length) return;
+  const note=document.getElementById('cmpNote'), kpi=document.getElementById('cmpKpiRow');
+  const cg=cmpComputeGroups();
+  const insEl=document.getElementById('cmpInsight');
+  if(!cg){ if(note){note.className='whatif-note';note.textContent='Seleziona un dipendente soggetto per avviare il confronto.';} if(kpi)kpi.innerHTML=''; if(insEl)insEl.style.display='none'; _cmpDestroy(); return; }
+  const {subj,group,from,to,subjRows,groupRows}=cg;
   const subjName=subj?(subj.cognome+' '+subj.nome).trim():(document.getElementById('cmp-subj')||{}).value;
   if(note){
     note.className='whatif-note';
     note.innerHTML=!subj?'⚠️ Nessun dato per il soggetto nel periodo selezionato.'
       :'<b>'+subjName+'</b> ('+subj.job+') confrontato con <b>'+group.length+'</b> dipendenti del gruppo · periodo '+mkLabel(from)+' → '+mkLabel(to)+(group.length?'':' — nessun dipendente nel gruppo: allarga i filtri.');
   }
-  if(!subj){ if(kpi)kpi.innerHTML=''; _cmpDestroy(); return; }
+  if(!subj){ if(kpi)kpi.innerHTML=''; if(insEl)insEl.style.display='none'; _cmpDestroy(); return; }
   // ── Card KPI ──
   const gN=group.length;
   const subjErog=cmpBase==='mese'?subj.erogMese:subj.erogato;
@@ -4290,6 +4296,24 @@ function renderCmp(){
     _cmpCard('Achievement %',subj.ach,_cmpAvg(group,e=>e.ach),'pct'),
     '<div class="kpi"><div class="kpi-lbl">Gruppo di confronto</div><div class="kpi-val">'+gN+'</div><div class="kpi-sub">dipendenti · RML medio soggetto € '+fmt(subj.rmlMese)+'</div></div>',
   ].join('');
+  // ── Insight automatico ──
+  const ins=document.getElementById('cmpInsight');
+  if(ins){
+    if(gN<3){ ins.style.display='none'; }
+    else{
+      const below=group.filter(e=>e.inc<subj.inc).length;
+      const pctile=Math.round(below/gN*100); // % del gruppo sotto al soggetto
+      const posTxt=pctile>=50?('nel top '+(100-pctile)+'% del gruppo'):('nel <b>bottom</b> '+pctile+'% del gruppo');
+      const cd=COMP.map(c=>({l:c.l,d:subj.compInc[c.k]-_cmpAvg(group,e=>e.compInc[c.k])})).filter(x=>Math.abs(x.d)>0.05);
+      const up=cd.slice().sort((a,b)=>b.d-a.d)[0], dn=cd.slice().sort((a,b)=>a.d-b.d)[0];
+      const sgn=v=>(v>=0?'+':'')+v.toFixed(1)+' pp';
+      let parts=['<b>'+subjName+'</b>: incidenza <b>'+subj.inc.toFixed(1)+'%</b> vs media gruppo '+_cmpAvg(group,e=>e.inc).toFixed(1)+'% — '+posTxt+' ('+gN+' dip.).'];
+      if(up&&up.d>0.05) parts.push('Punto di forza: <b>'+up.l+'</b> ('+sgn(up.d)+' vs media).');
+      if(dn&&dn.d<-0.05) parts.push('Da migliorare: <b>'+dn.l+'</b> ('+sgn(dn.d)+' vs media).');
+      ins.innerHTML='💡 '+parts.join(' ');
+      ins.style.display='block';
+    }
+  }
   // ── Grafico per componente premio (incidenza %) ──
   _cmpDestroy();
   const comps=COMP.filter(c=>(subj.compInc[c.k]>0.05)||_cmpAvg(group,e=>e.compInc[c.k])>0.05);
@@ -4329,6 +4353,16 @@ function renderCmp(){
       tooltip:{callbacks:{label:c=>c.raw.nm+': RML € '+fmt(c.raw.x)+' · inc '+c.raw.y+'%'}}},
       scales:{x:{title:{display:true,text:'RML mensile (€)'},ticks:{callback:v=>fmtEurAxis(v)}},y:{title:{display:true,text:'Incidenza % su RML'},beginAtZero:true,ticks:{callback:v=>v+'%'}}}},
     plugins:[cmpMeanPlugin]});
+}
+function exportCmp(){
+  const cg=cmpComputeGroups();
+  if(!cg||!cg.subj){alert('Seleziona un dipendente soggetto con dati nel periodo.');return;}
+  const {subj,group}=cg;
+  const row=(e,tag)=>({Tipo:tag,Cognome:e.cognome,Nome:e.nome,Ruolo:e.job,Negozio:e.store,
+    'RML mensile EUR':Math.round(e.rmlMese),'Erogato medio/mese EUR':Math.round(e.erogMese),'Erogato totale EUR':Math.round(e.erogato),
+    'Incidenza %':+e.inc.toFixed(1),'Achievement %':+e.ach.toFixed(1),'Mesi':e.nMonths});
+  const rows=[row(subj,'SOGGETTO')].concat(group.slice().sort((a,b)=>b.inc-a.inc).map(e=>row(e,'gruppo')));
+  _writeXlsx(rows,'Confronta','BoggiPremi_Confronta_');
 }
 
 // ═══════════════════════════════════════════════════════════════
