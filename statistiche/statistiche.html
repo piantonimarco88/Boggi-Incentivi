@@ -6,6 +6,9 @@
 <title>Boggi — Statistiche Premi</title>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Hammer.js: richiesto da chartjs-plugin-zoom per il PAN (trascinamento) e il pinch.
+     Senza, lo zoom da rotella funziona ma il pan no. Va caricato PRIMA del plugin. -->
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -3045,7 +3048,7 @@ let whatifTipo='mens'; // 'mens' | 'sem' | 'all' (toggle Tipo premio nel What-if
 // Default di piano del premio semestrale SM/VSM: incidenza base 20%, pesi KPI
 // SY/UPT 50% · Subscription 35% · SAS 15% (CR monitorato ma non pagato → 0).
 const SEM_DEF={incid:0.20, wMain:0.50, wSub:0.35, wSas:0.15};
-const SEM_KPI=[{k:'main',l:'Shopper Yield / UPT',c:'#059669'},{k:'sub',l:'Subscription',c:'#7c3aed'},{k:'sas',l:'SAS',c:'#ef4444'},{k:'cr',l:'CR (non pagato)',c:'#94a3b8'}];
+const SEM_KPI=[{k:'main',l:'Shopper Yield / UPT',c:'#059669'},{k:'sub',l:'Subscription',c:'#7c3aed'},{k:'sas',l:'SAS',c:'#ef4444'},{k:'cr',l:'CR',c:'#94a3b8'}];
 const SEM_FCOMP=[{k:'main',l:'Shopper Yield / UPT',w:'wMain',c:'#059669'},{k:'sub',l:'Subscription',w:'wSub',c:'#7c3aed'},{k:'sas',l:'SAS',w:'wSas',c:'#ef4444'}];
 // Ultimi 12 mesi disponibili (per il trend recente delle frequenze).
 function whatifLast12(rows){
