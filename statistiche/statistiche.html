@@ -702,7 +702,12 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
         <div class="ms-panel" id="wif-store-panel" style="display:none"></div>
       </div></div>
     <button class="btn-rst" onclick="resetWhatifFilters()">↺ Reset filtri</button>
-    <div class="fg"><label>🔮 Previsione futura</label>
+    <div class="fg"><label>Tipo premio</label>
+      <div class="l4l-toggle" style="display:flex">
+        <button class="l4l-btn active" id="wi-tp-mens" style="flex:1" onclick="setWhatifSem(false)">Mensile</button>
+        <button class="l4l-btn" id="wi-tp-sem" style="flex:1" onclick="setWhatifSem(true)">Semestrale</button>
+      </div></div>
+    <div class="fg wif-mens-only"><label>🔮 Previsione futura</label>
       <div class="l4l-toggle" style="display:flex">
         <button class="l4l-btn active" id="wi-fut-off" style="flex:1" onclick="setWhatifFuture(false)">No</button>
         <button class="l4l-btn" id="wi-fut-on" style="flex:1" onclick="setWhatifFuture(true)">Sì</button>
@@ -732,7 +737,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
               </select></label>
           </div>
         </div>
-        <div class="wp-group">
+        <div class="wp-group wif-mens-only">
           <div class="wp-lbl">BDG base € (ruolo)</div>
           <div class="wp-roles">
             <label class="wp-f" data-role="SM"><span>SM</span><input type="number" id="wi-base-SM" value="300" min="0" step="10" oninput="onWhatifInput()"></label>
@@ -744,7 +749,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
             <label class="wp-f" data-role="SCS"><span>SCS</span><input type="number" id="wi-base-SCS" value="150" min="0" step="10" oninput="onWhatifInput()"></label>
           </div>
         </div>
-        <div class="wp-group">
+        <div class="wp-group wif-mens-only">
           <div class="wp-lbl">Parametri premi</div>
           <div class="wp-roles">
             <label class="wp-f" data-comp="digital"><span>Digital % (su BDG)</span><input type="number" id="wi-dig" value="30" min="0" step="5" oninput="onWhatifInput()"></label>
@@ -752,6 +757,15 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
             <label class="wp-f" data-comp="sub"><span>Subscription % (su RML)</span><input type="number" id="wi-sub" value="2" min="0" step="0.5" oninput="onWhatifInput()"></label>
             <label class="wp-f" data-comp="sas"><span>SAS €/unità (max 200€)</span><input type="number" id="wi-sas" value="2" min="0" step="0.5" oninput="onWhatifInput()"></label>
             <label class="wp-f" data-comp="dcc"><span>DCC % transazioni (max 100€)</span><input type="number" id="wi-dcc" value="0.2" min="0" step="0.05" oninput="onWhatifInput()"></label>
+          </div>
+        </div>
+        <div class="wp-group wif-sem-only" style="display:none">
+          <div class="wp-lbl">Parametri semestrale <span class="info-tip" data-tip="Premio semestrale SM/VSM. Base = Incidenza × RML mensile × 6. Pesi dei KPI premianti (somma tipicamente 100%): KPI principale = Shopper Yield (dal 2025) o UPT (2024). CR è monitorato ma non pagato. Lo scenario riscala i premi reali per il rapporto parametro/default, mantenendo quali KPI il dipendente ha raggiunto.">i</span></div>
+          <div class="wp-roles">
+            <label class="wp-f"><span>Incidenza base % (su RML)</span><input type="number" id="wi-sem-incid" value="20" min="0" step="1" oninput="onWhatifInput()"></label>
+            <label class="wp-f"><span>Peso KPI principale % (SY/UPT)</span><input type="number" id="wi-sem-wmain" value="50" min="0" step="5" oninput="onWhatifInput()"></label>
+            <label class="wp-f"><span>Peso Subscription %</span><input type="number" id="wi-sem-wsub" value="35" min="0" step="5" oninput="onWhatifInput()"></label>
+            <label class="wp-f"><span>Peso SAS %</span><input type="number" id="wi-sem-wsas" value="15" min="0" step="5" oninput="onWhatifInput()"></label>
           </div>
         </div>
         <div class="wp-group wif-future-only" id="wi-freq-group" style="display:none">
@@ -796,6 +810,15 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
         <div class="chart-hint">🔍 <b>rotella</b> = zoom · <b>trascina</b> = scorri a destra/sinistra · <b>doppio clic</b> = reset</div>
         <div class="cc" style="margin-top:6px"><div class="cc-head"><div class="cc-title">Erogato cumulato — storico e proiezione (€)</div></div><div class="cw tall"><canvas id="wi_c_future"></canvas></div></div>
         <div class="cc" style="margin-top:14px"><div class="cc-head"><div class="cc-title">Incidenza % mensile del premio variabile sullo stipendio — storico e proiezione</div></div><div class="cw tall"><canvas id="wi_c_future_inc"></canvas></div></div>
+      </div>
+      <div id="whatifSemOut" class="wif-sem-only" style="display:none">
+        <div id="whatifSemNote" style="font-size:11px;color:#7c3aed;font-weight:600;margin-bottom:10px"></div>
+        <div class="tbl-scroll whatif-tbl" id="whatifSemTbl"></div>
+        <div class="chart-hint">🔍 <b>rotella</b> = zoom · <b>trascina</b> = scorri · <b>doppio clic</b> = reset</div>
+        <div class="whatif-charts">
+          <div class="cc"><div class="cc-head"><div class="cc-title">Erogato per KPI — Reale vs Scenario (€)</div></div><div class="cw tall"><canvas id="wi_c_sem_kpi"></canvas></div></div>
+          <div class="cc"><div class="cc-head"><div class="cc-title">Incidenza % su stipendio per anno — Reale vs Scenario</div></div><div class="cw tall"><canvas id="wi_c_sem_inc"></canvas></div></div>
+        </div>
       </div>
     </div>
   </div>
@@ -2922,6 +2945,11 @@ const WHATIF_DEF={base:{SM:300,VSM:250,SSAP:250,SSA:200,SA:150,JSA:100,SCS:150},
 const CASHIER_ROLES=['SCS','ISO']; // ruoli cassa (SAS/DCC); gli altri = vendita (Digital/SY)
 let whatifCharts={}, _whatifSig=null;
 let whatifFuture=false, whatifNewHire=false, _whatifFreqSig=null, _wiDefaults={};
+let whatifSem=false; // modalità premi semestrali (toggle Mensile/Semestrale)
+// Default di piano del premio semestrale SM/VSM: incidenza base 20%, pesi KPI
+// SY/UPT 50% · Subscription 35% · SAS 15% (CR monitorato ma non pagato → 0).
+const SEM_DEF={incid:0.20, wMain:0.50, wSub:0.35, wSas:0.15};
+const SEM_KPI=[{k:'main',l:'Shopper Yield / UPT',c:'#059669'},{k:'sub',l:'Subscription',c:'#7c3aed'},{k:'sas',l:'SAS',c:'#ef4444'},{k:'cr',l:'CR (non pagato)',c:'#94a3b8'}];
 // Ultimi 12 mesi disponibili (per il trend recente delle frequenze).
 function whatifLast12(rows){
   const mks=[...new Set(rows.map(r=>r.monthKey||0).filter(Boolean))].sort((a,b)=>b-a).slice(0,12);
@@ -3088,11 +3116,119 @@ function whatifAgg(rows,p,kRml,selRole,fromKey){
   return by;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// ─── WHAT-IF SEMESTRALE (simulatore premio SM/VSM) ───────────
+// ═══════════════════════════════════════════════════════════════
+function semParams(){
+  const num=(id,d)=>{const el=document.getElementById(id);return el&&el.value!==''?+el.value/100:d;};
+  return {incid:num('wi-sem-incid',SEM_DEF.incid), wMain:num('wi-sem-wmain',SEM_DEF.wMain),
+          wSub:num('wi-sem-wsub',SEM_DEF.wSub), wSas:num('wi-sem-wsas',SEM_DEF.wSas)};
+}
+// Aggrega per anno il premio semestrale Reale e Scenario, scomposto per KPI.
+// Modello: ogni componente reale viene riscalato per il rapporto parametro/default
+// (incidenza base, peso del KPI, kRml=RML scenario/reale). I moltiplicatori
+// fatturato/inventario restano "congelati" nel valore reale di partenza.
+function semAgg(rows,sp,kRml){
+  kRml=kRml||1;
+  const fInc=SEM_DEF.incid>0?sp.incid/SEM_DEF.incid:1;
+  const rMain=fInc*kRml*(SEM_DEF.wMain>0?sp.wMain/SEM_DEF.wMain:0);
+  const rSub =fInc*kRml*(SEM_DEF.wSub >0?sp.wSub /SEM_DEF.wSub :0);
+  const rSas =fInc*kRml*(SEM_DEF.wSas >0?sp.wSas /SEM_DEF.wSas :0);
+  const rCr  =fInc*kRml; // CR non parametrizzato: scala solo con incidenza e RML
+  const by={};
+  rows.forEach(r=>{
+    const main=(r.cSySem||0)+(r.cUptSem||0), sub=r.cSubSem||0, sas=r.cSasSem||0, cr=r.cCrSem||0;
+    const maxKpi=(r.massimale||0)/1.5; // MAX PER KPI = MAX TOTALE / 1.5
+    const y=r.year||'?';
+    if(!by[y]) by[y]={kpi:{main:{R:0,S:0},sub:{R:0,S:0},sas:{R:0,S:0},cr:{R:0,S:0}},erR:0,erS:0,maR:0,maS:0,rmlR:0,rmlS:0,keys:new Set()};
+    const b=by[y];
+    b.kpi.main.R+=main; b.kpi.main.S+=main*rMain;
+    b.kpi.sub.R +=sub;  b.kpi.sub.S +=sub*rSub;
+    b.kpi.sas.R +=sas;  b.kpi.sas.S +=sas*rSas;
+    b.kpi.cr.R  +=cr;   b.kpi.cr.S  +=cr*rCr;
+    b.erR+=main+sub+sas+cr;
+    b.erS+=main*rMain+sub*rSub+sas*rSas+cr*rCr;
+    b.maR+=maxKpi; b.maS+=maxKpi*fInc*kRml;
+    b.rmlR+=r.rml_period||0; b.rmlS+=(r.rml_period||0)*kRml;
+    b.keys.add(r.matricola||_empKey(r));
+  });
+  return by;
+}
+function renderWhatifSem(rows){
+  const sem=rows.filter(isSemRow);
+  const dips=new Set(sem.map(r=>r.matricola||_empKey(r)));
+  const note=document.getElementById('whatifNote');
+  if(note){
+    note.className='whatif-note'+(dips.size>1?' multi':'');
+    note.textContent=dips.size===0?'Nessun premio semestrale nei filtri correnti (solo SM/VSM hanno il semestrale).'
+      :dips.size===1?'Simulazione semestrale sul dipendente selezionato — Reale vs Scenario.'
+      :'⚠️ '+dips.size+' dipendenti nei filtri: simulazione semestrale aggregata. Seleziona un singolo dipendente per analizzarlo.';
+  }
+  // RML mensile reale = rml_period semestrale / 6 (rmlMonth)
+  const rmlRows=sem.filter(r=>(r.rml_period||0)>0);
+  const actualRml=rmlRows.length?rmlRows.reduce((s,r)=>s+rmlMonth(r),0)/rmlRows.length:0;
+  const q=(document.getElementById('wif-dip')||{value:''}).value;
+  const sig='SEM|'+Math.round(actualRml)+'|'+dips.size+'|'+q;
+  const rmlEl=document.getElementById('wi-rml');
+  if(_whatifSig!==sig){
+    _whatifSig=sig;
+    if(rmlEl){ rmlEl.value=actualRml?Math.round(actualRml):''; _wiDefaults['wi-rml']=rmlEl.value; }
+    const det=detectRole(sem);
+    const roleEl=document.getElementById('wi-role'), hintEl=document.getElementById('wi-role-hint');
+    if(roleEl&&det&&[...roleEl.options].some(o=>o.value===det)) roleEl.value=det;
+    if(hintEl) hintEl.textContent=det?'(riconosciuto: '+det+')':'';
+  }
+  const scenarioRml=rmlEl&&rmlEl.value!==''?+rmlEl.value:actualRml;
+  const kRml=actualRml>0?scenarioRml/actualRml:1;
+  const hint=document.getElementById('wi-rml-hint');
+  if(hint) hint.textContent=actualRml?'(reale ≈ € '+fmt(actualRml)+'/mese · semestre × 6)':'(n/d)';
+  const semNote=document.getElementById('whatifSemNote');
+  const sp=semParams();
+  const wSum=Math.round((sp.wMain+sp.wSub+sp.wSas)*100);
+  if(semNote) semNote.textContent='Base = Incidenza '+(+(sp.incid*100).toFixed(0))+'% × RML × 6 · pesi KPI somma '+wSum+'%'+(wSum!==100?' (≠100%)':'')+'. Lo Scenario riscala i premi reali mantenendo i KPI effettivamente raggiunti.';
+  const by=semAgg(sem,sp,kRml);
+  renderWhatifSemTable(by);
+  // grafici: erogato per KPI (aggregato su tutti gli anni) + incidenza per anno
+  const years=Object.keys(by).filter(y=>y!=='?').sort();
+  const kpiAgg=SEM_KPI.map(k=>({l:k.l,R:0,S:0}));
+  years.forEach(y=>{SEM_KPI.forEach((k,i)=>{kpiAgg[i].R+=by[y].kpi[k.k].R;kpiAgg[i].S+=by[y].kpi[k.k].S;});});
+  const shownKpi=kpiAgg.filter(k=>k.R>0.5||k.S>0.5);
+  rcWhatif('semkpi','wi_c_sem_kpi',shownKpi.map(k=>k.l),shownKpi.map(k=>Math.round(k.R)),shownKpi.map(k=>Math.round(k.S)),'eur',0);
+  const incR=b=>b.rmlR>0?+(b.erR/b.rmlR*100).toFixed(1):0, incS=b=>b.rmlS>0?+(b.erS/b.rmlS*100).toFixed(1):0;
+  rcWhatif('seminc','wi_c_sem_inc',years,years.map(y=>incR(by[y])),years.map(y=>incS(by[y])),'pct',0);
+}
+function renderWhatifSemTable(by){
+  const el=document.getElementById('whatifSemTbl'); if(!el) return;
+  const years=Object.keys(by).filter(y=>y!=='?').sort();
+  if(!years.length){el.innerHTML='<div style="text-align:center;padding:32px;color:#ccc;font-size:13px">Nessun premio semestrale nei filtri correnti</div>';return;}
+  const sg=(v,s)=>(v>=0?'+':'')+v.toFixed(1)+s, dcl=v=>v==null?'':(v>=0?'pos':'neg');
+  let h='<table><thead><tr><th>Periodo</th><th>KPI</th><th style="text-align:right">Erogato Reale</th><th style="text-align:right">Erogato Scenario</th><th style="text-align:right">Δ €</th><th style="text-align:right">Incid. Reale</th><th style="text-align:right">Incid. Scenario</th><th style="text-align:right">Δ pp</th></tr></thead><tbody>';
+  years.forEach(y=>{
+    const b=by[y];
+    // righe per KPI (mostro solo i KPI con valore reale o scenario)
+    SEM_KPI.forEach(k=>{
+      const kp=b.kpi[k.k]; if(kp.R<0.5&&kp.S<0.5) return;
+      const incR=b.rmlR>0?kp.R/b.rmlR*100:0, incS=b.rmlS>0?kp.S/b.rmlS*100:0;
+      const dEr=kp.S-kp.R, dIn=incS-incR;
+      h+=`<tr><td style="color:#aaa">${y}</td><td><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${k.c};margin-right:6px"></span>${k.l}</td>`
+        +`<td style="text-align:right">€ ${fmt(kp.R)}</td><td style="text-align:right">€ ${fmt(kp.S)}</td><td style="text-align:right" class="${dcl(dEr)}">${(dEr>=0?'+':'')+'€ '+fmt(Math.abs(dEr))}</td>`
+        +`<td style="text-align:right">${incR.toFixed(1)}%</td><td style="text-align:right">${incS.toFixed(1)}%</td><td style="text-align:right" class="${dcl(dIn)}">${sg(dIn,'pp')}</td></tr>`;
+    });
+    // riga TOTALE periodo (globale)
+    const incR=b.rmlR>0?b.erR/b.rmlR*100:0, incS=b.rmlS>0?b.erS/b.rmlS*100:0, dEr=b.erS-b.erR, dIn=incS-incR;
+    h+=`<tr style="background:#faf8ff;font-weight:700"><td>${y}</td><td>TOTALE (${b.keys.size} dip.)</td>`
+      +`<td style="text-align:right">€ ${fmt(b.erR)}</td><td style="text-align:right">€ ${fmt(b.erS)}</td><td style="text-align:right" class="${dcl(dEr)}">${(dEr>=0?'+':'')+'€ '+fmt(Math.abs(dEr))}</td>`
+      +`<td style="text-align:right">${incR.toFixed(1)}%</td><td style="text-align:right">${incS.toFixed(1)}%</td><td style="text-align:right" class="${dcl(dIn)}">${sg(dIn,'pp')}</td></tr>`;
+  });
+  el.innerHTML=h+'</tbody></table>';
+}
+
 function resetWhatif(){
   Object.keys(WHATIF_DEF.base).forEach(r=>{const el=document.getElementById('wi-base-'+r);if(el)el.value=WHATIF_DEF.base[r];});
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v;};
   set('wi-sy',WHATIF_DEF.sy*100); set('wi-sub',WHATIF_DEF.sub*100); set('wi-dig',WHATIF_DEF.dig*100);
   set('wi-sas',WHATIF_DEF.sas); set('wi-dcc',WHATIF_DEF.dcc*100); set('wi-from','0');
+  set('wi-sem-incid',SEM_DEF.incid*100); set('wi-sem-wmain',SEM_DEF.wMain*100); set('wi-sem-wsub',SEM_DEF.wSub*100); set('wi-sem-wsas',SEM_DEF.wSas*100);
   const rmlEl=document.getElementById('wi-rml'); if(rmlEl) rmlEl.value='';
   ['bdg','digital','sy','sub','sas','dcc'].forEach(k=>{const el=document.getElementById('wi-freq-'+k);if(el)el.value='';});
   _whatifSig=null; _whatifFreqSig=null; // ricarica stipendio reale + ruolo + frequenze
@@ -3104,6 +3240,7 @@ function renderWhatif(){
   if(!allData.length) return;
   applyWhatifModeVisibility();
   const rows=getWhatifRows();
+  if(whatifSem){ renderWhatifSem(rows); return; }
   const dips=new Set(rows.map(r=>r.matricola||_empKey(r)));
   const note=document.getElementById('whatifNote');
   if(note){
@@ -3276,8 +3413,20 @@ function mkAddMonths(mk,n){const t=Math.floor(mk/100)*12+(mk%100-1)+n;return Mat
 function mkDiffMonths(a,b){return (Math.floor(b/100)*12+b%100)-(Math.floor(a/100)*12+a%100);}
 function whatifTodayKey(){const mks=allData.map(r=>r.monthKey||0).filter(Boolean);return mks.length?Math.max(...mks):0;}
 
-// Mostra/nasconde gli elementi specifici della modalità (futuro vs normale).
+// Mostra/nasconde gli elementi specifici della modalità (semestrale vs mensile; futuro vs normale).
 function applyWhatifModeVisibility(){
+  const sem=whatifSem;
+  const tpM=document.getElementById('wi-tp-mens'), tpS=document.getElementById('wi-tp-sem');
+  if(tpM) tpM.classList.toggle('active',!sem);
+  if(tpS) tpS.classList.toggle('active',sem);
+  document.querySelectorAll('#tabWhatif .wif-sem-only').forEach(el=>el.style.display=sem?'':'none');
+  document.querySelectorAll('#tabWhatif .wif-mens-only').forEach(el=>el.style.display=sem?'none':'');
+  if(sem){
+    // in modalità semestrale: nascondi tutti i blocchi mensili (normale + futuro)
+    document.querySelectorAll('#tabWhatif .wif-future-only, #tabWhatif .wif-normal-only').forEach(el=>el.style.display='none');
+    const hist=document.getElementById('whatifHist'); if(hist) hist.style.display='none';
+    return;
+  }
   const fut=whatifFuture;
   document.querySelectorAll('#tabWhatif .wif-future-only').forEach(el=>el.style.display=fut?'':'none');
   document.querySelectorAll('#tabWhatif .wif-normal-only').forEach(el=>el.style.display=fut?'none':'');
@@ -3289,6 +3438,11 @@ function applyWhatifModeVisibility(){
   if(n) n.classList.toggle('active',whatifNewHire);
   const hist=document.getElementById('whatifHist'); // niente storico per il nuovo assunto
   if(hist) hist.style.display=(whatifFuture&&whatifNewHire)?'none':'';
+}
+function setWhatifSem(on){
+  whatifSem=!!on; _whatifSig=null;
+  if(whatifSem) whatifFuture=false; // la previsione mensile non si applica al semestrale
+  applyWhatifModeVisibility(); renderWhatif();
 }
 function setWhatifFuture(on){
   whatifFuture=!!on; _whatifFreqSig=null; _whatifSig=null;
