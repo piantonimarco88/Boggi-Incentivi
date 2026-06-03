@@ -53,6 +53,9 @@ snapshots/
 statistiche/FILE/
 statistiche/*.xlsx
 statistiche/*.json
+# file di test/POC locali (es. _llm_poc.html): mai versionati
+statistiche/_*.html
+statistiche/_*.js
 
 # ===== OS =====
 Thumbs.db
