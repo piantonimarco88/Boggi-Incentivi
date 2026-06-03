@@ -262,6 +262,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 .as-in button{padding:10px 18px;border:none;border-radius:10px;background:#4f46e5;color:#fff;font-weight:700;cursor:pointer}
 .as-rk{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:4px}.as-rk td{padding:2px 6px;border-bottom:1px solid #f0f2f7}
 .as-dim{color:#999}
+.as-cv{position:relative;height:200px;margin:10px 0 2px;background:#fff;border:1px solid #eef0f5;border-radius:10px;padding:6px}
 .whatif-hist{font-size:11px;color:#4338ca;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;padding:7px 12px;margin-bottom:12px}
 .whatif-hist b{color:#3730a3}
 .wif-toggle{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#4338ca;cursor:pointer}
@@ -4628,7 +4629,8 @@ function asstAnalyze(q){
     if(it==='trend'){
       const rows=asstRows(e0.key,from,to),by={};rows.forEach(r=>{const mk=r.monthKey;if(!mk)return;(by[mk]||(by[mk]={c:0,rml:0}));by[mk].c+=r[focus.k]||0;by[mk].rml+=rmlMonth(r);});
       const mks=Object.keys(by).map(Number).sort((a,b)=>a-b),ser=mks.map(mk=>by[mk].rml?by[mk].c/by[mk].rml*100:0);
-      return head+'Andamento incidenza <b>'+focus.l+'</b> mensile:'+mks.map((mk,i)=>asstBar(mkShort(mk),ser[i],Math.max(...ser,0.5)*1.1,'#7c3aed')).join('');
+      if(!mks.length)return head+'Nessun dato mensile per <b>'+focus.l+'</b> nel periodo.';
+      return head+'Andamento incidenza <b>'+focus.l+'</b> mensile su RML:'+asstChart(asstLineCfg(mks.map(mkShort),ser.map(v=>+v.toFixed(2)),'Incidenza '+focus.l+' (%)'));
     }
     let v=''; if(it==='low'||it==='high'){const claim=it==='low'?(d<-ftol):(d>ftol);v='<div class="as-v '+(claim?'as-yes':'as-no')+'">'+(claim?'✔ Lamentela FONDATA':'✘ Lamentela NON fondata')+'</div><br>';}
     const mx=Math.max(sv,gv,0.5)*1.2;
@@ -4721,15 +4723,28 @@ function asstAnalyze(q){
     return h+'<small class="as-dim">Intervento diretto: leve di piano (BDG/semestrale). Il resto dipende dalla performance del dipendente.</small>';}
   if(it==='trend'){const rows=asstRows(e0.key,from,to).filter(inT);const by={};rows.forEach(r=>{const mk=r.monthKey;if(!mk)return;(by[mk]||(by[mk]={er:0,rml:0}));by[mk].er+=r.erogato||0;by[mk].rml+=rmlMonth(r);});
     const mks=Object.keys(by).map(Number).sort((a,b)=>a-b);const ser=mks.map(mk=>by[mk].rml?by[mk].er/by[mk].rml*100:0);
-    return head+'Andamento incidenza mensile:'+mks.map((mk,i)=>asstBar(mkShort(mk),ser[i],Math.max(...ser,1)*1.1,'#7c3aed')).join('');}
+    if(!mks.length)return head+'Nessun dato mensile nel periodo.';
+    return head+'Andamento incidenza premi/RML mensile:'+asstChart(asstLineCfg(mks.map(mkShort),ser.map(v=>+v.toFixed(2)),'Incidenza % su RML'));}
   if(it==='low'||it==='high'){const claim=it==='low'?(delta<-tol):(delta>tol);
     return head+'<div class="as-v '+(claim?'as-yes':'as-no')+'">'+(claim?'✔ Lamentela FONDATA':'✘ Lamentela NON fondata')+'</div><br>Incidenza <b>'+subj.inc.toFixed(1)+'%</b> vs media gruppo <b>'+gInc.toFixed(1)+'%</b> ('+(delta>=0?'+':'')+delta.toFixed(1)+' pp).'+asstCompChart(subj,grp,ckT);}
   // cmp / summary
   const all=cmpAggByEmp(allData.filter(r=>{const mk=r.monthKey||0;return mk>=from&&mk<=to&&r.job===subj.job&&inT(r);})).sort((a,b)=>b.inc-a.inc);
   const pos=all.findIndex(x=>x.key===subj.key)+1;
-  return head+'Incidenza <b>'+subj.inc.toFixed(1)+'%</b> vs media gruppo <b>'+gInc.toFixed(1)+'%</b> ('+(delta>=0?'+':'')+delta.toFixed(1)+' pp). Posizione: '+pos+'° su '+all.length+' nel ruolo · achievement '+subj.ach.toFixed(0)+'%.'+asstCompChart(subj,grp,ckT);
+  // scatter posizionamento: RML mensile × incidenza %, soggetto evidenziato
+  const pts=all.filter(x=>x.key!==subj.key&&x.rmlMese>0).map(x=>({x:Math.round(x.rmlMese),y:+x.inc.toFixed(2)}));
+  const subjPt={x:Math.round(subj.rmlMese||0),y:+subj.inc.toFixed(2)};
+  const scatter=pts.length?asstChart(asstScatterCfg(pts,subjPt,'Posizionamento '+subj.job+': RML mensile × incidenza %')):'';
+  return head+'Incidenza <b>'+subj.inc.toFixed(1)+'%</b> vs media gruppo <b>'+gInc.toFixed(1)+'%</b> ('+(delta>=0?'+':'')+delta.toFixed(1)+' pp). Posizione: '+pos+'° su '+all.length+' nel ruolo · achievement '+subj.ach.toFixed(0)+'%.'+asstCompChart(subj,grp,ckT)+scatter;
 }
-function asstAdd(cls,html){const c=document.getElementById('asstChat');if(!c)return;const d=document.createElement('div');d.className='as-msg '+cls;d.innerHTML=html;c.appendChild(d);c.scrollTop=c.scrollHeight;}
+// grafico Chart.js dentro una bolla: emette un canvas con la config serializzata,
+// renderizzata dopo l'inserimento nel DOM da asstRenderCharts (config senza funzioni).
+function asstChart(cfg){return '<div class="as-cv"><canvas class="as-chart" data-cfg="'+encodeURIComponent(JSON.stringify(cfg))+'"></canvas></div>';}
+function asstRenderCharts(root){if(!root||typeof Chart==='undefined')return;root.querySelectorAll('canvas.as-chart').forEach(cv=>{if(cv._done)return;cv._done=1;let cfg;try{cfg=JSON.parse(decodeURIComponent(cv.getAttribute('data-cfg')));}catch(e){return;}try{new Chart(cv.getContext('2d'),cfg);}catch(e){}});}
+// config grafico a LINEA per andamenti (incidenza mensile)
+function asstLineCfg(labels,data,title){return {type:'line',data:{labels:labels,datasets:[{label:title||'Incidenza %',data:data,borderColor:'#7c3aed',backgroundColor:'rgba(124,58,237,.12)',fill:true,tension:.3,pointRadius:3,pointBackgroundColor:'#7c3aed'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},title:{display:true,text:title||'Incidenza % su RML'}},scales:{y:{beginAtZero:true}}}};}
+// config SCATTER per posizionamento (RML mensile × incidenza), soggetto evidenziato
+function asstScatterCfg(pts,subjPt,title){return {type:'scatter',data:{datasets:[{label:'Pari ruolo',data:pts,backgroundColor:'rgba(148,163,184,.6)',pointRadius:4},{label:'Soggetto',data:[subjPt],backgroundColor:'#7c3aed',pointRadius:8,pointStyle:'rectRot'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'bottom'},title:{display:true,text:title||'Posizionamento: RML mensile × incidenza %'}},scales:{x:{title:{display:true,text:'RML mensile €'}},y:{title:{display:true,text:'Incidenza %'},beginAtZero:true}}}};}
+function asstAdd(cls,html){const c=document.getElementById('asstChat');if(!c)return;const d=document.createElement('div');d.className='as-msg '+cls;d.innerHTML=html;c.appendChild(d);try{asstRenderCharts(d);}catch(e){}c.scrollTop=c.scrollHeight;}
 function asstAsk(){const i=document.getElementById('asstQ');const q=(i.value||'').trim();if(!q)return;asstAdd('as-user',q);i.value='';setTimeout(()=>{try{asstAdd('as-bot',asstAnalyze(q));}catch(e){asstAdd('as-bot','Errore nell\'analisi: '+e.message);}},120);}
 function asstEx(el){const t=el.textContent,i=document.getElementById('asstQ');if(!i)return;i.value=t;
   // gli esempi sono modelli col segnaposto: inseriscili e lascia che l'utente metta il nome reale
