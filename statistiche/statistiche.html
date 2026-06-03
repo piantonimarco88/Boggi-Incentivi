@@ -1270,9 +1270,27 @@ function dedupData(){
   if(best.size<allData.length) allData=[...best.values()];
 }
 
+// Unifica i nomi dei negozi per store ID (le cifre iniziali del nome): file
+// diversi scrivono lo stesso negozio con nomi differenti (es. "1117 OPERA" vs
+// "1117 PARIGI OPERA", "1101 JERMYN" vs "1101 JERMYN STREET"). Si usa come nome
+// canonico quello dei file MENSILI (fallback: il più frequente in assoluto).
+function _storeId(s){const m=String(s||'').match(/^(\d{3,4})\b/);return m?m[1]:null;}
+function normalizeStores(){
+  const mens={}, any={};
+  allData.forEach(r=>{
+    const id=_storeId(r.store); if(!id||!r.store) return;
+    (any[id]||(any[id]={}))[r.store]=(any[id][r.store]||0)+1;
+    if(r._tipo==='mensile'){(mens[id]||(mens[id]={}))[r.store]=(mens[id][r.store]||0)+1;}
+  });
+  const top=o=>Object.keys(o).sort((a,b)=>o[b]-o[a])[0];
+  const canon={}; Object.keys(any).forEach(id=>{canon[id]=mens[id]?top(mens[id]):top(any[id]);});
+  allData.forEach(r=>{const id=_storeId(r.store); if(id&&canon[id]) r.store=canon[id];});
+}
+
 function rebuild(){
   allData=Object.values(fileMap).flat();
   dedupData();
+  normalizeStores();
   applyUniformRates();
   const warn=document.getElementById('currWarn');
   const msgs=[];
