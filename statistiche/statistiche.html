@@ -911,6 +911,7 @@ const COMP=[
   // ── semestrali ───────────────────────────────────────────────────
   {k:'cCrSem',    l:'CR (sem.)',               c:'#0891b2', ek:'INCENTIVO RAGGIUNTO CR',                     tipo:'semestrale'},
   {k:'cSySem',    l:'Shopper Yield (sem.)',    c:'#059669', ek:'INCENTIVO RAGGIUNTO SY',                     tipo:'semestrale'},
+  {k:'cUptSem',   l:'UPT (sem.)',              c:'#10b981', ek:'INCENTIVO RAGGIUNTO UPT',                    tipo:'semestrale'},
   {k:'cSubSem',   l:'Subscription Index (sem.)',c:'#7c3aed',ek:'INCENTIVO RAGGIUNTO SUBSCRIPTION INDEX',    tipo:'semestrale'},
   {k:'cSasSem',   l:'SAS (sem.)',              c:'#b91c1c', ek:'INCENTIVO RAGGIUNTO SAS',                    tipo:'semestrale'},
 ];
@@ -1200,8 +1201,11 @@ function rmFile(encName){
 function parseRows(raw,fname,diag){
   if(!raw.length) return [];
   // ── Format detection ────────────────────────────────────────
-  // semestrali standard: has TOTALE INCENTIVO SEASONAL + MAX TOTALE
-  const isSem=('TOTALE INCENTIVO SEASONAL' in raw[0])&&('MAX TOTALE' in raw[0]);
+  // semestrali standard (SM/VSM): hanno TOTALE INCENTIVO SEASONAL.
+  // I file 2025 hanno anche MAX TOTALE; i 2024 (SS24/AI24) no → il massimale si
+  // ricostruisce da INCIDENZA × RML × 6 × 1.5. I dept store semestrali hanno
+  // PREMIO FINALE e vanno al ramo isEci, quindi li escludiamo qui.
+  const isSem=('TOTALE INCENTIVO SEASONAL' in raw[0])&&!('PREMIO FINALE' in raw[0]);
   // FC/VM: pivot table export, massimale = "Somma di INCENTIVO RIPARTITO CORRETTO"
   const isFcVm=('Somma di INCENTIVO RIPARTITO CORRETTO' in raw[0]);
   // semestrali ECI/dept store: has PREMIO FINALE + BDG, massimale = BDG*6*1.5
@@ -1288,7 +1292,10 @@ function parseRows(raw,fname,diag){
     // Massimale / Erogato depend on format
     let massimale, erogato;
     if(isSem){
-      massimale=n(r['MAX TOTALE'])*cambio;
+      // MAX TOTALE (file 2025) oppure ricostruito (2024): INCIDENZA × RML × 6 × 1.5.
+      // MAX PER KPI = incidenza×RML×6 (base KPI), MAX TOTALE = ×1.5 (molt. max).
+      const maxTot=n(r['MAX TOTALE'])||(n(r['INCIDENZA SU RETRIBUZIONE'])*n(r['RML'])*6*1.5);
+      massimale=maxTot*cambio;
       erogato=n(r['TOTALE INCENTIVO SEASONAL'])*cambio;
     } else if(isEci){
       massimale=n(r['BDG'])*6*1.5*cambio;
