@@ -4504,7 +4504,35 @@ function exportCmp(){
 // ═══════════════════════════════════════════════════════════════
 const ASST_PERF_TIP={cDigital:'spingere vendite web/digitali (DSS)',cShopper:'alzare scontrino medio / upselling',cPrivilege:'acquisire nuove iscrizioni Privilege',cSas:'servizio sartoria (SAS)',cDcc:'DCC',cArt:'articoli incentivati',cCs:'customer service',cVisual:'visual in store',cQty:'pezzi venduti (dept store)'};
 function _asstMaxMk(){return Math.max(0,...allData.map(r=>r.monthKey||0));}
-function asstEmps(q){const u=q.toUpperCase(),seen={},res=[];for(const r of allData){const k=r.matricola||_empKey(r);if(seen[k])continue;const cog=(r.cognome||'').toUpperCase();if(cog.length>=3&&u.includes(cog)){seen[k]=1;res.push({key:k,cog:r.cognome,nome:r.nome});}}return res;}
+// match dipendente: cognome come sottostringa, oppure nome come token intero
+function asstEmps(q){const u=q.toUpperCase(),tok=u.replace(/[^A-Z0-9\s]/g,' ').split(/\s+/).filter(w=>w.length>=3),seen={},res=[];
+  for(const r of allData){const k=r.matricola||_empKey(r);if(seen[k])continue;const cog=(r.cognome||'').toUpperCase(),nome=(r.nome||'').toUpperCase();
+    if((cog.length>=3&&u.includes(cog))||(nome.length>=3&&tok.includes(nome))){seen[k]=1;res.push({key:k,cog:r.cognome,nome:r.nome});}}
+  return res;}
+// distanza di Levenshtein (per suggerimenti su cognomi digitati male)
+function _lev(a,b){a=a.toUpperCase();b=b.toUpperCase();const m=a.length,n=b.length,d=Array.from({length:m+1},(_,i)=>[i].concat(Array(n).fill(0)));for(let j=0;j<=n;j++)d[0][j]=j;for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[m][n];}
+function asstSuggestEmp(q){const tok=q.toUpperCase().replace(/[^A-Z\s]/g,' ').split(/\s+/).filter(w=>w.length>=4);if(!tok.length)return null;
+  const cogs=[...new Set(allData.map(r=>(r.cognome||'').toUpperCase()).filter(c=>c.length>=4))];let best=null,bd=99;
+  cogs.forEach(c=>tok.forEach(t=>{const d=_lev(c,t);if(d<bd){bd=d;best=c;}}));return bd<=2?best:null;}
+// ruoli citati nel prompt (confine di parola)
+function asstRolesIn(q){return ['SM','VSM','SSAP','SSA','SA','JSA','SCS','ISO'].filter(r=>new RegExp('\\b'+r+'\\b','i').test(q));}
+// negozi citati (per parola del nome >=4 char o per store id a 4 cifre)
+function asstStoresIn(q){const u=q.toLowerCase();const ids=(q.match(/\b\d{4}\b/g)||[]);const stores=[...new Set(allData.map(r=>r.store).filter(Boolean))];
+  return stores.filter(s=>{const id=(s.match(/^(\d{3,4})/)||[])[1];if(id&&ids.includes(id))return true;return s.replace(/^\d+\s*/,'').toLowerCase().split(/\s+/).filter(w=>w.length>=3).some(w=>new RegExp('\\b'+w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b').test(u));});}
+// nazioni citate
+function asstNazIn(q){const u=q.toLowerCase();return [...new Set(allData.map(r=>r._nazione).filter(n=>n&&!n.startsWith('ENTE ')))].filter(n=>u.includes(n.toLowerCase()));}
+// filtro gruppo di confronto "a parole" (ruolo + negozio + nazione); null se non specificato
+function asstGroupFilter(q,exclKey){
+  const roles=asstRolesIn(q),stores=asstStoresIn(q),nazi=asstNazIn(q);
+  if(!roles.length&&!stores.length&&!nazi.length)return null;
+  const R=new Set(roles),S=new Set(stores),N=new Set(nazi);
+  const lbl=[roles.join('/'),stores.join('/'),nazi.join('/')].filter(Boolean).join(' · ');
+  return {lbl,test:r=>{const k=r.matricola||_empKey(r);if(k===exclKey)return false;if(R.size&&!R.has(r.job))return false;if(S.size&&!S.has(r.store))return false;if(N.size&&!N.has(r._nazione))return false;return true;}};
+}
+// due gruppi omogenei da confrontare (2 negozi, 2 nazioni o 2 ruoli)
+function asstTwoGroups(q){const st=asstStoresIn(q);if(st.length>=2)return{dim:'store',lbl:'negozio',vals:st.slice(0,2)};
+  const nz=asstNazIn(q);if(nz.length>=2)return{dim:'_nazione',lbl:'nazione',vals:nz.slice(0,2)};
+  const rl=asstRolesIn(q);if(rl.length>=2)return{dim:'job',lbl:'ruolo',vals:rl.slice(0,2)};return null;}
 function asstPeriod(q){
   const mx=_asstMaxMk(); if(!mx)return[0,99999999];
   const ym=q.match(/ultim[io]?\s*(\d{1,2})\s*mes/i); if(ym)return[mkAddMonths(mx,-(Math.min(24,+ym[1])-1)),mx];
@@ -4516,6 +4544,8 @@ function asstMonth(q){const M=['gennaio','febbraio','marzo','aprile','maggio','g
 function asstNum(q){const m=q.match(/\b(\d{2,5})\b/);return m?+m[1]:null;}
 function asstCompByLabel(q){const u=q.toLowerCase();return COMP.find(c=>{const l=c.l.toLowerCase().replace(/\(.*\)/,'').trim();return u.includes(l)||(c.k==='cShopper'&&/shopper|yield/.test(u))||(c.k==='cBdg'&&/\bbdg\b|budget/.test(u))||(c.k==='cPrivilege'&&/privilege|subscription/.test(u))||(c.k==='cDigital'&&/digital/.test(u));});}
 function asstIntent(q){const u=q.toLowerCase(),emps=asstEmps(q);
+  // nessun dipendente nominato ma gruppi citati → confronto/riepilogo di gruppo
+  if(!emps.length){ if(asstTwoGroups(q))return 'cmpgroups'; if(asstRolesIn(q).length||asstStoresIn(q).length||asstNazIn(q).length)return 'groupsummary'; }
   if(/se\s+(alz|port|met|aument|cambi)|simul/.test(u)&&/(tutt|gli|ruolo|negozio|\bsa\b|\bsm\b|\bvsm\b|spesa)/.test(u))return 'simgroup';
   if(/se\s+(alz|port|met|aument|cambi)|simul|quanto prend.*(se|con)/.test(u))return 'sim';
   if(/prevision|prossimo semestre|stim.*futur|si prevede|prossim.*premi/.test(u))return 'forecast';
@@ -4551,14 +4581,29 @@ function asstAnalyze(q){
     if(!a||!b)return 'Dati insufficienti per uno dei due dipendenti nel periodo.';
     const comps=COMP.filter(c=>a.compInc[c.k]>0.05||b.compInc[c.k]>0.05);const mx=Math.max(...comps.map(c=>Math.max(a.compInc[c.k],b.compInc[c.k])),1)*1.1;
     return '<b>'+a.cognome+' '+a.nome+'</b> vs <b>'+b.cognome+' '+b.nome+'</b> ('+mkLabel(f)+'→'+mkLabel(t)+'):<br>Incidenza <b>'+a.inc.toFixed(1)+'%</b> vs <b>'+b.inc.toFixed(1)+'%</b>.<br><br>'+(a.cognome)+':'+comps.map(c=>asstBar(c.l,a.compInc[c.k],mx,'#7c3aed')).join('')+'<small class="as-dim">'+b.cognome+':</small>'+comps.map(c=>asstBar(c.l,b.compInc[c.k],mx,'#0891b2')).join('');}
-  const e0=asstEmps(q)[0]; if(!e0)return 'Non ho riconosciuto il dipendente. Scrivi un cognome presente nei dati.';
+  if(it==='cmpgroups'){const tg=asstTwoGroups(q);if(!tg)return 'Indica due gruppi omogenei da confrontare (due negozi, due nazioni o due ruoli).';
+    const [f,t]=asstPeriod(q);
+    const aggG=v=>{const e=cmpAggByEmp(allData.filter(r=>{const mk=r.monthKey||0;return mk>=f&&mk<=t&&r[tg.dim]===v;}));return {n:e.length,inc:asstGAvg(e,x=>x.inc),comp:Object.fromEntries(COMP.map(c=>[c.k,asstGAvg(e,x=>x.compInc[c.k])]))};};
+    const A=aggG(tg.vals[0]),B=aggG(tg.vals[1]);
+    let h='Confronto per '+tg.lbl+' ('+mkLabel(f)+'→'+mkLabel(t)+'): <b>'+tg.vals[0]+'</b> ('+A.n+' dip.) vs <b>'+tg.vals[1]+'</b> ('+B.n+' dip.).<br>Incidenza media: <b>'+A.inc.toFixed(1)+'%</b> vs <b>'+B.inc.toFixed(1)+'%</b> ('+(A.inc-B.inc>=0?'+':'')+(A.inc-B.inc).toFixed(1)+' pp).';
+    const comps=COMP.filter(c=>A.comp[c.k]>0.05||B.comp[c.k]>0.05);const mx=Math.max(...comps.map(c=>Math.max(A.comp[c.k],B.comp[c.k])),1)*1.1;
+    return h+'<br><br>'+tg.vals[0]+':'+comps.map(c=>asstBar(c.l,A.comp[c.k],mx,'#7c3aed')).join('')+'<small class="as-dim">'+tg.vals[1]+':</small>'+comps.map(c=>asstBar(c.l,B.comp[c.k],mx,'#0891b2')).join('');}
+  if(it==='groupsummary'){const gf=asstGroupFilter(q,null);if(!gf)return 'Indica un gruppo (ruolo, negozio o nazione).';
+    const [f,t]=asstPeriod(q);const emps=cmpAggByEmp(allData.filter(r=>{const mk=r.monthKey||0;return mk>=f&&mk<=t&&gf.test(r);}));
+    if(!emps.length)return 'Nessun dato per il gruppo «'+gf.lbl+'» nel periodo.';
+    const inc=asstGAvg(emps,e=>e.inc),top=emps.slice().sort((a,b)=>b.inc-a.inc)[0],bot=emps.slice().sort((a,b)=>a.inc-b.inc)[0];
+    const comp=Object.fromEntries(COMP.map(c=>[c.k,asstGAvg(emps,e=>e.compInc[c.k])]));const cc=COMP.filter(c=>comp[c.k]>0.05);const mx=Math.max(...cc.map(c=>comp[c.k]),1)*1.1;
+    return 'Gruppo <b>'+gf.lbl+'</b> · '+mkLabel(f)+'→'+mkLabel(t)+' · '+emps.length+' dipendenti.<br>Incidenza media <b>'+inc.toFixed(1)+'%</b>. Migliore: '+top.cognome+' ('+top.inc.toFixed(1)+'%) · più basso: '+bot.cognome+' ('+bot.inc.toFixed(1)+'%).<br><br><b>Incidenza media per premio</b>:'+cc.map(c=>asstBar(c.l,comp[c.k],mx,'#7c3aed')).join('');}
+  const e0=asstEmps(q)[0]; if(!e0){const sug=asstSuggestEmp(q);return 'Non ho riconosciuto il dipendente.'+(sug?' Forse intendevi <b>'+sug+'</b>?':' Scrivi un cognome presente nei dati.');}
   const [from,to]=asstPeriod(q);
   const subj=cmpAggByEmp(asstRows(e0.key,from,to))[0];
   if(!subj)return 'Nessun dato per <b>'+e0.cog+' '+e0.nome+'</b> nel periodo selezionato.';
-  const grp=asstGroup(subj.job,e0.key,from,to,null);
+  // gruppo di confronto: custom se ruolo/negozio/nazione citati nel prompt, altrimenti pari ruolo
+  const cgf=asstGroupFilter(q,e0.key);
+  const grp=cgf?cmpAggByEmp(allData.filter(r=>{const mk=r.monthKey||0;return mk>=from&&mk<=to&&cgf.test(r);})):asstGroup(subj.job,e0.key,from,to,null);
   const gInc=asstGAvg(grp,e=>e.inc), delta=subj.inc-gInc, tol=2;
   const gComp=Object.fromEntries(COMP.map(c=>[c.k,asstGAvg(grp,e=>e.compInc[c.k])]));
-  const head='<b>'+subj.cognome+' '+subj.nome+'</b> ('+subj.job+', '+subj.store+') · '+mkLabel(from)+'→'+mkLabel(to)+' · gruppo '+grp.length+' pari '+subj.job+'.<br>';
+  const head='<b>'+subj.cognome+' '+subj.nome+'</b> ('+subj.job+', '+subj.store+') · '+mkLabel(from)+'→'+mkLabel(to)+' · gruppo '+grp.length+(cgf?' ('+cgf.lbl+')':' pari '+subj.job)+'.<br>';
 
   // Focus su un TIPO DI PREMIO specifico se nominato (es. "lo Shopper Yield di X è basso?")
   const focus=asstCompByLabel(q);
