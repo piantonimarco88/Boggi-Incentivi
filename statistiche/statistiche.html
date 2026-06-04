@@ -4773,7 +4773,12 @@ function asstScatterCfg(pts,subjPt,title){return {type:'scatter',data:{datasets:
 function asstAdd(cls,html){const c=document.getElementById('asstChat');if(!c)return;const d=document.createElement('div');d.className='as-msg '+cls;d.innerHTML=html;c.appendChild(d);try{asstRenderCharts(d);}catch(e){}c.scrollTop=c.scrollHeight;}
 function asstAsk(){const i=document.getElementById('asstQ');const q=(i.value||'').trim();if(!q)return;asstAdd('as-user',q);i.value='';setTimeout(()=>{let html;try{html=asstAnalyze(q);}catch(e){html='Errore nell\'analisi: '+e.message;}asstAdd('as-bot',html);
   // opzionale: versione discorsiva via LLM locale (solo se attivo e modello pronto)
-  if(window.asstLLMEnabled&&window.asstEngine){try{const tmp=document.createElement('div');tmp.innerHTML=html;const txt=(tmp.textContent||'').replace(/\s+/g,' ').trim().slice(0,300);if(txt)asstLLMRephrase(txt);}catch(e){}}
+  if(window.asstLLMEnabled&&window.asstEngine){try{const tmp=document.createElement('div');tmp.innerHTML=html;
+    // tolgo barre/grafici/tabelle/note: all'LLM va SOLO il testo guida pulito (intestazione+verdetto+confronto)
+    tmp.querySelectorAll('.as-bar-row,canvas,table,.as-cv,small,.as-rk,.as-lev,.as-perf').forEach(el=>el.remove());
+    let txt=(tmp.textContent||'').replace(/\s+/g,' ').trim();
+    txt=txt.split(/Per tipo di premio/)[0].trim().slice(0,400);
+    if(txt)asstLLMRephrase(txt);}catch(e){}}
 },120);}
 function asstEx(el){const t=el.textContent,i=document.getElementById('asstQ');if(!i)return;i.value=t;
   // gli esempi sono modelli col segnaposto: inseriscili e lascia che l'utente metta il nome reale
