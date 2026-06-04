@@ -4820,9 +4820,19 @@ const ASST_LLM_MODELS=[
   {id:'Qwen2.5-1.5B-Instruct-q4f16_1-MLC', size:'~1,1 GB', note:'Più discorsivo dello 0.5B; su GPU integrata può comunque rallentare.'},
 ];
 const ASST_REPHRASE_SYS="Riscrivi il testo dell'utente in italiano più scorrevole e naturale, in forma di frasi di senso compiuto (non limitarti a ricopiarlo). REGOLE: non cambiare numeri, percentuali, periodi/mesi/date né il significato; mantieni i numeri IN CIFRE (es. 0.9); riporta i NOMI PROPRI esattamente come scritti, lettera per lettera; scrivi in minuscolo tranne le iniziali (NON in maiuscolo); niente domande retoriche o frasi a effetto; non aggiungere o togliere informazioni; restituisci UNA sola versione, senza commenti né virgolette.";
-// Guardrail di fedeltà: accetta la riformulazione solo se preserva cognome e numeri e non è tutta maiuscola.
+// Recupero casing: se l'LLM scrive in MAIUSCOLO, normalizzo (minuscolo + iniziali frase
+// + ri-capitalizzo nomi propri/sigle com'erano nell'input). Così l'output resta usabile invece di scartarlo.
+function asstRecase(out,inp){
+  const letters=out.replace(/[^A-Za-zÀ-ÿ]/g,'').length, upper=out.replace(/[^A-ZÀ-Ý]/g,'').length;
+  if(!(letters>20&&upper/letters>0.6))return out; // già mixed-case: lascio com'è
+  let t=out.toLowerCase().replace(/(^\s*|[.!?]\s+)([a-zà-ÿ])/g,(m,p,c)=>p+c.toUpperCase());
+  const orig={}; (inp.match(/[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9]*/g)||[]).forEach(w=>{if(/^[A-ZÀ-Ý]/.test(w)||/[A-ZÀ-Ý]{2,}/.test(w))orig[w.toUpperCase()]=w;});
+  return t.replace(/[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9]*/g,w=>orig[w.toUpperCase()]||w);
+}
+// Guardrail di FEDELTÀ (precisione): accetta se non inventa numeri e preserva il cognome.
 function asstLLMValid(inp,outp){
   if(!outp||outp.trim().length<10)return false;
+  if(outp.length>Math.max(240,inp.length*2.4))return false; // niente code/divagazioni
   const o=outp.toUpperCase(), norm=s=>s.replace(/[.,]/g,'');
   // nessun NUMERO INVENTATO: ogni numero dell'output deve esistere nell'input (virgola/punto normalizzati)
   const inNums=new Set((inp.match(/\d+(?:[.,]\d+)?/g)||[]).map(norm));
@@ -4831,9 +4841,6 @@ function asstLLMValid(inp,outp){
   // cognome (prima parola del testo deterministico) presente intatto
   const fw=(inp.trim().split(/\s+/)[0]||'').toUpperCase();
   if(fw.length>=4&&!o.includes(fw))return false;
-  // niente output tutto-maiuscolo (l'originale è mixed-case)
-  const letters=outp.replace(/[^A-Za-zÀ-ÿ]/g,'').length, upper=outp.replace(/[^A-ZÀ-Ý]/g,'').length;
-  if(letters>20&&upper/letters>0.6)return false;
   return true;
 }
 function asstLLMToggle(){const b=document.getElementById('asstLLMbody'),c=document.getElementById('asstLLMcaret');if(!b)return;const open=b.style.display==='none';b.style.display=open?'block':'none';if(c)c.textContent=open?'▾':'▸';}
@@ -4881,8 +4888,11 @@ async function asstLLMRephrase(text){
   try{
     const stt=await window.asstEngine.chat.completions.create({messages:[{role:'system',content:ASST_REPHRASE_SYS},{role:'user',content:text}],stream:true,temperature:0.3,max_tokens:200});
     let txt='';for await(const ch of stt){const dd=ch.choices[0]?.delta?.content||'';if(dd){txt+=dd;out.textContent=txt;c.scrollTop=c.scrollHeight;}}
-    // guardrail: se la riformulazione non è fedele (cognome/numeri alterati o tutto maiuscolo) la scarto
-    if(!asstLLMValid(text,txt)){d.innerHTML='<small class="as-dim">💬 riformulazione scartata (non fedele ai dati): affidati alla risposta qui sopra, sempre corretta.</small>';}
+    // recupero il casing (maiuscolo -> normale) per non scartare risposte solo per lo stile,
+    // poi accetto se è FEDELE (numeri/cognome); altrimenti scarto.
+    const res=asstRecase(txt.trim(),text);
+    if(asstLLMValid(text,res)) out.textContent=res;
+    else d.innerHTML='<small class="as-dim">💬 riformulazione scartata (non fedele ai dati): affidati alla risposta qui sopra, sempre corretta.</small>';
     c.scrollTop=c.scrollHeight;
   }catch(e){out.innerHTML='<span style="color:#c0392b">LLM non disponibile: '+e.message+'</span>';}
 }
