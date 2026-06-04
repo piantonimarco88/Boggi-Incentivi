@@ -4819,30 +4819,15 @@ const ASST_LLM_MODELS=[
   {id:'Qwen2.5-0.5B-Instruct-q4f16_1-MLC', size:'~0,5 GB', note:'Modalità sicura: carico minimo.'},
   {id:'Qwen2.5-3B-Instruct-q4f16_1-MLC',   size:'~1,9 GB', note:'Più discorsivo, ma pesante: solo con GPU buona / alimentatore.'},
 ];
-const ASST_REPHRASE_SYS="Riscrivi il testo dell'utente in italiano standard, scorrevole e naturale, in forma di frasi di senso compiuto (non limitarti a ricopiarlo). REGOLE: non cambiare numeri, percentuali, periodi/mesi/date né il significato; mantieni i numeri IN CIFRE (es. 0.9); riporta i NOMI PROPRI esattamente come scritti, lettera per lettera; scrivi in minuscolo tranne le iniziali (NON in maiuscolo); SOLO italiano, nessuna parola straniera; niente domande retoriche o frasi a effetto; non aggiungere o togliere informazioni; UNA sola versione, senza commenti né virgolette.";
-// A1 — Few-shot: esempi di trasformazione "testo deterministico -> frase elegante" (i modelli piccoli imitano gli esempi)
-const ASST_FEWSHOT=[
-  {role:'user',content:'ROSSI MARIO (SA, 1200 ROMA) · maggio 2025 → aprile 2026 · gruppo 40 pari SA. Lamentela NON fondata Incidenza 9.2% vs media gruppo 7.5% (+1.7 pp). Posizione: 8 su 40 nel ruolo.'},
-  {role:'assistant',content:'Nel periodo maggio 2025–aprile 2026 Rossi Mario (SA, Roma) ha un\'incidenza del 9.2%, sopra la media dei colleghi SA (7.5%, +1.7 pp) e all\'8° posto su 40: la lamentela non è fondata.'},
-  {role:'user',content:'BIANCHI LUCA (SM, 1300 MILANO) · maggio 2025 → aprile 2026 · gruppo 35 pari SM. Lamentela FONDATA Premio BDG (lordo) — incidenza su RML: 2.0% vs media gruppo 5.0% (-3.0 pp). Posizione: 30 su 35 nel ruolo per questo premio.'},
-  {role:'assistant',content:'Sul premio BDG, Bianchi Luca (SM, Milano) si ferma al 2.0% di incidenza, ben sotto la media dei colleghi (5.0%, -3.0 pp), 30° su 35: la lamentela è fondata.'}
-];
-// A2 — correzione deterministica dei leak stranieri tipici dei modelli piccoli (es. spagnolo)
-function asstForeignFix(s){return s
-  .replace(/\bpara\b/gi,'per').replace(/\baños\b/gi,'anni').replace(/\baño\b/gi,'anno')
-  .replace(/\bmientras\b/gi,'mentre').replace(/\bpero\b/gi,'però').replace(/\bdesde\b/gi,'da');}
-// B — Guardrail di fedeltà: niente numeri/nomi inventati, niente maiuscolo, niente code troppo lunghe.
+const ASST_REPHRASE_SYS="Riscrivi il testo dell'utente in italiano più scorrevole e naturale, in forma di frasi di senso compiuto (non limitarti a ricopiarlo). REGOLE: non cambiare numeri, percentuali, periodi/mesi/date né il significato; mantieni i numeri IN CIFRE (es. 0.9); riporta i NOMI PROPRI esattamente come scritti, lettera per lettera; scrivi in minuscolo tranne le iniziali (NON in maiuscolo); niente domande retoriche o frasi a effetto; non aggiungere o togliere informazioni; restituisci UNA sola versione, senza commenti né virgolette.";
+// Guardrail di fedeltà: accetta la riformulazione solo se preserva cognome e numeri e non è tutta maiuscola.
 function asstLLMValid(inp,outp){
   if(!outp||outp.trim().length<10)return false;
-  if(outp.length>Math.max(220,inp.length*2.4))return false; // niente divagazioni/code di testo
   const o=outp.toUpperCase(), norm=s=>s.replace(/[.,]/g,'');
   // nessun NUMERO INVENTATO: ogni numero dell'output deve esistere nell'input (virgola/punto normalizzati)
   const inNums=new Set((inp.match(/\d+(?:[.,]\d+)?/g)||[]).map(norm));
   const outNums=(outp.match(/\d+(?:[.,]\d+)?/g)||[]).map(norm);
   for(const n of outNums){if(!inNums.has(n))return false;}
-  // nessuna PAROLA TUTTA-MAIUSCOLA inventata (codici/cognomi in caps devono venire dall'input)
-  const inSet=new Set(inp.toUpperCase().match(/[A-ZÀ-Ý0-9]{4,}/g)||[]);
-  for(const w of (outp.match(/\b[A-ZÀ-Ý0-9]{4,}\b/g)||[])){if(!inSet.has(w))return false;}
   // cognome (prima parola del testo deterministico) presente intatto
   const fw=(inp.trim().split(/\s+/)[0]||'').toUpperCase();
   if(fw.length>=4&&!o.includes(fw))return false;
@@ -4893,20 +4878,11 @@ async function asstLLMRephrase(text){
   const d=document.createElement('div');d.className='as-msg as-bot';d.style.opacity='0.95';
   d.innerHTML='<small class="as-dim">💬 versione discorsiva (LLM locale, sperimentale)</small><div style="margin-top:4px"></div>';
   c.appendChild(d);const out=d.lastChild;c.scrollTop=c.scrollHeight;
-  // genera una volta (con few-shot); applica subito la correzione stranieri
-  const gen=async(temp,extra)=>{let txt='';
-    const msgs=[{role:'system',content:ASST_REPHRASE_SYS+(extra||'')},...ASST_FEWSHOT,{role:'user',content:text}];
-    const stt=await window.asstEngine.chat.completions.create({messages:msgs,stream:true,temperature:temp,max_tokens:200});
-    for await(const ch of stt){const dd=ch.choices[0]?.delta?.content||'';if(dd){txt+=dd;out.textContent=asstForeignFix(txt);c.scrollTop=c.scrollHeight;}}
-    return asstForeignFix(txt.trim());};
   try{
-    let res=await gen(0.3,'');
-    if(!asstLLMValid(text,res)){ // retry-once, più stretto
-      out.textContent='… riprovo …';
-      res=await gen(0.2,' Attieniti rigorosamente: minuscolo, solo italiano, una frase concisa.');
-    }
-    if(asstLLMValid(text,res)) out.textContent=res;
-    else d.innerHTML='<small class="as-dim">💬 riformulazione scartata (non fedele ai dati): affidati alla risposta qui sopra, sempre corretta.</small>';
+    const stt=await window.asstEngine.chat.completions.create({messages:[{role:'system',content:ASST_REPHRASE_SYS},{role:'user',content:text}],stream:true,temperature:0.3,max_tokens:200});
+    let txt='';for await(const ch of stt){const dd=ch.choices[0]?.delta?.content||'';if(dd){txt+=dd;out.textContent=txt;c.scrollTop=c.scrollHeight;}}
+    // guardrail: se la riformulazione non è fedele (cognome/numeri alterati o tutto maiuscolo) la scarto
+    if(!asstLLMValid(text,txt)){d.innerHTML='<small class="as-dim">💬 riformulazione scartata (non fedele ai dati): affidati alla risposta qui sopra, sempre corretta.</small>';}
     c.scrollTop=c.scrollHeight;
   }catch(e){out.innerHTML='<span style="color:#c0392b">LLM non disponibile: '+e.message+'</span>';}
 }
