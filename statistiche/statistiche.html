@@ -4534,14 +4534,27 @@ function _asstMaxMk(){return Math.max(0,...allData.map(r=>r.monthKey||0));}
 // match dipendente: per COGNOME (sottostringa). Il nome NON è criterio autonomo
 // (eviterebbe di pescare tutti gli omonimi di nome, es. tutti i "Fabio"); serve
 // solo a disambiguare più dipendenti con lo STESSO cognome.
-function asstEmps(q){const u=q.toUpperCase(),tok=u.replace(/[^A-Z0-9\s]/g,' ').split(/\s+/),seen={},res=[];
+function asstEmps(q){const u=q.toUpperCase();
+  const tok=u.replace(/[^A-Z0-9À-Ý]/g,' ').split(/\s+/).filter(t=>t.length>=3);
+  const seen={},res=[];
+  // match del cognome come PAROLA INTERA (evita "ALI" dentro "anomALIe", confine di parola)
+  const bound=s=>new RegExp('(^|[^A-Z0-9À-Ý])'+s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'($|[^A-Z0-9À-Ý])');
   for(const r of allData){const k=r.matricola||_empKey(r);if(seen[k])continue;const cog=(r.cognome||'').toUpperCase();
-    if(cog.length>=3&&u.includes(cog)){seen[k]=1;res.push({key:k,cog:r.cognome,nome:r.nome});}}
-  // disambigua omonimi di cognome SOLO se il prompt cita un nome di quel gruppo
-  // (altrimenti non si può disambiguare: si tengono tutti, senza perdere il cognome)
+    if(cog.length>=3&&bound(cog).test(u)){seen[k]=1;res.push({key:k,cog:r.cognome,nome:r.nome});}}
+  // FUZZY (typo) solo se nessun match esatto: cognomi ≥6 lettere, distanza ESATTA 1 (typo singolo),
+  // UN solo candidato (anti-ambiguità). Distanza ≥2 NON auto-corregge (resta solo suggerimento) per
+  // evitare falsi positivi su parole comuni (es. "vendita" → "VENDITTI").
+  if(!res.length){
+    const cogs=[...new Set(allData.map(r=>(r.cognome||'').toUpperCase()).filter(c=>c.length>=6))];
+    let best=null,bd=99,ties=0;
+    cogs.forEach(c=>tok.forEach(t=>{if(t.length>=5){const d=_lev(c,t);if(d<bd){bd=d;best=c;ties=1;}else if(d===bd&&c!==best)ties++;}}));
+    if(best&&bd<=1&&ties===1){for(const r of allData){const k=r.matricola||_empKey(r);if(seen[k])continue;if((r.cognome||'').toUpperCase()===best){seen[k]=1;res.push({key:k,cog:r.cognome,nome:r.nome,fuzzy:true});}}}
+  }
+  // disambigua omonimi di cognome usando le PAROLE del nome citate nel prompt
+  const nameWords=e=>(e.nome||'').toUpperCase().split(/\s+/).filter(w=>w.length>=3);
   const byCog={}; res.forEach(e=>{(byCog[(e.cog||'').toUpperCase()]||(byCog[(e.cog||'').toUpperCase()]=[])).push(e);});
   const out=res.filter(e=>{const same=byCog[(e.cog||'').toUpperCase()];if(same.length<2)return true;
-    const named=same.some(x=>tok.includes((x.nome||'').toUpperCase()));return !named||tok.includes((e.nome||'').toUpperCase());});
+    const named=same.some(x=>nameWords(x).some(w=>tok.includes(w)));return !named||nameWords(e).some(w=>tok.includes(w));});
   return out.length?out:res;}
 // distanza di Levenshtein (per suggerimenti su cognomi digitati male)
 function _lev(a,b){a=a.toUpperCase();b=b.toUpperCase();const m=a.length,n=b.length,d=Array.from({length:m+1},(_,i)=>[i].concat(Array(n).fill(0)));for(let j=0;j<=n;j++)d[0][j]=j;for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[m][n];}
