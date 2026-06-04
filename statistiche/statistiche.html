@@ -4819,7 +4819,23 @@ const ASST_LLM_MODELS=[
   {id:'Qwen2.5-0.5B-Instruct-q4f16_1-MLC', size:'~0,5 GB', note:'Modalità sicura: carico minimo.'},
   {id:'Qwen2.5-3B-Instruct-q4f16_1-MLC',   size:'~1,9 GB', note:'Più discorsivo, ma pesante: solo con GPU buona / alimentatore.'},
 ];
-const ASST_REPHRASE_SYS="Riscrivi il testo dell'utente in italiano più scorrevole e naturale. REGOLE: non cambiare numeri, percentuali, nomi propri, periodi/mesi/date né il significato; mantieni i numeri IN CIFRE (es. 0.9, mai a parole); niente domande retoriche o frasi a effetto; non aggiungere o togliere informazioni; restituisci UNA sola versione, senza commenti né virgolette.";
+const ASST_REPHRASE_SYS="Riscrivi il testo dell'utente in italiano più scorrevole e naturale, in forma di frasi di senso compiuto (non limitarti a ricopiarlo). REGOLE: non cambiare numeri, percentuali, periodi/mesi/date né il significato; mantieni i numeri IN CIFRE (es. 0.9); riporta i NOMI PROPRI esattamente come scritti, lettera per lettera; scrivi in minuscolo tranne le iniziali (NON in maiuscolo); niente domande retoriche o frasi a effetto; non aggiungere o togliere informazioni; restituisci UNA sola versione, senza commenti né virgolette.";
+// Guardrail di fedeltà: accetta la riformulazione solo se preserva cognome e numeri e non è tutta maiuscola.
+function asstLLMValid(inp,outp){
+  if(!outp||outp.trim().length<10)return false;
+  const o=outp.toUpperCase(), norm=s=>s.replace(/[.,]/g,'');
+  // nessun NUMERO INVENTATO: ogni numero dell'output deve esistere nell'input (virgola/punto normalizzati)
+  const inNums=new Set((inp.match(/\d+(?:[.,]\d+)?/g)||[]).map(norm));
+  const outNums=(outp.match(/\d+(?:[.,]\d+)?/g)||[]).map(norm);
+  for(const n of outNums){if(!inNums.has(n))return false;}
+  // cognome (prima parola del testo deterministico) presente intatto
+  const fw=(inp.trim().split(/\s+/)[0]||'').toUpperCase();
+  if(fw.length>=4&&!o.includes(fw))return false;
+  // niente output tutto-maiuscolo (l'originale è mixed-case)
+  const letters=outp.replace(/[^A-Za-zÀ-ÿ]/g,'').length, upper=outp.replace(/[^A-ZÀ-Ý]/g,'').length;
+  if(letters>20&&upper/letters>0.6)return false;
+  return true;
+}
 function asstLLMToggle(){const b=document.getElementById('asstLLMbody'),c=document.getElementById('asstLLMcaret');if(!b)return;const open=b.style.display==='none';b.style.display=open?'block':'none';if(c)c.textContent=open?'▾':'▸';}
 async function asstLLMCheck(){
   const v=document.getElementById('asstLLMverdict');v.innerHTML='verifica…';
@@ -4863,8 +4879,11 @@ async function asstLLMRephrase(text){
   d.innerHTML='<small class="as-dim">💬 versione discorsiva (LLM locale, sperimentale)</small><div style="margin-top:4px"></div>';
   c.appendChild(d);const out=d.lastChild;c.scrollTop=c.scrollHeight;
   try{
-    const stt=await window.asstEngine.chat.completions.create({messages:[{role:'system',content:ASST_REPHRASE_SYS},{role:'user',content:text}],stream:true,temperature:0.4,max_tokens:200});
+    const stt=await window.asstEngine.chat.completions.create({messages:[{role:'system',content:ASST_REPHRASE_SYS},{role:'user',content:text}],stream:true,temperature:0.3,max_tokens:200});
     let txt='';for await(const ch of stt){const dd=ch.choices[0]?.delta?.content||'';if(dd){txt+=dd;out.textContent=txt;c.scrollTop=c.scrollHeight;}}
+    // guardrail: se la riformulazione non è fedele (cognome/numeri alterati o tutto maiuscolo) la scarto
+    if(!asstLLMValid(text,txt)){d.innerHTML='<small class="as-dim">💬 riformulazione scartata (non fedele ai dati): affidati alla risposta qui sopra, sempre corretta.</small>';}
+    c.scrollTop=c.scrollHeight;
   }catch(e){out.innerHTML='<span style="color:#c0392b">LLM non disponibile: '+e.message+'</span>';}
 }
 
