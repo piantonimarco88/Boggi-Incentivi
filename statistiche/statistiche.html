@@ -4672,8 +4672,8 @@ function asstAnalyze(q){
       return head+'Andamento incidenza <b>'+focus.l+'</b> mensile su RML:'+asstChart(asstLineCfg(mks.map(mkShort),ser.map(v=>+v.toFixed(2)),'Incidenza '+focus.l+' (%)'));
     }
     let v=''; if(it==='low'||it==='high'){const claim=it==='low'?(d<-ftol):(d>ftol);v='<div class="as-v '+(claim?'as-yes':'as-no')+'">'+(claim?'✔ Lamentela FONDATA':'✘ Lamentela NON fondata')+'</div><br>';}
-    const mx=Math.max(sv,gv,0.5)*1.2;
-    return head+v+'Premio <b>'+focus.l+'</b> — incidenza su RML: <b>'+sv.toFixed(2)+'%</b> vs media gruppo <b>'+gv.toFixed(2)+'%</b> ('+(d>=0?'+':'')+d.toFixed(2)+' pp). Posizione: <b>'+pos+'° su '+all.length+'</b> nel ruolo per questo premio.'
+    const mx=Math.max(sv,gv,0.5)*1.2, dir=d<-ftol?'sotto':d>ftol?'sopra':'in linea con';
+    return head+v+'Sul premio <b>'+focus.l+'</b> l\'incidenza su RML è del <b>'+sv.toFixed(2)+'%</b>, '+dir+' la media dei colleghi (<b>'+gv.toFixed(2)+'%</b>, '+(d>=0?'+':'')+d.toFixed(2)+' pp): <b>'+pos+'° su '+all.length+'</b> nel ruolo per questo premio.'
       +'<br><br>'+asstBar('Soggetto',sv,mx,'#7c3aed')+asstBar('Media gruppo',gv,mx,'#cbd5e1')
       +(focus.tipo==='semestrale'||focus.k==='cBdg'?'<br><small class="as-dim">🛠 premio con leva di piano (BDG base / incidenza semestrale).</small>':'<br><small class="as-dim">premio di performance: % uguale per tutti, dipende dal dipendente.</small>');
   }
@@ -4711,7 +4711,7 @@ function asstAnalyze(q){
     else h+='Assenze in linea con i pari ruolo: impatto limitato.';
     return h;}
   if(it==='cmpstore'){const gs=asstGroup(null,e0.key,from,to,subj.store,inT);const gsInc=asstGAvg(gs,e=>e.inc);
-    return head.replace('pari '+subj.job,'colleghi del negozio')+'Incidenza <b>'+subj.inc.toFixed(1)+'%</b> vs media negozio <b>'+gsInc.toFixed(1)+'%</b> ('+(subj.inc-gsInc>=0?'+':'')+(subj.inc-gsInc).toFixed(1)+' pp · '+gs.length+' colleghi).'+asstCompChart(subj,gs,ckT);}
+    return head.replace('pari '+subj.job,'colleghi del negozio')+'L\'incidenza è del <b>'+subj.inc.toFixed(1)+'%</b>, '+(subj.inc-gsInc<-tol?'sotto':subj.inc-gsInc>tol?'sopra':'in linea con')+' la media del negozio (<b>'+gsInc.toFixed(1)+'%</b>, '+(subj.inc-gsInc>=0?'+':'')+(subj.inc-gsInc).toFixed(1)+' pp · '+gs.length+' colleghi).'+asstCompChart(subj,gs,ckT);}
   if(it==='forecast'){const sem=asstRows(e0.key,0,99999999).filter(isSemRow);
     if(!sem.length)return head+'Nessun premio semestrale storico per '+e0.cog+': impossibile prevedere il prossimo semestre.';
     const freq=semFrequencies(sem);const rmlMese=subj.rmlMese||(sem.reduce((s,r)=>s+rmlMonth(r),0)/sem.length);
@@ -4765,7 +4765,7 @@ function asstAnalyze(q){
     if(!mks.length)return head+'Nessun dato mensile nel periodo.';
     return head+'Andamento incidenza premi/RML mensile:'+asstChart(asstLineCfg(mks.map(mkShort),ser.map(v=>+v.toFixed(2)),'Incidenza % su RML'));}
   if(it==='low'||it==='high'){const claim=it==='low'?(delta<-tol):(delta>tol);
-    return head+'<div class="as-v '+(claim?'as-yes':'as-no')+'">'+(claim?'✔ Lamentela FONDATA':'✘ Lamentela NON fondata')+'</div><br>Incidenza <b>'+subj.inc.toFixed(1)+'%</b> vs media gruppo <b>'+gInc.toFixed(1)+'%</b> ('+(delta>=0?'+':'')+delta.toFixed(1)+' pp).'+asstCompChart(subj,grp,ckT);}
+    return head+'<div class="as-v '+(claim?'as-yes':'as-no')+'">'+(claim?'✔ Lamentela FONDATA':'✘ Lamentela NON fondata')+'</div><br>L\'incidenza complessiva è del <b>'+subj.inc.toFixed(1)+'%</b>, '+(delta<-tol?'sotto':delta>tol?'sopra':'in linea con')+' la media del gruppo (<b>'+gInc.toFixed(1)+'%</b>, '+(delta>=0?'+':'')+delta.toFixed(1)+' pp).'+asstCompChart(subj,grp,ckT);}
   // cmp / summary
   const all=cmpAggByEmp(allData.filter(r=>{const mk=r.monthKey||0;return mk>=from&&mk<=to&&r.job===subj.job&&inT(r);})).sort((a,b)=>b.inc-a.inc);
   const pos=all.findIndex(x=>x.key===subj.key)+1;
@@ -4773,7 +4773,7 @@ function asstAnalyze(q){
   const pts=all.filter(x=>x.key!==subj.key&&x.rmlMese>0).map(x=>({x:Math.round(x.rmlMese),y:+x.inc.toFixed(2)}));
   const subjPt={x:Math.round(subj.rmlMese||0),y:+subj.inc.toFixed(2)};
   const scatter=pts.length?asstChart(asstScatterCfg(pts,subjPt,'Posizionamento '+subj.job+': RML mensile × incidenza %')):'';
-  return head+'Incidenza <b>'+subj.inc.toFixed(1)+'%</b> vs media gruppo <b>'+gInc.toFixed(1)+'%</b> ('+(delta>=0?'+':'')+delta.toFixed(1)+' pp). Posizione: '+pos+'° su '+all.length+' nel ruolo · achievement '+subj.ach.toFixed(0)+'%.'+asstCompChart(subj,grp,ckT)+scatter;
+  return head+'L\'incidenza complessiva è del <b>'+subj.inc.toFixed(1)+'%</b>, '+(delta<-tol?'sotto':delta>tol?'sopra':'in linea con')+' la media del gruppo (<b>'+gInc.toFixed(1)+'%</b>, '+(delta>=0?'+':'')+delta.toFixed(1)+' pp); <b>'+pos+'° su '+all.length+'</b> nel ruolo, achievement '+subj.ach.toFixed(0)+'%.'+asstCompChart(subj,grp,ckT)+scatter;
 }
 // grafico Chart.js dentro una bolla: emette un canvas con la config serializzata,
 // renderizzata dopo l'inserimento nel DOM da asstRenderCharts (config senza funzioni).
