@@ -1116,6 +1116,32 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 <!-- ═══════════ ASSISTENTE TAB ═══════════ -->
 <div id="tabAsst" style="display:none">
   <div style="margin:4px 28px 10px;font-size:12px;color:#666;line-height:1.5">🤖 Descrivi una situazione in linguaggio naturale: l'assistente riconosce <b>dipendente</b>, <b>periodo</b>, <b>mese</b> e <b>intento</b>, poi analizza i dati reali caricati. <b>Leve di piano</b> (modificabili): BDG base e % incidenza semestrale; gli altri premi sono performance del dipendente. <span class="as-dim">Tutto in locale, nessun dato esce.</span></div>
+  <!-- Pannello opzionale: riformulazione con LLM locale (additivo, default spento) -->
+  <div id="asstLLM" style="margin:0 28px 12px;border:1px solid #e9ebf2;border-radius:12px;background:#fff;overflow:hidden">
+    <div onclick="asstLLMToggle()" style="cursor:pointer;padding:9px 14px;font-size:12px;font-weight:700;color:#555;display:flex;justify-content:space-between;align-items:center;background:#fafbff">
+      <span>🔬 Assistente avanzato — riformulazione discorsiva con LLM locale (opzionale)</span>
+      <span id="asstLLMcaret">▸</span>
+    </div>
+    <div id="asstLLMbody" style="display:none;padding:10px 14px 12px;font-size:12px;color:#444">
+      <div style="color:#777;margin-bottom:8px">Le risposte restano sempre quelle <b>deterministiche</b> (numeri esatti). Attivando l'LLM, sotto ogni risposta compare una <b>versione più discorsiva</b>, generata <b>in locale</b> sulla tua GPU — nessun dato esce. Richiede un PC adeguato e un download una tantum del modello (~1–2 GB da CDN).</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button onclick="asstLLMCheck()" style="cursor:pointer;border:0;border-radius:8px;padding:7px 13px;font-weight:700;background:#eef0f7;color:#333">1 · Verifica PC</button>
+        <span id="asstLLMverdict"></span>
+      </div>
+      <div id="asstLLMload" style="display:none;margin-top:10px">
+        <label style="font-weight:600;display:block;margin-bottom:4px">2 · Modello</label>
+        <select id="asstLLMmodel" style="padding:7px 10px;border:1px solid #ccd0db;border-radius:8px;background:#fff;max-width:100%"></select>
+        <div id="asstLLMnote" style="color:#777;margin-top:4px"></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
+          <button id="asstLLMloadBtn" onclick="asstLLMLoad()" style="cursor:pointer;border:0;border-radius:8px;padding:7px 13px;font-weight:700;background:#7c3aed;color:#fff">⬇️ Scarica e avvia</button>
+          <span id="asstLLMstate" style="color:#666"></span>
+        </div>
+      </div>
+      <div id="asstLLMtoggleWrap" style="display:none;margin-top:10px;padding-top:8px;border-top:1px solid #eef0f5">
+        <label style="font-weight:600;cursor:pointer"><input type="checkbox" id="asstLLMon" onchange="asstLLMonChange()" style="vertical-align:-1px"> 3 · Riformula le risposte con l'LLM (versione discorsiva sotto ogni risposta)</label>
+      </div>
+    </div>
+  </div>
   <div class="as-chat" id="asstChat"></div>
   <div class="as-in">
     <input id="asstQ" placeholder="Es: i premi di Rossi sono bassi negli ultimi 12 mesi? · cosa modificare per riallinearlo?" onkeydown="if(event.key==='Enter')asstAsk()">
@@ -4745,7 +4771,10 @@ function asstLineCfg(labels,data,title){return {type:'line',data:{labels:labels,
 // config SCATTER per posizionamento (RML mensile × incidenza), soggetto evidenziato
 function asstScatterCfg(pts,subjPt,title){return {type:'scatter',data:{datasets:[{label:'Pari ruolo',data:pts,backgroundColor:'rgba(148,163,184,.6)',pointRadius:4},{label:'Soggetto',data:[subjPt],backgroundColor:'#7c3aed',pointRadius:8,pointStyle:'rectRot'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'bottom'},title:{display:true,text:title||'Posizionamento: RML mensile × incidenza %'}},scales:{x:{title:{display:true,text:'RML mensile €'}},y:{title:{display:true,text:'Incidenza %'},beginAtZero:true}}}};}
 function asstAdd(cls,html){const c=document.getElementById('asstChat');if(!c)return;const d=document.createElement('div');d.className='as-msg '+cls;d.innerHTML=html;c.appendChild(d);try{asstRenderCharts(d);}catch(e){}c.scrollTop=c.scrollHeight;}
-function asstAsk(){const i=document.getElementById('asstQ');const q=(i.value||'').trim();if(!q)return;asstAdd('as-user',q);i.value='';setTimeout(()=>{try{asstAdd('as-bot',asstAnalyze(q));}catch(e){asstAdd('as-bot','Errore nell\'analisi: '+e.message);}},120);}
+function asstAsk(){const i=document.getElementById('asstQ');const q=(i.value||'').trim();if(!q)return;asstAdd('as-user',q);i.value='';setTimeout(()=>{let html;try{html=asstAnalyze(q);}catch(e){html='Errore nell\'analisi: '+e.message;}asstAdd('as-bot',html);
+  // opzionale: versione discorsiva via LLM locale (solo se attivo e modello pronto)
+  if(window.asstLLMEnabled&&window.asstEngine){try{const tmp=document.createElement('div');tmp.innerHTML=html;const txt=(tmp.textContent||'').replace(/\s+/g,' ').trim().slice(0,300);if(txt)asstLLMRephrase(txt);}catch(e){}}
+},120);}
 function asstEx(el){const t=el.textContent,i=document.getElementById('asstQ');if(!i)return;i.value=t;
   // gli esempi sono modelli col segnaposto: inseriscili e lascia che l'utente metta il nome reale
   if(/nome cognome dipendente/i.test(t)){i.focus&&i.focus();i.select&&i.select();} else asstAsk();}
@@ -4759,6 +4788,66 @@ function asstInit(){
     'Lo Shopper Yield di '+PH+' negli ultimi 6 mesi è in linea coi pari?','Il BDG di '+PH+' è basso?'
   ].map(t=>'<span class="as-ex" onclick="asstEx(this)">'+t+'</span>').join(''); }
   if(!chat.children.length) asstAdd('as-bot',allData.length?'Ciao! Chiedimi un\'analisi su un dipendente (verifica lamentele, confronto, classifica, andamento, previsione semestre, consigli sulle leve…). Negli esempi qui sotto sostituisci «nome cognome dipendente» con la persona reale, poi premi Invio.':'Carica prima i dati per usare l\'assistente.');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ─── LLM LOCALE OPZIONALE (riformulazione discorsiva) ─────────
+// Additivo e isolato: tutto lazy, default spento. Le risposte
+// deterministiche restano primarie; l'LLM riscrive solo il testo.
+// ═══════════════════════════════════════════════════════════════
+window.asstWebllm=null; window.asstEngine=null; window.asstLLMEnabled=false;
+const ASST_LLM_MODELS=[
+  {id:'Qwen2.5-1.5B-Instruct-q4f16_1-MLC', size:'~1,1 GB', note:'Consigliato su GPU integrata: leggero e stabile.'},
+  {id:'Qwen2.5-0.5B-Instruct-q4f16_1-MLC', size:'~0,5 GB', note:'Modalità sicura: carico minimo.'},
+  {id:'Qwen2.5-3B-Instruct-q4f16_1-MLC',   size:'~1,9 GB', note:'Più discorsivo, ma pesante: solo con GPU buona / alimentatore.'},
+];
+const ASST_REPHRASE_SYS="Riscrivi il testo dell'utente in italiano più scorrevole e naturale. REGOLE: non cambiare numeri, percentuali, nomi propri, periodi/mesi/date né il significato; mantieni i numeri IN CIFRE (es. 0.9, mai a parole); niente domande retoriche o frasi a effetto; non aggiungere o togliere informazioni; restituisci UNA sola versione, senza commenti né virgolette.";
+function asstLLMToggle(){const b=document.getElementById('asstLLMbody'),c=document.getElementById('asstLLMcaret');if(!b)return;const open=b.style.display==='none';b.style.display=open?'block':'none';if(c)c.textContent=open?'▾':'▸';}
+async function asstLLMCheck(){
+  const v=document.getElementById('asstLLMverdict');v.innerHTML='verifica…';
+  if(!navigator.gpu){v.innerHTML='<b style="color:#c0392b">❌ WebGPU non disponibile</b> — aggiorna Chrome/Edge.';return;}
+  try{
+    const ad=await navigator.gpu.requestAdapter();
+    if(!ad){v.innerHTML='<b style="color:#c0392b">❌ Nessun adapter GPU</b>';return;}
+    const f16=ad.features.has('shader-f16');let info={};try{info=ad.requestAdapterInfo?await ad.requestAdapterInfo():(ad.info||{});}catch(e){}
+    const gpu=`${info.vendor||''} ${info.architecture||''}`.trim()||'GPU';
+    if(f16){v.innerHTML='<b style="color:#138a36">✔ Compatibile</b> ('+gpu+'). Su GPU integrata usa 1.5B o 0.5B.';}
+    else {v.innerHTML='<b style="color:#b8860b">⚠ WebGPU senza shader-f16</b>: i modelli q4f16 potrebbero non caricare.';}
+    asstLLMBuildModels();
+    document.getElementById('asstLLMload').style.display='block';
+  }catch(e){v.innerHTML='<b style="color:#c0392b">❌ '+e.message+'</b>';}
+}
+function asstLLMBuildModels(){
+  const sel=document.getElementById('asstLLMmodel');if(!sel||sel.options.length)return;
+  ASST_LLM_MODELS.forEach(m=>{const o=document.createElement('option');o.value=m.id;o.dataset.note=m.note;o.textContent=m.id+' · '+m.size;sel.appendChild(o);});
+  const upd=()=>{document.getElementById('asstLLMnote').textContent=sel.selectedOptions[0]?.dataset.note||'';};
+  sel.addEventListener('change',upd);upd();
+}
+async function asstLLMLoad(){
+  const sel=document.getElementById('asstLLMmodel'),id=sel.value,m=ASST_LLM_MODELS.find(x=>x.id===id);
+  const warn=id.includes('3B')?'\n\n⚠️ Il 3B è pesante: su GPU integrata può rallentare/bloccare il PC. Consigliato 1.5B.':'';
+  if(!confirm('Scarico il modello "'+id+'" ('+m.size+').\nUna volta sola, poi resta in cache.'+warn))return;
+  const st=document.getElementById('asstLLMstate'),btn=document.getElementById('asstLLMloadBtn');btn.disabled=true;
+  try{
+    if(!window.asstWebllm){st.textContent='carico libreria…';window.asstWebllm=await import('https://esm.run/@mlc-ai/web-llm');}
+    if(window.asstEngine){try{await window.asstEngine.unload();}catch(e){}window.asstEngine=null;}
+    const t0=performance.now();
+    window.asstEngine=await window.asstWebllm.CreateMLCEngine(id,{initProgressCallback:p=>{st.textContent=p.text||'';}},{context_window_size:2048});
+    st.innerHTML='<b style="color:#138a36">✔ Pronto in '+((performance.now()-t0)/1000).toFixed(1)+'s</b>';
+    document.getElementById('asstLLMtoggleWrap').style.display='block';
+  }catch(e){st.innerHTML='<b style="color:#c0392b">❌ '+e.message+'</b>';btn.disabled=false;}
+}
+function asstLLMonChange(){window.asstLLMEnabled=!!document.getElementById('asstLLMon').checked;}
+async function asstLLMRephrase(text){
+  if(!window.asstEngine)return;
+  const c=document.getElementById('asstChat');if(!c)return;
+  const d=document.createElement('div');d.className='as-msg as-bot';d.style.opacity='0.95';
+  d.innerHTML='<small class="as-dim">💬 versione discorsiva (LLM locale, sperimentale)</small><div style="margin-top:4px"></div>';
+  c.appendChild(d);const out=d.lastChild;c.scrollTop=c.scrollHeight;
+  try{
+    const stt=await window.asstEngine.chat.completions.create({messages:[{role:'system',content:ASST_REPHRASE_SYS},{role:'user',content:text}],stream:true,temperature:0.4,max_tokens:200});
+    let txt='';for await(const ch of stt){const dd=ch.choices[0]?.delta?.content||'';if(dd){txt+=dd;out.textContent=txt;c.scrollTop=c.scrollHeight;}}
+  }catch(e){out.innerHTML='<span style="color:#c0392b">LLM non disponibile: '+e.message+'</span>';}
 }
 
 // ═══════════════════════════════════════════════════════════════
