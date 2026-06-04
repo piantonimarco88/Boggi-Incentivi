@@ -1123,7 +1123,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
       <span id="asstLLMcaret">▸</span>
     </div>
     <div id="asstLLMbody" style="display:none;padding:10px 14px 12px;font-size:12px;color:#444">
-      <div style="color:#777;margin-bottom:8px">Le risposte restano sempre quelle <b>deterministiche</b> (numeri esatti). Attivando l'LLM, sotto ogni risposta compare una <b>versione più discorsiva</b>, generata <b>in locale</b> sulla tua GPU — nessun dato esce. Richiede un PC adeguato e un download una tantum del modello (~1–2 GB da CDN).</div>
+      <div style="color:#777;margin-bottom:8px">Le risposte restano sempre quelle <b>deterministiche</b> (numeri esatti). Attivando l'LLM, sotto ogni risposta compare una <b>versione più discorsiva</b>, generata <b>in locale</b> sulla tua GPU — nessun dato esce. Download una tantum del modello (~0,5–1 GB da CDN).<br><span style="color:#b8860b">⚠️ <b>Sperimentale.</b> Su PC <b>senza GPU dedicata</b> (grafica integrata) caricare/eseguire il modello può <b>rallentare o bloccare il PC</b> (riavvio forzato). Attivalo solo se serve, con poche app aperte e l'alimentatore collegato; consigliato un PC con GPU dedicata. La risposta deterministica sopra è già completa: l'LLM è solo un extra.</span></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <button onclick="asstLLMCheck()" style="cursor:pointer;border:0;border-radius:8px;padding:7px 13px;font-weight:700;background:#eef0f7;color:#333">1 · Verifica PC</button>
         <span id="asstLLMverdict"></span>
@@ -4814,10 +4814,10 @@ function asstInit(){
 // deterministiche restano primarie; l'LLM riscrive solo il testo.
 // ═══════════════════════════════════════════════════════════════
 window.asstWebllm=null; window.asstEngine=null; window.asstLLMEnabled=false;
+// Solo modelli leggeri in produzione: i grandi (3B+) bloccano le GPU integrate.
 const ASST_LLM_MODELS=[
-  {id:'Qwen2.5-1.5B-Instruct-q4f16_1-MLC', size:'~1,1 GB', note:'Consigliato su GPU integrata: leggero e stabile.'},
-  {id:'Qwen2.5-0.5B-Instruct-q4f16_1-MLC', size:'~0,5 GB', note:'Modalità sicura: carico minimo.'},
-  {id:'Qwen2.5-3B-Instruct-q4f16_1-MLC',   size:'~1,9 GB', note:'Più discorsivo, ma pesante: solo con GPU buona / alimentatore.'},
+  {id:'Qwen2.5-0.5B-Instruct-q4f16_1-MLC', size:'~0,5 GB', note:'Modalità sicura: carico minimo, la più indicata su GPU integrata.'},
+  {id:'Qwen2.5-1.5B-Instruct-q4f16_1-MLC', size:'~1,1 GB', note:'Più discorsivo dello 0.5B; su GPU integrata può comunque rallentare.'},
 ];
 const ASST_REPHRASE_SYS="Riscrivi il testo dell'utente in italiano più scorrevole e naturale, in forma di frasi di senso compiuto (non limitarti a ricopiarlo). REGOLE: non cambiare numeri, percentuali, periodi/mesi/date né il significato; mantieni i numeri IN CIFRE (es. 0.9); riporta i NOMI PROPRI esattamente come scritti, lettera per lettera; scrivi in minuscolo tranne le iniziali (NON in maiuscolo); niente domande retoriche o frasi a effetto; non aggiungere o togliere informazioni; restituisci UNA sola versione, senza commenti né virgolette.";
 // Guardrail di fedeltà: accetta la riformulazione solo se preserva cognome e numeri e non è tutta maiuscola.
@@ -4866,7 +4866,7 @@ async function asstLLMLoad(){
     if(!window.asstWebllm){st.textContent='carico libreria…';window.asstWebllm=await import('https://esm.run/@mlc-ai/web-llm');}
     if(window.asstEngine){try{await window.asstEngine.unload();}catch(e){}window.asstEngine=null;}
     const t0=performance.now();
-    window.asstEngine=await window.asstWebllm.CreateMLCEngine(id,{initProgressCallback:p=>{st.textContent=p.text||'';}},{context_window_size:2048});
+    window.asstEngine=await window.asstWebllm.CreateMLCEngine(id,{initProgressCallback:p=>{st.textContent=p.text||'';}},{context_window_size:1024});
     st.innerHTML='<b style="color:#138a36">✔ Pronto in '+((performance.now()-t0)/1000).toFixed(1)+'s</b>';
     document.getElementById('asstLLMtoggleWrap').style.display='block';
   }catch(e){st.innerHTML='<b style="color:#c0392b">❌ '+e.message+'</b>';btn.disabled=false;}
