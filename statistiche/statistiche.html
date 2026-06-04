@@ -4790,7 +4790,7 @@ function asstAsk(){const i=document.getElementById('asstQ');const q=(i.value||''
     // tolgo barre/grafici/tabelle/note: all'LLM va SOLO il testo guida pulito (intestazione+verdetto+confronto)
     tmp.querySelectorAll('.as-bar-row,canvas,table,.as-cv,small,.as-rk,.as-lev,.as-perf').forEach(el=>el.remove());
     let txt=(tmp.textContent||'').replace(/\s+/g,' ').trim();
-    txt=txt.split(/Per tipo di premio/)[0].trim().slice(0,400);
+    txt=txt.split(/Per tipo di premio|Incidenza media per premio/)[0].trim().slice(0,400);
     if(txt)asstLLMRephrase(txt);}catch(e){}}
 },120);}
 function asstEx(el){const t=el.textContent,i=document.getElementById('asstQ');if(!i)return;i.value=t;
