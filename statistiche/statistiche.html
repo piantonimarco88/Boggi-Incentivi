@@ -4805,95 +4805,6 @@ function asstInit(){
 }
 
 // ═══════════════════════════════════════════════════════════════
-// ─── LLM LOCALE OPZIONALE (riformulazione discorsiva) ─────────
-// Additivo e isolato: tutto lazy, default spento. Le risposte
-// deterministiche restano primarie; l'LLM riscrive solo il testo.
-// ═══════════════════════════════════════════════════════════════
-window.asstWebllm=null; window.asstEngine=null; window.asstLLMEnabled=false;
-// Solo modelli leggeri in produzione: i grandi (3B+) bloccano le GPU integrate.
-const ASST_LLM_MODELS=[
-  {id:'Qwen2.5-0.5B-Instruct-q4f16_1-MLC', size:'~0,5 GB', note:'Modalità sicura: carico minimo, la più indicata su GPU integrata.'},
-  {id:'Qwen2.5-1.5B-Instruct-q4f16_1-MLC', size:'~1,1 GB', note:'Più discorsivo dello 0.5B; su GPU integrata può comunque rallentare.'},
-];
-const ASST_REPHRASE_SYS="Riscrivi il testo dell'utente in italiano più scorrevole e naturale, in forma di frasi di senso compiuto (non limitarti a ricopiarlo). REGOLE: non cambiare numeri, percentuali, periodi/mesi/date né il significato; mantieni i numeri IN CIFRE (es. 0.9); riporta i NOMI PROPRI esattamente come scritti, lettera per lettera; scrivi in minuscolo tranne le iniziali (NON in maiuscolo); niente domande retoriche o frasi a effetto; non aggiungere o togliere informazioni; restituisci UNA sola versione, senza commenti né virgolette.";
-// Recupero casing: se l'LLM scrive in MAIUSCOLO, normalizzo (minuscolo + iniziali frase
-// + ri-capitalizzo nomi propri/sigle com'erano nell'input). Così l'output resta usabile invece di scartarlo.
-function asstRecase(out,inp){
-  const letters=out.replace(/[^A-Za-zÀ-ÿ]/g,'').length, upper=out.replace(/[^A-ZÀ-Ý]/g,'').length;
-  if(!(letters>20&&upper/letters>0.6))return out; // già mixed-case: lascio com'è
-  let t=out.toLowerCase().replace(/(^\s*|[.!?]\s+)([a-zà-ÿ])/g,(m,p,c)=>p+c.toUpperCase());
-  const orig={}; (inp.match(/[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9]*/g)||[]).forEach(w=>{if(/^[A-ZÀ-Ý]/.test(w)||/[A-ZÀ-Ý]{2,}/.test(w))orig[w.toUpperCase()]=w;});
-  return t.replace(/[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9]*/g,w=>orig[w.toUpperCase()]||w);
-}
-// Guardrail di FEDELTÀ (precisione): accetta se non inventa numeri e preserva il cognome.
-function asstLLMValid(inp,outp){
-  if(!outp||outp.trim().length<10)return false;
-  if(outp.length>Math.max(240,inp.length*2.4))return false; // niente code/divagazioni
-  const o=outp.toUpperCase(), norm=s=>s.replace(/[.,]/g,'');
-  // nessun NUMERO INVENTATO: ogni numero dell'output deve esistere nell'input (virgola/punto normalizzati)
-  const inNums=new Set((inp.match(/\d+(?:[.,]\d+)?/g)||[]).map(norm));
-  const outNums=(outp.match(/\d+(?:[.,]\d+)?/g)||[]).map(norm);
-  for(const n of outNums){if(!inNums.has(n))return false;}
-  // cognome (prima parola del testo deterministico) presente intatto
-  const fw=(inp.trim().split(/\s+/)[0]||'').toUpperCase();
-  if(fw.length>=4&&!o.includes(fw))return false;
-  return true;
-}
-function asstLLMToggle(){const b=document.getElementById('asstLLMbody'),c=document.getElementById('asstLLMcaret');if(!b)return;const open=b.style.display==='none';b.style.display=open?'block':'none';if(c)c.textContent=open?'▾':'▸';}
-async function asstLLMCheck(){
-  const v=document.getElementById('asstLLMverdict');v.innerHTML='verifica…';
-  if(!navigator.gpu){v.innerHTML='<b style="color:#c0392b">❌ WebGPU non disponibile</b> — aggiorna Chrome/Edge.';return;}
-  try{
-    const ad=await navigator.gpu.requestAdapter();
-    if(!ad){v.innerHTML='<b style="color:#c0392b">❌ Nessun adapter GPU</b>';return;}
-    const f16=ad.features.has('shader-f16');let info={};try{info=ad.requestAdapterInfo?await ad.requestAdapterInfo():(ad.info||{});}catch(e){}
-    const gpu=`${info.vendor||''} ${info.architecture||''}`.trim()||'GPU';
-    if(f16){v.innerHTML='<b style="color:#138a36">✔ Compatibile</b> ('+gpu+'). Su GPU integrata usa 1.5B o 0.5B.';}
-    else {v.innerHTML='<b style="color:#b8860b">⚠ WebGPU senza shader-f16</b>: i modelli q4f16 potrebbero non caricare.';}
-    asstLLMBuildModels();
-    document.getElementById('asstLLMload').style.display='block';
-  }catch(e){v.innerHTML='<b style="color:#c0392b">❌ '+e.message+'</b>';}
-}
-function asstLLMBuildModels(){
-  const sel=document.getElementById('asstLLMmodel');if(!sel||sel.options.length)return;
-  ASST_LLM_MODELS.forEach(m=>{const o=document.createElement('option');o.value=m.id;o.dataset.note=m.note;o.textContent=m.id+' · '+m.size;sel.appendChild(o);});
-  const upd=()=>{document.getElementById('asstLLMnote').textContent=sel.selectedOptions[0]?.dataset.note||'';};
-  sel.addEventListener('change',upd);upd();
-}
-async function asstLLMLoad(){
-  const sel=document.getElementById('asstLLMmodel'),id=sel.value,m=ASST_LLM_MODELS.find(x=>x.id===id);
-  const warn=id.includes('3B')?'\n\n⚠️ Il 3B è pesante: su GPU integrata può rallentare/bloccare il PC. Consigliato 1.5B.':'';
-  if(!confirm('Scarico il modello "'+id+'" ('+m.size+').\nUna volta sola, poi resta in cache.'+warn))return;
-  const st=document.getElementById('asstLLMstate'),btn=document.getElementById('asstLLMloadBtn');btn.disabled=true;
-  try{
-    if(!window.asstWebllm){st.textContent='carico libreria…';window.asstWebllm=await import('https://esm.run/@mlc-ai/web-llm');}
-    if(window.asstEngine){try{await window.asstEngine.unload();}catch(e){}window.asstEngine=null;}
-    const t0=performance.now();
-    window.asstEngine=await window.asstWebllm.CreateMLCEngine(id,{initProgressCallback:p=>{st.textContent=p.text||'';}},{context_window_size:1024});
-    st.innerHTML='<b style="color:#138a36">✔ Pronto in '+((performance.now()-t0)/1000).toFixed(1)+'s</b>';
-    document.getElementById('asstLLMtoggleWrap').style.display='block';
-  }catch(e){st.innerHTML='<b style="color:#c0392b">❌ '+e.message+'</b>';btn.disabled=false;}
-}
-function asstLLMonChange(){window.asstLLMEnabled=!!document.getElementById('asstLLMon').checked;}
-async function asstLLMRephrase(text){
-  if(!window.asstEngine)return;
-  const c=document.getElementById('asstChat');if(!c)return;
-  const d=document.createElement('div');d.className='as-msg as-bot';d.style.opacity='0.95';
-  d.innerHTML='<small class="as-dim">💬 versione discorsiva (LLM locale, sperimentale)</small><div style="margin-top:4px"></div>';
-  c.appendChild(d);const out=d.lastChild;c.scrollTop=c.scrollHeight;
-  try{
-    const stt=await window.asstEngine.chat.completions.create({messages:[{role:'system',content:ASST_REPHRASE_SYS},{role:'user',content:text}],stream:true,temperature:0.3,max_tokens:200});
-    let txt='';for await(const ch of stt){const dd=ch.choices[0]?.delta?.content||'';if(dd){txt+=dd;out.textContent=txt;c.scrollTop=c.scrollHeight;}}
-    // recupero il casing (maiuscolo -> normale) per non scartare risposte solo per lo stile,
-    // poi accetto se è FEDELE (numeri/cognome); altrimenti scarto.
-    const res=asstRecase(txt.trim(),text);
-    if(asstLLMValid(text,res)) out.textContent=res;
-    else d.innerHTML='<small class="as-dim">💬 riformulazione scartata (non fedele ai dati): affidati alla risposta qui sopra, sempre corretta.</small>';
-    c.scrollTop=c.scrollHeight;
-  }catch(e){out.innerHTML='<span style="color:#c0392b">LLM non disponibile: '+e.message+'</span>';}
-}
-
-// ═══════════════════════════════════════════════════════════════
 // ─── AGENTE AI: STRUMENTI DETERMINISTICI (tool-use) ───────────
 // Inline di _agent_tools.js: 28 strumenti pure su allData. Espone window.AgentTools.
 (function(g){
@@ -4934,7 +4845,7 @@ const avg=(a,f)=>a.length?a.reduce((s,x)=>s+f(x),0)/a.length:0;
 const TOOLS={};
 TOOLS.trova_dipendente=({testo})=>{const c=resolveEmp(testo);return {candidati:c.slice(0,8).map(e=>({cognome:e.cognome,nome:e.nome,ruolo:e.job,negozio:e.store}))};};
 TOOLS.valori_disponibili=()=>{const ruoli=[...new Set(DATA.map(r=>r.job).filter(Boolean))].sort();const negozi=[...new Set(DATA.map(r=>r.store).filter(Boolean))].sort();const naz=[...new Set(DATA.map(r=>r._nazione).filter(Boolean))].sort();const mx=maxMk(),mn=Math.min(...DATA.map(r=>r.monthKey||9e9));return {ruoli,negozi:negozi.slice(0,80),nazioni:naz,premi:ALLC.map(c=>c[1]),periodo:{da:mkLabel(mn),a:mkLabel(mx)}};};
-TOOLS.analizza_dipendente=({cognome,nome,periodo_mesi,anno,tipo_premio})=>{const a={periodo_mesi,anno},tipo=tipo_premio||'tutti';const s=subjAgg(cognome,nome,a,tipo);if(!s)return{errore:'dipendente non trovato: '+cognome};const grp=roleAgg(s.job,a,tipo,s.key);const media=avg(grp,e=>e.inc);const all=[s,...grp].sort((x,y)=>y.inc-x.inc);const pos=all.findIndex(e=>e.key===s.key)+1;const sc=s.inc-media,tol=2;const gComp={};COMPS(tipo).forEach(([k])=>gComp[k]=avg(grp,e=>e.compInc[k]||0));const det=COMPS(tipo).map(([k,l])=>({premio:l,soggetto_pct:r1(s.compInc[k]||0),media_pct:r1(gComp[k]),gap_pp:r1((s.compInc[k]||0)-gComp[k])})).filter(p=>p.soggetto_pct>0.05||p.media_pct>0.05);const byGap=[...det].sort((x,y)=>x.gap_pp-y.gap_pp);const _viz={rml_mese:r1(s.rmlMese),scatter:grp.filter(e=>e.rmlMese>0).map(e=>({x:e0(e.rmlMese),y:r1(e.inc),label:e.cognome+' '+e.nome})),soggetto:{x:e0(s.rmlMese),y:r1(s.inc),label:s.cognome+' '+s.nome},media_ruolo:r1(media),soglia_sana:(SANE[s.job]!=null?SANE[s.job]:null)};return {dipendente:s.cognome+' '+s.nome,ruolo:s.job,negozio:s.store,periodo:periodLabel(a),tipo_premio:tipo,incidenza_pct:r1(s.inc),media_ruolo_pct:r1(media),scarto_pp:r1(sc),posizione:pos+' su '+all.length,achievement_pct:r0(s.ach),giorni_malattia:e0(s.mal),esito_lamentela_bassi:sc<-tol?'fondata':sc>tol?'non_fondata':'in_linea',premio_piu_debole:byGap[0]?{premio:byGap[0].premio,gap_pp:byGap[0].gap_pp}:null,premio_piu_forte:byGap.length?{premio:byGap[byGap.length-1].premio,gap_pp:byGap[byGap.length-1].gap_pp}:null,premi:det.slice().sort((x,y)=>y.soggetto_pct-x.soggetto_pct).slice(0,7),_viz};};
+TOOLS.analizza_dipendente=({cognome,nome,periodo_mesi,anno,tipo_premio})=>{const a={periodo_mesi,anno},tipo=tipo_premio||'tutti';const s=subjAgg(cognome,nome,a,tipo);if(!s)return{errore:'dipendente non trovato: '+cognome};const grp=roleAgg(s.job,a,tipo,s.key);const media=avg(grp,e=>e.inc);const all=[s,...grp].sort((x,y)=>y.inc-x.inc);const pos=all.findIndex(e=>e.key===s.key)+1;const sc=s.inc-media,tol=2;const gComp={};COMPS(tipo).forEach(([k])=>gComp[k]=avg(grp,e=>e.compInc[k]||0));const det=COMPS(tipo).map(([k,l])=>({premio:l,soggetto_pct:r1(s.compInc[k]||0),media_pct:r1(gComp[k]),gap_pp:r1((s.compInc[k]||0)-gComp[k])})).filter(p=>p.soggetto_pct>0.05||p.media_pct>0.05);const byGap=[...det].sort((x,y)=>x.gap_pp-y.gap_pp);const _viz={rml_mese:r1(s.rmlMese),scatter:grp.filter(e=>e.rmlMese>0).map(e=>({x:e0(e.rmlMese),y:r1(e.inc),label:e.cognome+' '+e.nome})),soggetto:{x:e0(s.rmlMese),y:r1(s.inc),label:s.cognome+' '+s.nome},media_ruolo:r1(media),media_rml:e0(avg(grp.filter(e=>e.rmlMese>0),e=>e.rmlMese)),soglia_sana:(SANE[s.job]!=null?SANE[s.job]:null)};return {dipendente:s.cognome+' '+s.nome,ruolo:s.job,negozio:s.store,periodo:periodLabel(a),tipo_premio:tipo,incidenza_pct:r1(s.inc),media_ruolo_pct:r1(media),scarto_pp:r1(sc),posizione:pos+' su '+all.length,achievement_pct:r0(s.ach),giorni_malattia:e0(s.mal),esito_lamentela_bassi:sc<-tol?'fondata':sc>tol?'non_fondata':'in_linea',premio_piu_debole:byGap[0]?{premio:byGap[0].premio,gap_pp:byGap[0].gap_pp}:null,premio_piu_forte:byGap.length?{premio:byGap[byGap.length-1].premio,gap_pp:byGap[byGap.length-1].gap_pp}:null,premi:det.slice().sort((x,y)=>y.soggetto_pct-x.soggetto_pct).slice(0,7),_viz};};
 TOOLS.analizza_premio=({cognome,nome,premio,periodo_mesi,anno,tipo_premio})=>{const k=premKey(premio);if(!k)return{errore:'premio non riconosciuto: '+premio};const tipo=tipo_premio||(COMP_S.some(c=>c[0]===k)?'semestrale':'mensile');const a={periodo_mesi,anno};const s=subjAgg(cognome,nome,a,tipo);if(!s)return{errore:'dipendente non trovato: '+cognome};const grp=roleAgg(s.job,a,tipo,s.key);const gv=avg(grp,e=>e.compInc[k]||0),sv=s.compInc[k]||0;const all=[s,...grp].sort((x,y)=>(y.compInc[k]||0)-(x.compInc[k]||0));const pos=all.findIndex(e=>e.key===s.key)+1;const d=sv-gv;return {dipendente:s.cognome+' '+s.nome,ruolo:s.job,premio:labelOf(k),incidenza_pct:r2(sv),media_ruolo_pct:r2(gv),gap_pp:r2(d),posizione:pos+' su '+all.length,leva_di_piano:LEVE.has(k),esito:d<-0.4?'sotto':d>0.4?'sopra':'in_linea'};};
 TOOLS.confronta_dipendenti=({cognomeA,cognomeB,periodo_mesi,anno,tipo_premio})=>{const a={periodo_mesi,anno},tipo=tipo_premio||'tutti';const A=subjAgg(cognomeA,null,a,tipo),B=subjAgg(cognomeB,null,a,tipo);if(!A||!B)return{errore:'dati insufficienti per '+(!A?cognomeA:cognomeB)};const comps=COMPS(tipo).filter(([k])=>(A.compInc[k]||0)>0.05||(B.compInc[k]||0)>0.05);return {periodo:periodLabel(a),tipo_premio:tipo,a:{dipendente:A.cognome+' '+A.nome,ruolo:A.job,incidenza_pct:r1(A.inc)},b:{dipendente:B.cognome+' '+B.nome,ruolo:B.job,incidenza_pct:r1(B.inc)},differenza_pp:r1(A.inc-B.inc),per_premio:comps.map(([k,l])=>({premio:l,a_pct:r1(A.compInc[k]||0),b_pct:r1(B.compInc[k]||0)}))};};
 TOOLS.classifica_ruolo=({ruolo,cognome,premio,periodo_mesi,anno,top_n})=>{const a={periodo_mesi,anno};let job=ruolo&&ruolo.toUpperCase();let subjKey=null;if(!job&&cognome){const e=resolveEmp(cognome);if(e.length){job=e[0].job;subjKey=e[0].key;}}if(!job)return{errore:'specifica un ruolo o un dipendente'};const k=premio?premKey(premio):null;const all=aggByEmp(rowsIn(a,'tutti',r=>r.job===job)).sort((x,y)=>(k?(y.compInc[k]||0)-(x.compInc[k]||0):y.inc-x.inc));const val=x=>k?(x.compInc[k]||0):x.inc;const n=Math.min(20,top_n||10);const out={ruolo:job,criterio:k?labelOf(k):'incidenza totale',periodo:periodLabel(a),classifica:all.slice(0,n).map((x,i)=>({pos:i+1,dipendente:x.cognome+' '+x.nome,valore_pct:r1(val(x))}))};if(subjKey){out.posizione_soggetto=(all.findIndex(x=>x.key===subjKey)+1)+' su '+all.length;}return out;};
@@ -5010,18 +4921,20 @@ async function agentAsk(q){const c=document.getElementById('asstChat');if(!c)ret
   wait.remove();c.scrollTop=1e9;}
 function agEsc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function agMd(t){let s=agEsc(t||'');s=s.replace(/\*\*([^*]+?)\*\*/g,'<b>$1</b>').replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g,'$1<i>$2</i>');const out=[];let ul=false;s.split(/\n/).forEach(ln=>{const m=ln.match(/^\s*[-•]\s+(.*)/);if(m){if(!ul){out.push('<ul>');ul=true;}out.push('<li>'+m[1]+'</li>');}else{if(ul){out.push('</ul>');ul=false;}out.push(ln.trim()?('<div>'+ln+'</div>'):'<div style="height:5px"></div>');}});if(ul)out.push('</ul>');return out.join('');}
-function agToolLine(name,input){const c=document.getElementById('asstChat');const d=document.createElement('div');d.className='ag-tool';d.textContent='🔧 '+name+'('+JSON.stringify(input)+')';c.appendChild(d);c.scrollTop=1e9;}
 function agK(l,v,col){return '<div class="k"><div class="kv"'+(col?' style="color:'+col+'"':'')+'>'+v+'</div><div class="kl">'+l+'</div></div>';}
 function agBox(){const c=document.getElementById('asstChat');const d=document.createElement('div');d.className='ag-vis';c.appendChild(d);c.scrollTop=1e9;return d;}
-function agBar(box,labels,datasets,title,yLabel){const w=document.createElement('div');w.className='ag-cv';const cv=document.createElement('canvas');w.appendChild(cv);box.appendChild(w);new Chart(cv.getContext('2d'),{type:'bar',data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:datasets.length>1,position:'bottom'},title:{display:!!title,text:title}},scales:{y:{beginAtZero:true,title:{display:true,text:yLabel||'Incidenza %'}}}}});}
-function agLineC(box,labels,data,title,yLabel){const w=document.createElement('div');w.className='ag-cv';const cv=document.createElement('canvas');w.appendChild(cv);box.appendChild(w);new Chart(cv.getContext('2d'),{type:'line',data:{labels,datasets:[{label:title||'%',data,borderColor:'#7c3aed',backgroundColor:'rgba(124,58,237,.12)',fill:true,tension:.3,pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},title:{display:!!title,text:title}},scales:{y:{beginAtZero:true,title:{display:true,text:yLabel||'Incidenza %'}}}}});}
-function agScat(box,pts,subjPt,title,yLabel,meanLine){const w=document.createElement('div');w.className='ag-cv';const cv=document.createElement('canvas');w.appendChild(cv);box.appendChild(w);const plug=[];if(meanLine)plug.push({id:'ml',afterDraw(ch){const y0=ch.scales.y.getPixelForValue(0);ch.ctx.save();ch.ctx.strokeStyle='rgba(220,38,38,.6)';ch.ctx.setLineDash([5,4]);ch.ctx.beginPath();ch.ctx.moveTo(ch.chartArea.left,y0);ch.ctx.lineTo(ch.chartArea.right,y0);ch.ctx.stroke();ch.ctx.restore();}});const tip={callbacks:{label:function(ctx){const r=ctx.raw||{};return (r.label?r.label+' — ':'')+'RML €'+r.x+', '+ctx.parsed.y;}}};new Chart(cv.getContext('2d'),{type:'scatter',data:{datasets:[{label:'Pari ruolo',data:pts,backgroundColor:'rgba(148,163,184,.55)',pointRadius:4,pointHoverRadius:6},{label:'Soggetto',data:[subjPt],backgroundColor:'#7c3aed',pointRadius:9,pointStyle:'rectRot',pointHoverRadius:11}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'bottom'},title:{display:!!title,text:title},tooltip:tip},scales:{x:{title:{display:true,text:'RML mensile €'}},y:{title:{display:true,text:yLabel||'%'}}}},plugins:plug});}
+function agUnit(yLabel){const y=yLabel||'';return y.indexOf('€')>=0?'€':y.indexOf('%')>=0?'%':'';}
+function agFmtVal(v,u){return u==='€'?'€'+v:u==='%'?v+'%':v;}
+function agBar(box,labels,datasets,title,yLabel){const w=document.createElement('div');w.className='ag-cv';const cv=document.createElement('canvas');w.appendChild(cv);box.appendChild(w);const u=agUnit(yLabel||'Incidenza %');const tip={callbacks:{label:c=>(c.dataset.label?c.dataset.label+': ':'')+agFmtVal(c.parsed.y,u)}};new Chart(cv.getContext('2d'),{type:'bar',data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:datasets.length>1,position:'bottom'},title:{display:!!title,text:title},tooltip:tip},scales:{y:{beginAtZero:true,title:{display:true,text:yLabel||'Incidenza %'}}}}});}
+function agLineC(box,labels,data,title,yLabel){const w=document.createElement('div');w.className='ag-cv';const cv=document.createElement('canvas');w.appendChild(cv);box.appendChild(w);const u=agUnit(yLabel||'Incidenza %');const tip={callbacks:{label:c=>agFmtVal(c.parsed.y,u)}};new Chart(cv.getContext('2d'),{type:'line',data:{labels,datasets:[{label:title||'%',data,borderColor:'#7c3aed',backgroundColor:'rgba(124,58,237,.12)',fill:true,tension:.3,pointRadius:3,pointHoverRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},title:{display:!!title,text:title},tooltip:tip},scales:{y:{beginAtZero:true,title:{display:true,text:yLabel||'Incidenza %'}}}}});}
 function agTb(box,rows,head){box.innerHTML=(head?'<div class="as-dim">'+head+'</div>':'')+'<table class="ag-tb"><tbody>'+rows+'</tbody></table>';}
+// Posizionamento in stile tab Confronta (croce media gruppo, triangolo media, soggetto rombo)
+function agPos(box,pts,subjPt,meanX,meanY){const w=document.createElement('div');w.className='ag-cv';const cv=document.createElement('canvas');w.appendChild(cv);box.appendChild(w);const tip={callbacks:{label:c=>(c.raw.label||'')+': RML €'+c.raw.x+' · inc '+c.raw.y+'%'}};const ds=[{label:'Gruppo',data:pts,backgroundColor:'rgba(148,163,184,.55)',pointRadius:4,pointHoverRadius:6}];if(meanX!=null)ds.push({label:'Media gruppo',data:[{x:meanX,y:meanY,label:'Media gruppo'}],backgroundColor:'#0891b2',pointRadius:9,pointStyle:'triangle'});ds.push({label:'Soggetto',data:[subjPt],backgroundColor:'#7c3aed',pointRadius:8,pointStyle:'rectRot',pointHoverRadius:10});new Chart(cv.getContext('2d'),{type:'scatter',data:{datasets:ds},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10}},title:{display:true,text:'Posizionamento nel gruppo: RML × incidenza'},cmpMean:{mx:meanX,my:meanY},tooltip:tip},scales:{x:{title:{display:true,text:'RML mensile (€)'},ticks:{callback:v=>(typeof fmtEurAxis==='function'?fmtEurAxis(v):'€'+v)}},y:{title:{display:true,text:'Incidenza % su RML'},beginAtZero:true,ticks:{callback:v=>v+'%'}}}},plugins:(typeof cmpMeanPlugin!=='undefined'?[cmpMeanPlugin]:[])});}
 // Quadrante scostamento in stile tab Alert (fascia verde ±tol, punti sotto/sopra/in linea, soggetto evidenziato)
 function agQuadrant(box,pts,subjPt,soglia,job){const tol=5;const mk=p=>({x:p.x,y:+(p.y-soglia).toFixed(1),inc:p.y,label:p.label});const g2={ok:[],sotto:[],sopra:[]};pts.map(mk).forEach(p=>{const st=p.y>tol?'sopra':p.y<-tol?'sotto':'ok';g2[st].push(p);});const sp=mk(subjPt);const w=document.createElement('div');w.className='ag-cv';const cv=document.createElement('canvas');w.appendChild(cv);box.appendChild(w);const tip={callbacks:{label:c=>{const r=c.raw;return (r.label||'')+' ('+job+'): inc '+r.inc+'% · soglia '+soglia+'% · RML €'+r.x;}}};const ds=[{label:'In linea',data:g2.ok,backgroundColor:'rgba(34,197,94,.55)',pointRadius:4,pointHoverRadius:6},{label:'Sotto soglia',data:g2.sotto,backgroundColor:'#ef4444',pointRadius:5,pointHoverRadius:7},{label:'Sopra soglia',data:g2.sopra,backgroundColor:'#a855f7',pointRadius:5,pointHoverRadius:7},{label:'🔍 Soggetto',data:[sp],backgroundColor:'#f59e0b',borderColor:'#b45309',borderWidth:2,pointRadius:10,pointStyle:'rectRot'}];new Chart(cv.getContext('2d'),{type:'scatter',data:{datasets:ds},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10}},title:{display:true,text:'Scostamento dalla % sana del ruolo ('+soglia+'% — fascia ±'+tol+'pp)'},tooltip:tip,alertBand:{tol}},scales:{x:{title:{display:true,text:'RML mensile (€)'},ticks:{callback:v=>(typeof fmtEurAxis==='function'?fmtEurAxis(v):'€'+v)}},y:{title:{display:true,text:'scostamento dalla soglia (pp)'}}}},plugins:(typeof alertBandPlugin!=='undefined'?[alertBandPlugin]:[])});}
 function agRenderVisual(name,res){
   if(!res||res.errore||typeof Chart==='undefined')return;
-  if(name==='analizza_dipendente'){const b=agBox(),col=res.scarto_pp<-2?'#c0392b':res.scarto_pp>2?'#138a36':'#7c3aed';b.innerHTML='<div class="ag-kpi">'+agK('Incidenza',res.incidenza_pct+'%')+agK('Media ruolo',res.media_ruolo_pct+'%')+agK('Scarto',(res.scarto_pp>=0?'+':'')+res.scarto_pp+' pp',col)+agK('Posizione',res.posizione)+agK('Malattia',res.giorni_malattia+' gg')+'</div>';if(res.premi&&res.premi.length)agBar(b,res.premi.map(p=>p.premio),[{label:'Soggetto',data:res.premi.map(p=>p.soggetto_pct),backgroundColor:'#7c3aed'},{label:'Media ruolo',data:res.premi.map(p=>p.media_pct),backgroundColor:'#cbd5e1'}],'Incidenza % per premio');if(res._viz&&res._viz.scatter&&res._viz.scatter.length){const vz=res._viz;agScat(b,vz.scatter,vz.soggetto,'Posizionamento: RML × incidenza %','Incidenza %',false);if(res.tipo_premio==='tutti'&&vz.soglia_sana!=null){agQuadrant(b,vz.scatter,vz.soggetto,vz.soglia_sana,res.ruolo);}}}
+  if(name==='analizza_dipendente'){const b=agBox(),col=res.scarto_pp<-2?'#c0392b':res.scarto_pp>2?'#138a36':'#7c3aed';b.innerHTML='<div class="ag-kpi">'+agK('Incidenza',res.incidenza_pct+'%')+agK('Media ruolo',res.media_ruolo_pct+'%')+agK('Scarto',(res.scarto_pp>=0?'+':'')+res.scarto_pp+' pp',col)+agK('Posizione',res.posizione)+agK('Malattia',res.giorni_malattia+' gg')+'</div>';if(res.premi&&res.premi.length)agBar(b,res.premi.map(p=>p.premio),[{label:'Soggetto',data:res.premi.map(p=>p.soggetto_pct),backgroundColor:'#7c3aed'},{label:'Media ruolo',data:res.premi.map(p=>p.media_pct),backgroundColor:'#cbd5e1'}],'Incidenza % per premio');if(res._viz&&res._viz.scatter&&res._viz.scatter.length){const vz=res._viz;agPos(b,vz.scatter,vz.soggetto,vz.media_rml,vz.media_ruolo);if(res.tipo_premio==='tutti'&&vz.soglia_sana!=null){agQuadrant(b,vz.scatter,vz.soggetto,vz.soglia_sana,res.ruolo);}}}
   else if(name==='analizza_premio'){const b=agBox(),col=res.gap_pp<-0.4?'#c0392b':res.gap_pp>0.4?'#138a36':'#7c3aed';b.innerHTML='<div class="ag-kpi">'+agK('Incidenza',res.incidenza_pct+'%')+agK('Media',res.media_ruolo_pct+'%')+agK('Gap',(res.gap_pp>=0?'+':'')+res.gap_pp+' pp',col)+agK('Posizione',res.posizione)+'</div>';agBar(b,[res.premio],[{label:'Soggetto',data:[res.incidenza_pct],backgroundColor:'#7c3aed'},{label:'Media',data:[res.media_ruolo_pct],backgroundColor:'#cbd5e1'}],'Incidenza %');}
   else if(name==='confronta_dipendenti'){const b=agBox();b.innerHTML='<div class="ag-kpi">'+agK(res.a.dipendente,res.a.incidenza_pct+'%')+agK(res.b.dipendente,res.b.incidenza_pct+'%')+agK('Differenza',(res.differenza_pp>=0?'+':'')+res.differenza_pp+' pp',res.differenza_pp>=0?'#138a36':'#c0392b')+'</div>';if(res.per_premio&&res.per_premio.length)agBar(b,res.per_premio.map(p=>p.premio),[{label:res.a.dipendente,data:res.per_premio.map(p=>p.a_pct),backgroundColor:'#7c3aed'},{label:res.b.dipendente,data:res.per_premio.map(p=>p.b_pct),backgroundColor:'#0891b2'}],'Per premio');}
   else if(name==='confronta_gruppi'){const b=agBox();b.innerHTML='<div class="ag-kpi">'+agK(res.a.label,res.a.incidenza_pct+'%')+agK(res.b.label,res.b.incidenza_pct+'%')+agK('Differenza',(res.differenza_pp>=0?'+':'')+res.differenza_pp+' pp',res.differenza_pp>=0?'#138a36':'#c0392b')+'</div>';if(res.per_premio)agBar(b,res.per_premio.map(p=>p.premio),[{label:res.a.label,data:res.per_premio.map(p=>p.a_pct),backgroundColor:'#7c3aed'},{label:res.b.label,data:res.per_premio.map(p=>p.b_pct),backgroundColor:'#0891b2'}],'Per premio');}
