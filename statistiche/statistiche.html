@@ -4920,7 +4920,23 @@ async function agentAsk(q){const c=document.getElementById('asstChat');if(!c)ret
   catch(e){asstAdd('as-bot','⚠️ '+e.message+' — verifica che il proxy sia avviato e il modello corretto.');}
   wait.remove();c.scrollTop=1e9;}
 function agEsc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-function agMd(t){let s=agEsc(t||'');s=s.replace(/\*\*([^*]+?)\*\*/g,'<b>$1</b>').replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g,'$1<i>$2</i>');const out=[];let ul=false;s.split(/\n/).forEach(ln=>{const m=ln.match(/^\s*[-•]\s+(.*)/);if(m){if(!ul){out.push('<ul>');ul=true;}out.push('<li>'+m[1]+'</li>');}else{if(ul){out.push('</ul>');ul=false;}out.push(ln.trim()?('<div>'+ln+'</div>'):'<div style="height:5px"></div>');}});if(ul)out.push('</ul>');return out.join('');}
+function agMd(t){const inl=x=>x.replace(/\*\*([^*]+?)\*\*/g,'<b>$1</b>').replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g,'$1<i>$2</i>');
+  const lines=agEsc(t||'').split(/\n/);const out=[];let ul=false;
+  const isRow=l=>l.trim().startsWith('|')&&l.indexOf('|',1)>0;
+  const isSep=l=>{const x=l.trim();return /\|/.test(x)&&/^[\s|:\-]+$/.test(x)&&x.indexOf('-')>=0;};
+  const cells=l=>l.trim().replace(/^\||\|$/g,'').split('|').map(c=>inl(c.trim()));
+  for(let i=0;i<lines.length;i++){const ln=lines[i];
+    if(isRow(ln)&&i+1<lines.length&&isSep(lines[i+1])){
+      if(ul){out.push('</ul>');ul=false;}
+      const head=cells(ln);i+=2;const body=[];
+      while(i<lines.length&&isRow(lines[i])&&!isSep(lines[i])){body.push(cells(lines[i]));i++;}
+      i--;
+      out.push('<table class=\"ag-tb\" style=\"margin:6px 0\"><thead><tr>'+head.map(h=>'<th style=\"text-align:left;padding:4px 8px;border-bottom:2px solid #d7dbe8;font-weight:700;background:#f7f8fc\">'+h+'</th>').join('')+'</tr></thead><tbody>'+body.map(r=>'<tr>'+r.map((c,j)=>'<td style=\"padding:3px 8px;border-bottom:1px solid #f0f1f6'+(j>0?';text-align:right':'')+'\">'+c+'</td>').join('')+'</tr>').join('')+'</tbody></table>');
+      continue;}
+    const m=ln.match(/^\s*[-•]\s+(.*)/);
+    if(m){if(!ul){out.push('<ul>');ul=true;}out.push('<li>'+inl(m[1])+'</li>');}
+    else{if(ul){out.push('</ul>');ul=false;}out.push(ln.trim()?('<div>'+inl(ln)+'</div>'):'<div style=\"height:5px\"></div>');}}
+  if(ul)out.push('</ul>');return out.join('');}
 function agK(l,v,col){return '<div class="k"><div class="kv"'+(col?' style="color:'+col+'"':'')+'>'+v+'</div><div class="kl">'+l+'</div></div>';}
 function agBox(){const c=document.getElementById('asstChat');const d=document.createElement('div');d.className='ag-vis';c.appendChild(d);c.scrollTop=1e9;return d;}
 function agUnit(yLabel){const y=yLabel||'';return y.indexOf('€')>=0?'€':y.indexOf('%')>=0?'%':'';}
