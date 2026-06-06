@@ -444,23 +444,29 @@ function exportTracciatoPagamenti(){
     if(e.ps==="SI")return;
     var matrNum=e.m.replace(/^[A-Za-z]+/,"");
     var sm=sickMult(e.ml);
+    var _agg=AGG[e.m]||{};
     premi.forEach(function(p){
       var val=0;
       if(p.k==="rb"){
-        if(e.ibFromAY)return;
-        if(isOn(e.j,p.k)){
+        if(!e.ibFromAY&&isOn(e.j,p.k)){
           val=getVal(e,p.k)*sm;
           if(MODE==="consuntivo"&&e.ov_wg==="SI")
             val+=Math.round(e.ib*(PARAMS.workgamePct||0)*100)/100;
         }
+        // Aggiunta manuale BDG Lordo (non ibFromAY: va in BDG; ibFromAY: il BDG va a TRASFERTE)
+        if(!e.ibFromAY)val+=(_agg.rb||0);
       } else if(p.k){
         if(p.k==="vi"||isOn(e.j,p.k)){val=getVal(e,p.k)*sm}
+        // Aggiunta manuale per questo tipo premio (tutti tranne vi che non ha AGG_KEY)
+        if(p.k!=="vi")val+=(_agg[p.k]||0);
       } else if(p.cod===380){
         if(e.ibFromAY){
           val=getVal(e,"rb")*sm;
+          val+=(_agg.rb||0); // aggiunta BDG per ibFromAY confluisce in TRASFERTE
         } else {
           val=(e.rbn||0)>0?(e.rbn||0):0;
         }
+        val+=(_agg.rbn||0); // aggiunta BDG Netto sempre in TRASFERTE
       }
       var rounded=Math.round(val);
       if(rounded<=0)return;
