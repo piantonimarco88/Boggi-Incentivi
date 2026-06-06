@@ -4794,8 +4794,10 @@ function asstAsk(){const i=document.getElementById('asstQ');const q=(i.value||''
   setTimeout(()=>{let html;try{html=asstAnalyze(q);}catch(e){html='Errore nell\'analisi: '+e.message;}asstAdd('as-bot',html);},120);
 }
 function asstEx(el){const t=el.textContent,i=document.getElementById('asstQ');if(!i)return;i.value=t;
-  // gli esempi sono modelli col segnaposto: inseriscili e lascia che l'utente metta il nome reale
-  if(/nome cognome dipendente/i.test(t)){i.focus&&i.focus();i.select&&i.select();} else asstAsk();}
+  // gli esempi sono modelli col segnaposto: inseriscili e lascia che l'utente metta il valore reale
+  if(/«/.test(t)){i.focus&&i.focus();const p=t.indexOf('«');if(i.setSelectionRange){const e=t.indexOf('»');i.setSelectionRange(p,e>=0?e+1:p);}} // seleziona il primo segnaposto da sostituire
+  else if(/nome cognome dipendente/i.test(t)){i.focus&&i.focus();i.select&&i.select();}
+  else asstAsk();}
 function asstInit(){
   const chat=document.getElementById('asstChat'),exs=document.getElementById('asstExs');if(!chat)return;
   const PH='nome cognome dipendente';
@@ -4803,7 +4805,10 @@ function asstInit(){
     'I premi di '+PH+' sono bassi negli ultimi 12 mesi?','Cosa modificare per riallineare '+PH+' ai pari ruolo?',
     'Di cosa è fatto il premio di '+PH+'?','Classifica del ruolo di '+PH,'Previsione prossimo semestre per '+PH,
     'Le assenze hanno penalizzato '+PH+'?',PH+' è migliorato rispetto all\'anno scorso?','Come va '+PH+' rispetto al suo negozio?',
-    'Lo Shopper Yield di '+PH+' negli ultimi 6 mesi è in linea coi pari?','Il BDG di '+PH+' è basso?'
+    'Lo Shopper Yield di '+PH+' negli ultimi 6 mesi è in linea coi pari?','Il BDG di '+PH+' è basso?',
+    'Confronta i SM dei negozi dept store con i SM dei negozi normali',
+    'Confronta i SM dei negozi «cod.1, cod.2» con i SM dei negozi «cod.3, cod.4»',
+    'Confronta i premi mensili dei SM dei negozi «cod.1, cod.2» con tutti i SM dei negozi normali'
   ].map(t=>'<span class="as-ex" onclick="asstEx(this)">'+t+'</span>').join(''); }
   if(!chat.children.length) asstAdd('as-bot',allData.length?'Ciao! Chiedimi un\'analisi su un dipendente (verifica lamentele, confronto, classifica, andamento, previsione semestre, consigli sulle leve…). Negli esempi qui sotto sostituisci «nome cognome dipendente» con la persona reale, poi premi Invio.':'Carica prima i dati per usare l\'assistente.');
 }
