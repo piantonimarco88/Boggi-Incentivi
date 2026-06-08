@@ -547,7 +547,7 @@ function loadFcMappingForMensile(file){
     var json=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
     if(json.length<2){alert('Foglio vuoto o non riconosciuto.');return;}
     // Header detection (stessa logica di loadFcVmAnagrafica)
-    var hdrRow=0,hdr={sid:-1,nome:-1,cogn:-1,ruolo:-1};
+    var hdrRow=0,hdr={sid:-1,nome:-1,cogn:-1,ruolo:-1,email:-1};
     for(var ri=0;ri<Math.min(5,json.length);ri++){
       var row=json[ri];if(!row)continue;
       var rowStr=row.map(function(c){return String(c||'').toLowerCase().trim();});
@@ -557,30 +557,40 @@ function loadFcMappingForMensile(file){
         else if(h==='nome'||h==='nome '||h==='name'||h==='first name'){hdr.nome=ci;}
         else if(h==='cognome'||h==='surname'||h==='last name'){hdr.cogn=ci;}
         else if(h==='ruolo'||h==='role'||h==='funzione'){hdr.ruolo=ci;}
+        else if(h==='email'||h==='e-mail'||h==='mail'||h==='e mail'||h.indexOf('email')>=0){hdr.email=ci;}
       });
       if(found){hdrRow=ri;break;}
     }
+    // Colonna email: da header se trovata, altrimenti col J (indice 9)
+    if(hdr.email<0)hdr.email=9;
     if(hdr.sid<0){alert('Colonna "Store ID" non trovata nel file.');return;}
-    // Build store → FC name (primo FC per store)
-    var storeToFcName={};
+    // Build store → FC email (primo FC per store)
+    // Legge l'email direttamente dalla colonna; fallback costruzione nome.cognome solo se cella vuota
+    var storeToFcEmail={};
     for(var ri=hdrRow+1;ri<json.length;ri++){
       var row=json[ri];if(!row)continue;
       var sid=String(parseInt(row[hdr.sid]||''));if(sid==='NaN')continue;
-      if(storeToFcName[sid])continue;
+      if(storeToFcEmail[sid])continue;
       var ruolo=hdr.ruolo>=0?String(row[hdr.ruolo]||'').trim().toUpperCase():'FC';
       if(ruolo!=='FC')continue;
-      var nome=hdr.nome>=0?String(row[hdr.nome]||'').trim():'';
-      var cogn=hdr.cogn>=0?String(row[hdr.cogn]||'').trim():'';
-      var fullName=(nome+' '+cogn).trim();
-      if(fullName)storeToFcName[sid]=fullName;
+      var email=String(row[hdr.email]||'').trim();
+      if(email&&email.indexOf('@')>0){
+        storeToFcEmail[sid]=email;
+      } else {
+        // Fallback: costruisce da nome+cognome solo se la cella email è vuota
+        var nome=hdr.nome>=0?String(row[hdr.nome]||'').trim():'';
+        var cogn=hdr.cogn>=0?String(row[hdr.cogn]||'').trim():'';
+        var fullName=(nome+' '+cogn).trim();
+        if(fullName)storeToFcEmail[sid]=fullName.toLowerCase().replace(/ /g,'.')+'@boggi.com';
+      }
     }
-    // Aggiorna e.mf per tutti i dipendenti mensili che non hanno già email FC
+    // Aggiorna e.mf per tutti i dipendenti che non hanno già email FC
     var FC_FALLBACK='giulio.zaccaria@boggi.com';
-    var updated=0,fallback=0,nStores=Object.keys(storeToFcName).length;
+    var updated=0,fallback=0,nStores=Object.keys(storeToFcEmail).length;
     E.forEach(function(e){
       if(e.mf&&e.mf.indexOf('@')>0)return;
-      var fcName=storeToFcName[String(e.si)];
-      if(fcName){e.mf=fcName.toLowerCase().replace(/ /g,'.')+'@boggi.com';updated++;}
+      var fcEmail=storeToFcEmail[String(e.si)];
+      if(fcEmail){e.mf=fcEmail;updated++;}
       else{e.mf=FC_FALLBACK;fallback++;}  // store non mappato → fallback
     });
     alert('✅ Mapping FC caricato:\n• '+nStores+' store con FC assegnato\n• '+updated+' dipendenti aggiornati\n• '+fallback+' dipendenti → fallback ('+FC_FALLBACK+')');
