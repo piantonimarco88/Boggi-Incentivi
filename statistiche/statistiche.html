@@ -580,7 +580,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
       <div class="cw tall"><canvas id="yoy_c_comp_achself"></canvas></div>
     </div>
     <div class="cc full">
-      <div class="cc-head"><div class="cc-title">% Frequenza per componente — confronto anno <span class="info-tip" data-tip="Quante volte il premio è stato raggiunto (erogato>0) sui mesi-persona di chi è ELEGGIBILE per regola (ruolo × tipo-store), inclusi i mesi a zero.&#10;Es: BDG raggiunto 6 mesi su 10 = 60%.&#10;Regole: QTY solo dept · Digital/SY/Privilege solo normali · SAS/DCC solo cassa (no Svizzera/Asia/aeroporti) · semestrali solo SM-VSM normali.&#10;Visual e Customer Service esclusi (assegnati a liste variabili). Mensili → sui mesi, semestrali → sui semestri.">i</span></div></div>
+      <div class="cc-head"><div class="cc-title">% Frequenza per componente — confronto anno <span class="info-tip" data-tip="Quante volte il premio è stato raggiunto (erogato>0) sui mesi-persona di chi è ELEGGIBILE per regola (ruolo × tipo-store), inclusi i mesi a zero.&#10;Es: BDG raggiunto 6 mesi su 10 = 60%.&#10;Regole: QTY solo dept · Digital/SY/Privilege solo normali · SAS/DCC solo cassa (no Svizzera/Asia/aeroporti) · semestrali solo SM-VSM, separati normali/dept (KPI diversi).&#10;Un KPI semestrale è mostrato solo nell'anno/edizione in cui è presente (es. UPT solo 2024, SY dal 2025).&#10;Visual e Customer Service esclusi (assegnati a liste variabili). Mensili → sui mesi, semestrali → sui semestri.">i</span></div></div>
       <div class="cw tall"><canvas id="yoy_c_comp_freq"></canvas></div>
     </div>
     <div class="cc full">
@@ -2993,26 +2993,30 @@ function compEligible(c,r){const dept=(typeof isDeptStore==='function')&&isDeptS
     default: return false;                                       // cVisual/cCs e non mappati → fuori matrice
   }
 }
-// Componenti mostrate nella frequenza (escludendo quelle non standardizzabili).
+// Componenti mostrate nella frequenza (escludendo Visual/Customer Service non standardizzabili).
 function yoyFreqComps(rows){return yoySelComps(rows).filter(c=>!FREQ_EXCLUDE.has(c.k));}
-
-// Frequenza per componente sul PERIMETRO ELEGGIBILE (regole ruolo×store): quante volte il premio è stato
-// raggiunto (erogato>0) sui mesi-persona di TUTTI gli eleggibili — inclusi quelli che lo prendono 0 volte
-// (= 0% reale). Es. BDG 6 mesi su 10 = 60%. Mensili → sui mesi, semestrali → sui semestri.
-function yoyCompFreqRow(c,sub){const sem=c.tipo==='semestrale';
-  const univ=sub.filter(r=>(sem?isSemRow(r):!isSemRow(r))&&compEligible(c,r));if(!univ.length)return {n:0,N:0,freq:0,dip:0};
-  const ek=r=>r.matricola||_empKey(r);const N=univ.length;const n=univ.filter(r=>(r[c.k]||0)>0).length;
-  return {n,N,freq:N>0?n/N*100:0,dip:new Set(univ.map(ek)).size};}
+// "Item" di frequenza: i mensili sono un'unica voce; i SEMESTRALI sono SDOPPIATI normali/dept
+// (i dept hanno KPI semestrali diversi → vanno tenuti separati).
+function yoyFreqItems(rows){const out=[];yoyFreqComps(rows).forEach(c=>{if(c.tipo==='semestrale'){out.push({c,store:'norm',label:c.l+' · normali'});out.push({c,store:'dept',label:c.l+' · dept'});}else out.push({c,store:null,label:c.l});});return out;}
+// Eleggibilità per item: mensili → regole compEligible; semestrali → SM/VSM nel tipo-store dell'item.
+function itemEligible(it,r){const c=it.c;if(c.tipo!=='semestrale')return compEligible(c,r);const job=(r.job||'').toUpperCase();if(job!=='SM'&&job!=='VSM')return false;const dept=(typeof isDeptStore==='function')&&isDeptStore(r.store);return it.store==='dept'?dept:!dept;}
+// Frequenza dell'item sul PERIMETRO ELEGGIBILE: erogato>0 / mesi-persona eleggibili (0-earners inclusi = 0% reale).
+function yoyItemFreq(it,sub){const c=it.c,sem=c.tipo==='semestrale';const univ=sub.filter(r=>(sem?isSemRow(r):!isSemRow(r))&&itemEligible(it,r));const ek=r=>r.matricola||_empKey(r);const N=univ.length,n=univ.filter(r=>(r[c.k]||0)>0).length;return {n,N,freq:N>0?n/N*100:0,dip:new Set(univ.map(ek)).size,sem};}
 function buildYoyCompFreq(rows){
   const years=yoyYears(rows);if(!years.length)return null;
-  const comps=yoyFreqComps(rows);if(!comps.length)return null;
-  const meta=[];
-  const datasets=years.map((yr,yi)=>{const sub=rows.filter(r=>r.year===yr);meta[yi]=comps.map(c=>yoyCompFreqRow(c,sub));
-    return{label:String(yr),data:comps.map((c,ci)=>+(meta[yi][ci].freq.toFixed(1))),backgroundColor:yrCol(yr),borderRadius:4,barPercentage:.75,categoryPercentage:.8};});
-  return{type:'bar',data:{labels:comps.map(c=>c.l),datasets},
+  let items=yoyFreqItems(rows);if(!items.length)return null;
+  const subByYr=years.map(yr=>rows.filter(r=>r.year===yr));
+  // griglia item × anno. Semestrale non presente nell'edizione di quell'anno (n=0) → null (barra non mostrata).
+  let grid=items.map(it=>subByYr.map(sub=>{const f=yoyItemFreq(it,sub);const val=(f.sem&&f.n===0)?null:(f.N>0?+f.freq.toFixed(1):null);return {val,f};}));
+  // rimuovi gli item vuoti in tutti gli anni (es. semestrali dept senza dato)
+  const keep=items.map((_,i)=>grid[i].some(cell=>cell.val!==null));
+  items=items.filter((_,i)=>keep[i]);grid=grid.filter((_,i)=>keep[i]);
+  if(!items.length)return null;
+  const datasets=years.map((yr,yi)=>({label:String(yr),data:items.map((_,ii)=>grid[ii][yi].val),backgroundColor:yrCol(yr),borderRadius:4,barPercentage:.75,categoryPercentage:.8}));
+  return{type:'bar',data:{labels:items.map(it=>it.label),datasets},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:12,padding:10}},
-        tooltip:{callbacks:{label:c=>{const m=meta[c.datasetIndex]&&meta[c.datasetIndex][c.dataIndex];return `${c.dataset.label}: ${c.raw}%`+(m?` (${m.n} su ${m.N} · ${m.dip} dip. eleggibili)`:'');}}}},
+        tooltip:{callbacks:{label:c=>{if(c.raw==null)return null;const f=grid[c.dataIndex][c.datasetIndex].f;return `${c.dataset.label}: ${c.raw}%`+(f?` (${f.n} su ${f.N} · ${f.dip} dip. eleggibili)`:'');}}}},
       scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'},grid:{color:'#f0f2f7'}},x:{ticks:{maxRotation:35,font:{size:10}}}}}};
 }
 
@@ -3062,7 +3066,7 @@ function renderYoyKpis(rows){
         <div class="kpi-eur-row"><span class="yoy-stat-l">Erogato totale</span><span class="yoy-stat-v">€ ${fmt(totEr)}</span></div>
         <div class="kpi-eur-row"><span class="yoy-stat-l">Massimale totale</span><span class="yoy-stat-v">€ ${fmt(totMax)}</span></div>
       </div>
-      ${(()=>{const fr=yoyFreqComps(rows).map(c=>Object.assign({l:c.l},yoyCompFreqRow(c,sub))).filter(x=>x.N>0);if(!fr.length)return '';return '<div class="yoy-freq-title">Frequenza raggiungimento premi <span style="font-weight:400;text-transform:none;letter-spacing:0">(su dipendenti eleggibili)</span></div><div class="yoy-yr-stats">'+fr.map(x=>`<div><span class="yoy-stat-l">${x.l}</span><span class="yoy-stat-v">${x.freq.toFixed(0)}% <small style="color:#aaa;font-weight:400">${x.n}/${x.N} · ${x.dip} dip</small></span></div>`).join('')+'</div>';})()}
+      ${(()=>{const fr=yoyFreqItems(rows).map(it=>Object.assign({label:it.label},yoyItemFreq(it,sub))).filter(x=>x.sem?x.n>0:x.N>0);if(!fr.length)return '';return '<div class="yoy-freq-title">Frequenza raggiungimento premi <span style="font-weight:400;text-transform:none;letter-spacing:0">(su dipendenti eleggibili)</span></div><div class="yoy-yr-stats">'+fr.map(x=>`<div><span class="yoy-stat-l">${x.label}</span><span class="yoy-stat-v">${x.freq.toFixed(0)}% <small style="color:#aaa;font-weight:400">${x.n}/${x.N} · ${x.dip} dip</small></span></div>`).join('')+'</div>';})()}
     </div>`;
   });
   // Delta card: confronto primo e ultimo anno — stessa pool da getYoyRows (già L4L filtrata)
