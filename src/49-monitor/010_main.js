@@ -42,14 +42,16 @@ function _buildMensileSnap(){
       rsa=isOn(e.j,"rsa")?getVal(e,"rsa")*sm:0;
       rdc=isOn(e.j,"rdc")?getVal(e,"rdc")*sm:0;
       rcs=isOn(e.j,"rcs")?getVal(e,"rcs")*sm:0;
-      // BDG (rb): non ibFromAY; in consuntivo include eventuale workgame
-      rb=(!e.ibFromAY&&isOn(e.j,"rb"))?getVal(e,"rb")*sm:0;
-      if(!e.ibFromAY&&oldMode==="consuntivo"&&e.ov_wg==="SI"&&isOn(e.j,"rb"))
+      // BDG (rb): include tutti i dipendenti (ibFromAY inclusi — il flag cambia solo il codice
+      // Zucchetti 225→380, non l'importo del premio che calcE calcola ugualmente)
+      rb=isOn(e.j,"rb")?getVal(e,"rb")*sm:0;
+      if(oldMode==="consuntivo"&&e.ov_wg==="SI"&&isOn(e.j,"rb"))
         rb+=Math.round(e.ib*(PARAMS.workgamePct||0)*100)/100;
       var ag=AGG[e.m]||{};
       vi+=(ag.vi||0);rd+=(ag.rd||0);rp+=(ag.rp||0);rs+=(ag.rs||0);
       ra+=(ag.ra||0);rsa+=(ag.rsa||0);rdc+=(ag.rdc||0);
-      rb+=(ag.rb||0);rcs+=(ag.rcs||0);
+      // ag.rb (BDG lordo) + ag.rbn (BDG netto/trasferta) → entrambi importi premio, vanno in rb_eur
+      rb+=(ag.rb||0)+(ag.rbn||0);rcs+=(ag.rcs||0);
     }
     MODE="preventivo";
     var mass=Math.round(calcE(e)*ex*100)/100;
