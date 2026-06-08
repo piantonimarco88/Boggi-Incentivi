@@ -4557,7 +4557,7 @@ function asstInit(){
     'Confronta i premi mensili dei SM dei negozi «cod.1, cod.2» con tutti i SM dei negozi normali',
     'Confronta '+PH+' con i pari ruolo dei negozi «cod.1, cod.2»'
   ].map(t=>'<span class="as-ex" onclick="asstEx(this)">'+t+'</span>').join(''); }
-  if(!chat.children.length) asstAdd('as-bot',allData.length?'Ciao! Sono l\'Agente AI: chiedimi un\'analisi in linguaggio libero (lamentele, confronti tra persone/negozi/gruppi, classifiche, andamento, previsione semestre, simulazioni leve…). <b>Serve l\'Agente AI attivo</b> (spunta «Attiva l\'Agente AI» qui sopra). Negli esempi qui sotto sostituisci i segnaposto («nome cognome dipendente», «cod.1»…) con i valori reali, poi premi Invio.':'Carica prima i dati per usare l\'assistente.');
+  if(!chat.children.length){window.agConv=[];/* chat vuota → memoria conversazione azzerata */ asstAdd('as-bot',allData.length?'Ciao! Sono l\'Agente AI: chiedimi un\'analisi in linguaggio libero (lamentele, confronti tra persone/negozi/gruppi, classifiche, andamento, previsione semestre, simulazioni leve…). <b>Serve l\'Agente AI attivo</b> (spunta «Attiva l\'Agente AI» qui sopra). Negli esempi qui sotto sostituisci i segnaposto («nome cognome dipendente», «cod.1»…) con i valori reali, poi premi Invio.':'Carica prima i dati per usare l\'assistente.');}
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -4702,11 +4702,20 @@ const AG_TOOLS=[
  {name:'stima_nuovo_assunto',description:'Premio mensile atteso per un nuovo assunto dato ruolo e RML.',input_schema:{type:'object',properties:{ruolo:{type:'string'},rml_mensile:{type:'number'},negozio:{type:'string'},tipo_negozio:{type:'string'}},required:['ruolo']}}
 ];
 async function agCall(messages){const body={model:(document.getElementById('agModel').value||'claude-haiku-4-5').trim(),max_tokens:1200,system:AG_SYS,tools:AG_TOOLS,messages};const r=await fetch(document.getElementById('agProxy').value,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});const j=await r.json();if(j.error)throw new Error(j.error.message||JSON.stringify(j.error));return j;}
-async function agentAsk(q){const c=document.getElementById('asstChat');if(!c)return;const messages=[{role:'user',content:q}];const wait=document.createElement('div');wait.className='as-msg as-bot';wait.innerHTML='<span class="as-dim">⏳ sto pensando…</span>';c.appendChild(wait);c.scrollTop=1e9;
+// Storico conversazione COMPATTO (solo testo): {role:'user'|'assistant',content:string}. Mantiene il contesto tra i turni.
+window.agConv=window.agConv||[];
+async function agentAsk(q){const c=document.getElementById('asstChat');if(!c)return;const conv=window.agConv;
+  // working messages = storico compatto dei turni precedenti + domanda attuale; le chiamate tool di QUESTO turno restano locali.
+  const messages=conv.map(m=>({role:m.role,content:m.content}));messages.push({role:'user',content:q});conv.push({role:'user',content:q});
+  const wait=document.createElement('div');wait.className='as-msg as-bot';wait.innerHTML='<span class="as-dim">⏳ sto pensando…</span>';c.appendChild(wait);c.scrollTop=1e9;
+  let finalText='(nessuna risposta)';
   try{for(let i=0;i<8;i++){const resp=await agCall(messages);const toolUses=(resp.content||[]).filter(x=>x.type==='tool_use');const text=(resp.content||[]).filter(x=>x.type==='text').map(x=>x.text).join('').trim();
     if(resp.stop_reason==='tool_use'&&toolUses.length){messages.push({role:'assistant',content:resp.content});const results=toolUses.map(tu=>{const out=AgentTools.run(tu.name,tu.input);try{agRenderVisual(tu.name,out);}catch(e){}const fc=Object.assign({},out);delete fc._viz;return {type:'tool_result',tool_use_id:tu.id,content:JSON.stringify(fc)};});messages.push({role:'user',content:results});}
-    else{asstAdd('as-bot',agMd(text||'(nessuna risposta)'));break;}}}
-  catch(e){asstAdd('as-bot','⚠️ '+e.message+' — verifica che il proxy sia avviato e il modello corretto.');}
+    else{finalText=text||'(nessuna risposta)';asstAdd('as-bot',agMd(finalText));break;}}
+    conv.push({role:'assistant',content:finalText}); // salva nello storico la risposta narrata
+    // cap dello storico (evita di gonfiare i token); mantieni l'inizio su un turno utente
+    while(conv.length>16)conv.shift();if(conv.length&&conv[0].role!=='user')conv.shift();}
+  catch(e){conv.pop();/* annulla l'ultimo turno utente fallito */asstAdd('as-bot','⚠️ '+e.message+' — verifica che il proxy sia avviato e il modello corretto.');}
   wait.remove();c.scrollTop=1e9;}
 function agEsc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function agMd(t){const inl=x=>x.replace(/\*\*([^*]+?)\*\*/g,'<b>$1</b>').replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g,'$1<i>$2</i>');
