@@ -580,7 +580,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
       <div class="cw tall"><canvas id="yoy_c_comp_achself"></canvas></div>
     </div>
     <div class="cc full">
-      <div class="cc-head"><div class="cc-title">% Frequenza per componente — confronto anno <span class="info-tip" data-tip="Quante volte il premio è stato raggiunto, sul totale dei mesi-persona del periodo.&#10;Es: BDG raggiunto 6 mesi su 10 = 60%.&#10;Mensili → sui mesi · Semestrali → sui semestri. Filtra per ruolo/negozio per una lettura mirata.">i</span></div></div>
+      <div class="cc-head"><div class="cc-title">% Frequenza per componente — confronto anno <span class="info-tip" data-tip="Quante volte il premio è stato raggiunto (erogato>0) sui mesi-persona di chi è ELEGGIBILE per quel premio.&#10;Es: BDG raggiunto 6 mesi su 10 = 60%.&#10;Eleggibilità per coorte ruolo×tipo-negozio: es. QTY conta solo sui dept store, i semestrali solo su SM/VSM. Mensili → sui mesi, semestrali → sui semestri.">i</span></div></div>
       <div class="cw tall"><canvas id="yoy_c_comp_freq"></canvas></div>
     </div>
     <div class="cc full">
@@ -2972,9 +2972,15 @@ function buildYoyCompAchSelf(rows){
 
 // Componenti selezionati (multiselect) o attivi nei dati — condiviso da grafici e KPI.
 function yoySelComps(rows){const sel=getMsVals('yoy-comp');return COMP.filter(c=>sel.length?sel.includes(c.k):rows.some(r=>r[c.k]>0));}
-// Frequenza per componente: quante volte il premio è stato raggiunto (erogato>0) sul totale dei mesi-persona
-// (mensili → righe mensili; semestrali → righe semestrali). Es. BDG 6 mesi su 10 = 60%.
-function yoyCompFreqRow(c,sub){const sem=c.tipo==='semestrale';const univ=sub.filter(r=>sem?isSemRow(r):!isSemRow(r));const N=univ.length;const n=univ.filter(r=>(r[c.k]||0)>0).length;return {n,N,freq:N>0?n/N*100:0};}
+// Frequenza per componente sul PERIMETRO ELEGGIBILE: quante volte il premio è stato raggiunto (erogato>0)
+// sul totale dei mesi-persona di chi è eleggibile per quel premio. Es. BDG 6 mesi su 10 = 60%.
+// Eleggibilità strutturale: una componente è "in piano" per una coorte ruolo×tipo-negozio se in quella
+// coorte qualcuno la prende nel periodo (così QTY conta solo sui dept, i semestrali solo su SM/VSM…),
+// includendo correttamente anche chi, pur eleggibile, l'ha presa 0 volte.
+function yoyCohortKey(r){return (r.job||'?')+'|'+(typeof isDeptStore==='function'&&isDeptStore(r.store)?'D':'N');}
+function yoyCompFreqRow(c,sub){const sem=c.tipo==='semestrale';const univ=sub.filter(r=>sem?isSemRow(r):!isSemRow(r));if(!univ.length)return {n:0,N:0,freq:0};
+  const avail={};univ.forEach(r=>{if((r[c.k]||0)>0)avail[yoyCohortKey(r)]=1;});
+  const elig=univ.filter(r=>avail[yoyCohortKey(r)]);const N=elig.length;const n=elig.filter(r=>(r[c.k]||0)>0).length;return {n,N,freq:N>0?n/N*100:0};}
 function buildYoyCompFreq(rows){
   const years=yoyYears(rows);if(!years.length)return null;
   const comps=yoySelComps(rows);if(!comps.length)return null;
