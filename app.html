@@ -570,7 +570,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='8.64'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='8.65'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -6095,7 +6095,7 @@ function rSources(){try{
   sh+='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">';
   sh+='<label class="exp-btn btn-green" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128101; Carica Anagrafica Excel<input type="file" accept=".xlsx,.xlsm,.xls" id="loadAnagrafica" style="display:none"></label>';
   if(REGION==="international"&&PRIZE_MODE==="mensile")sh+='<label class="exp-btn btn-amber" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#127482;&#127480; Carica Anagrafica USA Excel<input type="file" accept=".xlsx,.xlsm,.xls" id="loadAnagraficaUSA" style="display:none"></label>';
-  if(REGION==="international"&&PRIZE_MODE==="mensile")sh+='<label class="exp-btn btn-blue" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="Stessa anagrafica FC+VM — estrae solo il mapping Store→FC per popolare le email FC dei dipendenti mensili">&#128101; Mapping FC (xlsx)<input type="file" accept=".xlsx,.xlsm,.xls" id="loadFcMapping" style="display:none"></label>';
+  if(REGION==="international"&&(PRIZE_MODE==="mensile"||PRIZE_MODE==="seasonal"))sh+='<label class="exp-btn btn-blue" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="Stessa anagrafica FC+VM — estrae solo il mapping Store→FC per popolare le email FC dei dipendenti">&#128101; Mapping FC (xlsx)<input type="file" accept=".xlsx,.xlsm,.xls" id="loadFcMapping" style="display:none"></label>';
   sh+='<label class="exp-btn primary" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128194; Carica Excel Target<input type="file" accept=".xlsx,.xlsm,.xls,.csv" id="loadTarget" style="display:none"></label>';
   sh+='<label class="exp-btn btn-purple" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128202; Carica Excel Results<input type="file" accept=".xlsx,.xlsm,.xls,.csv" id="loadCons" style="display:none"></label>';
   sh+='<button class="exp-btn btn-green" onclick="runValidationsAndReport(\'Verifica dati caricati\')" title="Esegue controlli di coerenza su anagrafica e configurazione: matricole duplicate, currency mancanti, store sconosciuti, ruoli non validi, ecc.">&#128269; Verifica Dati</button>';
