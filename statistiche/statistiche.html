@@ -580,7 +580,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
       <div class="cw tall"><canvas id="yoy_c_comp_achself"></canvas></div>
     </div>
     <div class="cc full">
-      <div class="cc-head"><div class="cc-title">% Frequenza per componente — confronto anno <span class="info-tip" data-tip="Quante volte il premio è stato raggiunto (erogato>0) sui mesi-persona di chi è ELEGGIBILE per quel premio.&#10;Es: BDG raggiunto 6 mesi su 10 = 60%.&#10;Eleggibilità per coorte ruolo×tipo-negozio: es. QTY conta solo sui dept store, i semestrali solo su SM/VSM. Mensili → sui mesi, semestrali → sui semestri.">i</span></div></div>
+      <div class="cc-head"><div class="cc-title">% Frequenza per componente — confronto anno <span class="info-tip" data-tip="Quante volte il premio è stato raggiunto (erogato>0) sui mesi-persona di chi è ELEGGIBILE per quel premio.&#10;Es: BDG raggiunto 6 mesi su 10 = 60%.&#10;Eleggibile = chi ha il premio in piano (lo prende almeno una volta nel periodo): così premi assegnati a pochi (Visual, DCC) non vengono diluiti sull'intero ruolo. Mensili → sui mesi, semestrali → sui semestri.">i</span></div></div>
       <div class="cw tall"><canvas id="yoy_c_comp_freq"></canvas></div>
     </div>
     <div class="cc full">
@@ -2973,14 +2973,13 @@ function buildYoyCompAchSelf(rows){
 // Componenti selezionati (multiselect) o attivi nei dati — condiviso da grafici e KPI.
 function yoySelComps(rows){const sel=getMsVals('yoy-comp');return COMP.filter(c=>sel.length?sel.includes(c.k):rows.some(r=>r[c.k]>0));}
 // Frequenza per componente sul PERIMETRO ELEGGIBILE: quante volte il premio è stato raggiunto (erogato>0)
-// sul totale dei mesi-persona di chi è eleggibile per quel premio. Es. BDG 6 mesi su 10 = 60%.
-// Eleggibilità strutturale: una componente è "in piano" per una coorte ruolo×tipo-negozio se in quella
-// coorte qualcuno la prende nel periodo (così QTY conta solo sui dept, i semestrali solo su SM/VSM…),
-// includendo correttamente anche chi, pur eleggibile, l'ha presa 0 volte.
-function yoyCohortKey(r){return (r.job||'?')+'|'+(typeof isDeptStore==='function'&&isDeptStore(r.store)?'D':'N');}
+// sui mesi-persona di chi ha quel premio "in piano". Es. BDG 6 mesi su 10 = 60%.
+// Eleggibilità PER-DIPENDENTE: una persona è eleggibile per un premio se lo prende almeno una volta nel
+// periodo (così premi assegnati a pochi — Visual, DCC, Customer Service — non vengono diluiti sull'intero
+// ruolo). Denominatore = tutti i mesi-persona (del tipo giusto) di quei dipendenti, inclusi i mesi a zero.
 function yoyCompFreqRow(c,sub){const sem=c.tipo==='semestrale';const univ=sub.filter(r=>sem?isSemRow(r):!isSemRow(r));if(!univ.length)return {n:0,N:0,freq:0};
-  const avail={};univ.forEach(r=>{if((r[c.k]||0)>0)avail[yoyCohortKey(r)]=1;});
-  const elig=univ.filter(r=>avail[yoyCohortKey(r)]);const N=elig.length;const n=elig.filter(r=>(r[c.k]||0)>0).length;return {n,N,freq:N>0?n/N*100:0};}
+  const ek=r=>r.matricola||_empKey(r);const elig={};univ.forEach(r=>{if((r[c.k]||0)>0)elig[ek(r)]=1;});
+  const rowsE=univ.filter(r=>elig[ek(r)]);const N=rowsE.length;const n=rowsE.filter(r=>(r[c.k]||0)>0).length;return {n,N,freq:N>0?n/N*100:0,dip:Object.keys(elig).length};}
 function buildYoyCompFreq(rows){
   const years=yoyYears(rows);if(!years.length)return null;
   const comps=yoySelComps(rows);if(!comps.length)return null;
@@ -2990,7 +2989,7 @@ function buildYoyCompFreq(rows){
   return{type:'bar',data:{labels:comps.map(c=>c.l),datasets},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:12,padding:10}},
-        tooltip:{callbacks:{label:c=>{const m=meta[c.datasetIndex]&&meta[c.datasetIndex][c.dataIndex];return `${c.dataset.label}: ${c.raw}%`+(m?` (${m.n} su ${m.N})`:'');}}}},
+        tooltip:{callbacks:{label:c=>{const m=meta[c.datasetIndex]&&meta[c.datasetIndex][c.dataIndex];return `${c.dataset.label}: ${c.raw}%`+(m?` (${m.n} su ${m.N} · ${m.dip} dip. eleggibili)`:'');}}}},
       scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'},grid:{color:'#f0f2f7'}},x:{ticks:{maxRotation:35,font:{size:10}}}}}};
 }
 
@@ -3040,7 +3039,7 @@ function renderYoyKpis(rows){
         <div class="kpi-eur-row"><span class="yoy-stat-l">Erogato totale</span><span class="yoy-stat-v">€ ${fmt(totEr)}</span></div>
         <div class="kpi-eur-row"><span class="yoy-stat-l">Massimale totale</span><span class="yoy-stat-v">€ ${fmt(totMax)}</span></div>
       </div>
-      ${(()=>{const fr=yoySelComps(rows).map(c=>Object.assign({l:c.l},yoyCompFreqRow(c,sub))).filter(x=>x.N>0);if(!fr.length)return '';return '<div class="yoy-freq-title">Frequenza raggiungimento premi</div><div class="yoy-yr-stats">'+fr.map(x=>`<div><span class="yoy-stat-l">${x.l}</span><span class="yoy-stat-v">${x.freq.toFixed(0)}% <small style="color:#aaa;font-weight:400">${x.n}/${x.N}</small></span></div>`).join('')+'</div>';})()}
+      ${(()=>{const fr=yoySelComps(rows).map(c=>Object.assign({l:c.l},yoyCompFreqRow(c,sub))).filter(x=>x.N>0);if(!fr.length)return '';return '<div class="yoy-freq-title">Frequenza raggiungimento premi <span style="font-weight:400;text-transform:none;letter-spacing:0">(su dipendenti eleggibili)</span></div><div class="yoy-yr-stats">'+fr.map(x=>`<div><span class="yoy-stat-l">${x.l}</span><span class="yoy-stat-v">${x.freq.toFixed(0)}% <small style="color:#aaa;font-weight:400">${x.n}/${x.N} · ${x.dip} dip</small></span></div>`).join('')+'</div>';})()}
     </div>`;
   });
   // Delta card: confronto primo e ultimo anno — stessa pool da getYoyRows (già L4L filtrata)
