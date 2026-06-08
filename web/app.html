@@ -570,7 +570,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='8.61'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='8.62'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -8991,11 +8991,11 @@ function _buildMensileSnap(){
   E.forEach(function(e){
     if(e.ps==="SI")return;
     var ex=e.ex||1,sm=sickMult(e.ml);
-    var vi,rd,rp,rs,ra,rsa,rdc;
+    var vi,rd,rp,rs,ra,rsa,rdc,rb,rcs;
     if(isUSA(e.si,e)){
       // USA: single aggregate prize (no individual KPI breakdown)
       vi=calcUSA(e)+aggTotal(e.m);
-      rd=0;rp=0;rs=0;ra=0;rsa=0;rdc=0;
+      rd=0;rp=0;rs=0;ra=0;rsa=0;rdc=0;rb=0;rcs=0;
     }else{
       vi=isOn(e.j,"vi")?(getVal(e,"vi")||0)*sm:0;
       rd=isOn(e.j,"rd")?getVal(e,"rd")*sm:0;
@@ -9004,9 +9004,15 @@ function _buildMensileSnap(){
       ra=PARAMS.artEnabled&&isOn(e.j,"ra")?getVal(e,"ra")*sm:0;
       rsa=isOn(e.j,"rsa")?getVal(e,"rsa")*sm:0;
       rdc=isOn(e.j,"rdc")?getVal(e,"rdc")*sm:0;
+      rcs=isOn(e.j,"rcs")?getVal(e,"rcs")*sm:0;
+      // BDG (rb): non ibFromAY; in consuntivo include eventuale workgame
+      rb=(!e.ibFromAY&&isOn(e.j,"rb"))?getVal(e,"rb")*sm:0;
+      if(!e.ibFromAY&&oldMode==="consuntivo"&&e.ov_wg==="SI"&&isOn(e.j,"rb"))
+        rb+=Math.round(e.ib*(PARAMS.workgamePct||0)*100)/100;
       var ag=AGG[e.m]||{};
       vi+=(ag.vi||0);rd+=(ag.rd||0);rp+=(ag.rp||0);rs+=(ag.rs||0);
       ra+=(ag.ra||0);rsa+=(ag.rsa||0);rdc+=(ag.rdc||0);
+      rb+=(ag.rb||0);rcs+=(ag.rcs||0);
     }
     MODE="preventivo";
     var mass=Math.round(calcE(e)*ex*100)/100;
@@ -9016,10 +9022,12 @@ function _buildMensileSnap(){
       store_id:String(e.si||""),store_name:e.s||"",job:e.j||"",
       gross_salary_eur:Math.round((e.rl||0)*ex*100)/100,
       massimale_eur:mass,fcvm_massimale_eur:0,
+      rb_eur:Math.round(rb*ex*100)/100,
       vi_eur:Math.round(vi*ex*100)/100,rd_eur:Math.round(rd*ex*100)/100,
       rp_eur:Math.round(rp*ex*100)/100,rs_eur:Math.round(rs*ex*100)/100,
       ra_eur:Math.round(ra*ex*100)/100,rsa_eur:Math.round(rsa*ex*100)/100,
-      rdc_eur:Math.round(rdc*ex*100)/100,fcvm_actual_eur:0,seasonal_eur:0
+      rdc_eur:Math.round(rdc*ex*100)/100,rcs_eur:Math.round(rcs*ex*100)/100,
+      fcvm_actual_eur:0,seasonal_eur:0
     });
   });
   MODE=oldMode;
@@ -9112,28 +9120,30 @@ function _mBuildEnteRow(rows,year,month,ente){
   var D=_mSum(rows,'gross_salary_eur'),vi=_mSum(rows,'vi_eur'),rd=_mSum(rows,'rd_eur');
   var rp=_mSum(rows,'rp_eur'),rs=_mSum(rows,'rs_eur'),ra=_mSum(rows,'ra_eur');
   var rsa=_mSum(rows,'rsa_eur'),rdc=_mSum(rows,'rdc_eur');
+  var rb=_mSum(rows,'rb_eur'),rcs=_mSum(rows,'rcs_eur');
   var fcvm=_mSum(rows,'fcvm_actual_eur'),seas=_mSum(rows,'seasonal_eur');
-  var Ev=Math.round(vi+rd+rp+rs+ra+rsa+rdc+fcvm+seas);
+  var Ev=Math.round(rb+vi+rd+rp+rs+ra+rsa+rdc+rcs+fcvm+seas);
   var G=_mSum(rows,'massimale_eur'),H=_mSum(rows,'fcvm_massimale_eur');
-  return[year,month,ente,Math.round(D),Ev,D>0?Ev/D:0,Math.round(G),Math.round(H),0,Math.round(vi),0,Math.round(rd),Math.round(rp),0,0,Math.round(rs),Math.round(ra),0,0,Math.round(rsa),Math.round(rdc),0,0,Math.round(seas)];
+  return[year,month,ente,Math.round(D),Ev,D>0?Ev/D:0,Math.round(G),Math.round(H),0,Math.round(vi),0,Math.round(rd),Math.round(rp),0,0,Math.round(rs),Math.round(ra),0,0,Math.round(rsa),Math.round(rdc),Math.round(rcs),0,Math.round(seas)];
 }
 
 function _mBuildStoreRow(rows,year,month,ente,sid,sname){
   var D=_mSum(rows,'gross_salary_eur'),vi=_mSum(rows,'vi_eur'),rd=_mSum(rows,'rd_eur');
   var rp=_mSum(rows,'rp_eur'),rs=_mSum(rows,'rs_eur'),ra=_mSum(rows,'ra_eur');
   var rsa=_mSum(rows,'rsa_eur'),rdc=_mSum(rows,'rdc_eur');
+  var rb=_mSum(rows,'rb_eur'),rcs=_mSum(rows,'rcs_eur');
   var fcvm=_mSum(rows,'fcvm_actual_eur'),seas=_mSum(rows,'seasonal_eur');
-  var Ev=Math.round(vi+rd+rp+rs+ra+rsa+rdc+fcvm+seas);
+  var Ev=Math.round(rb+vi+rd+rp+rs+ra+rsa+rdc+rcs+fcvm+seas);
   var G=_mSum(rows,'massimale_eur'),H=_mSum(rows,'fcvm_massimale_eur');
-  return[year,month,ente,sid,sname||"",Math.round(D),Ev,D>0?Ev/D:0,Math.round(G),Math.round(H),0,Math.round(vi),0,Math.round(rd),Math.round(rp),0,0,Math.round(rs),Math.round(ra),0,0,Math.round(rsa),Math.round(rdc),0,0,Math.round(seas)];
+  return[year,month,ente,sid,sname||"",Math.round(D),Ev,D>0?Ev/D:0,Math.round(G),Math.round(H),0,Math.round(vi),0,Math.round(rd),Math.round(rp),0,0,Math.round(rs),Math.round(ra),0,0,Math.round(rsa),Math.round(rdc),Math.round(rcs),0,Math.round(seas)];
 }
 
 function _mBuildMatRow(r){
-  var Ev=Math.round((r.vi_eur||0)+(r.rd_eur||0)+(r.rp_eur||0)+(r.rs_eur||0)+(r.ra_eur||0)+(r.rsa_eur||0)+(r.rdc_eur||0)+(r.fcvm_actual_eur||0)+(r.seasonal_eur||0));
+  var Ev=Math.round((r.rb_eur||0)+(r.vi_eur||0)+(r.rd_eur||0)+(r.rp_eur||0)+(r.rs_eur||0)+(r.ra_eur||0)+(r.rsa_eur||0)+(r.rdc_eur||0)+(r.rcs_eur||0)+(r.fcvm_actual_eur||0)+(r.seasonal_eur||0));
   var D=r.gross_salary_eur||0;
   return[r.year,r.month,r.ente,r.store_id,r.store_name||"",r.matricola,r.cognome,r.nome,r.job,
     Math.round(D),Ev,D>0?Ev/D:0,Math.round(r.massimale_eur),Math.round(r.fcvm_massimale_eur||0),
-    0,Math.round(r.vi_eur),0,Math.round(r.rd_eur),Math.round(r.rp_eur),0,0,Math.round(r.rs_eur),Math.round(r.ra_eur),0,0,Math.round(r.rsa_eur),Math.round(r.rdc_eur),0,0,Math.round(r.seasonal_eur)];
+    0,Math.round(r.vi_eur),0,Math.round(r.rd_eur),Math.round(r.rp_eur),0,0,Math.round(r.rs_eur),Math.round(r.ra_eur),0,0,Math.round(r.rsa_eur),Math.round(r.rdc_eur),Math.round(r.rcs_eur||0),0,Math.round(r.seasonal_eur)];
 }
 
 function exportMonitorExcel(){
@@ -9265,7 +9275,7 @@ function renderMonitorSection(){
     h+='<th style="padding:6px 8px;text-align:center"></th>';
     h+='</tr></thead><tbody>';
     MONITOR_SNAPS.slice().sort(function(a,b){return a.year!==b.year?a.year-b.year:a.month!==b.month?a.month-b.month:a.created_at<b.created_at?-1:1;}).forEach(function(s){
-      var tot=s.employees.reduce(function(acc,e){return acc+(e.vi_eur||0)+(e.rd_eur||0)+(e.rp_eur||0)+(e.rs_eur||0)+(e.ra_eur||0)+(e.rsa_eur||0)+(e.rdc_eur||0)+(e.fcvm_actual_eur||0)+(e.seasonal_eur||0);},0);
+      var tot=s.employees.reduce(function(acc,e){return acc+(e.rb_eur||0)+(e.vi_eur||0)+(e.rd_eur||0)+(e.rp_eur||0)+(e.rs_eur||0)+(e.ra_eur||0)+(e.rsa_eur||0)+(e.rdc_eur||0)+(e.rcs_eur||0)+(e.fcvm_actual_eur||0)+(e.seasonal_eur||0);},0);
       var dt=s.created_at?s.created_at.slice(0,10):"-";
       h+='<tr style="border-bottom:1px solid #e5e1db">';
       h+='<td style="padding:5px 8px;text-align:center"><input type="checkbox" class="mon-snap-cb" data-sid="'+esc(s.id)+'" checked></td>';
