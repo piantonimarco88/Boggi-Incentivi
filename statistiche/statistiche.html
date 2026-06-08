@@ -1143,6 +1143,9 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
       </div>
     </div>
   </div>
+  <div style="display:flex;justify-content:flex-end;margin:0 28px 6px">
+    <button onclick="asstReset()" title="Azzera la memoria della conversazione e ricomincia" style="background:none;border:1px solid #e4e7ef;color:#888;font-size:11px;font-weight:600;padding:4px 11px;border-radius:7px;cursor:pointer">🗑 Nuova conversazione</button>
+  </div>
   <div class="as-chat" id="asstChat"></div>
   <div class="as-in">
     <input id="asstQ" placeholder="Es: i premi di Rossi sono bassi negli ultimi 12 mesi? · cosa modificare per riallinearlo?" onkeydown="if(event.key==='Enter')asstAsk()">
@@ -4544,6 +4547,7 @@ function asstEx(el){const t=el.textContent,i=document.getElementById('asstQ');if
   const segs=[];const ni=t.toLowerCase().indexOf('nome cognome dipendente');if(ni>=0)segs.push([ni,ni+'nome cognome dipendente'.length]);const ai=t.indexOf('«');if(ai>=0)segs.push([ai,(t.indexOf('»')>=0?t.indexOf('»')+1:ai)]);
   if(segs.length){segs.sort((a,b)=>a[0]-b[0]);i.focus&&i.focus();if(i.setSelectionRange)i.setSelectionRange(segs[0][0],segs[0][1]);else i.select&&i.select();}
   else asstAsk();}
+function asstReset(){window.agConv=[];const c=document.getElementById('asstChat');if(c)c.innerHTML='';asstInit();}
 function asstInit(){
   const chat=document.getElementById('asstChat'),exs=document.getElementById('asstExs');if(!chat)return;
   const PH='nome cognome dipendente';
