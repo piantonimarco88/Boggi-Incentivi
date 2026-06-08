@@ -582,7 +582,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
       <div class="cw tall"><canvas id="yoy_c_comp_achself"></canvas></div>
     </div>
     <div class="cc full">
-      <div class="cc-head"><div class="cc-title">% Frequenza per componente — confronto anno <span class="info-tip" data-tip="Quante volte il premio è stato raggiunto (erogato>0) sui mesi-persona di chi è ELEGGIBILE per regola (ruolo × tipo-store), inclusi i mesi a zero.&#10;Es: BDG raggiunto 6 mesi su 10 = 60%.&#10;Regole: QTY solo dept · Digital/SY/Privilege solo normali · SAS/DCC solo cassa (no Svizzera/Asia/aeroporti) · semestrali solo SM-VSM, separati normali/dept (KPI diversi).&#10;Un KPI semestrale è mostrato solo nell'anno/edizione in cui è presente (es. UPT solo 2024, SY dal 2025).&#10;Solo premi a target sì/no. Esclusi SAS, DCC, Articoli incentivati (premi a importo crescente, non binari) e Visual/Customer Service (liste variabili). Mensili → sui mesi, semestrali → sui semestri.">i</span></div></div>
+      <div class="cc-head"><div class="cc-title">% Frequenza per componente — confronto anno <span class="info-tip" data-tip="Quante volte il premio è stato raggiunto (erogato>0) sui mesi-persona di chi è ELEGGIBILE per regola (ruolo × tipo-store), inclusi i mesi a zero.&#10;Es: BDG raggiunto 6 mesi su 10 = 60%.&#10;Regole: QTY solo dept · Digital/SY/Privilege solo normali · SAS/DCC solo cassa (no Svizzera/Asia/aeroporti) · semestrali solo SM-VSM, separati normali/dept (KPI diversi).&#10;Un KPI semestrale è mostrato solo nell'anno/edizione in cui è presente (es. UPT solo 2024, SY dal 2025).&#10;Solo premi a target sì/no. Esclusi SAS mensile, DCC, Articoli incentivati (a importo crescente, non binari) e Visual/Customer Service (liste variabili). La SAS semestrale resta (è un KPI sì/no). Mensili → sui mesi, semestrali → sui semestri.">i</span></div></div>
       <div class="cw tall"><canvas id="yoy_c_comp_freq"></canvas></div>
     </div>
     <div class="cc full">
@@ -999,10 +999,10 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 
   <div class="gloss-sec">
    <h3>🗓️ Premi mensili (regole del piano)</h3>
-   <div class="gloss-row"><div class="gloss-term">BDG (lordo)</div><div class="gloss-def">Premio budget base per ruolo a fatturato ≥ 99,5%: <span class="gloss-f">SM 300 · VSM 250 · SSAP 250 · SSA 200 · SA 150 · JSA 100 · SCS ≈150 €</span>.</div></div>
+   <div class="gloss-row"><div class="gloss-term">BDG</div><div class="gloss-def">Premio budget base (lordo) per ruolo a fatturato ≥ 99,5%: <span class="gloss-f">SM 300 · VSM 250 · SSAP 250 · SSA 200 · SA 150 · JSA 100 · SCS ≈150 €</span>.</div></div>
    <div class="gloss-row"><div class="gloss-term">Digital (DSS)</div><div class="gloss-def"><span class="gloss-f">30% del BDG base</span> (a fatturato 100% e quota web ≥ 3%).</div></div>
    <div class="gloss-row"><div class="gloss-term">Shopper Yield</div><div class="gloss-def"><span class="gloss-f">3% della RML mensile</span>.</div></div>
-   <div class="gloss-row"><div class="gloss-term">Subscription / Nuove Privilege</div><div class="gloss-def"><span class="gloss-f">2% della RML mensile</span>.</div></div>
+   <div class="gloss-row"><div class="gloss-term">Subscription</div><div class="gloss-def">(ex Nuove Privilege) <span class="gloss-f">2% della RML mensile</span>.</div></div>
    <div class="gloss-row"><div class="gloss-term">SAS</div><div class="gloss-def"><span class="gloss-f">2 €/unità, max 200 €</span> (ruoli cassa).</div></div>
    <div class="gloss-row"><div class="gloss-term">DCC</div><div class="gloss-def"><span class="gloss-f">0,2% delle transazioni, max 100 €</span> (ruoli cassa).</div></div>
    <div class="gloss-row"><div class="gloss-term">Premio QTY</div><div class="gloss-def">Premio sui pezzi venduti nei <b>department store</b> (piano dedicato BDG + QTY).</div></div>
@@ -1181,11 +1181,11 @@ const MESI_SORT=(a,b)=>(MESI_IDX[a]??99)-(MESI_IDX[b]??99);
 
 const COMP=[
   // ── mensili ──────────────────────────────────────────────────────
-  {k:'cBdg',      l:'BDG (lordo)',             c:'#4f46e5', ek:'RISULTATO PREMIO BDG (LORDO)',               tipo:'mensile'},
+  {k:'cBdg',      l:'BDG',                     c:'#4f46e5', ek:'RISULTATO PREMIO BDG (LORDO)',               tipo:'mensile'},
   {k:'cQty',      l:'Premio QTY',             c:'#6366f1', ek:'PREMIO QTY DEPT',                            tipo:'mensile'},
   {k:'cDigital',  l:'Digital',                 c:'#0ea5e9', ek:'RISULTATO PREMIO DIGITAL',                   tipo:'mensile'},
   {k:'cShopper',  l:'Shopper Yield',           c:'#22c55e', ek:'RISULTATO SHOPPER YIELD',                    tipo:'mensile'},
-  {k:'cPrivilege',l:'Nuove Privilege',         c:'#f59e0b', ek:'RISULTATO NUOVE PRIVILEGE',                  tipo:'mensile'},
+  {k:'cPrivilege',l:'Subscription',            c:'#f59e0b', ek:'RISULTATO NUOVE PRIVILEGE',                  tipo:'mensile'},
   {k:'cSas',      l:'SAS',                     c:'#ef4444', ek:'RISULTATO SAS',                              tipo:'mensile'},
   {k:'cDcc',      l:'DCC',                     c:'#a855f7', ek:'RISULTATO DCC',                              tipo:'mensile'},
   {k:'cCs',       l:'Customer Service',        c:'#ec4899', ek:'RISULTATO CUSTOMER SERVICE',                 tipo:'mensile'},
@@ -2291,10 +2291,10 @@ function exportExcel(){
     'RML periodo EUR':r.rml_period>0?Math.round(r.rml_period):'',
     'Incidenza % su stipendio':r.incidenza!=null?r.incidenza:'',
     // mensili components
-    'BDG (lordo)':Math.round(r.cBdg),
+    'BDG':Math.round(r.cBdg),
     'Digital':Math.round(r.cDigital),
     'Shopper Yield':Math.round(r.cShopper),
-    'Nuove Privilege':Math.round(r.cPrivilege),
+    'Subscription':Math.round(r.cPrivilege),
     'SAS':Math.round(r.cSas),
     'DCC':Math.round(r.cDcc),
     'Customer Service':Math.round(r.cCs),
@@ -2978,11 +2978,15 @@ function yoySelComps(rows){const sel=getMsVals('yoy-comp');return COMP.filter(c=
 // ─── ELEGGIBILITÀ PREMI per ruolo × tipo-store (regole piano incentivi — EDITABILE) ───
 // ESCLUSI dalla frequenza di raggiungimento:
 // - Visual / Customer Service: assegnati a liste di persone variabili (eleggibili non affidabili).
-// - SAS / DCC / Articoli incentivati: NON sono target sì/no ma premi a importo crescente (1 o 200 azioni
-//   risulterebbero entrambi "raggiunto") → la frequenza non sarebbe significativa.
-const FREQ_EXCLUDE=new Set(['cVisual','cCs','cSas','cSasSem','cDcc','cArt']);
-// Etichette specifiche per la frequenza (più sintetiche dei nomi componente).
-const FREQ_LABEL={cBdg:'BDG',cPrivilege:'Subscription',cSubSem:'Subscription (sem.)'};
+// - SAS (MENSILE) / DCC / Articoli incentivati: NON sono target sì/no ma premi a importo crescente
+//   (1 o 200 azioni = comunque "raggiunto") → la frequenza non sarebbe significativa.
+//   NB: la SAS SEMESTRALE (cSasSem) è invece un KPI sì/no → resta inclusa.
+const FREQ_EXCLUDE=new Set(['cVisual','cCs','cSas','cDcc','cArt']);
+// Etichetta sintetica per la Subscription semestrale (le altre prendono il nome componente).
+const FREQ_LABEL={cSubSem:'Subscription (sem.)'};
+// Ordine dei premi mensili nelle card/grafico frequenza: i 4 KPI fissi prima, QTY per ultimo
+// (così i 4 KPI restano nella stessa posizione anche nelle annate senza QTY). Semestrali dopo.
+const FREQ_ORDER=['cBdg','cDigital','cShopper','cPrivilege','cQty'];
 // SAS/DCC (cassa SCS): solo negozi normali, ESCLUSI Svizzera, Asia, aeroporti.
 const SCS_EXCL_NAZIONI=new Set(['svizzera','hong kong','singapore','cina','china','giappone','japan','corea','korea','macao','taiwan','thailandia','thailand','emirati','uae','dubai','qatar','kuwait']);
 const AIRPORT_RE=/aeroport|airport|terminal/i;
@@ -3000,7 +3004,7 @@ function compEligible(c,r){const dept=(typeof isDeptStore==='function')&&isDeptS
   }
 }
 // Componenti mostrate nella frequenza (escludendo Visual/Customer Service non standardizzabili).
-function yoyFreqComps(rows){return yoySelComps(rows).filter(c=>!FREQ_EXCLUDE.has(c.k));}
+function yoyFreqComps(rows){const oi=k=>{const i=FREQ_ORDER.indexOf(k);return i<0?99:i;};return yoySelComps(rows).filter(c=>!FREQ_EXCLUDE.has(c.k)).sort((a,b)=>oi(a.k)-oi(b.k));}
 // "Item" di frequenza: i mensili sono un'unica voce; i SEMESTRALI sono SDOPPIATI normali/dept
 // (i dept hanno KPI semestrali diversi → vanno tenuti separati).
 function yoyFreqItems(rows){const out=[];yoyFreqComps(rows).forEach(c=>{const L=FREQ_LABEL[c.k]||c.l;if(c.tipo==='semestrale'){out.push({c,store:'norm',label:L+' · normali'});out.push({c,store:'dept',label:L+' · dept'});}else out.push({c,store:null,label:L});});return out;}
@@ -3318,8 +3322,8 @@ function exportYoyDip(){
     'Massimale EUR':Math.round(r.massimale),'Erogato EUR':Math.round(r.erogato),
     'Achievement %':r.pct,'RML periodo EUR':r.rml>0?Math.round(r.rml):'',
     'Incidenza % su stipendio':r.incidenza!=null?r.incidenza:'',
-    'BDG (lordo)':Math.round(r.cBdg),'Digital':Math.round(r.cDigital),'Shopper Yield':Math.round(r.cShopper),
-    'Nuove Privilege':Math.round(r.cPrivilege),'SAS':Math.round(r.cSas),'DCC':Math.round(r.cDcc),
+    'BDG':Math.round(r.cBdg),'Digital':Math.round(r.cDigital),'Shopper Yield':Math.round(r.cShopper),
+    'Subscription':Math.round(r.cPrivilege),'SAS':Math.round(r.cSas),'DCC':Math.round(r.cDcc),
     'Customer Service':Math.round(r.cCs),'Art. Incentivati':Math.round(r.cArt),'Visual in Store':Math.round(r.cVisual),
     'CR (sem.)':Math.round(r.cCrSem),'Shopper Yield (sem.)':Math.round(r.cSySem),
     'Subscription Index (sem.)':Math.round(r.cSubSem),'SAS (sem.)':Math.round(r.cSasSem),
@@ -4633,7 +4637,7 @@ function asstInit(){
 (function(g){
 'use strict';
 const MESI=['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'];
-const COMP_M=[['cBdg','BDG (lordo)'],['cQty','Premio QTY'],['cDigital','Digital'],['cShopper','Shopper Yield'],['cPrivilege','Privilege/Subscription'],['cSas','SAS'],['cDcc','DCC'],['cCs','Customer Service'],['cArt','Articoli incentivati'],['cVisual','Visual']];
+const COMP_M=[['cBdg','BDG'],['cQty','Premio QTY'],['cDigital','Digital'],['cShopper','Shopper Yield'],['cPrivilege','Subscription'],['cSas','SAS'],['cDcc','DCC'],['cCs','Customer Service'],['cArt','Articoli incentivati'],['cVisual','Visual']];
 const COMP_S=[['cSySem','Shopper Yield (sem.)'],['cSubSem','Subscription (sem.)'],['cSasSem','SAS (sem.)'],['cCrSem','Conversion Rate (sem.)'],['cUptSem','UPT (sem.)']];
 const ALLC=[...COMP_M,...COMP_S];
 const LEVE=new Set(['cBdg','cSySem','cSubSem','cSasSem','cCrSem','cUptSem']);
