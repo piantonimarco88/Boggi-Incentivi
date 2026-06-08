@@ -582,7 +582,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
       <div class="cw tall"><canvas id="yoy_c_comp_achself"></canvas></div>
     </div>
     <div class="cc full">
-      <div class="cc-head"><div class="cc-title">% Frequenza per componente — confronto anno <span class="info-tip" data-tip="Quante volte il premio è stato raggiunto (erogato>0) sui mesi-persona di chi è ELEGGIBILE per regola (ruolo × tipo-store), inclusi i mesi a zero.&#10;Es: BDG raggiunto 6 mesi su 10 = 60%.&#10;Regole: QTY solo dept · Digital/SY/Privilege solo normali · SAS/DCC solo cassa (no Svizzera/Asia/aeroporti) · semestrali solo SM-VSM, separati normali/dept (KPI diversi).&#10;Un KPI semestrale è mostrato solo nell'anno/edizione in cui è presente (es. UPT solo 2024, SY dal 2025).&#10;Visual e Customer Service esclusi (assegnati a liste variabili). Mensili → sui mesi, semestrali → sui semestri.">i</span></div></div>
+      <div class="cc-head"><div class="cc-title">% Frequenza per componente — confronto anno <span class="info-tip" data-tip="Quante volte il premio è stato raggiunto (erogato>0) sui mesi-persona di chi è ELEGGIBILE per regola (ruolo × tipo-store), inclusi i mesi a zero.&#10;Es: BDG raggiunto 6 mesi su 10 = 60%.&#10;Regole: QTY solo dept · Digital/SY/Privilege solo normali · SAS/DCC solo cassa (no Svizzera/Asia/aeroporti) · semestrali solo SM-VSM, separati normali/dept (KPI diversi).&#10;Un KPI semestrale è mostrato solo nell'anno/edizione in cui è presente (es. UPT solo 2024, SY dal 2025).&#10;Solo premi a target sì/no. Esclusi SAS, DCC, Articoli incentivati (premi a importo crescente, non binari) e Visual/Customer Service (liste variabili). Mensili → sui mesi, semestrali → sui semestri.">i</span></div></div>
       <div class="cw tall"><canvas id="yoy_c_comp_freq"></canvas></div>
     </div>
     <div class="cc full">
@@ -2976,9 +2976,13 @@ function buildYoyCompAchSelf(rows){
 function yoySelComps(rows){const sel=getMsVals('yoy-comp');return COMP.filter(c=>sel.length?sel.includes(c.k):rows.some(r=>r[c.k]>0));}
 
 // ─── ELEGGIBILITÀ PREMI per ruolo × tipo-store (regole piano incentivi — EDITABILE) ───
-// Visual in Store e Customer Service: ESCLUSI dalla frequenza (assegnati a liste di persone variabili
-// ogni mese, senza storico affidabile degli eleggibili → denominatore non calcolabile).
-const FREQ_EXCLUDE=new Set(['cVisual','cCs']);
+// ESCLUSI dalla frequenza di raggiungimento:
+// - Visual / Customer Service: assegnati a liste di persone variabili (eleggibili non affidabili).
+// - SAS / DCC / Articoli incentivati: NON sono target sì/no ma premi a importo crescente (1 o 200 azioni
+//   risulterebbero entrambi "raggiunto") → la frequenza non sarebbe significativa.
+const FREQ_EXCLUDE=new Set(['cVisual','cCs','cSas','cSasSem','cDcc','cArt']);
+// Etichette specifiche per la frequenza (più sintetiche dei nomi componente).
+const FREQ_LABEL={cBdg:'BDG',cPrivilege:'Subscription',cSubSem:'Subscription (sem.)'};
 // SAS/DCC (cassa SCS): solo negozi normali, ESCLUSI Svizzera, Asia, aeroporti.
 const SCS_EXCL_NAZIONI=new Set(['svizzera','hong kong','singapore','cina','china','giappone','japan','corea','korea','macao','taiwan','thailandia','thailand','emirati','uae','dubai','qatar','kuwait']);
 const AIRPORT_RE=/aeroport|airport|terminal/i;
@@ -2999,7 +3003,7 @@ function compEligible(c,r){const dept=(typeof isDeptStore==='function')&&isDeptS
 function yoyFreqComps(rows){return yoySelComps(rows).filter(c=>!FREQ_EXCLUDE.has(c.k));}
 // "Item" di frequenza: i mensili sono un'unica voce; i SEMESTRALI sono SDOPPIATI normali/dept
 // (i dept hanno KPI semestrali diversi → vanno tenuti separati).
-function yoyFreqItems(rows){const out=[];yoyFreqComps(rows).forEach(c=>{if(c.tipo==='semestrale'){out.push({c,store:'norm',label:c.l+' · normali'});out.push({c,store:'dept',label:c.l+' · dept'});}else out.push({c,store:null,label:c.l});});return out;}
+function yoyFreqItems(rows){const out=[];yoyFreqComps(rows).forEach(c=>{const L=FREQ_LABEL[c.k]||c.l;if(c.tipo==='semestrale'){out.push({c,store:'norm',label:L+' · normali'});out.push({c,store:'dept',label:L+' · dept'});}else out.push({c,store:null,label:L});});return out;}
 // Eleggibilità per item: mensili → regole compEligible; semestrali → SM/VSM nel tipo-store dell'item.
 function itemEligible(it,r){const c=it.c;if(c.tipo!=='semestrale')return compEligible(c,r);const job=(r.job||'').toUpperCase();if(job!=='SM'&&job!=='VSM')return false;const dept=(typeof isDeptStore==='function')&&isDeptStore(r.store);return it.store==='dept'?dept:!dept;}
 // Frequenza dell'item sul PERIMETRO ELEGGIBILE: erogato>0 / mesi-persona eleggibili (0-earners inclusi = 0% reale).
