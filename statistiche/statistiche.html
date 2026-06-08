@@ -190,6 +190,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 .yoy-yr-card.delta{border-top-color:#a855f7!important;background:#faf8ff}
 .yoy-yr-title{font-size:20px;font-weight:800;color:#1a1a2e;margin-bottom:10px;letter-spacing:-.5px}
 .yoy-yr-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px}
+.yoy-freq-title{font-size:10px;color:#7c3aed;text-transform:uppercase;font-weight:800;letter-spacing:.4px;margin:12px 0 6px;padding-top:10px;border-top:1px dashed #e2e8f0}
 .yoy-stat-l{font-size:9px;color:#bbb;text-transform:uppercase;font-weight:700;letter-spacing:.4px;display:block}
 .yoy-stat-v{font-size:14px;font-weight:700;color:#111;display:block}
 .pos{color:#16a34a!important}.neg{color:#dc2626!important}
@@ -577,6 +578,10 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
     <div class="cc full">
       <div class="cc-head"><div class="cc-title">% Achievement per componente — confronto anno <span class="info-tip" data-tip="Erogato per componente / massimale totale dei dipendenti che hanno quella componente attiva × 100.&#10;Risponde a: «Tra chi è eleggibile per questa componente, quanto è stato raggiunto?»&#10;Valori > 100% possibili per BDG in caso di over-performance.">i</span></div></div>
       <div class="cw tall"><canvas id="yoy_c_comp_achself"></canvas></div>
+    </div>
+    <div class="cc full">
+      <div class="cc-head"><div class="cc-title">% Frequenza per componente — confronto anno <span class="info-tip" data-tip="Quante volte il premio è stato raggiunto, sul totale dei mesi-persona del periodo.&#10;Es: BDG raggiunto 6 mesi su 10 = 60%.&#10;Mensili → sui mesi · Semestrali → sui semestri. Filtra per ruolo/negozio per una lettura mirata.">i</span></div></div>
+      <div class="cw tall"><canvas id="yoy_c_comp_freq"></canvas></div>
     </div>
     <div class="cc full">
       <div class="cc-head"><div class="cc-title">Incidenza componente su massimale — confronto anno (% del massimale totale) <span class="info-tip" data-tip="Erogato per componente / massimale totale di tutti i dipendenti × 100.&#10;Risponde a: «Quanto pesa ogni componente sul pool totale del massimale?»">i</span></div></div>
@@ -2965,6 +2970,24 @@ function buildYoyCompAchSelf(rows){
   };
 }
 
+// Componenti selezionati (multiselect) o attivi nei dati — condiviso da grafici e KPI.
+function yoySelComps(rows){const sel=getMsVals('yoy-comp');return COMP.filter(c=>sel.length?sel.includes(c.k):rows.some(r=>r[c.k]>0));}
+// Frequenza per componente: quante volte il premio è stato raggiunto (erogato>0) sul totale dei mesi-persona
+// (mensili → righe mensili; semestrali → righe semestrali). Es. BDG 6 mesi su 10 = 60%.
+function yoyCompFreqRow(c,sub){const sem=c.tipo==='semestrale';const univ=sub.filter(r=>sem?isSemRow(r):!isSemRow(r));const N=univ.length;const n=univ.filter(r=>(r[c.k]||0)>0).length;return {n,N,freq:N>0?n/N*100:0};}
+function buildYoyCompFreq(rows){
+  const years=yoyYears(rows);if(!years.length)return null;
+  const comps=yoySelComps(rows);if(!comps.length)return null;
+  const meta=[];
+  const datasets=years.map((yr,yi)=>{const sub=rows.filter(r=>r.year===yr);meta[yi]=comps.map(c=>yoyCompFreqRow(c,sub));
+    return{label:String(yr),data:comps.map((c,ci)=>+(meta[yi][ci].freq.toFixed(1))),backgroundColor:yrCol(yr),borderRadius:4,barPercentage:.75,categoryPercentage:.8};});
+  return{type:'bar',data:{labels:comps.map(c=>c.l),datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:12,padding:10}},
+        tooltip:{callbacks:{label:c=>{const m=meta[c.datasetIndex]&&meta[c.datasetIndex][c.dataIndex];return `${c.dataset.label}: ${c.raw}%`+(m?` (${m.n} su ${m.N})`:'');}}}},
+      scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'},grid:{color:'#f0f2f7'}},x:{ticks:{maxRotation:35,font:{size:10}}}}}};
+}
+
 // ─── YOY CHART RENDER ────────────────────────────────────────
 function dcYoy(k){if(yoyCharts[k]){yoyCharts[k].destroy();delete yoyCharts[k];}}
 function cxYoy(id){const el=document.getElementById(id);return el?el.getContext('2d'):null;}
@@ -3011,6 +3034,7 @@ function renderYoyKpis(rows){
         <div class="kpi-eur-row"><span class="yoy-stat-l">Erogato totale</span><span class="yoy-stat-v">€ ${fmt(totEr)}</span></div>
         <div class="kpi-eur-row"><span class="yoy-stat-l">Massimale totale</span><span class="yoy-stat-v">€ ${fmt(totMax)}</span></div>
       </div>
+      ${(()=>{const fr=yoySelComps(rows).map(c=>Object.assign({l:c.l},yoyCompFreqRow(c,sub))).filter(x=>x.N>0);if(!fr.length)return '';return '<div class="yoy-freq-title">Frequenza raggiungimento premi</div><div class="yoy-yr-stats">'+fr.map(x=>`<div><span class="yoy-stat-l">${x.l}</span><span class="yoy-stat-v">${x.freq.toFixed(0)}% <small style="color:#aaa;font-weight:400">${x.n}/${x.N}</small></span></div>`).join('')+'</div>';})()}
     </div>`;
   });
   // Delta card: confronto primo e ultimo anno — stessa pool da getYoyRows (già L4L filtrata)
@@ -3281,6 +3305,7 @@ function renderYoy(){
   rcYoy('comp',buildYoyCompChart,rows);
   rcYoy('comp_ach',buildYoyCompAch,rows);
   rcYoy('comp_achself',buildYoyCompAchSelf,rows);
+  rcYoy('comp_freq',buildYoyCompFreq,rows);
   renderYoyTable(rows);
   renderYoyDipTable(rows);
 }
