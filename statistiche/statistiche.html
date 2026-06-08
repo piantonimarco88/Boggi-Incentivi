@@ -3068,7 +3068,7 @@ function renderYoyKpis(rows){
         <div class="kpi-eur-row"><span class="yoy-stat-l">Erogato totale</span><span class="yoy-stat-v">€ ${fmt(totEr)}</span></div>
         <div class="kpi-eur-row"><span class="yoy-stat-l">Massimale totale</span><span class="yoy-stat-v">€ ${fmt(totMax)}</span></div>
       </div>
-      ${(()=>{const fr=yoyFreqItems(rows).map(it=>Object.assign({label:it.label,col:it.c.c},yoyItemFreq(it,sub))).filter(x=>x.sem?x.n>0:x.N>0);if(!fr.length)return '';return '<div class="yoy-freq-title">Frequenza raggiungimento premi <span style="font-weight:400;text-transform:none;letter-spacing:0">(su dipendenti eleggibili)</span></div><div class="yoy-yr-stats yoy-freq-grid">'+fr.map(x=>`<div title="${x.n}/${x.N} mesi-persona · ${x.dip} dip. eleggibili"><span class="yoy-freq-l" style="color:${x.col}">${x.label}</span><span class="yoy-freq-v">${x.freq.toFixed(0)}%</span></div>`).join('')+'</div>';})()}
+      ${(()=>{const fr=yoyFreqItems(rows).map(it=>Object.assign({label:it.label,col:it.c.c},yoyItemFreq(it,sub))).filter(x=>x.sem?x.n>0:x.N>0);if(!fr.length)return '';return '<div class="yoy-freq-title" style="white-space:nowrap">Frequenza raggiungimento <span style="font-weight:400;text-transform:none;letter-spacing:0">(su dip. eleggibili)</span></div><div class="yoy-yr-stats yoy-freq-grid">'+fr.map(x=>`<div title="${x.n}/${x.N} mesi-persona · ${x.dip} dip. eleggibili"><span class="yoy-freq-l" style="color:${x.col}">${x.label}</span><span class="yoy-freq-v">${x.freq.toFixed(0)}%</span></div>`).join('')+'</div>';})()}
     </div>`;
   });
   // Delta card: confronto primo e ultimo anno — stessa pool da getYoyRows (già L4L filtrata)
