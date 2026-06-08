@@ -4791,7 +4791,8 @@ function asstScatterCfg(pts,subjPt,title){return {type:'scatter',data:{datasets:
 function asstAdd(cls,html){const c=document.getElementById('asstChat');if(!c)return;const d=document.createElement('div');d.className='as-msg '+cls;d.innerHTML=html;c.appendChild(d);try{asstRenderCharts(d);}catch(e){}c.scrollTop=c.scrollHeight;}
 function asstAsk(){const i=document.getElementById('asstQ');const q=(i.value||'').trim();if(!q)return;asstAdd('as-user',q);i.value='';
   if(window.agEnabled){ agentAsk(q); return; } // Agente AI attivo
-  setTimeout(()=>{let html;try{html=asstAnalyze(q);}catch(e){html='Errore nell\'analisi: '+e.message;}asstAdd('as-bot',html);},120);
+  // Chat solo-agente: offline non si risponde, si avvisa l'utente
+  asstAdd('as-bot','🔌 <b>La chat funziona solo con l\'Agente AI attivo.</b><br>Per usarla: avvia il proxy locale, poi spunta <b>«Attiva l\'Agente AI»</b> qui sopra (l\'indicatore deve diventare <b>✓ proxy ok</b>). Senza connessione all\'LLM la chat non è disponibile.');
 }
 function asstEx(el){const t=el.textContent,i=document.getElementById('asstQ');if(!i)return;i.value=t;
   // gli esempi sono modelli col segnaposto: inseriscili e seleziona il PRIMO da sostituire (nome o «...»)
@@ -4811,7 +4812,7 @@ function asstInit(){
     'Confronta i premi mensili dei SM dei negozi «cod.1, cod.2» con tutti i SM dei negozi normali',
     'Confronta '+PH+' con i pari ruolo dei negozi «cod.1, cod.2»'
   ].map(t=>'<span class="as-ex" onclick="asstEx(this)">'+t+'</span>').join(''); }
-  if(!chat.children.length) asstAdd('as-bot',allData.length?'Ciao! Chiedimi un\'analisi su un dipendente (verifica lamentele, confronto, classifica, andamento, previsione semestre, consigli sulle leve…). Negli esempi qui sotto sostituisci «nome cognome dipendente» con la persona reale, poi premi Invio.':'Carica prima i dati per usare l\'assistente.');
+  if(!chat.children.length) asstAdd('as-bot',allData.length?'Ciao! Sono l\'Agente AI: chiedimi un\'analisi in linguaggio libero (lamentele, confronti tra persone/negozi/gruppi, classifiche, andamento, previsione semestre, simulazioni leve…). <b>Serve l\'Agente AI attivo</b> (spunta «Attiva l\'Agente AI» qui sopra). Negli esempi qui sotto sostituisci i segnaposto («nome cognome dipendente», «cod.1»…) con i valori reali, poi premi Invio.':'Carica prima i dati per usare l\'assistente.');
 }
 
 // ═══════════════════════════════════════════════════════════════
