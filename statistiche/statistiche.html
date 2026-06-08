@@ -191,6 +191,8 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 .yoy-yr-title{font-size:20px;font-weight:800;color:#1a1a2e;margin-bottom:10px;letter-spacing:-.5px}
 .yoy-yr-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px}
 .yoy-freq-title{font-size:10px;color:#7c3aed;text-transform:uppercase;font-weight:800;letter-spacing:.4px;margin:12px 0 6px;padding-top:10px;border-top:1px dashed #e2e8f0}
+.yoy-freq-l{font-size:11px;font-weight:600;display:block;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.yoy-freq-v{font-size:15px;font-weight:800;color:#111;display:block}
 .yoy-stat-l{font-size:9px;color:#bbb;text-transform:uppercase;font-weight:700;letter-spacing:.4px;display:block}
 .yoy-stat-v{font-size:14px;font-weight:700;color:#111;display:block}
 .pos{color:#16a34a!important}.neg{color:#dc2626!important}
@@ -3066,7 +3068,7 @@ function renderYoyKpis(rows){
         <div class="kpi-eur-row"><span class="yoy-stat-l">Erogato totale</span><span class="yoy-stat-v">€ ${fmt(totEr)}</span></div>
         <div class="kpi-eur-row"><span class="yoy-stat-l">Massimale totale</span><span class="yoy-stat-v">€ ${fmt(totMax)}</span></div>
       </div>
-      ${(()=>{const fr=yoyFreqItems(rows).map(it=>Object.assign({label:it.label},yoyItemFreq(it,sub))).filter(x=>x.sem?x.n>0:x.N>0);if(!fr.length)return '';return '<div class="yoy-freq-title">Frequenza raggiungimento premi <span style="font-weight:400;text-transform:none;letter-spacing:0">(su dipendenti eleggibili)</span></div><div class="yoy-yr-stats">'+fr.map(x=>`<div><span class="yoy-stat-l">${x.label}</span><span class="yoy-stat-v">${x.freq.toFixed(0)}% <small style="color:#aaa;font-weight:400">${x.n}/${x.N} · ${x.dip} dip</small></span></div>`).join('')+'</div>';})()}
+      ${(()=>{const fr=yoyFreqItems(rows).map(it=>Object.assign({label:it.label,col:it.c.c},yoyItemFreq(it,sub))).filter(x=>x.sem?x.n>0:x.N>0);if(!fr.length)return '';return '<div class="yoy-freq-title">Frequenza raggiungimento premi <span style="font-weight:400;text-transform:none;letter-spacing:0">(su dipendenti eleggibili)</span></div><div class="yoy-yr-stats yoy-freq-grid">'+fr.map(x=>`<div title="${x.n}/${x.N} mesi-persona · ${x.dip} dip. eleggibili"><span class="yoy-freq-l" style="color:${x.col}">${x.label}</span><span class="yoy-freq-v">${x.freq.toFixed(0)}%</span></div>`).join('')+'</div>';})()}
     </div>`;
   });
   // Delta card: confronto primo e ultimo anno — stessa pool da getYoyRows (già L4L filtrata)
