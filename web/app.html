@@ -570,7 +570,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='8.70'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='8.71'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -7416,6 +7416,17 @@ function sendFcZipFromFiles(input){
 }
 
 
+// Cartella base PDF memorizzata dopo "Salva Tutti i PDF" (C# BtnSaveAllPDF_Click)
+// evita che l'utente debba riselezionare la cartella ogni volta
+var _pdfSaveBaseFolder=null;
+if(window.chrome&&window.chrome.webview){
+  window.chrome.webview.addEventListener('message',function(ev){
+    if(typeof ev.data==='string'&&ev.data.startsWith('pdfBaseFolderSet:')){
+      _pdfSaveBaseFolder=ev.data.slice('pdfBaseFolderSet:'.length);
+    }
+  });
+}
+
 // Helper condiviso: genera EML con PDF (blob) allegato e lo scarica
 function _downloadEmlWithPdf(e, pdfBlob, pdfName){
   var isP=MODE==="preventivo";
@@ -7590,19 +7601,29 @@ function sendMailEmployees(){
     },150);});
   }
   if(window.chrome&&window.chrome.webview){
-    // Se CFG_PDF_PATH è configurato, deriva il path automaticamente come fa exportPowerShell()
-    // evitando che l'utente selezioni la cartella sbagliata
-    if(CFG_PDF_PATH){
-      var _psf=getPdfSubfolder();
-      var _autoFolder=CFG_PDF_PATH.replace(/[\/\\]$/,"")+"\\"+_psf.cons.replace(/\//g,"\\");
+    // Priorità: 1) CFG_PDF_PATH configurato, 2) path base memorizzato da "Salva Tutti i PDF"
+    var _baseF=CFG_PDF_PATH?CFG_PDF_PATH.replace(/[\/\\]$/,""):(_pdfSaveBaseFolder||null);
+    if(_baseF){
+      var _psf2=getPdfSubfolder();
+      var _autoFolder=_baseF+"\\"+_psf2.cons.replace(/\//g,"\\");
       genNext(0,_autoFolder);
     } else {
+      // Fallback: mostra picker con suggerimento se disponibile
       var _folderHandler=null;
       _folderHandler=function(ev){
         if(typeof ev.data==='string'){
           if(ev.data.startsWith('folderSelected:')){
             window.chrome.webview.removeEventListener('message',_folderHandler);
-            genNext(0,ev.data.slice('folderSelected:'.length));
+            var sel=ev.data.slice('folderSelected:'.length);
+            // Memorizza la cartella selezionata per usi futuri
+            var _psf3=getPdfSubfolder();
+            var _sub=_psf3.cons.replace(/\//g,"\\");
+            if(sel.endsWith("\\"+_sub)||sel.endsWith("/"+_psf3.cons)){
+              _pdfSaveBaseFolder=sel.slice(0,sel.length-_sub.length-1);
+            }else{
+              _pdfSaveBaseFolder=sel;
+            }
+            genNext(0,sel);
           } else if(ev.data==='folderCancelled'){
             window.chrome.webview.removeEventListener('message',_folderHandler);
             _emlCleanup();
@@ -7610,7 +7631,7 @@ function sendMailEmployees(){
         }
       };
       window.chrome.webview.addEventListener('message',_folderHandler);
-      window.chrome.webview.postMessage({type:"selectPdfFolder"});
+      window.chrome.webview.postMessage({type:"selectPdfFolder",initialPath:_pdfSaveBaseFolder||""});
     }
   } else {
     genNext(0,null);

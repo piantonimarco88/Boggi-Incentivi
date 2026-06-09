@@ -403,6 +403,7 @@ namespace BoggiIncentivi
                 }
                 else if (type == "selectPdfFolder")
                 {
+                    var initialPath = json?["initialPath"]?.GetValue<string>() ?? "";
                     string selectedPath = null;
                     Dispatcher.Invoke(() =>
                     {
@@ -411,6 +412,9 @@ namespace BoggiIncentivi
                             Description = "Seleziona la cartella con i PDF degli incentivi",
                             ShowNewFolderButton = false
                         };
+                        // Pre-apre il dialog nella cartella suggerita se esiste
+                        if (!string.IsNullOrEmpty(initialPath) && Directory.Exists(initialPath))
+                            fd.SelectedPath = initialPath;
                         if (fd.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                             selectedPath = fd.SelectedPath;
                     });
@@ -866,6 +870,9 @@ namespace BoggiIncentivi
             using var fd = new System.Windows.Forms.FolderBrowserDialog
             { Description = "Seleziona la cartella base per i PDF", UseDescriptionForTitle = true, ShowNewFolderButton = true };
             if (fd.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
+
+            // Comunica il path base al JS così "Invia mail" può riutilizzarlo
+            WebView.CoreWebView2.PostWebMessageAsString("pdfBaseFolderSet:" + fd.SelectedPath);
 
             var mode      = JS2Str(await RunJS("MODE"),       "consuntivo");
             var prizeMode = JS2Str(await RunJS("PRIZE_MODE"), "mensile");
