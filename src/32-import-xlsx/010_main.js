@@ -97,6 +97,12 @@ function loadAnagraficaExcel(file){
         var ZC={matr:2,cogn:3,nome:4,hire:7,term:8,job:13,gross:14,bdg:15,cdc:24,cdcDesc:25,bdgFb:50,cf:90,email:110};
         // Rileva colonna email dall'header row (sovrascrive indice fisso)
         (json[hdrRow]||[]).forEach(function(cell,ci){var s=String(cell||'').toLowerCase().replace(/[\s\n\r]+/g,'');if(s.indexOf('email')>=0||s.indexOf('e-mail')>=0)ZC.email=ci;});
+        // Rileva colonna codice fiscale dall'header (sovrascrive indice fisso 90)
+        // Riconosce: codice_fiscale, codice fiscale, cf, cod_fiscale, codicefiscale, fiscal_code, tax_code…
+        (json[hdrRow]||[]).forEach(function(cell,ci){
+          var s=String(cell||'').toLowerCase().replace(/[\s\n\r_]+/g,'');
+          if(s==='cf'||s==='codicefiscale'||s==='codfiscale'||s==='codfis'||s==='fiscalcode'||s==='taxcode'||s.indexOf('codicefis')>=0||s.indexOf('fiscal')>=0)ZC.cf=ci;
+        });
         // Rileva colonna Field Coach dall'header
         var fcColIT=-1;
         (json[hdrRow]||[]).forEach(function(cell,ci){var s=String(cell||'').toLowerCase().replace(/[\s\n\r]+/g,'');if(s==='fc'||s.indexOf('fieldcoach')>=0||s.indexOf('field coach')>=0||s.indexOf('coach')>=0)fcColIT=ci;});
@@ -183,8 +189,10 @@ function loadAnagraficaExcel(file){
           }
           var cdcDesc=String(row[ZC.cdcDesc]||"").trim();
 
-          // Codice fiscale
+          // Codice fiscale — valida: 16 char alfanumerici (persona fisica) o 11 cifre (P.IVA)
+          // Se il valore è puramente numerico con meno di 11 cifre è probabilmente una colonna sbagliata
           var cf=String(row[ZC.cf]||"").trim().toUpperCase();
+          if(cf&&/^\d+$/.test(cf)&&cf.length<11)cf="";
 
           // Email
           var email=String(row[ZC.email]||"").trim().replace(/[\s\n\r]+/g,"");
