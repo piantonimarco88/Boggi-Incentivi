@@ -1,7 +1,7 @@
 // Helper condiviso: genera EML con PDF (blob) allegato e lo scarica
 function _downloadEmlWithPdf(e, pdfBlob, pdfName){
   var isP=MODE==="preventivo";
-  var period=getMonthName("INGLESE")+" "+CFG_YEAR;
+  var period=getPeriodLabelEn();
   var typeLabel=isP?"FORECAST":"FINAL";
   var subj="BOGGI INCENTIVE PROGRAM - "+period+" - "+typeLabel;
   var bodyTxt=isP
@@ -130,7 +130,7 @@ function sendMailEmployees(){
     if(i>=targets.length){_emlCleanup();alert("✅ "+done+" email inviate su "+total+".");return;}
     var e=targets[i];
     var isP=MODE==="preventivo";
-    var period=getMonthName("INGLESE")+" "+CFG_YEAR;
+    var period=getPeriodLabelEn();
     var typeLabel=isP?"FORECAST":"FINAL";
     var pdfName=isSeasonal?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+(SEASON_PERIOD==="mid"?"_MID":"")+".pdf"):isFcvm?(e.m+"_FCVM_"+mm+"_"+CFG_YEAR+".pdf"):(e.m+"_"+mm+"_"+CFG_YEAR+".pdf");
     document.getElementById("emlLabel").textContent=e.c+" "+e.n+" → "+e.mp;
