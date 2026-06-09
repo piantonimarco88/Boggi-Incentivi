@@ -1,6 +1,6 @@
-﻿// Ritorna l'email FC effettiva per un dipendente:
-// 1. e.mf se giÃ  impostata (da colonna FC nel file anagrafica o da import precedente)
-// 2. Fallback dinamico su FC_MAP (se FC+VM Ã¨ caricato) â†’ non richiede re-import anagrafica
+// Ritorna l'email FC effettiva per un dipendente:
+// 1. e.mf se già impostata (da colonna FC nel file anagrafica o da import precedente)
+// 2. Fallback dinamico su FC_MAP (se FC+VM è caricato) → non richiede re-import anagrafica
 function _distMf(e){
   if(e.mf&&e.mf.indexOf("@")>0)return e.mf;
   var _mp=FC_MAP[String(e.si)];
@@ -44,7 +44,7 @@ function rDist(){
     h+='<button class="exp-btn" onclick="sendFcZipEmails()" style="width:100%;margin-top:6px">&#128140; Invia mail ai Field Coach</button>';
     if(fcBlobKeys.length>0){
       h+='<div style="margin-top:10px;border-top:1px solid #3d3a36;padding-top:10px">';
-      h+='<div style="font-size:10px;font-weight:700;color:#c9a96e;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">&#128140; Email pronte â€” clicca per aprire in Outlook</div>';
+      h+='<div style="font-size:10px;font-weight:700;color:#c9a96e;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">&#128140; Email pronte — clicca per aprire in Outlook</div>';
       fcBlobKeys.sort().forEach(function(k){
         var m=_fcZipMetas[k]||{};
         h+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">';
@@ -115,14 +115,14 @@ function updateDistStats(){
 function saveZipPerFC(){
   if(typeof JSZip==="undefined"){alert("Libreria JSZip non caricata.");return}
   var miss=canProduceLetter();
-  if(miss.length>0){alert("Impossibile generare le lettere.\n\nDati mancanti:\nâ€¢ "+miss.join("\nâ€¢ ")+"\n\nCarica i dati dalla tab Fonti Dati.");return}
+  if(miss.length>0){alert("Impossibile generare le lettere.\n\nDati mancanti:\n• "+miss.join("\n• ")+"\n\nCarica i dati dalla tab Fonti Dati.");return}
   var isSeasonal=PRIZE_MODE==="seasonal";
   var folderName=MODE==="preventivo"?"preventivo":"consuntivo";
   var mm=String(CFG_MONTH).padStart(2,"0");
   var psf=getPdfSubfolder();
   var pool=isSeasonal?E.filter(function(e){return isSMVSM(e);}):E;
 
-  // Raggruppa per FC â†’ un JSZip per ciascuno
+  // Raggruppa per FC → un JSZip per ciascuno
   var fcGroups={};
   pool.forEach(function(e){
     var fcKey=e.mf&&e.mf.indexOf("@")>0?e.mf.split("@")[0]:"senza_fc";
@@ -182,16 +182,16 @@ function saveZipPerFC(){
     window._zipCancelled=false;
     var ov=document.createElement("div");
     ov.style.cssText="position:fixed;top:0;left:0;right:0;bottom:0;background:#1a1714;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif";
-    var destLabel=(_dirHandle==='__csharp__'&&_zipSaveFolderPath)?('ðŸ“ '+_zipSaveFolderPath.split('\\').pop()):(_dirHandle?('ðŸ“ '+_dirHandle.name):'ðŸ“¥ Cartella Download');
+    var destLabel=(_dirHandle==='__csharp__'&&_zipSaveFolderPath)?('📁 '+_zipSaveFolderPath.split('\\').pop()):(_dirHandle?('📁 '+_dirHandle.name):'📥 Cartella Download');
     ov.innerHTML='<div style="background:#2c2925;border:1px solid #55504a;border-radius:14px;padding:36px 48px;text-align:center;min-width:400px;box-shadow:0 8px 40px rgba(0,0,0,.7)">'+
       '<div style="font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#c9a96e;margin-bottom:10px">Boggi Milano</div>'+
       '<div style="font-size:22px;font-weight:800;color:#ffffff;margin-bottom:4px">ZIP per Field Coach</div>'+
-      '<div style="font-size:12px;color:#a09a92;margin-bottom:4px">'+fcKeys.length+' Field Coach Â· '+total+' dipendenti</div>'+
+      '<div style="font-size:12px;color:#a09a92;margin-bottom:4px">'+fcKeys.length+' Field Coach · '+total+' dipendenti</div>'+
       '<div style="font-size:11px;color:#c9a96e;margin-bottom:18px">'+destLabel+'</div>'+
       '<div style="width:100%;height:6px;background:#3d3a36;border-radius:3px;overflow:hidden;margin-bottom:12px"><div id="zipFcBar" style="width:0%;height:100%;background:#c9a96e;border-radius:3px;transition:width .2s"></div></div>'+
       '<div id="zipFcCount" style="font-size:13px;color:#e0dbd4;font-weight:600;margin-bottom:6px">0 / '+total+'</div>'+
       '<div id="zipFcLabel" style="font-size:10px;color:#8a8680;margin-bottom:20px">&nbsp;</div>'+
-      '<button onclick="window._zipCancelled=true" style="padding:9px 28px;border-radius:7px;border:1px solid #6b6560;background:transparent;color:#e0dbd4;font-size:12px;font-weight:600;cursor:pointer;font-family:\'DM Sans\',sans-serif">âœ• Annulla</button>'+
+      '<button onclick="window._zipCancelled=true" style="padding:9px 28px;border-radius:7px;border:1px solid #6b6560;background:transparent;color:#e0dbd4;font-size:12px;font-weight:600;cursor:pointer;font-family:\'DM Sans\',sans-serif">✕ Annulla</button>'+
       '</div>';
     document.body.appendChild(ov);
 
@@ -217,9 +217,9 @@ function saveZipPerFC(){
         document.body.removeChild(ov);
         // Aggiorna UI distribuzione per mostrare i bottoni email
         rA();
-        if(_dirHandle==='__csharp__')alert('âœ… '+fcKeys.length+' ZIP salvati in:\nðŸ“ '+_zipSaveFolderPath+'\n\nTorna al tab Distribuzione e clicca "ðŸ“§ Apri email" per ogni FC.');
-        else if(_dirHandle)alert('âœ… '+fcKeys.length+' ZIP salvati in:\nðŸ“ '+_dirHandle.name+'\n\nTorna al tab Distribuzione e clicca "ðŸ“§ Apri email" per ogni FC.');
-        else alert('âœ… '+fcKeys.length+' ZIP scaricati.\n\nTorna al tab Distribuzione e clicca "ðŸ“§ Apri email" per ogni FC.');
+        if(_dirHandle==='__csharp__')alert('✅ '+fcKeys.length+' ZIP salvati in:\n📁 '+_zipSaveFolderPath+'\n\nTorna al tab Distribuzione e clicca "📧 Apri email" per ogni FC.');
+        else if(_dirHandle)alert('✅ '+fcKeys.length+' ZIP salvati in:\n📁 '+_dirHandle.name+'\n\nTorna al tab Distribuzione e clicca "📧 Apri email" per ogni FC.');
+        else alert('✅ '+fcKeys.length+' ZIP scaricati.\n\nTorna al tab Distribuzione e clicca "📧 Apri email" per ogni FC.');
         return;
       }
       var fcKey=fcKeys[fcIdx];
@@ -283,7 +283,7 @@ function saveZipPerFC(){
       var task=tasks[i];
       var e=task.e,fcKey=task.fc;
       var pdfName=isSeasonal?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+".pdf"):(e.m+"_"+mm+"_"+CFG_YEAR+".pdf");
-      document.getElementById("zipFcLabel").textContent=fcKey+" â€” "+e.c+" "+e.n;
+      document.getElementById("zipFcLabel").textContent=fcKey+" — "+e.c+" "+e.n;
       wrap.innerHTML='<style>'+css+'</style>'+
         '<style>*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body,div{font-family:"DM Sans",sans-serif;font-size:13px;color:#4e4b48}.lt{max-width:800px;width:800px;box-shadow:none;border:none}</style>'+
         (isSeasonal?buildSeasonalLetterAuto(e):(isUSA(e.si,e)?buildLetterUSA(e):buildLetter(e)));
@@ -355,7 +355,7 @@ function exportMailtoLinks(){
     if(!e.mp||e.mp.indexOf("@")<0)return;
     if(PRIZE_MODE!=="fcvm"&&e.ps==="SI")return;
     var mm=String(CFG_MONTH).padStart(2,"0");
-    var pdfName=PRIZE_MODE==="seasonal"?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+".pdf"):(e.m+"_"+mm+"_"+CFG_YEAR+".pdf");
+    var pdfName=PRIZE_MODE==="seasonal"?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+(SEASON_PERIOD==="mid"?"_MID":"")+".pdf"):(e.m+"_"+mm+"_"+CFG_YEAR+".pdf");
     var bodyTxt=isP
       ?("Hi "+e.n+",\n\nPlease find attached your FORECAST incentive letter for "+period+".\nThis document shows your projected bonus based on current targets \u2014 final amounts will be confirmed at month end.\n\nBest regards")
       :("Hi "+e.n+",\n\nPlease find attached your FINAL incentive letter for "+period+".\nThis document confirms the bonus amount that will be included in your payslip.\n\nBest regards");
@@ -416,7 +416,7 @@ function exportTracciatoPagamenti(){
   var rows=[];
 
   if(isFcvm){
-    // FC+VM: una riga per dipendente â€” premio totale (AREA + BDG) cod 225
+    // FC+VM: una riga per dipendente — premio totale (AREA + BDG) cod 225
     var isP=MODE==="preventivo";
     Object.values(FC_EMP).forEach(function(e){
       var r=calcFcVmPremio(e.m);
@@ -435,7 +435,7 @@ function exportTracciatoPagamenti(){
   }
 
   if(isSeasItalia){
-    // Seasonal Italia: una sola riga per dipendente â€” PREMIO SEMESTRALE cod 695
+    // Seasonal Italia: una sola riga per dipendente — PREMIO SEMESTRALE cod 695
     E.forEach(function(e){
       // Escludi dipendenti con premio sospeso
       if(SEAS&&SEAS[e.m]&&SEAS[e.m].excluded)return;
@@ -566,7 +566,7 @@ function exportPowerShell(){
   pool.forEach(function(e){
     if(!e.mp||e.mp.indexOf("@")<0)return;
     if(PRIZE_MODE!=="fcvm"&&e.ps==="SI")return;
-    var pdfName=PRIZE_MODE==="seasonal"?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+(SEASON_PERIOD==="mid"?"_MID":"")+".pdf"):(PRIZE_MODE==="fcvm"?(e.m+"_FCVM_"+mm+"_"+CFG_YEAR+".pdf"):(e.m+"_"+mm+"_"+CFG_YEAR+".pdf"));
+    var pdfName=PRIZE_MODE==="seasonal"?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+".pdf"):(PRIZE_MODE==="fcvm"?(e.m+"_FCVM_"+mm+"_"+CFG_YEAR+".pdf"):(e.m+"_"+mm+"_"+CFG_YEAR+".pdf"));
     var bodyTxt=isP
       ?("Hi "+e.n+",`n`nPlease find attached your FORECAST incentive letter for "+period+".`nThis document shows your projected bonus based on current targets - final amounts will be confirmed at month end.`n`nBest regards")
       :("Hi "+e.n+",`n`nPlease find attached your FINAL incentive letter for "+period+".`nThis document confirms the bonus amount that will be included in your payslip.`n`nBest regards");
@@ -605,7 +605,7 @@ function exportPowerShell(){
 
 // PowerShell script per inviare ZIP agli FC (modalita mensile)
 // Genera il contenuto del PS1 per inviare ZIP agli FC.
-// basePath: percorso hardcodato (se noto), altrimenti null â†’ usa $PSScriptRoot con fallback
+// basePath: percorso hardcodato (se noto), altrimenti null → usa $PSScriptRoot con fallback
 function _buildFcPsContent(basePath){
   var isP=MODE==="preventivo";
   var folder=isP?"preventivo":"consuntivo";
@@ -628,7 +628,7 @@ function _buildFcPsContent(basePath){
     // Percorso hardcodato (stesso del salvataggio ZIP)
     ps+='$zipFolder = "'+basePath+'"\n';
   } else {
-    // Percorso ricavato dallo script stesso â€” funziona solo eseguendo il .ps1 come file
+    // Percorso ricavato dallo script stesso — funziona solo eseguendo il .ps1 come file
     ps+='$zipFolder = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }\n';
   }
   ps+='if(!(Test-Path $zipFolder)){Write-Host "Cartella non trovata: $zipFolder"; exit}\n\n';
@@ -657,14 +657,14 @@ function exportPowerShellFC(){
   if(!res){alert("Nessun Field Coach con email trovato.");return;}
 
   function _savePs(dirHandle){
-    // Il PS1 usa $PSScriptRoot â†’ funziona se salvato nella stessa cartella degli ZIP
+    // Il PS1 usa $PSScriptRoot → funziona se salvato nella stessa cartella degli ZIP
     var psBlob=new Blob([res.content],{type:"text/plain;charset=utf-8;"});
     if(dirHandle){
       dirHandle.getFileHandle(res.filename,{create:true}).then(function(fh){
         fh.createWritable().then(function(w){
           w.write(psBlob).then(function(){
             w.close().then(function(){
-              alert('âœ… Script salvato in:\nðŸ“ '+dirHandle.name+'\n\nPer aprire le email in Outlook:\nâ†’ Tasto destro su "'+res.filename+'" â†’ "Esegui con PowerShell"\n\nOppure da PowerShell:\n  .\\'+res.filename);
+              alert('✅ Script salvato in:\n📁 '+dirHandle.name+'\n\nPer aprire le email in Outlook:\n→ Tasto destro su "'+res.filename+'" → "Esegui con PowerShell"\n\nOppure da PowerShell:\n  .\\'+res.filename);
             });
           });
         });
@@ -786,19 +786,19 @@ function sendFcZipEmails(){
     var sb=document.getElementById('fcEmlStopBtn');if(sb){sb.disabled=false;sb.style.opacity='1';}
     if(_resumeState.blob)sendNextBlob(_resumeState.i);else sendNext(_resumeState.i,_resumeState.folder);
   };
-  // Percorso 1: blob in memoria â†’ base64 â†’ temp file (evita File.Exists su path OneDrive)
+  // Percorso 1: blob in memoria → base64 → temp file (evita File.Exists su path OneDrive)
   function sendNextBlob(i){
     if(window._fcEmlCancelled){_fcEmlCleanup();alert('Invio annullato. Email inviate: '+done+'/'+total+'.');return;}
     if(window._fcEmlPaused){_resumeState={i:i,folder:null,blob:true};return;}
     if(i>=fcKeys.length){
       _fcEmlCleanup();
-      alert('âœ… '+done+' email inviate ai Field Coach su '+total+'.'+(errors>0?'\nâš ï¸ '+errors+' errori. Controlla la barra di stato.':''));
+      alert('✅ '+done+' email inviate ai Field Coach su '+total+'.'+(errors>0?'\n⚠️ '+errors+' errori. Controlla la barra di stato.':''));
       return;
     }
     var fcKey=fcKeys[i];
     var m=fcMap[fcKey];
     var blob=_fcZipBlobs[fcKey];
-    document.getElementById('fcEmlLabel').textContent=fcKey+' â†’ '+m.email;
+    document.getElementById('fcEmlLabel').textContent=fcKey+' → '+m.email;
     if(!blob){errors++;sendNextBlob(i+1);return;}
     _fcEmlCallback=function(){
       done++;
@@ -813,18 +813,18 @@ function sendFcZipEmails(){
     };
     reader.readAsDataURL(blob);
   }
-  // Percorso 2: fallback da disco (blob non in memoria â€” sessione precedente)
+  // Percorso 2: fallback da disco (blob non in memoria — sessione precedente)
   function sendNext(i,zipFolder){
     if(window._fcEmlCancelled){_fcEmlCleanup();alert('Invio annullato. Email inviate: '+done+'/'+total+'.');return;}
     if(window._fcEmlPaused){_resumeState={i:i,folder:zipFolder,blob:false};return;}
     if(i>=fcKeys.length){
       _fcEmlCleanup();
-      alert('âœ… '+done+' email inviate ai Field Coach su '+total+'.'+(errors>0?'\nâš ï¸ '+errors+' errori (ZIP non trovati o problemi Outlook). Controlla la barra di stato.':''));
+      alert('✅ '+done+' email inviate ai Field Coach su '+total+'.'+(errors>0?'\n⚠️ '+errors+' errori (ZIP non trovati o problemi Outlook). Controlla la barra di stato.':''));
       return;
     }
     var fcKey=fcKeys[i];
     var m=fcMap[fcKey];
-    document.getElementById('fcEmlLabel').textContent=fcKey+' â†’ '+m.email;
+    document.getElementById('fcEmlLabel').textContent=fcKey+' → '+m.email;
     _fcEmlCallback=function(){
       done++;
       document.getElementById('fcEmlBar').style.width=Math.round(done/total*100)+'%';
@@ -871,7 +871,7 @@ function sendFcZipFromFiles(input){
   var sent=0,missing=[];
   function processNext(idx){
     if(idx>=files.length){
-      alert('âœ… '+sent+' file .eml generati.\n\nAprili in Outlook per inviare le email ai Field Coach.'+(missing.length?'\n\nâš ï¸ Email FC non trovata per:\nâ€¢ '+missing.join('\nâ€¢ '):''));
+      alert('✅ '+sent+' file .eml generati.\n\nAprili in Outlook per inviare le email ai Field Coach.'+(missing.length?'\n\n⚠️ Email FC non trovata per:\n• '+missing.join('\n• '):''));
       return;
     }
     var file=files[idx];
@@ -899,4 +899,3 @@ function sendFcZipFromFiles(input){
   }
   processNext(0);
 }
-
