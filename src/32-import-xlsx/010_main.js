@@ -787,7 +787,7 @@ function downloadImportLog(){
     err.forEach(function(er){lines.push([er.row,er.name,er.reason].join(";"))});
   }
   var blob=new Blob(["\ufeff"+lines.join("\n")],{type:"text/csv;charset=utf-8;"});
-  var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="import_report_"+(isIT?"italia_":"")+getPdfSubfolder().base+".csv";a.click();
+  var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="import_report_"+(isIT?"italia_":"")+getPdfSubfolder().fileBase+".csv";a.click();
 }
 
 function scanExcelFile(file,phase){

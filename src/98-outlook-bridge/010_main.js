@@ -42,7 +42,7 @@ function sendOneEmployeeMail(matr){
   if(!e||!e.mp||e.mp.indexOf("@")<0){alert("Email non disponibile per questo dipendente.");return;}
   var mm=String(CFG_MONTH).padStart(2,"0");
   var isSeasonal=PRIZE_MODE==="seasonal";
-  var pdfName=isSeasonal?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+".pdf"):(e.m+"_"+mm+"_"+CFG_YEAR+".pdf");
+  var pdfName=isSeasonal?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+(SEASON_PERIOD==="mid"?"_MID":"")+".pdf"):(e.m+"_"+mm+"_"+CFG_YEAR+".pdf");
   var PAGE_W_PX=794,SCALE=2,PAGE_W_MM=210,PAGE_H_MM=297,MARGIN_MM=8,CONT_W_MM=PAGE_W_MM-MARGIN_MM*2;
   var PX_PER_MM=(PAGE_W_PX/PAGE_W_MM)*SCALE;
   var PAGE_H_PX_SCALED=Math.round(PAGE_H_MM*PX_PER_MM),MARGIN_PX_SCALED=Math.round(MARGIN_MM*PX_PER_MM),CONT_H_PX_SCALED=PAGE_H_PX_SCALED-MARGIN_PX_SCALED*2;
@@ -132,7 +132,7 @@ function sendMailEmployees(){
     var isP=MODE==="preventivo";
     var period=getMonthName("INGLESE")+" "+CFG_YEAR;
     var typeLabel=isP?"FORECAST":"FINAL";
-    var pdfName=isSeasonal?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+".pdf"):isFcvm?(e.m+"_FCVM_"+mm+"_"+CFG_YEAR+".pdf"):(e.m+"_"+mm+"_"+CFG_YEAR+".pdf");
+    var pdfName=isSeasonal?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+(SEASON_PERIOD==="mid"?"_MID":"")+".pdf"):isFcvm?(e.m+"_FCVM_"+mm+"_"+CFG_YEAR+".pdf"):(e.m+"_"+mm+"_"+CFG_YEAR+".pdf");
     document.getElementById("emlLabel").textContent=e.c+" "+e.n+" → "+e.mp;
     if(window.chrome&&window.chrome.webview){
       var subj="BOGGI INCENTIVE PROGRAM - "+period+" - "+typeLabel;

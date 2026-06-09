@@ -172,13 +172,13 @@ function saveAllPDFsZip(){
         document.body.removeChild(wrap);
         document.body.removeChild(ov);
         var a=document.createElement("a");a.href=URL.createObjectURL(blob);
-        a.download="Lettere_"+folderName+"_"+psf.base+".zip";
+        a.download="Lettere_"+folderName+"_"+psf.fileBase+".zip";
         document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(a.href);
       });
       return;
     }
     var e=pool[i];
-    var fileName=isSeasonal?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+".pdf"):(e.m+"_"+mm+"_"+CFG_YEAR+".pdf");
+    var fileName=isSeasonal?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+(SEASON_PERIOD==="mid"?"_MID":"")+".pdf"):(e.m+"_"+mm+"_"+CFG_YEAR+".pdf");
 
     // Render letter HTML into wrap div
     wrap.innerHTML='<style>'+css+'</style>'+

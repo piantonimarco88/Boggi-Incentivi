@@ -143,25 +143,38 @@ function saveZipPerFC(){
   });
   var total=tasks.length,done=0;
 
-  // Chiedi prima la cartella di destinazione (File System Access API — Chrome/Edge)
-  // Se non disponibile → fallback download classico
+  // Cartella di destinazione ZIP
   var _dirHandle=null;
+  var _zipSaveFolderPath=null;
   function startWithDir(dirHandle){
     _dirHandle=dirHandle||null;
     _runGeneration();
   }
 
-  if(window.showDirectoryPicker){
+  if(window.chrome&&window.chrome.webview){
+    // WebView2: usa folder picker C# (showDirectoryPicker non funziona su file://)
+    var _folderH2=null;
+    _folderH2=function(ev){
+      if(typeof ev.data==='string'){
+        if(ev.data.startsWith('zipFolderSelected:')){
+          window.chrome.webview.removeEventListener('message',_folderH2);
+          _zipSaveFolderPath=ev.data.slice('zipFolderSelected:'.length);
+          startWithDir('__csharp__');
+        } else if(ev.data==='zipFolderCancelled'){
+          window.chrome.webview.removeEventListener('message',_folderH2);
+        }
+      }
+    };
+    window.chrome.webview.addEventListener('message',_folderH2);
+    window.chrome.webview.postMessage({type:'selectZipFolder'});
+  } else if(window.showDirectoryPicker){
     window.showDirectoryPicker({mode:"readwrite",startIn:"desktop"})
       .then(function(dh){startWithDir(dh);})
       .catch(function(err){
-        // Utente ha annullato il selettore → non avviare
         if(err&&err.name==="AbortError")return;
-        // Altro errore (permessi ecc.) → fallback download
         startWithDir(null);
       });
   } else {
-    // Browser non supporta API (Firefox, Safari) → download classico
     startWithDir(null);
   }
 
@@ -169,7 +182,7 @@ function saveZipPerFC(){
     window._zipCancelled=false;
     var ov=document.createElement("div");
     ov.style.cssText="position:fixed;top:0;left:0;right:0;bottom:0;background:#1a1714;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif";
-    var destLabel=_dirHandle?('📁 '+_dirHandle.name):'📥 Cartella Download';
+    var destLabel=(_dirHandle==='__csharp__'&&_zipSaveFolderPath)?('📁 '+_zipSaveFolderPath.split('\\').pop()):(_dirHandle?('📁 '+_dirHandle.name):'📥 Cartella Download');
     ov.innerHTML='<div style="background:#2c2925;border:1px solid #55504a;border-radius:14px;padding:36px 48px;text-align:center;min-width:400px;box-shadow:0 8px 40px rgba(0,0,0,.7)">'+
       '<div style="font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#c9a96e;margin-bottom:10px">Boggi Milano</div>'+
       '<div style="font-size:22px;font-weight:800;color:#ffffff;margin-bottom:4px">ZIP per Field Coach</div>'+
@@ -204,12 +217,13 @@ function saveZipPerFC(){
         document.body.removeChild(ov);
         // Aggiorna UI distribuzione per mostrare i bottoni email
         rA();
-        if(_dirHandle)alert('✅ '+fcKeys.length+' ZIP salvati in:\n📁 '+_dirHandle.name+'\n\nTorna al tab Distribuzione e clicca "📧 Apri email" per ogni FC.');
+        if(_dirHandle==='__csharp__')alert('✅ '+fcKeys.length+' ZIP salvati in:\n📁 '+_zipSaveFolderPath+'\n\nTorna al tab Distribuzione e clicca "📧 Apri email" per ogni FC.');
+        else if(_dirHandle)alert('✅ '+fcKeys.length+' ZIP salvati in:\n📁 '+_dirHandle.name+'\n\nTorna al tab Distribuzione e clicca "📧 Apri email" per ogni FC.');
         else alert('✅ '+fcKeys.length+' ZIP scaricati.\n\nTorna al tab Distribuzione e clicca "📧 Apri email" per ogni FC.');
         return;
       }
       var fcKey=fcKeys[fcIdx];
-      var fileName=fcKey+"_"+folderName+"_"+psf.base+".zip";
+      var fileName=fcKey+"_"+folderName+"_"+psf.fileBase+".zip";
       document.getElementById("zipFcCount").textContent="Salvataggio "+(fcIdx+1)+"/"+fcKeys.length+"...";
       document.getElementById("zipFcLabel").textContent=fileName;
       fcZips[fcKey].generateAsync({type:"blob"}).then(function(blob){
@@ -221,7 +235,23 @@ function saveZipPerFC(){
           period:_period,
           typeLabel:_typeLabel
         };
-        if(_dirHandle){
+        if(_dirHandle==='__csharp__'&&window.chrome&&window.chrome.webview){
+          // WebView2: scrivi file su disco via C# (evita showDirectoryPicker su file://)
+          var _saveH=null;
+          _saveH=function(msg){
+            if(typeof msg.data==='string'&&(msg.data.startsWith('fileSaved:')||msg.data.startsWith('fileSaveError:'))){
+              window.chrome.webview.removeEventListener('message',_saveH);
+              saveFcZips(fcIdx+1);
+            }
+          };
+          window.chrome.webview.addEventListener('message',_saveH);
+          var reader2=new FileReader();
+          reader2.onload=function(ev2){
+            var b64=ev2.target.result.split(',')[1];
+            window.chrome.webview.postMessage({type:'saveFileBase64',folderPath:_zipSaveFolderPath,fileName:fileName,fileBase64:b64});
+          };
+          reader2.readAsDataURL(blob);
+        } else if(_dirHandle&&_dirHandle!=='__csharp__'){
           _dirHandle.getFileHandle(fileName,{create:true}).then(function(fh){
             fh.createWritable().then(function(w){
               w.write(blob).then(function(){w.close().then(function(){saveFcZips(fcIdx+1);});});
@@ -305,7 +335,7 @@ function exportMailCSV(){
     var tc=calcE(e);
     rows.push([e.m,e.c,e.n,e.mp||"",e.mf||"",e.s,e.j,pathPrefix+"/"+e.m+"_"+String(CFG_MONTH).padStart(2,"0")+"_"+CFG_YEAR+".pdf",tc,e.cu||"EUR"].join(";"))});
   var blob=new Blob(["\ufeff"+rows.join("\n")],{type:"text/csv;charset=utf-8;"});
-  var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="distribuzione_"+folder+"_"+psf.base+".csv";a.click();
+  var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="distribuzione_"+folder+"_"+psf.fileBase+".csv";a.click();
 }
 
 // Export mailto: links page
@@ -507,7 +537,7 @@ function exportPowerShell(){
   var psfSub=psfFolder.replace(/\//g,"\\\\");
   var ps='# Boggi Incentivi - Apertura email Outlook - '+period+' ('+typeLabel+')\n';
   ps+='# Le email vengono aperte in Outlook per revisione: clicca Invia su ognuna.\n';
-  ps+='# IMPORTANTE: esegui il file con   .\\prepara_email_'+folder+'_'+psf.base+'.ps1   (non copiare/incollare)\n\n';
+  ps+='# IMPORTANTE: esegui il file con   .\\prepara_email_'+folder+'_'+psf.fileBase+'.ps1   (non copiare/incollare)\n\n';
   ps+='$outlook = New-Object -ComObject Outlook.Application\n';
   var pdfBase=null;
   if(CFG_PDF_PATH){
@@ -553,7 +583,7 @@ function exportPowerShell(){
     ps+='if($i % 10 -eq 0){ Write-Host "Pausa dopo $i email..."; Start-Sleep -Seconds 5 }\n\n';
   });
   ps+='Write-Host "'+pool.filter(function(e){return e.mp&&e.mp.indexOf("@")>0}).length+' email aperte. Rivedi e invia ognuna da Outlook."\n';
-  var filename="prepara_email_"+folder+"_"+psf.base+".ps1";
+  var filename="prepara_email_"+folder+"_"+psf.fileBase+".ps1";
   var psBlob2=new Blob([ps],{type:"text/plain;charset=utf-8;"});
   if(CFG_PDF_PATH&&window.chrome&&window.chrome.webview){
     var targetFolder=CFG_PDF_PATH.replace(/[\/\\]$/,"")+"\\"+psfFolder.replace(/\//g,"\\");
@@ -592,7 +622,7 @@ function _buildFcPsContent(basePath){
   if(!fcList.length)return null;
   var ps='# Boggi Incentivi - Email ZIP a Field Coach - '+period+' ('+typeLabel+')\n';
   ps+='# Esegui da PowerShell (non come Amministratore) con Outlook aperto.\n';
-  ps+='# IMPORTANTE: esegui il file con   .\\'+('invia_zip_fc_'+folder+'_'+psf.base+'.ps1')+'   (non copiare/incollare)\n\n';
+  ps+='# IMPORTANTE: esegui il file con   .\\'+('invia_zip_fc_'+folder+'_'+psf.fileBase+'.ps1')+'   (non copiare/incollare)\n\n';
   ps+='$outlook = New-Object -ComObject Outlook.Application\n';
   if(basePath){
     // Percorso hardcodato (stesso del salvataggio ZIP)
@@ -604,7 +634,7 @@ function _buildFcPsContent(basePath){
   ps+='if(!(Test-Path $zipFolder)){Write-Host "Cartella non trovata: $zipFolder"; exit}\n\n';
   ps+='$i = 0\n\n';
   fcList.forEach(function(fc){
-    var zipName=fc.key+"_"+folder+"_"+psf.base+".zip";
+    var zipName=fc.key+"_"+folder+"_"+psf.fileBase+".zip";
     ps+='# FC: '+fc.key+' ('+fc.email+')\n';
     ps+='$mail = $outlook.CreateItem(0)\n';
     ps+='$mail.To = "'+fc.email+'"\n';
@@ -618,7 +648,7 @@ function _buildFcPsContent(basePath){
     ps+='if($i % 5 -eq 0){ Write-Host "Pausa..."; Start-Sleep -Seconds 4 }\n\n';
   });
   ps+='Write-Host "'+fcList.length+' email FC aperte. Rivedi e invia ognuna da Outlook."\n';
-  return {content:ps,filename:'invia_zip_fc_'+folder+'_'+psf.base+'.ps1',fcList:fcList};
+  return {content:ps,filename:'invia_zip_fc_'+folder+'_'+psf.fileBase+'.ps1',fcList:fcList};
 }
 
 function exportPowerShellFC(){
@@ -709,7 +739,7 @@ function sendFcZipEmails(){
   pool.forEach(function(e){
     if(!e.mf||e.mf.indexOf('@')<0)return;
     var fcKey=e.mf.split('@')[0];
-    if(!fcMap[fcKey])fcMap[fcKey]={email:e.mf,fileName:fcKey+"_"+folderName+"_"+psf.base+".zip"};
+    if(!fcMap[fcKey])fcMap[fcKey]={email:e.mf,fileName:fcKey+"_"+folderName+"_"+psf.fileBase+".zip"};
   });
   var fcKeys=Object.keys(fcMap).sort();
   if(!fcKeys.length){alert("Nessun Field Coach trovato nell'anagrafica.");return;}
@@ -721,7 +751,7 @@ function sendFcZipEmails(){
   // === Overlay ===
   var ov=document.createElement("div");
   ov.style.cssText="position:fixed;top:0;left:0;right:0;bottom:0;background:#1a1714;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif";
-  var _resumeState={i:0,folder:null};
+  var _resumeState={i:0,folder:null,blob:false};
   ov.innerHTML='<div style="background:#2c2925;border:1px solid #55504a;border-radius:14px;padding:36px 48px;text-align:center;min-width:420px">'+
     '<div style="font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#c9a96e;margin-bottom:10px">Boggi Milano</div>'+
     '<div style="font-size:22px;font-weight:800;color:#fff;margin-bottom:18px">&#128140; Invio Email Field Coach</div>'+
@@ -754,11 +784,39 @@ function sendFcZipEmails(){
     window._fcEmlPaused=false;
     var rb=document.getElementById('fcEmlResumeBtn');if(rb)rb.style.display='none';
     var sb=document.getElementById('fcEmlStopBtn');if(sb){sb.disabled=false;sb.style.opacity='1';}
-    sendNext(_resumeState.i,_resumeState.folder);
+    if(_resumeState.blob)sendNextBlob(_resumeState.i);else sendNext(_resumeState.i,_resumeState.folder);
   };
+  // Percorso 1: blob in memoria → base64 → temp file (evita File.Exists su path OneDrive)
+  function sendNextBlob(i){
+    if(window._fcEmlCancelled){_fcEmlCleanup();alert('Invio annullato. Email inviate: '+done+'/'+total+'.');return;}
+    if(window._fcEmlPaused){_resumeState={i:i,folder:null,blob:true};return;}
+    if(i>=fcKeys.length){
+      _fcEmlCleanup();
+      alert('✅ '+done+' email inviate ai Field Coach su '+total+'.'+(errors>0?'\n⚠️ '+errors+' errori. Controlla la barra di stato.':''));
+      return;
+    }
+    var fcKey=fcKeys[i];
+    var m=fcMap[fcKey];
+    var blob=_fcZipBlobs[fcKey];
+    document.getElementById('fcEmlLabel').textContent=fcKey+' → '+m.email;
+    if(!blob){errors++;sendNextBlob(i+1);return;}
+    _fcEmlCallback=function(){
+      done++;
+      document.getElementById('fcEmlBar').style.width=Math.round(done/total*100)+'%';
+      document.getElementById('fcEmlCount').textContent=done+' / '+total;
+      sendNextBlob(i+1);
+    };
+    var reader=new FileReader();
+    reader.onload=function(ev2){
+      var b64=ev2.target.result.split(',')[1];
+      window.chrome.webview.postMessage({type:'sendOutlookMailBase64',to:m.email,subject:subj,body:bodyTxt,pdfBase64:b64,pdfName:m.fileName});
+    };
+    reader.readAsDataURL(blob);
+  }
+  // Percorso 2: fallback da disco (blob non in memoria — sessione precedente)
   function sendNext(i,zipFolder){
     if(window._fcEmlCancelled){_fcEmlCleanup();alert('Invio annullato. Email inviate: '+done+'/'+total+'.');return;}
-    if(window._fcEmlPaused){_resumeState={i:i,folder:zipFolder};return;}
+    if(window._fcEmlPaused){_resumeState={i:i,folder:zipFolder,blob:false};return;}
     if(i>=fcKeys.length){
       _fcEmlCleanup();
       alert('✅ '+done+' email inviate ai Field Coach su '+total+'.'+(errors>0?'\n⚠️ '+errors+' errori (ZIP non trovati o problemi Outlook). Controlla la barra di stato.':''));
@@ -773,23 +831,29 @@ function sendFcZipEmails(){
       document.getElementById('fcEmlCount').textContent=done+' / '+total;
       sendNext(i+1,zipFolder);
     };
-    window.chrome.webview.postMessage({type:"sendOutlookMailDirect",to:m.email,subject:subj,body:bodyTxt,pdfFolder:zipFolder,pdfName:m.fileName});
+    window.chrome.webview.postMessage({type:'sendOutlookMailDirect',to:m.email,subject:subj,body:bodyTxt,pdfFolder:zipFolder,pdfName:m.fileName});
   }
-  // Selezione cartella ZIP via C# dialog
-  var _folderH=null;
-  _folderH=function(ev){
-    if(typeof ev.data==='string'){
-      if(ev.data.startsWith('zipFolderSelected:')){
-        window.chrome.webview.removeEventListener('message',_folderH);
-        sendNext(0,ev.data.slice('zipFolderSelected:'.length));
-      } else if(ev.data==='zipFolderCancelled'){
-        window.chrome.webview.removeEventListener('message',_folderH);
-        _fcEmlCleanup();
+  // Se i blob sono tutti in memoria: invia direttamente senza selezionare cartella
+  var allBlobsAvailable=fcKeys.every(function(k){return !!_fcZipBlobs[k];});
+  if(allBlobsAvailable){
+    sendNextBlob(0);
+  } else {
+    // Fallback: chiedi all'utente di selezionare la cartella ZIP su disco
+    var _folderH=null;
+    _folderH=function(ev){
+      if(typeof ev.data==='string'){
+        if(ev.data.startsWith('zipFolderSelected:')){
+          window.chrome.webview.removeEventListener('message',_folderH);
+          sendNext(0,ev.data.slice('zipFolderSelected:'.length));
+        } else if(ev.data==='zipFolderCancelled'){
+          window.chrome.webview.removeEventListener('message',_folderH);
+          _fcEmlCleanup();
+        }
       }
-    }
-  };
-  window.chrome.webview.addEventListener('message',_folderH);
-  window.chrome.webview.postMessage({type:"selectZipFolder"});
+    };
+    window.chrome.webview.addEventListener('message',_folderH);
+    window.chrome.webview.postMessage({type:'selectZipFolder'});
+  }
 }
 
 // Invia mail FC da ZIP gia' salvati su disco (sessione precedente)

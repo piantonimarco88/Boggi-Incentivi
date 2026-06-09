@@ -190,7 +190,7 @@ function exportExcel(){
   var ws=XLSX.utils.aoa_to_sheet(rows);
   var wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Consuntivo");
-  XLSX.writeFile(wb,"Incentivi_"+MODE+"_"+getPdfSubfolder().base+".xlsx");
+  XLSX.writeFile(wb,"Incentivi_"+MODE+"_"+getPdfSubfolder().fileBase+".xlsx");
 }
 
 function exportExcelUSA(){
@@ -254,5 +254,5 @@ function exportExcelUSA(){
   ws['!cols']=[{wch:22},{wch:16},{wch:16},{wch:10},{wch:22},{wch:22},{wch:18},{wch:18},{wch:22},{wch:20}];
   var wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"USA Commissions");
-  XLSX.writeFile(wb,"USA_Commissions_"+getPdfSubfolder().base+".xlsx");
+  XLSX.writeFile(wb,"USA_Commissions_"+getPdfSubfolder().fileBase+".xlsx");
 }

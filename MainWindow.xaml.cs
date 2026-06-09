@@ -461,6 +461,52 @@ namespace BoggiIncentivi
                         WebView.CoreWebView2.PostWebMessageAsString("mailDone");
                     }
                 }
+                else if (type == "sendOutlookMailBase64")
+                {
+                    // Invia allegato ZIP FC via base64 (evita File.Exists su percorsi OneDrive)
+                    var to        = json?["to"]?.GetValue<string>()       ?? "";
+                    var subject   = json?["subject"]?.GetValue<string>()   ?? "";
+                    var body      = json?["body"]?.GetValue<string>()      ?? "";
+                    var pdfBase64 = json?["pdfBase64"]?.GetValue<string>() ?? "";
+                    var pdfName   = json?["pdfName"]?.GetValue<string>()   ?? "attachment.zip";
+                    try
+                    {
+                        var tempDir  = Path.Combine(Path.GetTempPath(), "BoggiIncentivi_Mail");
+                        Directory.CreateDirectory(tempDir);
+                        var tempPath = Path.Combine(tempDir, pdfName);
+                        File.WriteAllBytes(tempPath, Convert.FromBase64String(pdfBase64));
+                        await Task.Run(() => SendOutlookMailDirect(to, subject, body, tempPath));
+                        SetStatus($"Email inviata: {to}");
+                    }
+                    catch (Exception ex)
+                    {
+                        SetStatus("Errore invio mail: " + ex.Message);
+                    }
+                    finally
+                    {
+                        WebView.CoreWebView2.PostWebMessageAsString("mailDone");
+                    }
+                }
+                else if (type == "saveFileBase64")
+                {
+                    // Salva ZIP/file da base64 su disco (usato da saveZipPerFC — showDirectoryPicker non funziona su file://)
+                    var folderPath = json?["folderPath"]?.GetValue<string>() ?? "";
+                    var fileName   = json?["fileName"]?.GetValue<string>()   ?? "file.zip";
+                    var fileBase64 = json?["fileBase64"]?.GetValue<string>() ?? "";
+                    try
+                    {
+                        Directory.CreateDirectory(folderPath);
+                        var filePath = Path.Combine(folderPath, fileName);
+                        await Task.Run(() => File.WriteAllBytes(filePath, Convert.FromBase64String(fileBase64)));
+                        SetStatus($"Salvato: {fileName}");
+                        WebView.CoreWebView2.PostWebMessageAsString("fileSaved:" + fileName);
+                    }
+                    catch (Exception ex)
+                    {
+                        SetStatus("Errore salvataggio: " + ex.Message);
+                        WebView.CoreWebView2.PostWebMessageAsString("fileSaveError:" + fileName);
+                    }
+                }
             }
             catch (Exception ex) { SetStatus("Errore messaggio: " + ex.Message); }
         }
