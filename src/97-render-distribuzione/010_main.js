@@ -566,7 +566,7 @@ function exportPowerShell(){
   pool.forEach(function(e){
     if(!e.mp||e.mp.indexOf("@")<0)return;
     if(PRIZE_MODE!=="fcvm"&&e.ps==="SI")return;
-    var pdfName=PRIZE_MODE==="seasonal"?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+".pdf"):(PRIZE_MODE==="fcvm"?(e.m+"_FCVM_"+mm+"_"+CFG_YEAR+".pdf"):(e.m+"_"+mm+"_"+CFG_YEAR+".pdf"));
+    var pdfName=PRIZE_MODE==="seasonal"?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+(SEASON_PERIOD==="mid"?"_MID":"")+".pdf"):(PRIZE_MODE==="fcvm"?(e.m+"_FCVM_"+mm+"_"+CFG_YEAR+".pdf"):(e.m+"_"+mm+"_"+CFG_YEAR+".pdf"));
     var bodyTxt=isP
       ?("Hi "+e.n+",`n`nPlease find attached your FORECAST incentive letter for "+period+".`nThis document shows your projected bonus based on current targets - final amounts will be confirmed at month end.`n`nBest regards")
       :("Hi "+e.n+",`n`nPlease find attached your FINAL incentive letter for "+period+".`nThis document confirms the bonus amount that will be included in your payslip.`n`nBest regards");

@@ -570,7 +570,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='8.69'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='8.70'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -7081,7 +7081,7 @@ function exportPowerShell(){
   pool.forEach(function(e){
     if(!e.mp||e.mp.indexOf("@")<0)return;
     if(PRIZE_MODE!=="fcvm"&&e.ps==="SI")return;
-    var pdfName=PRIZE_MODE==="seasonal"?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+".pdf"):(PRIZE_MODE==="fcvm"?(e.m+"_FCVM_"+mm+"_"+CFG_YEAR+".pdf"):(e.m+"_"+mm+"_"+CFG_YEAR+".pdf"));
+    var pdfName=PRIZE_MODE==="seasonal"?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+(SEASON_PERIOD==="mid"?"_MID":"")+".pdf"):(PRIZE_MODE==="fcvm"?(e.m+"_FCVM_"+mm+"_"+CFG_YEAR+".pdf"):(e.m+"_"+mm+"_"+CFG_YEAR+".pdf"));
     var bodyTxt=isP
       ?("Hi "+e.n+",`n`nPlease find attached your FORECAST incentive letter for "+period+".`nThis document shows your projected bonus based on current targets - final amounts will be confirmed at month end.`n`nBest regards")
       :("Hi "+e.n+",`n`nPlease find attached your FINAL incentive letter for "+period+".`nThis document confirms the bonus amount that will be included in your payslip.`n`nBest regards");
@@ -7590,20 +7590,28 @@ function sendMailEmployees(){
     },150);});
   }
   if(window.chrome&&window.chrome.webview){
-    var _folderHandler=null;
-    _folderHandler=function(ev){
-      if(typeof ev.data==='string'){
-        if(ev.data.startsWith('folderSelected:')){
-          window.chrome.webview.removeEventListener('message',_folderHandler);
-          genNext(0,ev.data.slice('folderSelected:'.length));
-        } else if(ev.data==='folderCancelled'){
-          window.chrome.webview.removeEventListener('message',_folderHandler);
-          _emlCleanup();
+    // Se CFG_PDF_PATH è configurato, deriva il path automaticamente come fa exportPowerShell()
+    // evitando che l'utente selezioni la cartella sbagliata
+    if(CFG_PDF_PATH){
+      var _psf=getPdfSubfolder();
+      var _autoFolder=CFG_PDF_PATH.replace(/[\/\\]$/,"")+"\\"+_psf.cons.replace(/\//g,"\\");
+      genNext(0,_autoFolder);
+    } else {
+      var _folderHandler=null;
+      _folderHandler=function(ev){
+        if(typeof ev.data==='string'){
+          if(ev.data.startsWith('folderSelected:')){
+            window.chrome.webview.removeEventListener('message',_folderHandler);
+            genNext(0,ev.data.slice('folderSelected:'.length));
+          } else if(ev.data==='folderCancelled'){
+            window.chrome.webview.removeEventListener('message',_folderHandler);
+            _emlCleanup();
+          }
         }
-      }
-    };
-    window.chrome.webview.addEventListener('message',_folderHandler);
-    window.chrome.webview.postMessage({type:"selectPdfFolder"});
+      };
+      window.chrome.webview.addEventListener('message',_folderHandler);
+      window.chrome.webview.postMessage({type:"selectPdfFolder"});
+    }
   } else {
     genNext(0,null);
   }

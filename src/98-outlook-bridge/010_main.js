@@ -172,20 +172,28 @@ function sendMailEmployees(){
     },150);});
   }
   if(window.chrome&&window.chrome.webview){
-    var _folderHandler=null;
-    _folderHandler=function(ev){
-      if(typeof ev.data==='string'){
-        if(ev.data.startsWith('folderSelected:')){
-          window.chrome.webview.removeEventListener('message',_folderHandler);
-          genNext(0,ev.data.slice('folderSelected:'.length));
-        } else if(ev.data==='folderCancelled'){
-          window.chrome.webview.removeEventListener('message',_folderHandler);
-          _emlCleanup();
+    // Se CFG_PDF_PATH è configurato, deriva il path automaticamente come fa exportPowerShell()
+    // evitando che l'utente selezioni la cartella sbagliata
+    if(CFG_PDF_PATH){
+      var _psf=getPdfSubfolder();
+      var _autoFolder=CFG_PDF_PATH.replace(/[\/\\]$/,"")+"\\"+_psf.cons.replace(/\//g,"\\");
+      genNext(0,_autoFolder);
+    } else {
+      var _folderHandler=null;
+      _folderHandler=function(ev){
+        if(typeof ev.data==='string'){
+          if(ev.data.startsWith('folderSelected:')){
+            window.chrome.webview.removeEventListener('message',_folderHandler);
+            genNext(0,ev.data.slice('folderSelected:'.length));
+          } else if(ev.data==='folderCancelled'){
+            window.chrome.webview.removeEventListener('message',_folderHandler);
+            _emlCleanup();
+          }
         }
-      }
-    };
-    window.chrome.webview.addEventListener('message',_folderHandler);
-    window.chrome.webview.postMessage({type:"selectPdfFolder"});
+      };
+      window.chrome.webview.addEventListener('message',_folderHandler);
+      window.chrome.webview.postMessage({type:"selectPdfFolder"});
+    }
   } else {
     genNext(0,null);
   }
