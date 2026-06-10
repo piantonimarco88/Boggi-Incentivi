@@ -332,6 +332,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
   </div>
   <div id="chips" class="chips"></div>
   <div id="currWarn" style="display:none" class="curr-warn"></div>
+  <div id="importDiff" style="display:none" class="curr-warn"></div>
 </div>
 
 <!-- TAB BAR -->
@@ -1338,6 +1339,7 @@ dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');lo
 fi.addEventListener('change',e=>{loadFiles(e.target.files);e.target.value=''});
 
 function loadFiles(files){
+  window._freshImport=true; // abilita il pannello "diff import" al prossimo rebuild
   for(const f of files){
     if(fileMap[f.name]) continue;
     const ext=f.name.split('.').pop().toLowerCase();
@@ -1411,6 +1413,7 @@ function rebuild(){
   applyUniformRates();
   try{ if(window.AgentTools) AgentTools.setData(allData); }catch(e){}
   try{ hashApply(); }catch(e){} // ripristina la vista da un link condiviso (#t=…) al primo load utile
+  try{ importDiff(); }catch(e){} // confronto col caricamento precedente (mostrato solo su import nuovo)
   const warn=document.getElementById('currWarn');
   const msgs=[];
   const unknownStores=[...new Set(allData.filter(r=>r._unknownEnte).map(r=>r.store))];
@@ -1428,6 +1431,42 @@ function rebuild(){
     warn.style.display='none';
   }
   if(allData.length) idbAutoSave(); else idbClearSession();
+}
+
+// ─── DIFF IMPORT: cosa è cambiato rispetto al caricamento precedente ───
+// Snapshot leggero in localStorage (mesi: righe+erogato; dipendenti; cambi per ente).
+// Il pannello compare SOLO dopo un import di file nuovi (window._freshImport), non al ripristino sessione.
+// Intercetta a monte: mesi spariti/modificati, dipendenti nuovi/mancanti, cambi FX variati (es. bug CHF/DKK).
+function importDiff(){
+  const el=document.getElementById('importDiff');if(!el)return;
+  if(!allData.length){el.style.display='none';return;}
+  const cur={months:{},emps:{},fx:{}};
+  allData.forEach(r=>{
+    const mk=r.monthKey||0;if(mk){const o=cur.months[mk]||(cur.months[mk]={n:0,er:0});o.n++;o.er+=r.erogato||0;}
+    const k=_empKey(r);if(k!=='|')cur.emps[k]=((r.cognome||'')+' '+(r.nome||'')).trim();
+    if(r._ente&&r.cambio)cur.fx[r._ente]=r.cambio;
+  });
+  let prev=null;try{prev=JSON.parse(localStorage.getItem('dashSnap')||'null');}catch(e){}
+  const fresh=!!window._freshImport;window._freshImport=false;
+  try{localStorage.setItem('dashSnap',JSON.stringify(Object.assign({at:new Date().toISOString().slice(0,10)},cur)));}catch(e){}
+  if(!fresh||!prev||!prev.months){el.style.display='none';return;}
+  const pm=prev.months||{},pe=prev.emps||{},pf=prev.fx||{};
+  const msgs=[];
+  const newM=Object.keys(cur.months).filter(k=>!pm[k]).sort();
+  if(newM.length)msgs.push('🆕 Mesi aggiunti: '+newM.map(k=>mkLabel(+k)).join(', ')+'.');
+  const goneM=Object.keys(pm).filter(k=>!cur.months[k]).sort();
+  if(goneM.length)msgs.push('⚠️ Mesi spariti rispetto a prima: '+goneM.map(k=>mkLabel(+k)).join(', ')+'.');
+  const chgM=Object.keys(cur.months).filter(k=>pm[k]&&(Math.abs(cur.months[k].er-pm[k].er)>1||cur.months[k].n!==pm[k].n)).sort();
+  if(chgM.length)msgs.push('✏️ Mesi modificati: '+chgM.map(k=>mkLabel(+k)+' (Δ€'+Math.round(cur.months[k].er-pm[k].er).toLocaleString('it-IT')+' · Δrighe '+(cur.months[k].n-pm[k].n)+')').join(' · ')+'.');
+  const newE=Object.keys(cur.emps).filter(k=>!pe[k]);
+  if(newE.length)msgs.push('👤 Dipendenti nuovi: '+newE.length+(newE.length<=5?' — '+newE.map(k=>agEsc(cur.emps[k])).join(', '):' (es. '+newE.slice(0,4).map(k=>agEsc(cur.emps[k])).join(', ')+'…)'));
+  const goneE=Object.keys(pe).filter(k=>!cur.emps[k]);
+  if(goneE.length)msgs.push('🚪 Dipendenti non più presenti: '+goneE.length+(goneE.length<=5?' — '+goneE.map(k=>agEsc(pe[k])).join(', '):''));
+  const fxChg=Object.keys(cur.fx).filter(e=>pf[e]&&Math.abs(cur.fx[e]/pf[e]-1)>0.005);
+  if(fxChg.length)msgs.push('💱 Cambi variati oltre 0,5%: '+fxChg.map(e=>'ente '+e+' ('+(+pf[e]).toFixed(4)+'→'+(+cur.fx[e]).toFixed(4)+')').join(', ')+' — verifica che sia atteso.');
+  if(!msgs.length)msgs.push('✅ Nessuna differenza strutturale rispetto al caricamento precedente ('+(prev.at||'')+').');
+  el.innerHTML='<div style="display:flex;align-items:flex-start;gap:8px;width:100%"><b style="white-space:nowrap">📥 Diff import <small style="font-weight:400;color:#888">(vs '+(prev.at||'precedente')+')</small></b><div style="flex:1">'+msgs.map(m=>'<div>'+m+'</div>').join('')+'</div><span onclick="document.getElementById(\'importDiff\').style.display=\'none\'" title="Chiudi" style="cursor:pointer;color:#999;font-weight:700;padding:0 4px">✕</span></div>';
+  el.style.display='';el.style.flexDirection='column';el.style.alignItems='stretch';
 }
 
 // ─── PERSISTENZA AUTOMATICA (IndexedDB) ──────────────────────
