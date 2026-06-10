@@ -1158,7 +1158,8 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
       </div>
     </div>
   </div>
-  <div style="display:flex;justify-content:flex-end;margin:0 28px 6px">
+  <div style="display:flex;justify-content:flex-end;gap:8px;margin:0 28px 6px">
+    <button onclick="asstReport()" title="Genera un report sintetico stampabile (ultimi 12 mesi): numeri dai dati, commento dall'agente se attivo" style="background:none;border:1px solid #d9ccf5;color:#7c3aed;font-size:11px;font-weight:600;padding:4px 11px;border-radius:7px;cursor:pointer">📄 Report sintetico</button>
     <button onclick="asstReset()" title="Azzera la memoria della conversazione e ricomincia" style="background:none;border:1px solid #e4e7ef;color:#888;font-size:11px;font-weight:600;padding:4px 11px;border-radius:7px;cursor:pointer">🗑 Nuova conversazione</button>
   </div>
   <div class="as-chat" id="asstChat"></div>
@@ -4623,6 +4624,60 @@ function asstEx(el){const t=el.textContent,i=document.getElementById('asstQ');if
   if(segs.length){segs.sort((a,b)=>a[0]-b[0]);i.focus&&i.focus();if(i.setSelectionRange)i.setSelectionRange(segs[0][0],segs[0][1]);else i.select&&i.select();}
   else asstAsk();}
 function asstReset(){window.agConv=[];const c=document.getElementById('asstChat');if(c)c.innerHTML='';asstInit();}
+// Report sintetico stampabile (ultimi 12 mesi). I NUMERI vengono dagli strumenti deterministici
+// (stesse funzioni dei tab); il commento testuale dall'agente SOLO se attivo (e resta opzionale).
+async function asstReport(){
+  if(!allData.length){alert('Carica prima i dati per generare il report.');return;}
+  const run=(n,a)=>{try{const o=AgentTools.run(n,a);return o&&!o.errore?o:null;}catch(e){return null;}};
+  const rie=run('riepilogo_gruppo',{periodo_mesi:12});
+  const tot=run('totale_erogato_gruppo',{gruppo:{},periodo_mesi:12});
+  const topNeg=run('classifica_gruppi',{dimensione:'negozio',criterio:'incidenza',periodo_mesi:12,top_n:8});
+  const naz=run('classifica_gruppi',{dimensione:'nazione',criterio:'incidenza',periodo_mesi:12,top_n:10});
+  const cnt=run('conteggio_dipendenti',{condizione:{tipo:'sotto_media'},periodo_mesi:12});
+  const anom=run('anomalie',{periodo_mesi:12});
+  // frequenze raggiungimento sugli ultimi 12 mesi (stesse regole del tab YoY)
+  const mks=allData.map(r=>r.monthKey||0).filter(Boolean);const mx=mks.length?Math.max(...mks):0;
+  let sub12=[];if(mx){let y=Math.floor(mx/100),mo=mx%100-11;y+=Math.floor((mo-1)/12);mo=((mo-1)%12+12)%12+1;const from=y*100+mo;sub12=allData.filter(r=>(r.monthKey||0)>=from&&(r.monthKey||0)<=mx);}
+  let freq=[];try{freq=yoyFreqItems(allData).map(it=>({label:it.label,f:yoyItemFreq(it,sub12)})).filter(x=>x.f.sem?x.f.n>0:x.f.N>0);}catch(e){}
+  const w=window.open('','_blank');if(!w){alert('Consenti i popup per generare il report.');return;}
+  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const eu=v=>'€ '+Math.round(v||0).toLocaleString('it-IT');
+  const tbl=(head,rws)=>'<table><thead><tr>'+head.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>'+rws.join('')+'</tbody></table>';
+  let h='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Report premi — Boggi</title><style>'
+    +'body{font-family:Segoe UI,Arial,sans-serif;color:#1a1a2e;max-width:880px;margin:24px auto;padding:0 20px}'
+    +'h1{font-size:22px;margin:0 0 2px}h2{font-size:14px;color:#7c3aed;text-transform:uppercase;letter-spacing:.5px;margin:22px 0 8px;border-bottom:1px solid #eee;padding-bottom:4px}'
+    +'.sub{color:#888;font-size:12px;margin-bottom:14px}'
+    +'.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}'
+    +'.k{background:#f7f8fc;border-radius:10px;padding:10px 12px}.k b{display:block;font-size:20px}.k span{font-size:11px;color:#888;text-transform:uppercase}'
+    +'table{width:100%;border-collapse:collapse;font-size:12.5px;margin:6px 0}th{text-align:left;background:#f7f8fc;padding:5px 8px;font-size:11px;text-transform:uppercase;color:#666}td{padding:4px 8px;border-bottom:1px solid #f0f0f5}td.r,th.r{text-align:right}'
+    +'.npr{margin:14px 0}.note{font-size:11px;color:#999;margin-top:18px}'
+    +'@media print{.npr{display:none}body{margin:0}}'
+    +'</style></head><body>'
+    +'<div class="npr"><button onclick="window.print()" style="padding:8px 16px;border:1px solid #7c3aed;color:#7c3aed;background:#fff;border-radius:8px;cursor:pointer;font-weight:600">🖨 Stampa / Salva PDF</button></div>'
+    +'<h1>Report premi — sintesi ultimi 12 mesi</h1>'
+    +'<div class="sub">Periodo: '+esc(rie?rie.periodo:'—')+' · generato il '+new Date().toLocaleDateString('it-IT')+' · numeri identici ai tab della dashboard</div>'
+    +'<div id="aiNarr"></div>'
+    +'<div class="kpis">'
+    +'<div class="k"><span>Dipendenti</span><b>'+esc(rie?rie.n_dipendenti:'—')+'</b></div>'
+    +'<div class="k"><span>Erogato totale</span><b>'+(tot?eu(tot.totale_eur):'—')+'</b></div>'
+    +'<div class="k"><span>Incidenza media</span><b>'+esc(rie?rie.incidenza_media_pct+'%':'—')+'</b></div>'
+    +'<div class="k"><span>Sotto media</span><b>'+(cnt?cnt.n+' <small style="font-size:11px;color:#888">su '+cnt.su_totale+'</small>':'—')+'</b></div>'
+    +'</div>';
+  if(freq.length)h+='<h2>Frequenza raggiungimento premi (su eleggibili)</h2>'+tbl(['Premio','Frequenza','Raggiunti / possibili'],freq.map(x=>'<tr><td>'+esc(x.label)+'</td><td class="r"><b>'+x.f.freq.toFixed(0)+'%</b></td><td class="r">'+x.f.n+' / '+x.f.N+'</td></tr>'));
+  if(rie&&rie.incidenza_media_per_premio&&rie.incidenza_media_per_premio.length)h+='<h2>Incidenza media per premio</h2>'+tbl(['Premio','% su RML'],rie.incidenza_media_per_premio.map(p=>'<tr><td>'+esc(p.premio)+'</td><td class="r">'+p.pct+'%</td></tr>'));
+  if(topNeg&&topNeg.classifica)h+='<h2>Top negozi per incidenza</h2>'+tbl(['#','Negozio','Incidenza'],topNeg.classifica.map((x,i)=>'<tr><td>'+(i+1)+'</td><td>'+esc(x.label)+'</td><td class="r">'+x.valore+'%</td></tr>'));
+  if(naz&&naz.classifica)h+='<h2>Nazioni per incidenza</h2>'+tbl(['#','Nazione','Incidenza'],naz.classifica.map((x,i)=>'<tr><td>'+(i+1)+'</td><td>'+esc(x.label)+'</td><td class="r">'+x.valore+'%</td></tr>'));
+  if(anom&&anom.n)h+='<h2>Anomalie dati ('+anom.n+')</h2>'+tbl(['Dipendente','Tipo','Dettaglio'],(anom.anomalie||[]).slice(0,10).map(a=>'<tr><td>'+esc(a.dipendente)+'</td><td>'+esc(a.tipo)+'</td><td>'+esc(a.dettaglio)+'</td></tr>'));
+  h+='<div class="note">Fonte: dashboard Statistiche Premi — i valori provengono dalle stesse funzioni dei tab (Confronta / What-if / Anno su Anno).'+(window.agEnabled?'':' Commento AI non disponibile (agente spento).')+'</div></body></html>';
+  w.document.write(h);w.document.close();
+  if(window.agEnabled){try{
+    const data={periodo:rie&&rie.periodo,dipendenti:rie&&rie.n_dipendenti,erogato_totale_eur:tot&&tot.totale_eur,incidenza_media_pct:rie&&rie.incidenza_media_pct,sotto_media:cnt&&{n:cnt.n,su:cnt.su_totale},frequenze:freq.map(x=>({premio:x.label,pct:+x.f.freq.toFixed(0)})),top_negozi:topNeg&&topNeg.classifica,nazioni:naz&&naz.classifica,anomalie:anom&&anom.n};
+    const resp=await agCall([{role:'user',content:'Commenta questi dati del piano premi (JSON): '+JSON.stringify(data)}],{noTools:true,max:800,system:'Sei un analista HR retail. Scrivi un commento direzionale in italiano (6-10 frasi, professionale): cosa va bene, cosa preoccupa, 2 azioni suggerite. Usa SOLO i numeri forniti, non inventarne. Solo testo semplice, niente markdown.'});
+    const txt=(resp.content||[]).filter(x=>x.type==='text').map(x=>x.text).join('').trim();
+    const ph=w.document.getElementById('aiNarr');
+    if(ph&&txt)ph.innerHTML='<h2>Commento (AI)</h2><div style="font-size:13px;line-height:1.6;white-space:pre-wrap">'+txt.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>';
+  }catch(e){}}
+}
 function asstInit(){
   const chat=document.getElementById('asstChat'),exs=document.getElementById('asstExs');if(!chat)return;
   const PH='nome cognome dipendente';
