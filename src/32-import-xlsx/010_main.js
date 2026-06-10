@@ -381,6 +381,7 @@ function loadAnagraficaExcel(file){
 
         // Salary — handle thousand separators
         var salStr=String(row[C_SAL]||"0").trim();
+        if(salStr.toUpperCase()==="NO"){errors.push({row:ri+1,name:fullName,reason:"Codice interno = \"NO\" — dipendente senza stipendio definito, escluso dal piano incentivi"});continue}
         var salary=parseNum(salStr);
         if(salary<=0){errors.push({row:ri+1,name:fullName,reason:"Stipendio zero o mancante"});continue}
 
