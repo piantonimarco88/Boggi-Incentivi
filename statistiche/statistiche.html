@@ -4495,6 +4495,9 @@ function renderAlertQuad(emps,tol){
     {label:'Sopra soglia',data:valid.filter(e=>e.status==='sopra').map(pt),backgroundColor:'#a855f7',pointRadius:5},
   ];
   if(hlPts.length) ds.push({label:'🔍 Evidenziato',data:hlPts,backgroundColor:'#f59e0b',borderColor:'#b45309',borderWidth:2,pointRadius:10,pointStyle:'rectRot'});
+  const pinN=_pinName().toLowerCase();
+  const pinPts=pinN?valid.filter(e=>((e.cognome+' '+e.nome).trim().toLowerCase()===pinN)).map(pt):[];
+  if(pinPts.length) ds.push({label:'📌 Fissato',data:pinPts,backgroundColor:'#0ea5e9',borderColor:'#075985',borderWidth:2,pointRadius:9,pointStyle:'rect'});
   alertCharts.quad=new Chart(cv.getContext('2d'),{type:'scatter',
     data:{datasets:ds},
     options:{responsive:true,maintainAspectRatio:false,
@@ -4731,12 +4734,15 @@ function renderCmp(){
   const cp=document.getElementById('cmp_c_pos');
   const pt=e=>({x:Math.round(e.rmlMese),y:+e.inc.toFixed(1),nm:(e.cognome+' '+e.nome).trim()});
   const meanX=_cmpAvg(group,e=>e.rmlMese), meanY=_cmpAvg(group,e=>e.inc);
-  if(cp) cmpCharts.pos=new Chart(cp.getContext('2d'),{type:'scatter',
-    data:{datasets:[
+  const dsPos=[
       {label:'Gruppo',data:group.map(pt),backgroundColor:'rgba(148,163,184,.55)',pointRadius:4},
       {label:'Media gruppo',data:group.length?[{x:Math.round(meanX),y:+meanY.toFixed(1),nm:'Media gruppo'}]:[],backgroundColor:'#0891b2',pointRadius:9,pointStyle:'triangle'},
       {label:'Soggetto',data:[pt(subj)],backgroundColor:'#7c3aed',pointRadius:8,pointStyle:'rectRot'},
-    ]},
+  ];
+  const _pinNm=_pinName().toLowerCase();
+  if(_pinNm){const pp=group.filter(e=>((e.cognome+' '+e.nome).trim().toLowerCase()===_pinNm)).map(pt);if(pp.length)dsPos.push({label:'📌 Fissato',data:pp,backgroundColor:'#0ea5e9',borderColor:'#075985',borderWidth:2,pointRadius:9,pointStyle:'rect'});}
+  if(cp) cmpCharts.pos=new Chart(cp.getContext('2d'),{type:'scatter',
+    data:{datasets:dsPos},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10}},
       cmpMean:{mx:group.length?meanX:null,my:group.length?meanY:null},
       tooltip:{callbacks:{label:c=>c.raw.nm+': RML € '+fmt(c.raw.x)+' · inc '+c.raw.y+'%'}}},
@@ -4846,7 +4852,7 @@ function ckpFilter(q){
   allData.forEach(r=>{if(r.cognome){const k=_empKey(r);if(!emps[k])emps[k]={n:((r.cognome||'')+' '+(r.nome||'')).trim(),job:r.job||'',store:r.store||''};else{if(r.job)emps[k].job=r.job;if(r.store)emps[k].store=r.store;}}if(r.store)stores.add(r.store);});
   const rows=[];
   const empHits=Object.values(emps).filter(e=>match(e.n+' '+e.job+' '+e.store)).slice(0,6);
-  if(empHits.length){rows.push({h:'Dipendenti'});empHits.forEach(e=>rows.push({t:e.n,sub:(e.job?e.job+' · ':'')+e.store,go:()=>{switchTab('cmp');cmpSelectSubj(e.n);},alt:{label:'Chiedi a Lament1',go:()=>_ckpAskAg('Come va '+e.n+'? Analisi completa vs pari ruolo')}}));}
+  if(empHits.length){rows.push({h:'Dipendenti'});empHits.forEach(e=>rows.push({t:e.n,sub:(e.job?e.job+' · ':'')+e.store,go:()=>{switchTab('cmp');cmpSelectSubj(e.n);},alts:[{label:'Chiedi a Lament1',go:()=>_ckpAskAg('Come va '+e.n+'? Analisi completa vs pari ruolo')},{label:'📌 Fissa',go:()=>pinEmp(e.n)}]}));}
   const stHits=[...stores].filter(s=>match(s)).sort().slice(0,5);
   if(stHits.length){rows.push({h:'Negozi'});stHits.forEach(s=>rows.push({t:s,sub:'riepilogo negozio',go:()=>_ckpAskAg('Riepilogo del negozio '+s+' negli ultimi 12 mesi')}));}
   const TABS=[['dash','Dashboard'],['yoy','Anno su Anno'],['sal','Stipendi'],['whatif','What-if'],['alert','Alert'],['cmp','Confronta'],['asst','Lament1'],['gloss','Glossario']];
@@ -4859,11 +4865,11 @@ function ckpRender(){
   const list=document.getElementById('ckpList');if(!list)return;
   list.innerHTML=_ckpRows.map((r,i)=>r.h?'<div class="ckp-h">'+r.h+'</div>'
     :'<div class="ckp-it'+(i===_ckpSel?' on':'')+'" data-i="'+i+'"><div><div>'+agEsc(r.t)+'</div>'+(r.sub?'<div class="ckp-sub">'+agEsc(r.sub)+'</div>':'')+'</div>'
-      +(r.alt?'<span class="ckp-b" data-alt="'+i+'">'+agEsc(r.alt.label)+'</span>':'')+'</div>').join('')
+      +(r.alts?r.alts.map((a,j)=>'<span class="ckp-b" data-alt="'+j+'">'+agEsc(a.label)+'</span>').join(''):'')+'</div>').join('')
     ||'<div style="padding:18px 16px;color:#bbb;font-size:13px">Nessun risultato</div>';
   list.querySelectorAll('.ckp-it').forEach(el=>{
     el.addEventListener('mousemove',()=>{_ckpSel=+el.dataset.i;list.querySelectorAll('.ckp-it').forEach(x=>x.classList.toggle('on',+x.dataset.i===_ckpSel));});
-    el.addEventListener('click',e=>{const a=e.target.closest('[data-alt]');const r=_ckpRows[+el.dataset.i];if(!r)return;ckpClose();(a&&r.alt?r.alt:r).go();});
+    el.addEventListener('click',e=>{const a=e.target.closest('[data-alt]');const r=_ckpRows[+el.dataset.i];if(!r)return;ckpClose();(a&&r.alts?r.alts[+a.dataset.alt]:r).go();});
   });
 }
 function _ckpMove(d){if(!_ckpRows.length)return;let i=_ckpSel;for(let k=0;k<_ckpRows.length;k++){i=(i+d+_ckpRows.length)%_ckpRows.length;if(!_ckpRows[i].h)break;}_ckpSel=i;ckpRender();
@@ -4876,6 +4882,28 @@ document.addEventListener('keydown',e=>{
   else if(e.key==='ArrowUp'){e.preventDefault();_ckpMove(-1);}
   else if(e.key==='Enter'){e.preventDefault();const r=_ckpRows[_ckpSel];if(r&&!r.h){ckpClose();r.go();}}
 });
+
+// ═══════════════════════════════════════════════════════════════
+// ─── PIN DIPENDENTE cross-tab: badge in tab bar + evidenza nei grafici ──
+// Fissi una persona (dalla palette Ctrl+K) e resta evidenziata negli scatter
+// di Alert e Confronta mentre navighi. Persistito in localStorage.
+function _pinName(){try{return (JSON.parse(localStorage.getItem('pinEmp')||'null')||{}).name||'';}catch(e){return '';}}
+function pinEmp(name){try{localStorage.setItem('pinEmp',JSON.stringify({name}));}catch(e){}pinBadge();_pinRerender();}
+function unpinEmp(){try{localStorage.removeItem('pinEmp');}catch(e){}pinBadge();_pinRerender();}
+function _pinRerender(){
+  try{const t=document.getElementById('tabAlert');if(t&&t.style.display!=='none'&&allData.length)renderAlert();}catch(e){}
+  try{const t=document.getElementById('tabCmp');if(t&&t.style.display!=='none'&&allData.length)renderCmp();}catch(e){}
+}
+function pinBadge(){
+  let b=document.getElementById('pinBadge');
+  const n=_pinName();
+  if(!n){if(b)b.remove();return;}
+  if(!b){b=document.createElement('span');b.id='pinBadge';
+    b.style.cssText='display:inline-flex;align-items:center;gap:6px;margin-left:8px;background:#e0f2fe;border:1px solid #7dd3fc;color:#075985;font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px;vertical-align:middle';
+    const bar=document.querySelector('.tab-bar');if(bar)bar.appendChild(b);else document.body.appendChild(b);}
+  b.innerHTML='📌 <span onclick="switchTab(\'cmp\');cmpSelectSubj(_pinName())" title="Apri in Confronta" style="cursor:pointer">'+agEsc(n)+'</span><span onclick="unpinEmp()" title="Sgancia" style="cursor:pointer;color:#0369a1;font-weight:800">✕</span>';
+}
+try{pinBadge();}catch(e){}
 function asstInit(){
   const chat=document.getElementById('asstChat'),exs=document.getElementById('asstExs');if(!chat)return;
   const PH='nome cognome dipendente';
