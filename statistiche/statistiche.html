@@ -354,6 +354,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 <div class="kpi-expand-wrap" id="kpiExpandWrap" style="display:none">
   <button class="btn-kpi-expand" onclick="expandKpi()"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M1 6V1h5M10 1h5v5M15 10v5h-5M6 15H1v-5"/></svg> Espandi KPI</button>
 </div>
+<div id="dashInsight" style="display:none;align-items:flex-start;gap:10px;background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;border-radius:10px;padding:9px 14px;margin:0 0 10px;font-size:12.5px;line-height:1.5"></div>
 <div class="kpi-row" id="kpiRow" style="display:none">
   <div class="kpi">
     <div class="kpi-lbl">Dipendenti unici</div>
@@ -364,6 +365,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
     <div class="kpi-lbl">Achievement medio</div>
     <div class="kpi-val" id="kAch">—</div>
     <div class="kpi-sub">% massimale raggiunto</div>
+    <div id="ksAch"></div>
   </div>
   <div class="kpi a">
     <div class="kpi-lbl">Massimale totale erogabile</div>
@@ -374,6 +376,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
     <div class="kpi-lbl">Premi erogati (€)</div>
     <div class="kpi-val" id="kTot">—</div>
     <div class="kpi-sub" id="kMedia">—</div>
+    <div id="ksTot"></div>
   </div>
   <div class="kpi r">
     <div class="kpi-lbl">Dipendenti a €0</div>
@@ -384,6 +387,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
     <div class="kpi-lbl">Incidenza su stipendio</div>
     <div class="kpi-val" id="kInc">—</div>
     <div class="kpi-sub" id="kIncSub">% premio / RML periodo</div>
+    <div id="ksInc"></div>
   </div>
 </div>
 
@@ -1971,8 +1975,55 @@ function renderKpis(){
   g('kZeroPct',nd?(zeros/nd*100).toFixed(1)+'% del totale':'—');
   g('kInc',avgInc!=null?avgInc.toFixed(1)+'%':'—');
   g('kIncSub',avgInc!=null?withRml.length+' dip. con RML':'nessun RML');
+  try{renderKpiSparks();renderDashInsight();}catch(e){}
 }
 function g(id,v){document.getElementById(id).textContent=v;}
+
+// ─── SPARKLINE nelle KPI card + INSIGHT automatico (rule-based, offline) ───
+function _sparkSvg(vals,color){
+  if(!vals||vals.length<2)return '';
+  const w=120,h=24,mn=Math.min(...vals),mx=Math.max(...vals),sp=(mx-mn)||1;
+  const pts=vals.map((v,i)=>((i/(vals.length-1))*(w-6)+3).toFixed(1)+','+(h-3-((v-mn)/sp)*(h-8)).toFixed(1)).join(' ');
+  const lx=((w-6)+3).toFixed(1),ly=(h-3-((vals[vals.length-1]-mn)/sp)*(h-8)).toFixed(1);
+  return '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" style="width:100%;height:24px;display:block;margin-top:5px;opacity:.9"><polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="2"/><circle cx="'+lx+'" cy="'+ly+'" r="2.5" fill="'+color+'"/></svg>';
+}
+// Serie mensili dal perimetro filtrato corrente (stessi dati delle card).
+function _dashMonthly(){
+  const by={};
+  filteredRaw.forEach(r=>{const mk=r.monthKey||0;if(!mk)return;const o=by[mk]||(by[mk]={er:0,mx:0,erM:0,rmlM:0,comp:{}});
+    o.er+=r.erogato||0;o.mx+=r.massimale||0;
+    if(!isSemRow(r)){o.erM+=r.erogato||0;o.rmlM+=r.rml_period||0;COMP.forEach(c=>{if(c.tipo==='mensile')o.comp[c.k]=(o.comp[c.k]||0)+(r[c.k]||0);});}});
+  const ks=Object.keys(by).map(Number).sort((a,b)=>a-b);
+  return {ks,by};
+}
+function renderKpiSparks(){
+  const {ks,by}=_dashMonthly();
+  const put=(id,vals,col)=>{const el=document.getElementById(id);if(el)el.innerHTML=ks.length>=3?_sparkSvg(vals,col):'';};
+  put('ksAch',ks.map(k=>by[k].mx>0?by[k].er/by[k].mx*100:0),'#16a34a');
+  put('ksTot',ks.map(k=>by[k].er),'#7c3aed');
+  put('ksInc',ks.map(k=>by[k].rmlM>0?by[k].erM/by[k].rmlM*100:0),'#0891b2');
+}
+// Una frase su cosa è cambiato (ultimi 2 mesi vs 3 precedenti) e dove guardare. Zero LLM.
+function renderDashInsight(){
+  const el=document.getElementById('dashInsight');if(!el)return;
+  const {ks,by}=_dashMonthly();
+  const kk=ks.filter(k=>by[k].rmlM>0);
+  if(kk.length<5){el.style.display='none';return;}
+  const inc=k=>by[k].erM/by[k].rmlM*100;
+  const last2=kk.slice(-2),p3=kk.slice(-5,-2);
+  const a2=last2.reduce((s,k)=>s+inc(k),0)/last2.length;
+  const b3=p3.reduce((s,k)=>s+inc(k),0)/p3.length;
+  const d=a2-b3;
+  // componente mensile col movimento peggiore (incidenza su RML, stessi sottoperiodi)
+  const incC=(arr,k)=>{const rml=arr.reduce((s,x)=>s+by[x].rmlM,0)||1;return arr.reduce((s,x)=>s+(by[x].comp[k]||0),0)/rml*100;};
+  let worst=null;
+  COMP.filter(c=>c.tipo==='mensile').forEach(c=>{const v3=incC(p3,c.k);if(v3<0.3)return;const dd=incC(last2,c.k)-v3;if(!worst||dd<worst.d)worst={l:c.l,d:dd};});
+  const dirTxt=d<=-0.5?'<b>in calo di '+Math.abs(d).toFixed(1)+'pp</b>':d>=0.5?'<b>in crescita di '+d.toFixed(1)+'pp</b>':'stabile';
+  let t='⚡ Incidenza premi '+dirTxt+' negli ultimi 2 mesi ('+a2.toFixed(1)+'% vs '+b3.toFixed(1)+'% dei 3 precedenti, perimetro filtrato).';
+  if(worst&&worst.d<-0.3)t+=' Componente più in calo: <b>'+worst.l+'</b> ('+worst.d.toFixed(1)+'pp).';
+  el.innerHTML='<span style="flex:1">'+t+'</span><button onclick="switchTab(\'alert\')" style="white-space:nowrap;border:1px solid #f59e0b;color:#92400e;background:#fff;border-radius:7px;padding:4px 11px;font-size:11px;font-weight:600;cursor:pointer">Apri Alert</button>';
+  el.style.display='flex';
+}
 
 // ─── CHARTS ──────────────────────────────────────────────────
 function dc(k){if(charts[k]){charts[k].destroy();delete charts[k];}}
