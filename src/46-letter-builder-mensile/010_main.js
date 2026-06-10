@@ -751,19 +751,10 @@ function canProduceLetter(){
 // Ritorna il filename PDF esatto per il dipendente i-esimo nel pool
 // Deve corrispondere esattamente alla colonna FILENAME del tracciato lettere (.znf)
 function getLetterFilename(i){
-  if(PRIZE_MODE==="fcvm"){var p=getFcVmPool(),e=p[i];if(!e)return null;return e.m+"_FCVM_"+String(CFG_MONTH).padStart(2,"0")+"_"+CFG_YEAR+".pdf";}
-  var pool=getLetterPool();
+  var pool=PRIZE_MODE==="fcvm"?getFcVmPool():getLetterPool();
   var e=pool[i];
   if(!e)return null;
-  var isSeasItalia=PRIZE_MODE==="seasonal"&&REGION==="italia";
-  var mm=String(CFG_MONTH).padStart(2,"0");
-  var stagione=CFG_SEASON+String(CFG_YEAR).slice(-2);
-  if(PRIZE_MODE==="seasonal"){
-    if(SEASON_PERIOD==="mid")return e.m+"_"+stagione+"_MID.pdf";
-    if(isSeasItalia)return e.m+"_"+stagione+".pdf";
-    return e.m+"_"+stagione+".pdf";
-  }
-  return e.m+"_"+mm+"_"+CFG_YEAR+".pdf";
+  return getEmpPdfFilename(e);
 }
 
 function getLetterPool(){

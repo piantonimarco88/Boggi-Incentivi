@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Il build include la guardia encoding: fallisce se un sorgente
+      # contiene sequenze di doppia codifica UTF-8 (mojibake)
+      - name: Build bundle
+        run: node build/build.js
+
+      # Test funzioni pure: naming PDF, sottocartelle, label periodo, CF
+      - name: Test
+        run: node --test

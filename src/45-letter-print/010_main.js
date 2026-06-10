@@ -178,7 +178,7 @@ function saveAllPDFsZip(){
       return;
     }
     var e=pool[i];
-    var fileName=isSeasonal?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+(SEASON_PERIOD==="mid"?"_MID":"")+".pdf"):(e.m+"_"+mm+"_"+CFG_YEAR+".pdf");
+    var fileName=getEmpPdfFilename(e);
 
     // Render letter HTML into wrap div
     wrap.innerHTML='<style>'+css+'</style>'+

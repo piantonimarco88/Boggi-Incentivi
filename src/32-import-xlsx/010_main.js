@@ -189,10 +189,7 @@ function loadAnagraficaExcel(file){
           }
           var cdcDesc=String(row[ZC.cdcDesc]||"").trim();
 
-          // Codice fiscale — valida: 16 char alfanumerici (persona fisica) o 11 cifre (P.IVA)
-          // Se il valore è puramente numerico con meno di 11 cifre è probabilmente una colonna sbagliata
-          var cf=String(row[ZC.cf]||"").trim().toUpperCase();
-          if(cf&&/^\d+$/.test(cf)&&cf.length<11)cf="";
+          var cf=sanitizeCF(row[ZC.cf]);
 
           // Email
           var email=String(row[ZC.email]||"").trim().replace(/[\s\n\r]+/g,"");

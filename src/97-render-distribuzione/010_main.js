@@ -282,7 +282,7 @@ function saveZipPerFC(){
       }
       var task=tasks[i];
       var e=task.e,fcKey=task.fc;
-      var pdfName=isSeasonal?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+".pdf"):(e.m+"_"+mm+"_"+CFG_YEAR+".pdf");
+      var pdfName=getEmpPdfFilename(e);
       document.getElementById("zipFcLabel").textContent=fcKey+" — "+e.c+" "+e.n;
       wrap.innerHTML='<style>'+css+'</style>'+
         '<style>*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body,div{font-family:"DM Sans",sans-serif;font-size:13px;color:#4e4b48}.lt{max-width:800px;width:800px;box-shadow:none;border:none}</style>'+
@@ -354,8 +354,7 @@ function exportMailtoLinks(){
   pool.forEach(function(e){
     if(!e.mp||e.mp.indexOf("@")<0)return;
     if(PRIZE_MODE!=="fcvm"&&e.ps==="SI")return;
-    var mm=String(CFG_MONTH).padStart(2,"0");
-    var pdfName=PRIZE_MODE==="seasonal"?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+(SEASON_PERIOD==="mid"?"_MID":"")+".pdf"):(e.m+"_"+mm+"_"+CFG_YEAR+".pdf");
+    var pdfName=getEmpPdfFilename(e);
     var bodyTxt=isP
       ?("Hi "+e.n+",\n\nPlease find attached your FORECAST incentive letter for "+period+".\nThis document shows your projected bonus based on current targets \u2014 final amounts will be confirmed at month end.\n\nBest regards")
       :("Hi "+e.n+",\n\nPlease find attached your FINAL incentive letter for "+period+".\nThis document confirms the bonus amount that will be included in your payslip.\n\nBest regards");
@@ -378,11 +377,7 @@ function exportTracciatoLettere(){
     if(!isFcvm&&SEAS&&SEAS[e.m]&&SEAS[e.m].excluded)return;
     if(!isFcvm&&e.ps==="SI")return;
     var matrNum=e.m.replace(/^[A-Za-z]+/,"");
-    var filename=isFcvm
-      ?(e.m+"_FCVM_"+mm+"_"+CFG_YEAR+".pdf")
-      :(isSeasItalia
-        ?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+".pdf")
-        :(e.m+"_"+mm+"_"+CFG_YEAR+".pdf"));
+    var filename=getEmpPdfFilename(e);
     var cols=[
       "FILENAME="+filename,
       hrzModel,
@@ -566,7 +561,7 @@ function exportPowerShell(){
   pool.forEach(function(e){
     if(!e.mp||e.mp.indexOf("@")<0)return;
     if(PRIZE_MODE!=="fcvm"&&e.ps==="SI")return;
-    var pdfName=PRIZE_MODE==="seasonal"?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+".pdf"):(PRIZE_MODE==="fcvm"?(e.m+"_FCVM_"+mm+"_"+CFG_YEAR+".pdf"):(e.m+"_"+mm+"_"+CFG_YEAR+".pdf"));
+    var pdfName=getEmpPdfFilename(e);
     var bodyTxt=isP
       ?("Hi "+e.n+",`n`nPlease find attached your FORECAST incentive letter for "+period+".`nThis document shows your projected bonus based on current targets - final amounts will be confirmed at month end.`n`nBest regards")
       :("Hi "+e.n+",`n`nPlease find attached your FINAL incentive letter for "+period+".`nThis document confirms the bonus amount that will be included in your payslip.`n`nBest regards");

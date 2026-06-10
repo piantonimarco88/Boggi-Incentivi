@@ -582,6 +582,24 @@ var MONTH_NAMES={
 function getMonthName(lang){var map={"ITALIANO":"IT","INGLESE":"EN","FRANCESE":"FR","TEDESCO":"DE","SPAGNOLO":"ES"};return(MONTH_NAMES[map[lang]||"EN"]||MONTH_NAMES.EN)[CFG_MONTH]||""}
 function getMonthYearLabel(){if(PRIZE_MODE==="seasonal")return CFG_SEASON+" "+CFG_YEAR;return MONTH_NAMES.IT[CFG_MONTH]+" "+CFG_YEAR}
 function getPeriodLabelEn(){if(PRIZE_MODE==="seasonal"){var s=CFG_SEASON+String(CFG_YEAR).slice(-2);return SEASON_PERIOD==="mid"?s+" MID-SEASON":s+" "+CFG_YEAR;}return getMonthName("INGLESE")+" "+CFG_YEAR;}
+// UNICA fonte di verità per il nome file PDF di un dipendente.
+// Deve corrispondere esattamente al nome usato da "Salva Tutti i PDF"
+// e alla colonna FILENAME del tracciato lettere (.znf).
+// Ogni altra costruzione manuale del nome è un bug in attesa di manifestarsi.
+function getEmpPdfFilename(e){
+  var mm=String(CFG_MONTH).padStart(2,"0");
+  if(PRIZE_MODE==="fcvm")return e.m+"_FCVM_"+mm+"_"+CFG_YEAR+".pdf";
+  if(PRIZE_MODE==="seasonal")return e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+(SEASON_PERIOD==="mid"?"_MID":"")+".pdf";
+  return e.m+"_"+mm+"_"+CFG_YEAR+".pdf";
+}
+// Codice fiscale: 16 char alfanumerici (persona fisica) o 11 cifre (P.IVA).
+// Un valore puramente numerico sotto 11 cifre è quasi certamente una colonna
+// Excel sbagliata (es. CdC) → svuotato per non sporcare il tracciato ZNF.
+function sanitizeCF(cf){
+  cf=String(cf||"").trim().toUpperCase();
+  if(cf&&/^\d+$/.test(cf)&&cf.length<11)return "";
+  return cf;
+}
 function getPdfSubfolder(){var r;if(PRIZE_MODE==="fcvm"){var mensileBase=MONTH_NAMES.IT[CFG_MONTH]+"_"+CFG_YEAR;var base=mensileBase+"/FCVM";r={prev:base+"/Preventivo",cons:base+"/Consuntivo",base:base};}else if(PRIZE_MODE==="seasonal"){var yr2=String(CFG_YEAR).slice(-2);var base=CFG_SEASON+yr2+"_"+CFG_YEAR;if(SEASON_PERIOD==="mid")r={prev:base+"/Mid-Season/Preventivo",cons:base+"/Mid-Season/Consuntivo",base:base+"/Mid-Season"};else r={prev:base+"/Preventivo",cons:base+"/Consuntivo",base:base};}else{r={prev:MONTH_NAMES.IT[CFG_MONTH]+"_"+CFG_YEAR+"/Preventivo",cons:MONTH_NAMES.IT[CFG_MONTH]+"_"+CFG_YEAR+"/Consuntivo",base:MONTH_NAMES.IT[CFG_MONTH]+"_"+CFG_YEAR};}r.fileBase=r.base.replace(/\//g,'_');return r;}
 function updateHeader(){var el=document.getElementById("hdrPeriod");if(el)el.textContent=getMonthYearLabel();}
 function updateHeaderCount(){
@@ -717,9 +735,7 @@ function loadSession(input){
     // Restore data
     if(state.D){
       if(state.D.e){E=state.D.e;
-        // Sanitizza cf salvato: se puramente numerico con <11 cifre è quasi certamente
-        // una colonna sbagliata dell'Excel (es. CdC) — svuota per evitare dati errati nel tracciato
-        E.forEach(function(emp){if(emp.cf&&/^\d+$/.test(emp.cf)&&emp.cf.length<11)emp.cf='';});
+        E.forEach(function(emp){if(emp.cf)emp.cf=sanitizeCF(emp.cf);});
       }
       if(state.D.t)D.t=state.D.t;if(state.D.c)D.c=state.D.c;if(state.D.cs)D.cs=state.D.cs;if(state.D.s)D.s=state.D.s;
       if(state.D.v)D.v=state.D.v;if(state.D.tr)D.tr=state.D.tr;
@@ -1803,7 +1819,7 @@ function saveAllPDFsZip(){
       return;
     }
     var e=pool[i];
-    var fileName=isSeasonal?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+(SEASON_PERIOD==="mid"?"_MID":"")+".pdf"):(e.m+"_"+mm+"_"+CFG_YEAR+".pdf");
+    var fileName=getEmpPdfFilename(e);
 
     // Render letter HTML into wrap div
     wrap.innerHTML='<style>'+css+'</style>'+
@@ -2642,19 +2658,10 @@ function canProduceLetter(){
 // Ritorna il filename PDF esatto per il dipendente i-esimo nel pool
 // Deve corrispondere esattamente alla colonna FILENAME del tracciato lettere (.znf)
 function getLetterFilename(i){
-  if(PRIZE_MODE==="fcvm"){var p=getFcVmPool(),e=p[i];if(!e)return null;return e.m+"_FCVM_"+String(CFG_MONTH).padStart(2,"0")+"_"+CFG_YEAR+".pdf";}
-  var pool=getLetterPool();
+  var pool=PRIZE_MODE==="fcvm"?getFcVmPool():getLetterPool();
   var e=pool[i];
   if(!e)return null;
-  var isSeasItalia=PRIZE_MODE==="seasonal"&&REGION==="italia";
-  var mm=String(CFG_MONTH).padStart(2,"0");
-  var stagione=CFG_SEASON+String(CFG_YEAR).slice(-2);
-  if(PRIZE_MODE==="seasonal"){
-    if(SEASON_PERIOD==="mid")return e.m+"_"+stagione+"_MID.pdf";
-    if(isSeasItalia)return e.m+"_"+stagione+".pdf";
-    return e.m+"_"+stagione+".pdf";
-  }
-  return e.m+"_"+mm+"_"+CFG_YEAR+".pdf";
+  return getEmpPdfFilename(e);
 }
 
 function getLetterPool(){
@@ -4754,10 +4761,7 @@ function loadAnagraficaExcel(file){
           }
           var cdcDesc=String(row[ZC.cdcDesc]||"").trim();
 
-          // Codice fiscale — valida: 16 char alfanumerici (persona fisica) o 11 cifre (P.IVA)
-          // Se il valore è puramente numerico con meno di 11 cifre è probabilmente una colonna sbagliata
-          var cf=String(row[ZC.cf]||"").trim().toUpperCase();
-          if(cf&&/^\d+$/.test(cf)&&cf.length<11)cf="";
+          var cf=sanitizeCF(row[ZC.cf]);
 
           // Email
           var email=String(row[ZC.email]||"").trim().replace(/[\s\n\r]+/g,"");
@@ -6809,7 +6813,7 @@ function saveZipPerFC(){
       }
       var task=tasks[i];
       var e=task.e,fcKey=task.fc;
-      var pdfName=isSeasonal?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+".pdf"):(e.m+"_"+mm+"_"+CFG_YEAR+".pdf");
+      var pdfName=getEmpPdfFilename(e);
       document.getElementById("zipFcLabel").textContent=fcKey+" — "+e.c+" "+e.n;
       wrap.innerHTML='<style>'+css+'</style>'+
         '<style>*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body,div{font-family:"DM Sans",sans-serif;font-size:13px;color:#4e4b48}.lt{max-width:800px;width:800px;box-shadow:none;border:none}</style>'+
@@ -6881,8 +6885,7 @@ function exportMailtoLinks(){
   pool.forEach(function(e){
     if(!e.mp||e.mp.indexOf("@")<0)return;
     if(PRIZE_MODE!=="fcvm"&&e.ps==="SI")return;
-    var mm=String(CFG_MONTH).padStart(2,"0");
-    var pdfName=PRIZE_MODE==="seasonal"?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+(SEASON_PERIOD==="mid"?"_MID":"")+".pdf"):(e.m+"_"+mm+"_"+CFG_YEAR+".pdf");
+    var pdfName=getEmpPdfFilename(e);
     var bodyTxt=isP
       ?("Hi "+e.n+",\n\nPlease find attached your FORECAST incentive letter for "+period+".\nThis document shows your projected bonus based on current targets \u2014 final amounts will be confirmed at month end.\n\nBest regards")
       :("Hi "+e.n+",\n\nPlease find attached your FINAL incentive letter for "+period+".\nThis document confirms the bonus amount that will be included in your payslip.\n\nBest regards");
@@ -6905,11 +6908,7 @@ function exportTracciatoLettere(){
     if(!isFcvm&&SEAS&&SEAS[e.m]&&SEAS[e.m].excluded)return;
     if(!isFcvm&&e.ps==="SI")return;
     var matrNum=e.m.replace(/^[A-Za-z]+/,"");
-    var filename=isFcvm
-      ?(e.m+"_FCVM_"+mm+"_"+CFG_YEAR+".pdf")
-      :(isSeasItalia
-        ?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+".pdf")
-        :(e.m+"_"+mm+"_"+CFG_YEAR+".pdf"));
+    var filename=getEmpPdfFilename(e);
     var cols=[
       "FILENAME="+filename,
       hrzModel,
@@ -7093,7 +7092,7 @@ function exportPowerShell(){
   pool.forEach(function(e){
     if(!e.mp||e.mp.indexOf("@")<0)return;
     if(PRIZE_MODE!=="fcvm"&&e.ps==="SI")return;
-    var pdfName=PRIZE_MODE==="seasonal"?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+".pdf"):(PRIZE_MODE==="fcvm"?(e.m+"_FCVM_"+mm+"_"+CFG_YEAR+".pdf"):(e.m+"_"+mm+"_"+CFG_YEAR+".pdf"));
+    var pdfName=getEmpPdfFilename(e);
     var bodyTxt=isP
       ?("Hi "+e.n+",`n`nPlease find attached your FORECAST incentive letter for "+period+".`nThis document shows your projected bonus based on current targets - final amounts will be confirmed at month end.`n`nBest regards")
       :("Hi "+e.n+",`n`nPlease find attached your FINAL incentive letter for "+period+".`nThis document confirms the bonus amount that will be included in your payslip.`n`nBest regards");
@@ -7482,7 +7481,7 @@ function sendOneEmployeeMail(matr){
   if(!e||!e.mp||e.mp.indexOf("@")<0){alert("Email non disponibile per questo dipendente.");return;}
   var mm=String(CFG_MONTH).padStart(2,"0");
   var isSeasonal=PRIZE_MODE==="seasonal";
-  var pdfName=isSeasonal?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+(SEASON_PERIOD==="mid"?"_MID":"")+".pdf"):(e.m+"_"+mm+"_"+CFG_YEAR+".pdf");
+  var pdfName=getEmpPdfFilename(e);
   var PAGE_W_PX=794,SCALE=2,PAGE_W_MM=210,PAGE_H_MM=297,MARGIN_MM=8,CONT_W_MM=PAGE_W_MM-MARGIN_MM*2;
   var PX_PER_MM=(PAGE_W_PX/PAGE_W_MM)*SCALE;
   var PAGE_H_PX_SCALED=Math.round(PAGE_H_MM*PX_PER_MM),MARGIN_PX_SCALED=Math.round(MARGIN_MM*PX_PER_MM),CONT_H_PX_SCALED=PAGE_H_PX_SCALED-MARGIN_PX_SCALED*2;
@@ -7572,7 +7571,7 @@ function sendMailEmployees(){
     var isP=MODE==="preventivo";
     var period=getPeriodLabelEn();
     var typeLabel=isP?"FORECAST":"FINAL";
-    var pdfName=isSeasonal?(e.m+"_"+CFG_SEASON+String(CFG_YEAR).slice(-2)+(SEASON_PERIOD==="mid"?"_MID":"")+".pdf"):isFcvm?(e.m+"_FCVM_"+mm+"_"+CFG_YEAR+".pdf"):(e.m+"_"+mm+"_"+CFG_YEAR+".pdf");
+    var pdfName=getEmpPdfFilename(e);
     document.getElementById("emlLabel").textContent=e.c+" "+e.n+" → "+e.mp;
     if(window.chrome&&window.chrome.webview){
       var subj="BOGGI INCENTIVE PROGRAM - "+period+" - "+typeLabel;

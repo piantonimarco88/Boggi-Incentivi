@@ -34,9 +34,7 @@ function loadSession(input){
     // Restore data
     if(state.D){
       if(state.D.e){E=state.D.e;
-        // Sanitizza cf salvato: se puramente numerico con <11 cifre è quasi certamente
-        // una colonna sbagliata dell'Excel (es. CdC) — svuota per evitare dati errati nel tracciato
-        E.forEach(function(emp){if(emp.cf&&/^\d+$/.test(emp.cf)&&emp.cf.length<11)emp.cf='';});
+        E.forEach(function(emp){if(emp.cf)emp.cf=sanitizeCF(emp.cf);});
       }
       if(state.D.t)D.t=state.D.t;if(state.D.c)D.c=state.D.c;if(state.D.cs)D.cs=state.D.cs;if(state.D.s)D.s=state.D.s;
       if(state.D.v)D.v=state.D.v;if(state.D.tr)D.tr=state.D.tr;

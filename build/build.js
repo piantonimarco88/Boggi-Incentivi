@@ -74,6 +74,25 @@ function collectFiles(dir) {
 // gli stessi newline che aveva nel monolite originale.
 const INSERT_RE = /(?:<!--BUNDLE_INSERT:([A-Za-z0-9_\-]+)-->|\/\*BUNDLE_INSERT:([A-Za-z0-9_\-]+)\*\/)/g;
 
+// === Guardia encoding ======================================
+// Rileva sequenze di doppia codifica UTF-8 (file letto come CP1252
+// e riscritto come UTF-8 — tipicamente da PowerShell 5.1).
+// Esempi: "è" -> "Ã¨", "·" -> "Â·", "—" -> "â€”", emoji -> "ðŸ..."
+// Se trovate, il build FALLISCE: meglio un build rotto che un
+// dialog con caratteri corrotti in produzione (vedi bug v8.74).
+const MOJIBAKE_RE = /[ÃÂ][ -¿]|â[€œš]|ðŸ/;
+function checkEncoding(content, label) {
+  const lines = content.split("\n");
+  const hits = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (MOJIBAKE_RE.test(lines[i])) {
+      hits.push("  " + label + ":" + (i + 1) + "  " + lines[i].trim().substring(0, 80));
+      if (hits.length >= 5) break;
+    }
+  }
+  return hits;
+}
+
 function expandInserts(content) {
   return content.replace(INSERT_RE, (_match, htmlName, jsName) => {
     const dirName = (htmlName || jsName).trim();
@@ -82,7 +101,15 @@ function expandInserts(content) {
     if (files.length === 0) {
       throw new Error("BUNDLE_INSERT:" + dirName + " — nessun file in " + path.relative(ROOT, dir));
     }
-    return files.map(f => fs.readFileSync(f, "utf8")).join("");
+    return files.map(f => {
+      const c = fs.readFileSync(f, "utf8");
+      const hits = checkEncoding(c, path.relative(ROOT, f));
+      if (hits.length) {
+        throw new Error("ENCODING CORROTTO (mojibake) rilevato:\n" + hits.join("\n") +
+          "\nProbabile lettura/scrittura con codifica sbagliata (PowerShell 5.1?). Ripristina il file da git.");
+      }
+      return c;
+    }).join("");
   });
 }
 
@@ -106,6 +133,13 @@ function build() {
   // blocco grande che include intervalli gia` estratti in step precedenti).
   // Reset INSERT_RE.lastIndex prima di ogni test (regex globale ha stato).
   let content = fs.readFileSync(monolithPath, "utf8");
+  {
+    const hits = checkEncoding(content, "src/_monolith/app.html");
+    if (hits.length) {
+      throw new Error("ENCODING CORROTTO (mojibake) rilevato:\n" + hits.join("\n") +
+        "\nProbabile lettura/scrittura con codifica sbagliata (PowerShell 5.1?). Ripristina il file da git.");
+    }
+  }
   const maxIter = 20;
   for (let iter = 0; iter < maxIter; iter++) {
     INSERT_RE.lastIndex = 0;
