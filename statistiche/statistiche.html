@@ -1406,6 +1406,7 @@ function rebuild(){
   normalizeStores();
   applyUniformRates();
   try{ if(window.AgentTools) AgentTools.setData(allData); }catch(e){}
+  try{ hashApply(); }catch(e){} // ripristina la vista da un link condiviso (#t=…) al primo load utile
   const warn=document.getElementById('currWarn');
   const msgs=[];
   const unknownStores=[...new Set(allData.filter(r=>r._unknownEnte).map(r=>r.store))];
@@ -2393,6 +2394,7 @@ function switchTab(tab){
   if(tab==='alert'&&allData.length){popAlertFilters();renderAlert();}
   if(tab==='cmp'&&allData.length){popCmpFilters();renderCmp();}
   if(tab==='asst'){asstInit();}
+  if(tab!=='yoy'){try{hashUpdate(tab);}catch(e){}} // su yoy ci pensa renderYoy (include i filtri)
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -3370,6 +3372,47 @@ function renderYoy(){
   rcYoy('comp_freq',buildYoyCompFreq,rows);
   renderYoyTable(rows);
   renderYoyDipTable(rows);
+  try{hashUpdate('yoy');}catch(e){}
+}
+
+// ─── STATO FILTRI NELL'URL (#…) — viste condivisibili senza server ───
+// Il link riflette tab attivo + filtri Anno su Anno: copialo e chi lo apre (con gli stessi dati caricati)
+// vede esattamente la stessa vista. _hashMute evita i loop durante il ripristino.
+const HASH_MS=[['mese','yoy-mese'],['anno','yoy-anno'],['job','yoy-job'],['naz','yoy-naz'],['tipo','yoy-tipo'],['comp','yoy-comp'],['store','yoy-store']];
+let _hashMute=false,_hashApplied=false;
+function hashUpdate(tab){
+  if(_hashMute)return;
+  try{
+    const p=new URLSearchParams();p.set('t',tab||'dash');
+    if(tab==='yoy'){
+      HASH_MS.forEach(([k,id])=>{const v=getMsVals(id);if(v.length)p.set(k,v.join('~'));});
+      const dipEl=document.getElementById('yoy-dip');if(dipEl&&dipEl.value)p.set('dip',dipEl.value);
+      if(yoyL4L!=='tutti')p.set('pn',yoyL4L);
+      if(yoyL4LDip!=='tutti')p.set('pd',yoyL4LDip);
+      if(activeOnly)p.set('att','1');
+    }
+    history.replaceState(null,'','#'+p.toString());
+  }catch(e){}
+}
+function setMsVals(id,vals){const set=new Set(vals);document.querySelectorAll('#'+id+'-panel input[type=checkbox]:not([data-all])').forEach(i=>{i.checked=set.has(i.value);});try{updateMsLabel(id);}catch(e){}}
+function hashApply(){
+  if(_hashApplied)return;_hashApplied=true;
+  const h=location.hash.replace(/^#/,'');if(!h)return;
+  let p;try{p=new URLSearchParams(h);}catch(e){return;}
+  const tab=p.get('t');if(!tab)return;
+  _hashMute=true;
+  try{
+    switchTab(tab); // popola i filtri del tab prima di impostarli
+    if(tab==='yoy'){
+      HASH_MS.forEach(([k,id])=>{const v=p.get(k);if(v!=null)setMsVals(id,v.split('~').filter(Boolean));});
+      const dip=p.get('dip');if(dip!=null){const i=document.getElementById('yoy-dip');if(i)i.value=dip;}
+      if(p.get('pn'))setL4L(p.get('pn'),true);
+      if(p.get('pd'))setL4LDip(p.get('pd'),true);
+      if(p.get('att'))setActiveOnly(true);
+      renderYoy();
+    }
+  }catch(e){}
+  _hashMute=false;
 }
 
 // ═══════════════════════════════════════════════════════════════
