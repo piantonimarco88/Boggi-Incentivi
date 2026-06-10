@@ -441,6 +441,27 @@ namespace BoggiIncentivi
                     else
                         WebView.CoreWebView2.PostWebMessageAsString("zipFolderCancelled");
                 }
+                else if (type == "checkPdfFiles")
+                {
+                    // Pre-flight: verifica esistenza cartella e PDF prima dell'invio email
+                    var folderPath = json?["folderPath"]?.GetValue<string>() ?? "";
+                    var fileArr    = json?["files"]?.AsArray();
+                    var missing = new List<string>();
+                    int existing = 0;
+                    bool folderExists = Directory.Exists(folderPath);
+                    if (folderExists && fileArr != null)
+                    {
+                        foreach (var f in fileArr)
+                        {
+                            var name = f?.GetValue<string>();
+                            if (string.IsNullOrEmpty(name)) continue;
+                            if (File.Exists(Path.Combine(folderPath, name))) existing++;
+                            else missing.Add(name);
+                        }
+                    }
+                    var resJson = JsonSerializer.Serialize(new { folderExists, existing, missing });
+                    WebView.CoreWebView2.PostWebMessageAsString("pdfCheckResult:" + resJson);
+                }
                 else if (type == "sendOutlookMailDirect")
                 {
                     var to      = json?["to"]?.GetValue<string>()        ?? "";
@@ -455,13 +476,17 @@ namespace BoggiIncentivi
                             throw new Exception($"PDF non trovato: {pdfPath}\nSalva prima tutti i PDF con il bottone apposito.");
                         await Task.Run(() => SendOutlookMailDirect(to, subject, body, pdfPath));
                         SetStatus($"Email inviata: {to}");
+                        WebView.CoreWebView2.PostWebMessageAsString("mailResult:ok");
                     }
                     catch (Exception ex)
                     {
                         SetStatus("Errore invio mail: " + ex.Message);
+                        // Esito per-destinatario per la tabella risultati nel JS
+                        WebView.CoreWebView2.PostWebMessageAsString("mailResult:err:" + ex.Message.Replace("\n", " "));
                     }
                     finally
                     {
+                        // mailDone resta per compatibilità con i flussi esistenti (FC, ecc.)
                         WebView.CoreWebView2.PostWebMessageAsString("mailDone");
                     }
                 }
