@@ -272,6 +272,8 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 .ag-kpi .k{flex:1;min-width:86px;background:#f7f8fc;border:1px solid #eceef5;border-radius:9px;padding:6px 10px}
 .ag-kpi .kv{font-size:16px;font-weight:800;color:#7c3aed;line-height:1.2}.ag-kpi .kl{font-size:10px;color:#777;text-transform:uppercase;margin-top:2px}
 .ag-cv{position:relative;height:210px}.ag-cv.tall{height:300px}
+.ag-cur{display:inline-block;width:7px;height:13px;background:#c4b5fd;margin-left:2px;vertical-align:-2px;animation:agblink 1s steps(2) infinite}
+@keyframes agblink{50%{opacity:0}}
 .ag-tb{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}.ag-tb td{padding:3px 6px;border-bottom:1px solid #f0f1f6}
 .as-bot b{font-weight:700}.as-bot ul{margin:4px 0 4px 18px;padding:0}.as-bot li{margin:2px 0}
 .whatif-hist{font-size:11px;color:#4338ca;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;padding:7px 12px;margin-bottom:12px}
@@ -1141,8 +1143,14 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
     <div id="agBody" style="display:none;padding:10px 14px 12px;font-size:12px;color:#444">
       <div style="color:#777;margin-bottom:8px">L'Agente usa un LLM potente (Claude) tramite un <b>proxy locale</b> che custodisce la API key. Avvia prima il proxy: <code>$env:ANTHROPIC_API_KEY="sk-..."; node statistiche\_proxy.js</code>. <span style="color:#b8860b">⚠️ Con l'agente attivo, domanda e risultati (inclusi i nomi) vengono inviati al cloud Anthropic: usa solo dove consentito dalle policy / con ok legale.</span></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-        <div style="flex:1;min-width:200px"><label style="font-weight:600;display:block;margin-bottom:3px">URL proxy</label><input id="agProxy" value="http://localhost:8787" style="width:100%;padding:6px 9px;border:1px solid #ccd0db;border-radius:8px"></div>
-        <div style="flex:1;min-width:160px"><label style="font-weight:600;display:block;margin-bottom:3px">Modello</label><input id="agModel" value="claude-haiku-4-5" style="width:100%;padding:6px 9px;border:1px solid #ccd0db;border-radius:8px"></div>
+        <div style="flex:1;min-width:200px"><label style="font-weight:600;display:block;margin-bottom:3px">URL proxy</label><input id="agProxy" value="http://localhost:8787" oninput="agSaveCfg()" style="width:100%;padding:6px 9px;border:1px solid #ccd0db;border-radius:8px"></div>
+        <div style="flex:1.3;min-width:260px"><label style="font-weight:600;display:block;margin-bottom:3px">Modello</label>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input id="agModel" value="claude-haiku-4-5" oninput="agSaveCfg()" style="flex:1;min-width:120px;padding:6px 9px;border:1px solid #ccd0db;border-radius:8px">
+            <button type="button" onclick="agQuickModel('claude-haiku-4-5')" title="Veloce ed economico: ideale per le domande quotidiane" style="padding:6px 10px;border:1px solid #ccd0db;border-radius:8px;background:#fff;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap">⚡ Veloce</button>
+            <button type="button" onclick="agQuickModel('claude-sonnet-4-6')" title="Più capace: per analisi complesse multi-passaggio (costa di più)" style="padding:6px 10px;border:1px solid #ccd0db;border-radius:8px;background:#fff;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap">🧠 Approfondito</button>
+          </div>
+        </div>
         <button onclick="agPing()" style="cursor:pointer;border:0;border-radius:8px;padding:7px 13px;font-weight:700;background:#eef0f7;color:#333">Verifica proxy</button>
       </div>
       <div style="margin-top:10px;padding-top:8px;border-top:1px solid #eef0f5">
@@ -4755,7 +4763,7 @@ function agToggle(){const b=document.getElementById('agBody'),c=document.getElem
 async function agPing(){const s=document.getElementById('agState');s.textContent='verifica…';try{await fetch(document.getElementById('agProxy').value,{method:'GET'});s.innerHTML=' <span style="color:#138a36">✔ proxy ok</span>';}catch(e){s.innerHTML=' <span style="color:#c0392b">✘ proxy non raggiungibile</span>';}}
 function agOnChange(){window.agEnabled=!!document.getElementById('agOn').checked;const p=document.getElementById('agPill');if(p){p.textContent=window.agEnabled?'attivo':'spento';p.style.color=window.agEnabled?'#138a36':'#999';}}
 const AG_SYS=`Sei l'assistente HR della rete vendita Boggi. Rispondi in ITALIANO, professionale, scorrevole, sintetico. Per OGNI dato numerico DEVI usare gli strumenti: non inventare mai numeri, percentuali o nomi. Se il nome è incerto usa trova_dipendente. Glossario: RML=stipendio lordo mensile; incidenza%=premio/RML; ruoli SM/VSM/SSAP/SSA/SA/JSA=vendita, SCS=cassa; "leve di piano" (modificabili)=BDG base e incidenze semestrali, gli altri premi sono performance.
-REGOLE (non chiedere chiarimenti se puoi inferire): se la domanda nomina un ruolo usa ambito:{ruolo:...}, se nomina una persona usa ambito:{cognome:...}; se cita un anno (es. "nel 2025") usa anno:quell'anno, non periodo_mesi; se cita "ultimi N mesi" usa periodo_mesi:N; nelle simulazioni, per "a partire da/dal <mese> <anno>" usa da_mese+da_anno (la modifica vale solo da quel mese in poi, come la decorrenza del tab What-if); per confrontare dept store vs negozi normali usa confronta_gruppi con tipo_negozio:"dept" su un gruppo e "normali" sull altro (stesso ruolo) — i due valori ammessi sono ESATTAMENTE "dept" e "normali"; per "confronta la persona X coi pari ruolo dei negozi a,b,c" usa analizza_dipendente con pari_negozi:["a","b","c"] (restringe i pari ruolo a quel perimetro); per elenca_dipendenti default limite 15. Preferisci AGIRE con i dati piuttosto che chiedere dettagli secondari. Dopo i risultati, scrivi la risposta usando ESATTAMENTE i numeri restituiti.`;
+REGOLE (non chiedere chiarimenti se puoi inferire): se la domanda nomina un ruolo usa ambito:{ruolo:...}, se nomina una persona usa ambito:{cognome:...}; se cita un anno (es. "nel 2025") usa anno:quell'anno, non periodo_mesi; se cita "ultimi N mesi" usa periodo_mesi:N; nelle simulazioni, per "a partire da/dal <mese> <anno>" usa da_mese+da_anno (la modifica vale solo da quel mese in poi, come la decorrenza del tab What-if); per confrontare dept store vs negozi normali usa confronta_gruppi con tipo_negozio:"dept" su un gruppo e "normali" sull altro (stesso ruolo) — i due valori ammessi sono ESATTAMENTE "dept" e "normali"; per "confronta la persona X coi pari ruolo dei negozi a,b,c" usa analizza_dipendente con pari_negozi:["a","b","c"] (restringe i pari ruolo a quel perimetro); per elenca_dipendenti default limite 15. Preferisci AGIRE con i dati piuttosto che chiedere dettagli secondari. Dopo i risultati, scrivi la risposta usando ESATTAMENTE i numeri restituiti. Chiudi SEMPRE la risposta finale con una riga separata nel formato esatto: FOLLOWUP: domanda1 | domanda2 (2-3 brevi domande di approfondimento pertinenti ai dati appena mostrati, in italiano; non aggiungerla quando chiedi chiarimenti).`;
 const AG_TOOLS=[
  {name:'trova_dipendente',description:'Risolve un nome scritto (anche con refuso) nei dipendenti reali.',input_schema:{type:'object',properties:{testo:{type:'string'}},required:['testo']}},
  {name:'valori_disponibili',description:'Elenca ruoli, negozi, nazioni, premi e periodo coperti.',input_schema:{type:'object',properties:{}}},
@@ -4786,22 +4794,87 @@ const AG_TOOLS=[
  {name:'distribuzione_incidenza',description:'Distribuzione per fasce di incidenza (istogramma).',input_schema:{type:'object',properties:{filtro:{type:'object'},fasce:{type:'array',items:{type:'number'}},periodo_mesi:{type:'integer'},anno:{type:'integer'},tipo_premio:{type:'string'}}}},
  {name:'stima_nuovo_assunto',description:'Premio mensile atteso per un nuovo assunto dato ruolo e RML.',input_schema:{type:'object',properties:{ruolo:{type:'string'},rml_mensile:{type:'number'},negozio:{type:'string'},tipo_negozio:{type:'string'}},required:['ruolo']}}
 ];
-async function agCall(messages){const body={model:(document.getElementById('agModel').value||'claude-haiku-4-5').trim(),max_tokens:1200,system:AG_SYS,tools:AG_TOOLS,messages};const r=await fetch(document.getElementById('agProxy').value,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});const j=await r.json();if(j.error)throw new Error(j.error.message||JSON.stringify(j.error));return j;}
+// Config agente persistita (modello/proxy) in localStorage.
+function agSaveCfg(){try{localStorage.setItem('agCfg',JSON.stringify({m:document.getElementById('agModel').value,p:document.getElementById('agProxy').value}));}catch(e){}}
+function agLoadCfg(){try{const c=JSON.parse(localStorage.getItem('agCfg')||'0');if(c){if(c.m)document.getElementById('agModel').value=c.m;if(c.p)document.getElementById('agProxy').value=c.p;}}catch(e){}}
+function agQuickModel(m){const i=document.getElementById('agModel');if(i){i.value=m;agSaveCfg();}}
+// Chiamata API. system con cache_control (prompt caching: system+28 schemi cachati 5' → costo/latenza giù).
+// opts.onText → streaming SSE: i delta di testo arrivano man mano. opts.noTools → solo narrazione (report).
+async function agCall(messages,opts){opts=opts||{};
+  const body={model:(document.getElementById('agModel').value||'claude-haiku-4-5').trim(),max_tokens:opts.max||1600,
+    system:[{type:'text',text:opts.system||AG_SYS,cache_control:{type:'ephemeral'}}],messages};
+  if(!opts.noTools)body.tools=AG_TOOLS;
+  const url=document.getElementById('agProxy').value;
+  if(!opts.onText){const r=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});const j=await r.json();if(j.error)throw new Error(j.error.message||JSON.stringify(j.error));return j;}
+  body.stream=true;
+  const r=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error((j.error&&j.error.message)||('HTTP '+r.status));}
+  // parser SSE incrementale (stato in closure) — riusato anche come fallback su risposta bufferizzata
+  const content=[];const open={};let stop=null;
+  const feed=(chunk,st)=>{st.buf+=chunk;let nl;while((nl=st.buf.indexOf('\n'))>=0){const line=st.buf.slice(0,nl).trim();st.buf=st.buf.slice(nl+1);
+    if(!line.startsWith('data:'))continue;const ds=line.slice(5).trim();if(!ds)continue;let ev;try{ev=JSON.parse(ds);}catch(e){continue;}
+    if(ev.type==='content_block_start'){const b=ev.content_block;open[ev.index]=b.type==='tool_use'?{type:'tool_use',id:b.id,name:b.name,_j:''}:{type:'text',text:b.text||''};}
+    else if(ev.type==='content_block_delta'){const o=open[ev.index];if(!o)continue;if(ev.delta.type==='text_delta'){o.text+=ev.delta.text;try{opts.onText(ev.delta.text);}catch(e){}}else if(ev.delta.type==='input_json_delta')o._j+=(ev.delta.partial_json||'');}
+    else if(ev.type==='content_block_stop'){const o=open[ev.index];if(o){if(o.type==='tool_use'){try{o.input=JSON.parse(o._j||'{}');}catch(e){o.input={};}delete o._j;}content[ev.index]=o;delete open[ev.index];}}
+    else if(ev.type==='message_delta'){if(ev.delta&&ev.delta.stop_reason)stop=ev.delta.stop_reason;}
+    else if(ev.type==='error'){throw new Error((ev.error&&ev.error.message)||'errore stream');}}};
+  const ct=(r.headers.get('content-type')||'');
+  if(ct.indexOf('text/event-stream')<0){
+    const txt=await r.text();
+    try{const j=JSON.parse(txt);if(j.error)throw new Error(j.error.message);if(j.content)return j;}catch(e){if(!(e instanceof SyntaxError))throw e;}
+    feed(txt+'\n',{buf:''});return {stop_reason:stop,content:content.filter(Boolean)}; // proxy senza pipe: SSE bufferizzato
+  }
+  const rd=r.body.getReader(),dec=new TextDecoder();const st={buf:''};
+  while(true){const {done,value}=await rd.read();if(done)break;feed(dec.decode(value,{stream:true}),st);}
+  return {stop_reason:stop,content:content.filter(Boolean)};
+}
+// Estrae la riga FOLLOWUP: q1 | q2 | q3 dalla risposta finale (suggerimenti di approfondimento).
+function agSplitFollow(t){const m=String(t||'').match(/\n?\s*FOLLOWUP:\s*([^\n]+)\s*$/i);if(!m)return{clean:String(t||'').trim(),follow:[]};return{clean:String(t).slice(0,m.index).trim(),follow:m[1].split('|').map(s=>s.trim()).filter(Boolean).slice(0,3)};}
+// Riga richiudibile "strumenti usati" sotto la risposta finale (trasparenza/audit senza sporcare la chat).
+function agTrace(div,used){if(!used.length)return;const id='agtt'+(++agTrace._n||(agTrace._n=1));
+  const row=document.createElement('div');row.style.cssText='margin-top:8px;padding-top:6px;border-top:1px solid #eef0f5;font-size:11px;color:#9aa0b0;cursor:pointer;user-select:none';
+  row.innerHTML='🔧 '+used.length+' strument'+(used.length>1?'i':'o')+' · '+used.map(u=>u.name).join(' · ')+' <span style="float:right">▾</span>';
+  const det=document.createElement('div');det.id=id;det.style.cssText='display:none;font-size:11px;color:#777;background:#f8f9fc;border-radius:8px;padding:6px 9px;margin-top:5px;word-break:break-all';
+  det.innerHTML=used.map(u=>'<div style="margin:2px 0"><b>'+agEsc(u.name)+'</b> <code style="font-size:10px">'+agEsc(JSON.stringify(u.input))+'</code></div>').join('');
+  row.onclick=()=>{det.style.display=det.style.display==='none'?'block':'none';};
+  div.appendChild(row);div.appendChild(det);}
+// Chip di follow-up suggeriti dall'agente dopo la risposta.
+function agFollowChips(follow){if(!follow||!follow.length)return;const c=document.getElementById('asstChat');const d=document.createElement('div');d.style.cssText='display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 4px';
+  follow.forEach(q=>{const s=document.createElement('span');s.className='as-ex';s.textContent=q;s.onclick=()=>{const i=document.getElementById('asstQ');if(i)i.value=q;asstAsk();};d.appendChild(s);});
+  c.appendChild(d);c.scrollTop=1e9;}
 // Storico conversazione COMPATTO (solo testo): {role:'user'|'assistant',content:string}. Mantiene il contesto tra i turni.
 window.agConv=window.agConv||[];
 async function agentAsk(q){const c=document.getElementById('asstChat');if(!c)return;const conv=window.agConv;
   // working messages = storico compatto dei turni precedenti + domanda attuale; le chiamate tool di QUESTO turno restano locali.
   const messages=conv.map(m=>({role:m.role,content:m.content}));messages.push({role:'user',content:q});conv.push({role:'user',content:q});
   const wait=document.createElement('div');wait.className='as-msg as-bot';wait.innerHTML='<span class="as-dim">⏳ sto pensando…</span>';c.appendChild(wait);c.scrollTop=1e9;
-  let finalText='(nessuna risposta)';
-  try{for(let i=0;i<8;i++){const resp=await agCall(messages);const toolUses=(resp.content||[]).filter(x=>x.type==='tool_use');const text=(resp.content||[]).filter(x=>x.type==='text').map(x=>x.text).join('').trim();
-    if(resp.stop_reason==='tool_use'&&toolUses.length){messages.push({role:'assistant',content:resp.content});const results=toolUses.map(tu=>{const out=AgentTools.run(tu.name,tu.input);try{agRenderVisual(tu.name,out);}catch(e){}const fc=Object.assign({},out);delete fc._viz;return {type:'tool_result',tool_use_id:tu.id,content:JSON.stringify(fc)};});messages.push({role:'user',content:results});}
-    else{finalText=text||'(nessuna risposta)';asstAdd('as-bot',agMd(finalText));break;}}
+  let finalText='(nessuna risposta)';const used=[];
+  try{for(let i=0;i<8;i++){
+    let live=null,liveTxt='';
+    const resp=await agCall(messages,{onText:t=>{liveTxt+=t;if(wait.parentNode)wait.remove();
+      if(!live){live=document.createElement('div');live.className='as-msg as-bot';c.appendChild(live);}
+      live.innerHTML=agMd(liveTxt.replace(/\n?\s*FOLLOWUP:[\s\S]*$/i,''))+'<span class="ag-cur"></span>';c.scrollTop=1e9;}});
+    const toolUses=(resp.content||[]).filter(x=>x.type==='tool_use');
+    const text=(resp.content||[]).filter(x=>x.type==='text').map(x=>x.text).join('').trim();
+    if(resp.stop_reason==='tool_use'&&toolUses.length){
+      if(live)live.remove(); // testo intermedio di servizio: la chat resta pulita
+      messages.push({role:'assistant',content:resp.content});
+      const results=toolUses.map(tu=>{used.push({name:tu.name,input:tu.input});const out=AgentTools.run(tu.name,tu.input);try{agRenderVisual(tu.name,out);}catch(e){}const fc=Object.assign({},out);delete fc._viz;return {type:'tool_result',tool_use_id:tu.id,content:JSON.stringify(fc)};});
+      messages.push({role:'user',content:results});
+    }else{
+      const sp=agSplitFollow(text||'(nessuna risposta)');finalText=sp.clean||'(nessuna risposta)';
+      if(!live){live=document.createElement('div');live.className='as-msg as-bot';c.appendChild(live);}
+      live.innerHTML=agMd(finalText);
+      try{agTrace(live,used);}catch(e){}
+      try{agFollowChips(sp.follow);}catch(e){}
+      break;
+    }}
     conv.push({role:'assistant',content:finalText}); // salva nello storico la risposta narrata
     // cap dello storico (evita di gonfiare i token); mantieni l'inizio su un turno utente
     while(conv.length>16)conv.shift();if(conv.length&&conv[0].role!=='user')conv.shift();}
   catch(e){conv.pop();/* annulla l'ultimo turno utente fallito */asstAdd('as-bot','⚠️ '+e.message+' — verifica che il proxy sia avviato e il modello corretto.');}
-  wait.remove();c.scrollTop=1e9;}
+  if(wait.parentNode)wait.remove();c.scrollTop=1e9;}
+agLoadCfg();
 function agEsc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function agMd(t){const inl=x=>x.replace(/\*\*([^*]+?)\*\*/g,'<b>$1</b>').replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g,'$1<i>$2</i>');
   const lines=agEsc(t||'').split(/\n/);const out=[];let ul=false;
