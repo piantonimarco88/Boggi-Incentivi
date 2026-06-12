@@ -345,7 +345,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
   <button class="tab-btn" data-tab="cmp" onclick="switchTab('cmp')">⚖️ Confronta</button>
   <button class="tab-btn" data-tab="asst" onclick="switchTab('asst')">🤖 Lament1</button>
   <button class="tab-btn" data-tab="gloss" onclick="switchTab('gloss')">📖 Glossario</button>
-  <button class="tab-btn" onclick="ckpOpen()" title="Cerca dipendenti, negozi e azioni ovunque (Ctrl+K)">🔍 <span style="font-size:10px;opacity:.7">Ctrl K</span></button>
+  <button class="tab-btn" onclick="ckpOpen()" title="Cerca dipendenti, negozi e azioni ovunque (scorciatoia: Ctrl+K)">🔍 Cerca <span style="font-size:9px;opacity:.6;border:1px solid currentColor;border-radius:4px;padding:0 3px;vertical-align:1px">Ctrl K</span></button>
 </div>
 
 <!-- ═══════════ DASHBOARD TAB ═══════════ -->
@@ -4924,7 +4924,7 @@ function ckpBuild(){
   _ckpEl=document.createElement('div');_ckpEl.className='ckp-ov';
   _ckpEl.innerHTML='<div class="ckp"><input id="ckpIn" placeholder="Cerca dipendente, negozio o azione…" autocomplete="off">'
     +'<div class="ckp-list" id="ckpList"></div>'
-    +'<div class="ckp-ft"><span>↑↓ naviga</span><span>Invio apre</span><span>Esc chiude</span><span style="margin-left:auto">Ctrl K da qualsiasi tab</span></div></div>';
+    +'<div class="ckp-ft"><span>↑↓ naviga</span><span>Invio apre</span><span>Esc chiude</span><span style="margin-left:auto">💡 Richiama con <b style="color:#7c3aed">Ctrl K</b> da qualsiasi schermata</span></div></div>';
   _ckpEl.addEventListener('mousedown',e=>{if(e.target===_ckpEl)ckpClose();});
   document.body.appendChild(_ckpEl);
   document.getElementById('ckpIn').addEventListener('input',e=>ckpFilter(e.target.value));
