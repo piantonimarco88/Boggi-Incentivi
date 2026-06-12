@@ -1011,6 +1011,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
       <span class="dip-meta" id="malMeta" style="font-weight:400;text-transform:none;letter-spacing:0"></span>
     </div>
     <div id="malBody" style="display:none">
+      <div id="malFilters" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0 10px"></div>
       <div id="malKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:6px 0 12px"></div>
       <div style="display:flex;gap:6px;margin-bottom:8px">
         <button class="l4l-btn active" id="malView-naz" onclick="malView('naz')">Per nazione</button>
@@ -4570,14 +4571,15 @@ function exportAlert(){
 // singolo. Costo = max(0, ricostruito − erogato). La costante del massimale (0.30 Digital) si
 // semplifica nel rapporto Σpremio/Σmassimale. Validato sui sani (_validate_malattia.js): bias agg ~0%.
 // SOTTOSTIMATO: esclusi SAS, DCC, Shopper Yield, Subscription e semestrali.
-let _malV='naz', _malCache=null;
+let _malV='naz', _malCache=null, _malYears=new Set(), _malMonths=new Set();
+function _malInPer(r){const yr=r.year||Math.floor((r.monthKey||0)/100),mo=(r.monthKey||0)%100;return (!_malYears.size||_malYears.has(yr))&&(!_malMonths.size||_malMonths.has(mo));}
 function _malCompute(){
   const C=[{k:'cBdg',base:r=>r.mBdg||0,ok:()=>true},{k:'cDigital',base:r=>r.mBdg||0,ok:r=>!isDeptStore(r.store)}];
   const grp={};const ek=r=>r.matricola||_empKey(r);
   allData.forEach(r=>{if(isSemRow(r)||!r.monthKey)return;const g=(r.store||'?')+'|'+r.monthKey;(grp[g]||(grp[g]=[])).push(r);});
   const byNaz={},byStore={},byEmp={};let total=0,sickN=0,reconN=0;
   Object.values(grp).forEach(list=>{const ns=list.filter(r=>!(r.malattie>0));
-    list.forEach(s=>{if(!(s.malattie>0))return;sickN++;let cost=0,any=false;
+    list.forEach(s=>{if(!(s.malattie>0)||!_malInPer(s))return;sickN++;let cost=0,any=false;
       C.forEach(c=>{if(!c.ok(s))return;const bt=c.base(s);if(bt<=0)return;
         const peers=ns.filter(p=>ek(p)!==ek(s)&&c.ok(p)&&c.base(p)>0);if(peers.length<2)return;
         const sb=peers.reduce((a,p)=>a+c.base(p),0);if(sb<=0)return;
@@ -4590,12 +4592,28 @@ function _malCompute(){
   return {total,sickN,reconN,byNaz,byStore,byEmp};
 }
 function malToggle(){const b=document.getElementById('malBody'),c=document.getElementById('malCaret');if(!b)return;const open=b.style.display==='none';b.style.display=open?'':'none';if(c)c.textContent=open?'▾':'▸';if(open)malRender();}
+function malFilterUI(){
+  const cont=document.getElementById('malFilters');if(!cont)return;
+  const years=[...new Set(allData.map(r=>r.year).filter(Boolean))].sort();
+  const months=[...new Set(allData.filter(r=>!isSemRow(r)).map(r=>(r.monthKey||0)%100).filter(Boolean))].sort((a,b)=>a-b);
+  const btn=(active,on,lbl)=>'<button class="l4l-btn'+(active?' active':'')+'" onclick="'+on+'">'+lbl+'</button>';
+  let h='<span style="font-size:10px;color:#bbb;text-transform:uppercase;font-weight:700;letter-spacing:.4px;margin-right:2px">Anno</span>';
+  h+=btn(_malYears.size===0,'malTglYear(0)','Tutti');
+  years.forEach(y=>h+=btn(_malYears.has(y),'malTglYear('+y+')',y));
+  h+='<span style="font-size:10px;color:#bbb;text-transform:uppercase;font-weight:700;letter-spacing:.4px;margin:0 2px 0 14px">Mese</span>';
+  h+=btn(_malMonths.size===0,'malTglMonth(0)','Tutti');
+  months.forEach(m=>h+=btn(_malMonths.has(m),'malTglMonth('+m+')',(MESI[m]||m).slice(0,3)));
+  cont.innerHTML=h;
+}
+function malTglYear(y){if(!y)_malYears.clear();else{_malYears.has(y)?_malYears.delete(y):_malYears.add(y);}malRender();}
+function malTglMonth(m){if(!m)_malMonths.clear();else{_malMonths.has(m)?_malMonths.delete(m):_malMonths.add(m);}malRender();}
 function malRefresh(){const b=document.getElementById('malBody');if(b&&b.style.display!=='none'&&allData.length)malRender();}
 function malView(v){_malV=v;['naz','store','dip'].forEach(x=>{const el=document.getElementById('malView-'+x);if(el)el.classList.toggle('active',x===v);});malRenderTbl();}
 function malRender(){
   if(!allData.length)return;
+  malFilterUI();
   _malCache=_malCompute();const d=_malCache;const eu=v=>'€ '+Math.round(v).toLocaleString('it-IT');
-  const erogTot=allData.filter(r=>!isSemRow(r)).reduce((s,r)=>s+(r.erogato||0),0);
+  const erogTot=allData.filter(r=>!isSemRow(r)&&_malInPer(r)).reduce((s,r)=>s+(r.erogato||0),0);
   const mm=document.getElementById('malMeta');if(mm)mm.textContent=d.sickN+' mesi-persona con malattia · '+d.reconN+' ricostruiti';
   const kp=document.getElementById('malKpis');if(kp)kp.innerHTML=
     '<div class="kpi g"><div class="kpi-lbl">Maggior premio stimato (BDG + Digital)</div><div class="kpi-val">'+eu(d.total)+'</div><div class="kpi-sub">stima prudente · sottostimata</div></div>'
