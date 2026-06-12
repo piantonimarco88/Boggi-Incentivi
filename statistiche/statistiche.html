@@ -216,6 +216,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 .dip-ac-sub{font-size:10px;color:#aaa}
 .info-tip{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#e0e7ff;color:#4f46e5;font-size:9px;font-weight:800;cursor:default;margin-left:5px;position:relative;vertical-align:middle;flex-shrink:0}
 .info-tip::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;font-size:10px;font-weight:400;line-height:1.5;padding:7px 10px;border-radius:7px;white-space:pre-wrap;width:260px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:999;text-align:left}
+.info-tip.down::after{bottom:auto;top:calc(100% + 6px)}
 .info-tip:hover::after{opacity:1}
 .yoy-tbl-head{padding:14px 18px 10px;border-bottom:1px solid #eaecf0}
 .yoy-tbl-head h2{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#555}
@@ -1006,7 +1007,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
   <div class="yoy-tbl" style="margin-top:14px">
     <div class="yoy-tbl-head" style="display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer" onclick="malToggle()">
       <h2 style="display:flex;align-items:center;gap:8px"><span id="malCaret">▸</span> 💊 Maggior premio stimato per la policy malattia
-        <span class="info-tip" data-tip="Quanto si sarebbe pagato in PIU' di premi se la policy malattia (azzeramento/dimezzamento) non fosse stata attiva.&#10;Metodo: per ogni mese-persona con malattia, ricostruiamo BDG e Digital dai colleghi SANI dello stesso negozio+mese (KPI puramente di negozio: fatturato e web). Costo = ricostruito − realmente erogato.&#10;Il tier BDG è un parametro di NEGOZIO (uniforme tra colleghi sani nel 99% dei casi) → ricostruibile anche per singolo dipendente. Validato sui sani: bias aggregato ~0%.&#10;STIMA PRUDENTE e SOTTOSTIMATA: non accredita l'over-performance individuale >100%; esclusi SAS, DCC, Shopper Yield, Subscription e semestrali.">i</span>
+        <span class="info-tip down" data-tip="Quanto si sarebbe pagato in PIU' di premi se la policy malattia (azzeramento/dimezzamento) non fosse stata attiva.&#10;Metodo: per ogni mese-persona con malattia, ricostruiamo BDG e Digital dai colleghi SANI dello stesso negozio+mese (KPI puramente di negozio: fatturato e web). Costo = ricostruito − realmente erogato.&#10;Il tier BDG è un parametro di NEGOZIO (uniforme tra colleghi sani nel 99% dei casi) → ricostruibile anche per singolo dipendente. Validato sui sani: bias aggregato ~0%.&#10;STIMA PRUDENTE e SOTTOSTIMATA: non accredita l'over-performance individuale >100%; esclusi SAS, DCC, Shopper Yield, Subscription e semestrali.">i</span>
       </h2>
       <span class="dip-meta" id="malMeta" style="font-weight:400;text-transform:none;letter-spacing:0"></span>
     </div>
