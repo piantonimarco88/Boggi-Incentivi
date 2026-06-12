@@ -1001,6 +1001,26 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
     </div>
     <div class="tbl-scroll" id="alertTbl"></div>
   </div>
+
+  <!-- ═══ Sezione: maggior premio per policy malattia (collassabile) ═══ -->
+  <div class="yoy-tbl" style="margin-top:14px">
+    <div class="yoy-tbl-head" style="display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer" onclick="malToggle()">
+      <h2 style="display:flex;align-items:center;gap:8px"><span id="malCaret">▸</span> 💊 Maggior premio stimato per la policy malattia
+        <span class="info-tip" data-tip="Quanto si sarebbe pagato in PIU' di premi se la policy malattia (azzeramento/dimezzamento) non fosse stata attiva.&#10;Metodo: per ogni mese-persona con malattia, ricostruiamo BDG e Digital dai colleghi SANI dello stesso negozio+mese (KPI puramente di negozio: fatturato e web). Costo = ricostruito − realmente erogato.&#10;Validato sui dipendenti SANI: bias aggregato ~0%, BDG/Digital entro ±20% nell'83-99% dei casi.&#10;STIMA PRUDENTE e SOTTOSTIMATA: esclusi SAS, DCC, Shopper Yield, Subscription e semestrali.">i</span>
+      </h2>
+      <span class="dip-meta" id="malMeta" style="font-weight:400;text-transform:none;letter-spacing:0"></span>
+    </div>
+    <div id="malBody" style="display:none">
+      <div id="malKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:6px 0 12px"></div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button class="l4l-btn active" id="malView-naz" onclick="malView('naz')">Per nazione</button>
+        <button class="l4l-btn" id="malView-store" onclick="malView('store')">Per negozio</button>
+        <button class="l4l-btn" id="malView-dip" onclick="malView('dip')">Per dipendente</button>
+        <button class="btn-exp" style="margin-left:auto" onclick="malExport()" title="Esporta in Excel">📊 Export Excel</button>
+      </div>
+      <div class="tbl-scroll" id="malTbl"></div>
+    </div>
+  </div>
 </div><!-- end #tabAlert -->
 
 <!-- ═══════════ GLOSSARIO TAB ═══════════ -->
@@ -4467,6 +4487,7 @@ function renderAlert(){
   }
   renderAlertQuad(emps,tol);
   renderAlertTable(emps);
+  try{malRefresh();}catch(e){}
 }
 const alertBandPlugin={
   id:'alertBand',
@@ -4540,6 +4561,73 @@ function exportAlert(){
     'Incidenza %':+e.inc.toFixed(1),'Soglia %':e.healthy,'Scostamento pp':e.dev,'Frequenza BDG %':+e.bdgFreq.toFixed(0),'Motivi':e.reasons.join('; '),
   }));
   _writeXlsx(rows,'Alert','BoggiPremi_Alert_');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ─── MAGGIOR PREMIO PER POLICY MALATTIA (stima prudente) ─────
+// Per ogni mese-persona con malattia ricostruiamo BDG e Digital dai colleghi SANI dello stesso
+// negozio+mese: sono KPI puramente di negozio (fatturato, web) → non dipendono dalla presenza del
+// singolo. Costo = max(0, ricostruito − erogato). La costante del massimale (0.30 Digital) si
+// semplifica nel rapporto Σpremio/Σmassimale. Validato sui sani (_validate_malattia.js): bias agg ~0%.
+// SOTTOSTIMATO: esclusi SAS, DCC, Shopper Yield, Subscription e semestrali.
+let _malV='naz', _malCache=null;
+function _malCompute(){
+  const C=[{k:'cBdg',base:r=>r.mBdg||0,ok:()=>true},{k:'cDigital',base:r=>r.mBdg||0,ok:r=>!isDeptStore(r.store)}];
+  const grp={};const ek=r=>r.matricola||_empKey(r);
+  allData.forEach(r=>{if(isSemRow(r)||!r.monthKey)return;const g=(r.store||'?')+'|'+r.monthKey;(grp[g]||(grp[g]=[])).push(r);});
+  const byNaz={},byStore={},byEmp={};let total=0,sickN=0,reconN=0;
+  Object.values(grp).forEach(list=>{const ns=list.filter(r=>!(r.malattie>0));
+    list.forEach(s=>{if(!(s.malattie>0))return;sickN++;let cost=0,any=false;
+      C.forEach(c=>{if(!c.ok(s))return;const bt=c.base(s);if(bt<=0)return;
+        const peers=ns.filter(p=>ek(p)!==ek(s)&&c.ok(p)&&c.base(p)>0);if(peers.length<2)return;
+        const sb=peers.reduce((a,p)=>a+c.base(p),0);if(sb<=0)return;
+        const rate=peers.reduce((a,p)=>a+(p[c.k]||0),0)/sb;
+        cost+=Math.max(0,bt*rate-(s[c.k]||0));any=true;});
+      if(any)reconN++;total+=cost;
+      byNaz[s._nazione||'?']=(byNaz[s._nazione||'?']||0)+cost;byStore[s.store]=(byStore[s.store]||0)+cost;
+      const k=ek(s);if(!byEmp[k])byEmp[k]={n:((s.cognome||'')+' '+(s.nome||'')).trim(),job:s.job||'',store:s.store||'',c:0,gg:0};
+      byEmp[k].c+=cost;byEmp[k].gg+=(s.malattie||0);});});
+  return {total,sickN,reconN,byNaz,byStore,byEmp};
+}
+function malToggle(){const b=document.getElementById('malBody'),c=document.getElementById('malCaret');if(!b)return;const open=b.style.display==='none';b.style.display=open?'':'none';if(c)c.textContent=open?'▾':'▸';if(open)malRender();}
+function malRefresh(){const b=document.getElementById('malBody');if(b&&b.style.display!=='none'&&allData.length)malRender();}
+function malView(v){_malV=v;['naz','store','dip'].forEach(x=>{const el=document.getElementById('malView-'+x);if(el)el.classList.toggle('active',x===v);});malRenderTbl();}
+function malRender(){
+  if(!allData.length)return;
+  _malCache=_malCompute();const d=_malCache;const eu=v=>'€ '+Math.round(v).toLocaleString('it-IT');
+  const erogTot=allData.filter(r=>!isSemRow(r)).reduce((s,r)=>s+(r.erogato||0),0);
+  const mm=document.getElementById('malMeta');if(mm)mm.textContent=d.sickN+' mesi-persona con malattia · '+d.reconN+' ricostruiti';
+  const kp=document.getElementById('malKpis');if(kp)kp.innerHTML=
+    '<div class="kpi g"><div class="kpi-lbl">Maggior premio stimato (BDG + Digital)</div><div class="kpi-val">'+eu(d.total)+'</div><div class="kpi-sub">stima prudente · sottostimata</div></div>'
+    +'<div class="kpi"><div class="kpi-lbl">Incidenza su erogato</div><div class="kpi-val">'+(erogTot?(d.total/erogTot*100).toFixed(1):'—')+'%</div><div class="kpi-sub">su € '+fmt(erogTot)+' erogati</div></div>'
+    +'<div class="kpi a"><div class="kpi-lbl">Mesi-persona con malattia</div><div class="kpi-val">'+d.sickN.toLocaleString('it-IT')+'</div><div class="kpi-sub">'+d.reconN+' ricostruibili dai colleghi</div></div>';
+  malRenderTbl();
+}
+function malRenderTbl(){
+  if(!_malCache)return;const d=_malCache;const eu=v=>'€ '+Math.round(v).toLocaleString('it-IT');
+  let cols,trows;
+  if(_malV==='dip'){
+    cols=[{label:'Dipendente',filter:'text'},{label:'Ruolo',filter:'select'},{label:'Negozio',filter:'text'},{label:'Giorni malattia',align:'right',filter:'none'},{label:'Maggior premio stimato',align:'right',filter:'none'}];
+    trows=Object.values(d.byEmp).filter(e=>e.c>0.5).sort((a,b)=>b.c-a.c).map(e=>({cells:[
+      {disp:agEsc(e.n),val:e.n},{disp:'<span class="bjob">'+e.job+'</span>',val:e.job},{disp:agEsc(e.store),val:e.store},
+      {disp:Math.round(e.gg).toLocaleString('it-IT'),val:e.gg},{disp:'<b>'+eu(e.c)+'</b>',val:e.c}]}));
+  }else{
+    const src=_malV==='naz'?d.byNaz:d.byStore;
+    cols=[{label:_malV==='naz'?'Nazione':'Negozio',filter:'text'},{label:'Maggior premio stimato',align:'right',filter:'none'},{label:'% del totale',align:'right',filter:'none'}];
+    trows=Object.entries(src).filter(([,v])=>v>0.5).sort((a,b)=>b[1]-a[1]).map(([k,v])=>({cells:[
+      {disp:agEsc(k),val:k},{disp:'<b>'+eu(v)+'</b>',val:v},{disp:(d.total?v/d.total*100:0).toFixed(1)+'%',val:v}]}));
+  }
+  const el=document.getElementById('malTbl');if(!el)return;
+  if(!trows.length){el.innerHTML='<div style="text-align:center;padding:30px;color:#ccc">Nessun maggior premio stimato</div>';return;}
+  makeSortTable('malTbl','malstima',cols,trows,{i:_malV==='dip'?4:1,dir:-1});
+  if(_malV==='dip'){const note=document.createElement('div');note.style.cssText='font-size:11px;color:#999;padding:8px 4px;line-height:1.5';note.innerHTML='ℹ️ Valori per singolo dipendente: <b>stima indicativa</b>. L\'affidabilità è massima sull\'aggregato; il singolo caso può variare nei negozi in fascia 95–99,5% di fatturato (tier BDG con condizione individuale) e in quelli con pochi colleghi.';el.appendChild(note);}
+}
+function malExport(){
+  if(!_malCache)malRender();const d=_malCache;if(!d)return;
+  const rows=Object.values(d.byEmp).filter(e=>e.c>0.5).sort((a,b)=>b.c-a.c).map(e=>({
+    'Dipendente':e.n,'Ruolo':e.job,'Negozio':e.store,'Giorni malattia':Math.round(e.gg),'Maggior premio stimato EUR (BDG+Digital)':Math.round(e.c)}));
+  if(!rows.length){alert('Nessuna stima da esportare.');return;}
+  _writeXlsx(rows,'Stima malattia','BoggiPremi_StimaMalattia_');
 }
 
 // ═══════════════════════════════════════════════════════════════
