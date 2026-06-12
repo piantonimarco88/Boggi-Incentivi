@@ -1006,7 +1006,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
   <div class="yoy-tbl" style="margin-top:14px">
     <div class="yoy-tbl-head" style="display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer" onclick="malToggle()">
       <h2 style="display:flex;align-items:center;gap:8px"><span id="malCaret">▸</span> 💊 Maggior premio stimato per la policy malattia
-        <span class="info-tip" data-tip="Quanto si sarebbe pagato in PIU' di premi se la policy malattia (azzeramento/dimezzamento) non fosse stata attiva.&#10;Metodo: per ogni mese-persona con malattia, ricostruiamo BDG e Digital dai colleghi SANI dello stesso negozio+mese (KPI puramente di negozio: fatturato e web). Costo = ricostruito − realmente erogato.&#10;Validato sui dipendenti SANI: bias aggregato ~0%, BDG/Digital entro ±20% nell'83-99% dei casi.&#10;STIMA PRUDENTE e SOTTOSTIMATA: esclusi SAS, DCC, Shopper Yield, Subscription e semestrali.">i</span>
+        <span class="info-tip" data-tip="Quanto si sarebbe pagato in PIU' di premi se la policy malattia (azzeramento/dimezzamento) non fosse stata attiva.&#10;Metodo: per ogni mese-persona con malattia, ricostruiamo BDG e Digital dai colleghi SANI dello stesso negozio+mese (KPI puramente di negozio: fatturato e web). Costo = ricostruito − realmente erogato.&#10;Il tier BDG è un parametro di NEGOZIO (uniforme tra colleghi sani nel 99% dei casi) → ricostruibile anche per singolo dipendente. Validato sui sani: bias aggregato ~0%.&#10;STIMA PRUDENTE e SOTTOSTIMATA: non accredita l'over-performance individuale >100%; esclusi SAS, DCC, Shopper Yield, Subscription e semestrali.">i</span>
       </h2>
       <span class="dip-meta" id="malMeta" style="font-weight:400;text-transform:none;letter-spacing:0"></span>
     </div>
@@ -4620,7 +4620,7 @@ function malRenderTbl(){
   const el=document.getElementById('malTbl');if(!el)return;
   if(!trows.length){el.innerHTML='<div style="text-align:center;padding:30px;color:#ccc">Nessun maggior premio stimato</div>';return;}
   makeSortTable('malTbl','malstima',cols,trows,{i:_malV==='dip'?4:1,dir:-1});
-  if(_malV==='dip'){const note=document.createElement('div');note.style.cssText='font-size:11px;color:#999;padding:8px 4px;line-height:1.5';note.innerHTML='ℹ️ Valori per singolo dipendente: <b>stima indicativa</b>. L\'affidabilità è massima sull\'aggregato; il singolo caso può variare nei negozi in fascia 95–99,5% di fatturato (tier BDG con condizione individuale) e in quelli con pochi colleghi.';el.appendChild(note);}
+  if(_malV==='dip'){const note=document.createElement('div');note.style.cssText='font-size:11px;color:#999;padding:8px 4px;line-height:1.5';note.innerHTML='ℹ️ Anche per singolo dipendente la stima è <b>affidabile</b>: il tier BDG è un parametro di negozio (uniforme tra colleghi nel 99% dei casi). Resta <b>prudente</b> — non accreditiamo l\'eventuale over-performance individuale oltre il 100% (non conoscibile per un assente), quindi semmai sottostima. Minor precisione solo nei negozi con pochissimi colleghi.';el.appendChild(note);}
 }
 function malExport(){
   if(!_malCache)malRender();const d=_malCache;if(!d)return;
