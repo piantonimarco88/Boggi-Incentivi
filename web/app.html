@@ -481,6 +481,12 @@ function calcFcVmPremio(matr){
   var ov=FC_OVERRIDES[matr];
   if(isCons&&ov==='100'){esito='full';premioLC=emp.ib;}
   else if(isCons&&ov==='60'){esito='partial';premioLC=Math.round(emp.ib*FCVM_PARAMS.pct60*100)/100;}
+  // ── Malattia / sospeso (solo consuntivo) ────────────────────────────────
+  var smFcvm=1;
+  if(isCons){
+    if(emp.ps==="SI"){esito="sospeso";premioLC=0;smFcvm=0;}
+    else{smFcvm=sickMult(emp.ml||0);premioLC=Math.round(premioLC*smFcvm*100)/100;}
+  }
   var exRate=(emp.ex&&emp.ex!==1&&emp.ex>0)?emp.ex:getFcVmExRate(emp.cu);
   // ── Premi BDG singoli negozi ─────────────────────────────────────────────
   var bdgPrize=0,bdgPrizeEur=0,bdgDetail=[];
@@ -494,7 +500,7 @@ function calcFcVmPremio(matr){
       var esubBdg=isCons&&(prevBdg.to_eur||0)>0?Math.max(0,(prevBdg.sc_eur||0)-(prevBdg.to_eur||0)):0;
       var scTotBdg=sc+esubBdg;
       var earned=isCons?(scTotBdg>to&&to>0):false;
-      var prize=isCons?(earned?b.ib:0):b.ib;
+      var prize=isCons?(earned?Math.round(b.ib*smFcvm*100)/100:0):b.ib;
       var prizeEur=Math.round(prize*exRate*100)/100;
       bdgPrize+=prize; bdgPrizeEur+=prizeEur;
       bdgDetail.push({sid:b.sid,s:b.s,to:to,sc:sc,esubero:esubBdg,scTotale:scTotBdg,ib:b.ib,earned:earned,prize:prize,prizeEur:prizeEur});
@@ -503,7 +509,7 @@ function calcFcVmPremio(matr){
   var premioEur=Math.round(premioLC*exRate*100)/100;
   var totalPremioLC=premioLC+bdgPrize;
   var totalPremioEur=Math.round(totalPremioLC*exRate*100)/100;
-  return{premio:premioLC,premio_eur:premioEur,esito:esito,pct:pct,totTarget:totTarget,totCons:totCons,totEsubero:totEsubero,totConsWithEsub:totConsWithEsub,syOk:syOk,syLyArea:syLyArea,syAreaCy:syAreaCy,hasSyLy:hasSyLy,hasSyCy:hasSyCy,syAreaAvg:syAreaAvg,stores:detail,bdgPrize:bdgPrize,bdgPrizeEur:bdgPrizeEur,bdgDetail:bdgDetail,totalPremioLC:totalPremioLC,totalPremioEur:totalPremioEur,hasBdg:bdgDetail.length>0};
+  return{premio:premioLC,premio_eur:premioEur,esito:esito,pct:pct,totTarget:totTarget,totCons:totCons,totEsubero:totEsubero,totConsWithEsub:totConsWithEsub,syOk:syOk,syLyArea:syLyArea,syAreaCy:syAreaCy,hasSyLy:hasSyLy,hasSyCy:hasSyCy,syAreaAvg:syAreaAvg,stores:detail,bdgPrize:bdgPrize,bdgPrizeEur:bdgPrizeEur,bdgDetail:bdgDetail,totalPremioLC:totalPremioLC,totalPremioEur:totalPremioEur,hasBdg:bdgDetail.length>0,ml:emp.ml||0,sm:smFcvm};
 }
 function getFcVmPool(){return Object.values(FC_EMP);}
 
@@ -570,7 +576,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='8.81'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='8.83'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -700,6 +706,9 @@ function autoSave(){
 }
 
 // === SESSION SAVE / LOAD (file-based) ===
+// Flush pending input[data-digmob] values to STORE_FLAGS before any save.
+// Needed because those inputs use onchange (fires on blur), so if the user types
+// a value and immediately clicks Save without leaving the field the edit would be lost.
 function _flushDigMobInputs(){
   document.querySelectorAll("input[data-digmob]").forEach(function(inp){
     var sid=inp.getAttribute("data-digmob");
@@ -1042,6 +1051,7 @@ function gR(e){
     if(sm<1)R.push({t:"warn",x:e.ml+" gg malattia \u2192 "+(sm*100)+"%"})}
   // Aggiunte (always shown if present)
   var at=aggTotal(e.m);
+  if(e.ibFromAY)R.push({t:"warn",x:"BDG NETTO \u2014 valore da colonna 'matricola_foglio_presenze'. In busta paga: TRASFERTE cod.\u00a0380 (non PREMIO DI RISULTATO cod.\u00a0225)."});
   if(at>0)R.push({t:"success",x:fc(at,cu)+" \u2014 Aggiunte manuali (bypass regole/malattia)."});
   return R}
 
@@ -1432,7 +1442,9 @@ function rC(){
         h+='<td class="r mn b" style="color:#cf5b5b" title="'+esc(tipSA)+'">0</td>';
         return;
       }
-      h+='<td class="r mn '+(val>0&&!psOn?"g":"gy")+'"'+(on?"":" style=\"text-decoration:line-through;opacity:.3\"")+">"+(val>0?fc(psOn?0:val,cu):"\u2014")+"</td>"});
+      var _cellVal=val>0?fc(psOn?0:val,cu):"\u2014";
+      if(it.k==="rb"&&e.ibFromAY&&val>0&&!psOn)_cellVal+='<sup style="font-size:7px;color:#c9a96e;font-weight:700;margin-left:2px" title="BDG NETTO \u2014 pagato come TRASFERTE (cod. 380)">N</sup>';
+      h+='<td class="r mn '+(val>0&&!psOn?"g":"gy")+'"'+(on?"":" style=\"text-decoration:line-through;opacity:.3\"")+">"+_cellVal+"</td>"});
     h+='<td class="r mn" style="color:'+(at>0?"#c9a96e":"#d5d0c8")+'">'+(at>0?fc(psOn?0:at,cu):"\u2014")+"</td>";
     h+='<td class="r mn b" style="color:'+(t>0&&!psOn?"#2c2925":"#b0a99f")+'">'+fc(psOn?0:t,cu)+"</td>";
     if(MODE==="consuntivo"){h+='<td style="text-align:center"><button class="tb '+(e.ov_b100==="SI"?"x":"o")+'" data-ov-b100="'+esc(e.m)+'" style="width:28px;height:16px" title="BDG 100%" onclick="event.stopPropagation()"><span class="tk" style="width:10px;height:10px;top:3px"></span></button></td>';h+='<td style="text-align:center"><button class="tb '+(e.ov_rid==="SI"?"x":"o")+'" data-ov-rid="'+esc(e.m)+'" style="width:28px;height:16px" title="BDG ridotto" onclick="event.stopPropagation()"><span class="tk" style="width:10px;height:10px;top:3px"></span></button></td>';h+='<td style="text-align:center"><button class="tb '+(e.ov_wg==="SI"?"x":"o")+'" data-ov-wg="'+esc(e.m)+'" style="width:28px;height:16px" title="Workgame" onclick="event.stopPropagation()"><span class="tk" style="width:10px;height:10px;top:3px"></span></button></td>';}
@@ -2046,7 +2058,7 @@ function buildLetter(e){
         var rdLbls={"ITALIANO":"Moltiplicatore ridotto al "+Math.round(PARAMS.bdg60mult*100)+"% applicato — negozio tra "+Math.round(PARAMS.bdg60*100)+"% e "+Math.round(PARAMS.bdg100*100)+"% del target"+(isD(e.si)?"":" (SY migliorata)"),"INGLESE":"Reduced multiplier at "+Math.round(PARAMS.bdg60mult*100)+"% applied — store between "+Math.round(PARAMS.bdg60*100)+"% and "+Math.round(PARAMS.bdg100*100)+"% of target"+(isD(e.si)?"":" (improved SY)"),"FRANCESE":"Multiplicateur réduit à "+Math.round(PARAMS.bdg60mult*100)+"% appliqué — magasin entre "+Math.round(PARAMS.bdg60*100)+"% et "+Math.round(PARAMS.bdg100*100)+"% de l'objectif"+(isD(e.si)?"":" (SY améliorée)"),"TEDESCO":"Reduzierter Multiplikator ("+Math.round(PARAMS.bdg60mult*100)+"%) angewendet — Store zwischen "+Math.round(PARAMS.bdg60*100)+"% und "+Math.round(PARAMS.bdg100*100)+"% des Ziels"+(isD(e.si)?"":" (SY verbessert)"),"SPAGNOLO":"Multiplicador reducido al "+Math.round(PARAMS.bdg60mult*100)+"% aplicado — tienda entre "+Math.round(PARAMS.bdg60*100)+"% y "+Math.round(PARAMS.bdg100*100)+"% del objetivo"+(isD(e.si)?"":" (SY mejorada)")};
         h+='<div style="font-size:9px;margin-top:6px;padding:4px 8px;background:#fff3e0;border-left:3px solid #c9a96e;color:#856404;border-radius:0 4px 4px 0">⚡ '+esc(rdLbls[_ovLang]||rdLbls["INGLESE"])+'</div>';
       }
-    }if(!isP)h+='<div style="font-size:9px;color:#8a8680;margin-top:4px">Store: '+pctStore+"%</div>";h+="</div></div>"}
+    }if(e.ibFromAY)h+='<div style="font-size:9px;margin-top:6px;padding:4px 8px;background:#fff8ee;border-left:3px solid #c9a96e;color:#856404;border-radius:0 4px 4px 0">BDG NETTO — pagato in busta paga come TRASFERTE (cod. 380)</div>';if(!isP)h+='<div style="font-size:9px;color:#8a8680;margin-top:4px">Store: '+pctStore+"%</div>";h+="</div></div>"}
   if(isOn(e.j,"pq")){sN++;var val=getVal(e,"pq"),p=val>0,vS=Math.round(val*sm);h+=secHd(sN,"QTY",p,isP);if(!isP||tg.qt){h+=ltRow("TARGET","QTY "+(tg.qt||0));}h+=ltRow("MAX",'<span class="lt-row-cur">'+cu+"</span>"+Math.round(e.ib*PARAMS.qtyPct));if(!isP)h+=ltRow("RESULT","QTY "+(cn.qc||0));h+=secPd(pdLabel,vS,cu,p);h+="</div></div>"}
   if(isOn(e.j,"rd")){sN++;var val=getVal(e,"rd"),p=val>0,vS=Math.round(val*sm);var digThr=getDigMin(e.si);h+=secHd(sN,tr(e,"digital","DIGITAL TARGET"),p,isP);h+=ltRow("TARGET",fPct(digThr));h+=ltRow("INCENTIVE MAX",'<span class="lt-row-cur">'+cu+"</span>"+Math.round(e.ib*PARAMS.digPct));if(!isP)h+=ltRow("RESULT",fPct(cn.pd));h+=secPd(pdLabel,vS,cu,p);h+="</div></div>"}
   if(isOn(e.j,"rp")){sN++;var val=getVal(e,"rp"),p=val>0,vS=Math.round(val*sm);var _rlP=e.rl||e.ib||0;h+=secHd(sN,tr(e,"privilege","PRIVILEGE"),p,isP);if(!isP||tg.pr){h+=ltRow("TARGET",fPct(tg.pr));}h+=ltRow("FORMULA",(PARAMS.privPct*100)+"% RLM");h+=ltRow("INCENTIVE MAX",'<span class="lt-row-cur">'+cu+"</span>"+Math.round(_rlP*PARAMS.privPct));if(!isP)h+=ltRow("RESULT",fPct(cn.nf));h+=secPd(pdLabel,vS,cu,p);h+="</div></div>"}
@@ -3555,6 +3567,12 @@ function rT(){try{
     h+='&#9679; Area ≥ '+fPct(FCVM_PARAMS.soglia60)+' + SY CY > SY LY → <b>Premio ridotto ('+fPct(FCVM_PARAMS.pct60)+' del massimale)</b><br>';
     h+='&#9679; Altrimenti → <b>Nessun premio</b>';
     h+='</div></div>';
+    // Malattia FC+VM
+    h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">&#129298; Malattia &mdash; FC + VM (Consuntivo)</div>';
+    h+='<div style="font-size:10px;color:#8a8680;margin-bottom:12px">Soglie giorni assenza per riduzione premio. Stessi parametri del mensile.</div>';
+    h+='<div class="cfg-row"><span class="cfg-label">Giorni per 50%</span><input class="cfg-input" type="number" id="sick50_fcvm" value="'+SICK_50+'" min="1" max="30"></div>';
+    h+='<div class="cfg-row"><span class="cfg-label">Giorni per 0%</span><input class="cfg-input" type="number" id="sick0_fcvm" value="'+SICK_0+'" min="1" max="31"></div>';
+    h+='<div style="font-size:10px;color:#8a8680;margin-top:8px;padding:8px 12px;background:#faf9f7;border-radius:5px;border:1px solid #e5e1db">Assenze &ge; <b>'+SICK_50+'gg</b> → 50% del premio &nbsp;&#183;&nbsp; Assenze &ge; <b>'+SICK_0+'gg</b> → 0%</div></div>';
     document.getElementById("p3").innerHTML=h;
     // Bindings
     var selM=document.getElementById("cfgMonth2");
@@ -3569,6 +3587,10 @@ function rT(){try{
     if(inp60)inp60.onchange=function(){FCVM_PARAMS.soglia60=Math.max(0.5,Math.min(0.999,parseFloat(this.value)/100));markDirty();rC();rT();};
     var inpPct=document.getElementById("fcvm_pct60");
     if(inpPct)inpPct.onchange=function(){FCVM_PARAMS.pct60=Math.max(0.01,Math.min(0.99,parseFloat(this.value)/100));markDirty();rC();rT();};
+    var inpS50f=document.getElementById("sick50_fcvm");
+    if(inpS50f)inpS50f.onchange=function(){SICK_50=parseInt(this.value)||1;markDirty();rC();rA();rT();};
+    var inpS0f=document.getElementById("sick0_fcvm");
+    if(inpS0f)inpS0f.onchange=function(){SICK_0=parseInt(this.value)||2;markDirty();rC();rA();rT();};
     return;
   }
   // In seasonal mode, show only Periodo/Output + Seasonal Config
@@ -4692,6 +4714,13 @@ function loadAnagraficaExcel(file){
         // Rileva colonna Field Coach dall'header
         var fcColIT=-1;
         (json[hdrRow]||[]).forEach(function(cell,ci){var s=String(cell||'').toLowerCase().replace(/[\s\n\r]+/g,'');if(s==='fc'||s.indexOf('fieldcoach')>=0||s.indexOf('field coach')>=0||s.indexOf('coach')>=0)fcColIT=ci;});
+        // Rileva colonne BDG per nome header (sovrascrive indici fissi se trovati)
+        // BDG lordo = "azienda_per_costi" (col P=15); BDG netto = "matricola_foglio_presenze" (col AY=50)
+        (json[hdrRow]||[]).forEach(function(cell,ci){
+          var s=String(cell||'').toLowerCase().replace(/[\s\n\r_]+/g,'');
+          if(s.indexOf('azienda')>=0&&s.indexOf('costi')>=0)ZC.bdg=ci;
+          if(s.indexOf('foglio')>=0&&s.indexOf('presenz')>=0)ZC.bdgFb=ci;
+        });
         // Valid base job codes from incentive plan
         var validBaseJobs=PRIZE_MODE==="seasonal"?["SM","VSM"]:["SM","VSM","SSA","SSAP","SA","JSA","SCS"];
         function isValidJob(code){
@@ -5111,6 +5140,7 @@ function addDup2(){
   var emp=imp[idx];
   if(!window._pendingDuplicates)window._pendingDuplicates=[];
   if(window._pendingDuplicates.some(function(d){return d.origM===emp.m&&d.si2===si2;})){alert("Abbinamento già presente.");return;}
+  // Nome store 2°: cerca tra gli importati, fallback a stringa ID
   var s2=String(si2);
   imp.forEach(function(e){if(Number(e.si)===si2&&e.s)s2=e.s;});
   window._pendingDuplicates.push({origM:emp.m,empIdx:idx,si2:si2,s2:s2});
@@ -5194,8 +5224,10 @@ function applyImportedAnagrafica(){
     var origEmp=(window._pendingImport||[])[d.empIdx];if(!origEmp)return;
     var dup={};for(var k in origEmp)dup[k]=origEmp[k];
     dup.m=origEmp.m+"_2";dup.si=d.si2;dup.s=d.s2||String(d.si2);
+    // Reset campi calcolo premi
     dup.rb=0;dup.rbn=0;dup.rd=0;dup.rs=0;dup.rp=0;dup.rsa=0;dup.rdc=0;dup.rcs=0;dup.ra=0;
     dup.ml=0;dup.vi=0;dup.tl=0;dup.tn=0;dup.sc=0;dup.il=0;dup.ps="NO";dup.dv=0;dup.md=0;dup.pq=0;
+    // FC per il nuovo store (FC_MAP se disponibile, altrimenti ENTE_FC)
     (function(){var _mp=FC_MAP[String(d.si2)];if(_mp){var _fa=Array.isArray(_mp.fc)?_mp.fc[0]:_mp.fc;if(_fa&&FC_EMP[_fa]){var _fe=FC_EMP[_fa];dup.fc=_fe.n+' '+_fe.c;dup.mf=(_fe.n+' '+_fe.c).toLowerCase().replace(/ /g,'.')+'@boggi.com';return;}}dup.fc=ENTE_FC[String(dup.en)]||'';dup.mf=dup.fc?dup.fc.toLowerCase().replace(/ /g,'.')+'@boggi.com':'';})();
     E.push(dup);
     if(!D.s[String(d.si2)])D.s[String(d.si2)]={l:"",f:0,s:0,e:0,r:0};
@@ -7928,20 +7960,23 @@ function rCFcvm(){
   function thS(label){return'<th>'+label+'</th>';}
   h+='<div class="scroll-wrap"><table id="ctbl"><thead><tr>';
   h+=thS('Matr.')+thS('Cognome')+thS('Nome')+thS('Ruolo')+thS('Val.')+thS('N.Store');
-  h+=thS('Target EUR')+thS('Max Premio')+(!isP?thS('Consuntivo EUR'):'')+(!isP?thS('Esubero'):'')+(!isP?thS('Cons. Tot.'):'')+thS('% Area')+thS('SY LY')+thS('SY CY')+thS('Premio LC')+thS('Premio EUR')+thS('BDG')+thS('Esito')+(!isP?'<th style="text-align:center;background:#e8f5e9;color:#2d7a3a;cursor:default">100%</th>':'')+(!isP?'<th style="text-align:center;background:#fff3e0;color:#cf8b4e;cursor:default">60%</th>':'')+thS('Lingua');
+  h+=thS('Target EUR')+thS('Max Premio')+(!isP?thS('Consuntivo EUR'):'')+(!isP?thS('Esubero'):'')+(!isP?thS('Cons. Tot.'):'')+thS('% Area')+thS('SY LY')+thS('SY CY')+thS('Premio LC')+thS('Premio EUR')+thS('BDG')+thS('Esito')+(!isP?'<th style="text-align:center;background:#e8f5e9;color:#2d7a3a;cursor:default">100%</th>':'')+(!isP?'<th style="text-align:center;background:#fff3e0;color:#cf8b4e;cursor:default">60%</th>':'')+thS('Lingua')+(!isP?'<th style="text-align:center;cursor:default;min-width:40px">Mal.</th>':'')+'<th style="text-align:center;cursor:default;min-width:36px">Sosp.</th>';
   h+='</tr></thead><tbody>';
 
   fl.forEach(function(emp,i){
     var r=calcFcVmPremio(emp.m);
-    var ec={full:'#2d7a3a',partial:'#cf8b4e',none:'#cf5b5b',preventivo:'#c9a96e',no_data:'#a09a92',no_stores:'#cf5b5b'}[r.esito]||'#a09a92';
-    var el={full:'\u2713 Pieno',partial:fPct(FCVM_PARAMS.pct60),none:'\u2717',preventivo:'\u2014',no_data:'\u2014',no_stores:'Nessun negozio'}[r.esito]||r.esito;
+    var psOn=emp.ps==="SI";
+    var ml=emp.ml||0;
+    var mlc=ml===0?"ml-0":ml<SICK_50?"ml-0":ml<SICK_0?"ml-low":"ml-high";
+    var ec={full:'#2d7a3a',partial:'#cf8b4e',none:'#cf5b5b',preventivo:'#c9a96e',no_data:'#a09a92',no_stores:'#cf5b5b',sospeso:'#b0a99f'}[r.esito]||'#a09a92';
+    var el={full:'\u2713 Pieno',partial:fPct(FCVM_PARAMS.pct60),none:'\u2717',preventivo:'\u2014',no_data:'\u2014',no_stores:'Nessun negozio',sospeso:'Sosp.'}[r.esito]||r.esito;
     var nStores=Object.keys(FC_MAP).filter(function(sid){
       var mp=FC_MAP[sid];if(mp.tipo==='BDG')return false;
       var arr=Array.isArray(emp.j==='FC'?mp.fc:mp.vm)?(emp.j==='FC'?mp.fc:mp.vm):[(emp.j==='FC'?mp.fc:mp.vm)];
       return arr.indexOf(emp.m)>=0;
     }).length;
     var pc=r.totTarget>0?r.pct:null;
-    h+='<tr class="ck" data-m="'+esc(emp.m)+'">';
+    h+='<tr class="ck" data-m="'+esc(emp.m)+'"'+(psOn?' style="opacity:.45"':'')+'>';
     h+='<td class="mn">'+esc(emp.m)+'</td>';
     h+='<td>'+esc(emp.c)+'</td>';
     h+='<td>'+esc(emp.n)+'</td>';
@@ -7999,6 +8034,10 @@ function rCFcvm(){
       });
       h+='</select></td>';
     }
+    // Malattia (solo consuntivo)
+    if(!isP)h+='<td style="text-align:center" onclick="event.stopPropagation()"><span class="ml-dot '+mlc+'"></span>'+ml+'</td>';
+    // Sospendi premio
+    h+='<td style="text-align:center" onclick="event.stopPropagation()"><button class="tb '+(psOn?"x":"o")+'" data-fcvm-ps="'+esc(emp.m)+'" style="width:28px;height:16px" title="Sospendi premio" onclick="event.stopPropagation()"><span class="tk" style="width:10px;height:10px;top:3px"></span></button></td>';
     h+='</tr>';
   });
   h+='</tbody></table></div><div id="fcvmDetail"></div>';
@@ -8019,6 +8058,13 @@ function rCFcvm(){
   if(qEl){qEl.oninput=function(){_fcvmF.q=this.value;rCFcvm();var el2=document.getElementById('fcvmQ');if(el2){el2.focus();}};}
   var jEl=document.getElementById('fcvmJ');
   if(jEl){jEl.onchange=function(){_fcvmF.j=this.value;rCFcvm();};}
+  document.querySelectorAll("button[data-fcvm-ps]").forEach(function(btn){btn.onclick=function(ev){
+    ev.stopPropagation();var m=btn.getAttribute("data-fcvm-ps");
+    var sw=document.querySelector(".scroll-wrap");var scrollTop=sw?sw.scrollTop:0;
+    if(FC_EMP[m])FC_EMP[m].ps=FC_EMP[m].ps==="SI"?"NO":"SI";
+    autoSave();rCFcvm();if(typeof rAFcvm==='function')rAFcvm();
+    var sw2=document.querySelector(".scroll-wrap");if(sw2)sw2.scrollTop=scrollTop;
+  };});
 }
 
 function setFcVmLang(sel){
@@ -8309,7 +8355,7 @@ function rAFcvm(){
     document.getElementById('p2').innerHTML='<div class="wg" style="text-align:center;padding:40px;color:#a09a92"><div style="font-size:32px;margin-bottom:12px">&#128202;</div><div>Carica i dati FC+VM per vedere le analisi.</div></div>'+renderMonitorSection();
     return;
   }
-  var totEur=0,nFull=0,nPartial=0,nPartialNosy=0,nNone=0,nPrev=0;
+  var totEur=0,nFull=0,nPartial=0,nPartialNosy=0,nNone=0,nPrev=0,nSospesi=0;
   var totTargetEur=0,totConsEur=0,totEsuberoEur=0;
   var fcData=[],vmData=[];
   pool.forEach(function(emp){
@@ -8319,12 +8365,14 @@ function rAFcvm(){
     totTargetEur+=r.totTarget;
     totConsEur+=(!isP?r.totCons:r.totTarget);
     totEsuberoEur+=(!isP?r.totEsubero:0);
-    if(r.esito==='full')nFull++;
+    if(r.esito==='sospeso')nSospesi++;
+    else if(r.esito==='full')nFull++;
     else if(r.esito==='partial')nPartial++;
     else if(r.esito==='partial_nosy')nPartialNosy++;
     else if(r.esito==='none')nNone++;
     else nPrev++;
-    var row={m:emp.m,c:emp.c,n:emp.n,j:emp.j,cu:emp.cu,ib:emp.ib,r:r,exR:exR};
+    if(emp.ps!=="SI"&&emp.ml>0&&r.sm<1&&r.esito!=='sospeso'){if(r.esito==='full'||r.esito==='partial')r.esito='malattia';}
+    var row={m:emp.m,c:emp.c,n:emp.n,j:emp.j,cu:emp.cu,ib:emp.ib,r:r,exR:exR,ml:emp.ml||0,ps:emp.ps};
     if(emp.j==='FC')fcData.push(row);else vmData.push(row);
   });
   var areaPct=totTargetEur>0?totConsEur/totTargetEur:null;
@@ -8332,8 +8380,8 @@ function rAFcvm(){
   var h='<div class="wg" style="margin-bottom:16px"><div class="wg-title">&#128202; FC + VM — Riepilogo '+MONTH_NAMES.IT[CFG_MONTH]+' '+CFG_YEAR+(isP?' — PREVENTIVO':' — CONSUNTIVO')+'</div>';
 
   // KPI cards
-  h+='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px">';
-  [{l:'Dipendenti',v:pool.length,c:'#5b6abf'},{l:'Premio pieno',v:nFull,c:'#2d7a3a'},{l:'Premio ridotto',v:nPartial,c:'#cf8b4e'},{l:'Soglia/no SY',v:nPartialNosy,c:'#856404'},{l:'Nessun premio',v:nNone,c:'#cf5b5b'}].forEach(function(s){
+  h+='<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px">';
+  [{l:'Dipendenti',v:pool.length,c:'#5b6abf'},{l:'Premio pieno',v:nFull,c:'#2d7a3a'},{l:'Premio ridotto',v:nPartial,c:'#cf8b4e'},{l:'Soglia/no SY',v:nPartialNosy,c:'#856404'},{l:'Nessun premio',v:nNone,c:'#cf5b5b'},{l:'Sospesi',v:nSospesi,c:'#b0a99f'}].forEach(function(s){
     h+='<div style="background:#faf9f7;border:1px solid #e5e1db;border-radius:8px;padding:12px;text-align:center">';
     h+='<div style="font-size:22px;font-weight:800;color:'+s.c+'">'+s.v+'</div>';
     h+='<div style="font-size:10px;color:#8a8680;margin-top:3px">'+s.l+'</div></div>';
@@ -8378,16 +8426,18 @@ function rAFcvm(){
     h+='<th style="text-align:right;padding:6px 8px">Premio LC</th>';
     h+='<th style="text-align:right;padding:6px 8px">Premio EUR</th>';
     h+='<th style="text-align:center;padding:6px 8px">Esito</th>';
+    if(!isP)h+='<th style="text-align:center;padding:6px 8px">Mal.</th>';
     h+='</tr></thead><tbody>';
     var totTgt=0,totCns=0,totEsub=0,totPremEur=0;
     group.data.forEach(function(row,i){
       var r=row.r;
-      var ec2={full:'#2d7a3a',partial:'#cf8b4e',partial_nosy:'#856404',none:'#cf5b5b',preventivo:'#c9a96e'}[r.esito]||'#a09a92';
-      var el2={full:'✓ Pieno',partial:fPct(FCVM_PARAMS.pct60),partial_nosy:'Soglia/—SY',none:'✗',preventivo:'Max'}[r.esito]||r.esito;
+      var ec2={full:'#2d7a3a',partial:'#cf8b4e',partial_nosy:'#856404',none:'#cf5b5b',preventivo:'#c9a96e',sospeso:'#b0a99f',malattia:'#c9a96e'}[r.esito]||'#a09a92';
+      var el2={full:'✓ Pieno',partial:fPct(FCVM_PARAMS.pct60),partial_nosy:'Soglia/—SY',none:'✗',preventivo:'Max',sospeso:'Sospeso',malattia:'Ridotto'}[r.esito]||r.esito;
       var pc=r.totTarget>0?r.pct:null;
       var bg=i%2===0?'#fff':'#faf9f7';
+      var rowOpacity=row.ps==="SI"?'opacity:.45;':'';
       totTgt+=r.totTarget; totCns+=(!isP?r.totCons:r.totTarget); totEsub+=(!isP?r.totEsubero:0); var aggRowEur2=Math.round((AGG_FCVM[row.m]||0)*getFcVmExRate(row.cu)*100)/100;totPremEur+=(r.hasBdg?r.totalPremioEur:r.premio_eur)+aggRowEur2;
-      h+='<tr style="background:'+bg+'">';
+      h+='<tr style="background:'+bg+';'+rowOpacity+'">';
       h+='<td style="padding:4px 10px;font-family:monospace;color:#8a8680">'+esc(String(row.m))+'</td>';
       h+='<td style="padding:4px 8px;font-weight:600">'+esc(row.c)+' '+esc(row.n)+'</td>';
       h+='<td style="padding:4px 8px;text-align:right">'+fc(r.totTarget,'EUR')+'</td>';
@@ -8404,6 +8454,7 @@ function rAFcvm(){
       h+='<td style="padding:4px 8px;text-align:right;font-weight:700;color:'+ec2+'">'+fc(finalRowLC,row.cu||'EUR')+(AGG_FCVM[row.m]?'<span style="font-size:8px;color:#c9a96e"> +'+fc(AGG_FCVM[row.m],row.cu||'EUR')+'</span>':'')+'</td>';
       h+='<td style="padding:4px 8px;text-align:right;font-weight:700;color:'+ec2+'">'+fc(finalRowEur,'EUR')+'</td>';
       h+='<td style="padding:4px 8px;text-align:center;font-weight:700;color:'+ec2+'">'+el2+'</td>';
+      if(!isP){var mlA=row.ml||0;var mlcA=mlA===0?'ml-0':mlA<SICK_50?'ml-0':mlA<SICK_0?'ml-low':'ml-high';h+='<td style="padding:4px 8px;text-align:center"><span class="ml-dot '+mlcA+'"></span>'+(mlA>0?mlA:'—')+'</td>';}
       h+='</tr>';
     });
     // Totale gruppo
@@ -8415,7 +8466,9 @@ function rAFcvm(){
     h+='<td></td><td></td>';
     if(!isP)h+='<td></td>';
     h+='<td colspan="2" style="padding:5px 8px;text-align:right;font-weight:800;color:#c9a96e">'+fc(Math.round(totPremEur),'EUR')+'</td>';
-    h+='<td></td></tr>';
+    h+='<td></td>';
+    if(!isP)h+='<td></td>';
+    h+='</tr>';
     h+='</tbody></table></div></div>';
   });
 
@@ -8438,6 +8491,7 @@ function rSourcesFcvm(){
   h+='<label class="exp-btn btn-violet" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128200; SY LY (Fatt.+Traffico LY)<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_syly" style="display:none" onchange="loadFcVmFile(this)"></label>';
   h+='<label class="exp-btn btn-green" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128200; Risultati (Fatt.+Traffico CY)<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_results" style="display:none" onchange="loadFcVmFile(this)"></label>';
   h+='<label class="exp-btn btn-blue" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128194; Risultati Mese Precedente<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_prev" style="display:none" onchange="loadFcVmFile(this)"></label>';
+  if(!isP)h+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#129298; Malattie FC/VM<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_malattie" style="display:none" onchange="loadFcVmFile(this)"></label>';
   h+='<button onclick="clearFcVmData()" class="exp-btn btn-red">&#128465; Reset Dati</button>';
   h+='</div>';
   h+='<div style="font-size:9px;color:#a09a92;margin-top:8px;line-height:1.6">';
@@ -8454,7 +8508,8 @@ function rSourcesFcvm(){
   if(!isP)checks=checks.concat([
     {label:'Risultati (Fatt.+Traffico CY)',ok:hasResults},
     {label:'SY CY calcolata',ok:hasResults&&Object.values(FC_RESULTS).some(function(r){return r.sy_cy!=null;})},
-    {label:'Risultati Mese Precedente (opt.)',ok:hasPrevResults}
+    {label:'Risultati Mese Precedente (opt.)',ok:hasPrevResults},
+    {label:'Malattie FC/VM (opt.)',ok:Object.values(FC_EMP).some(function(e){return(e.ml||0)>0;})}
   ]);
   var nOk=checks.filter(function(c){return c.ok;}).length;
   var pct=Math.round(nOk/checks.length*100);
@@ -8499,7 +8554,44 @@ function loadFcVmFile(input){
   if(srcId==='fcvm_syly'){loadFcVmSyLy(file);return;}
   if(srcId==='fcvm_results'){loadFcVmResults(file);return;}
   if(srcId==='fcvm_prev'){loadFcVmPrevResults(file);return;}
+  if(srcId==='fcvm_malattie'){loadFcVmMalattie(file);return;}
   alert('Sorgente non riconosciuta: '+srcId);
+}
+
+function loadFcVmMalattie(file){
+  var reader=new FileReader();
+  reader.onload=function(ev){setTimeout(function(){try{
+    var data=new Uint8Array(ev.target.result);
+    var wb=XLSX.read(data,{type:'array'});
+    var sheet=wb.SheetNames[0];
+    wb.SheetNames.forEach(function(sn){var snl=sn.toLowerCase();if(snl.indexOf('malatt')>=0||snl.indexOf('assenz')>=0||snl.indexOf('sick')>=0)sheet=sn;});
+    var ws=wb.Sheets[sheet];
+    var json=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+    if(json.length<2){alert('Foglio vuoto o non riconosciuto.');return;}
+    var hdrRow=0,hdr={matr:-1,giorni:-1};
+    for(var ri2=0;ri2<Math.min(5,json.length);ri2++){
+      var row2=json[ri2];if(!row2)continue;
+      var rowStr=row2.map(function(c){return String(c||'').toLowerCase().trim();});
+      var found=false;
+      rowStr.forEach(function(hh,ci){
+        if(hh==='matricola'||hh.indexOf('matr')>=0){hdr.matr=ci;found=true;}
+        else if(hh.indexOf('giorni')>=0||hh.indexOf('assenz')>=0||hh.indexOf('malatt')>=0||hh.indexOf('sick')>=0||hh.indexOf('days')>=0){hdr.giorni=ci;}
+      });
+      if(found){hdrRow=ri2;break;}
+    }
+    if(hdr.matr<0||hdr.giorni<0){alert('Colonne non riconosciute.\nCerco: Matricola, Giorni assenza/malattia.');return;}
+    var matched=0,notFound=0;
+    for(var ri3=hdrRow+1;ri3<json.length;ri3++){
+      var row3=json[ri3];if(!row3)continue;
+      var rawM=row3[hdr.matr];if(rawM==null||String(rawM).trim()==='')continue;
+      var matr=String(rawM).trim();
+      var giorni=parseInt(row3[hdr.giorni])||0;
+      if(FC_EMP[matr]){FC_EMP[matr].ml=giorni;matched++;}else notFound++;
+    }
+    autoSave();rCFcvm();rAFcvm();rSources();
+    alert('Malattie FC/VM: '+matched+' abbinate'+(notFound>0?', '+notFound+' non trovate':'')+'.\n\n'+SICK_50+' gg → 50% · '+SICK_0+' gg → 0%');
+  }catch(ex){alert('Errore lettura malattie:\n'+ex.message);}},50);};
+  reader.readAsArrayBuffer(file);
 }
 
 function loadFcVmAnagrafica(file){
@@ -8610,7 +8702,7 @@ function loadFcVmAnagrafica(file){
       if(!FC_EMP[matr]){
         var mailVal=hdr.mail>=0?String(row[hdr.mail]||'').trim().toLowerCase():'';
         var cfVal=hdr.cf>=0?String(row[hdr.cf]||'').trim().toUpperCase():'';
-        var empObj={m:matr,c:cogn,n:nome,j:ruolo,cu:cu,ex:ex,ib:0,lang:'INGLESE',bdg_stores:[],mp:mailVal,mf:'',cf:cfVal};
+        var empObj={m:matr,c:cogn,n:nome,j:ruolo,cu:cu,ex:ex,ib:0,lang:'INGLESE',bdg_stores:[],mp:mailVal,mf:'',cf:cfVal,ml:0,ps:'NO'};
         FC_EMP[matr]=empObj;
         importedList.push(empObj);
         imported++;
