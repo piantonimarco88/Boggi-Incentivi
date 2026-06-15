@@ -8568,25 +8568,48 @@ function loadFcVmMalattie(file){
     var ws=wb.Sheets[sheet];
     var json=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
     if(json.length<2){alert('Foglio vuoto o non riconosciuto.');return;}
-    var hdrRow=0,hdr={matr:-1,giorni:-1};
+    var hdrRow=0,hdr={matr:-1,cogn:-1,nome:-1,giorni:-1};
     for(var ri2=0;ri2<Math.min(5,json.length);ri2++){
       var row2=json[ri2];if(!row2)continue;
       var rowStr=row2.map(function(c){return String(c||'').toLowerCase().trim();});
-      var found=false;
+      var foundKey=false;
       rowStr.forEach(function(hh,ci){
-        if(hh==='matricola'||hh.indexOf('matr')>=0){hdr.matr=ci;found=true;}
-        else if(hh.indexOf('giorni')>=0||hh.indexOf('assenz')>=0||hh.indexOf('malatt')>=0||hh.indexOf('sick')>=0||hh.indexOf('days')>=0){hdr.giorni=ci;}
+        if(hh==='matricola'||hh.indexOf('matr')>=0){hdr.matr=ci;foundKey=true;}
+        else if(hh.indexOf('cognome')>=0){hdr.cogn=ci;foundKey=true;}
+        if(hh.indexOf('giorni')>=0||hh.indexOf('assenz')>=0||hh.indexOf('malatt')>=0||hh.indexOf('sick')>=0||hh.indexOf('days')>=0){hdr.giorni=ci;}
       });
-      if(found){hdrRow=ri2;break;}
+      // nome: colonna diversa da cognome che contiene "nome"
+      if(hdr.cogn>=0&&hdr.nome<0){for(var ci2=0;ci2<rowStr.length;ci2++){if(ci2!==hdr.cogn&&rowStr[ci2].indexOf('nome')>=0){hdr.nome=ci2;break;}}}
+      if(foundKey&&hdr.giorni>=0){hdrRow=ri2;break;}
     }
-    if(hdr.matr<0||hdr.giorni<0){alert('Colonne non riconosciute.\nCerco: Matricola, Giorni assenza/malattia.');return;}
+    if(hdr.giorni<0||(hdr.matr<0&&hdr.cogn<0)){alert('Colonne non riconosciute.\nCerco: Matricola (o Cognome+Nome) + Giorni assenza/malattia.');return;}
     var matched=0,notFound=0;
-    for(var ri3=hdrRow+1;ri3<json.length;ri3++){
-      var row3=json[ri3];if(!row3)continue;
-      var rawM=row3[hdr.matr];if(rawM==null||String(rawM).trim()==='')continue;
-      var matr=String(rawM).trim();
-      var giorni=parseInt(row3[hdr.giorni])||0;
-      if(FC_EMP[matr]){FC_EMP[matr].ml=giorni;matched++;}else notFound++;
+    if(hdr.matr>=0){
+      for(var ri3=hdrRow+1;ri3<json.length;ri3++){
+        var row3=json[ri3];if(!row3)continue;
+        var rawM=row3[hdr.matr];if(rawM==null||String(rawM).trim()==='')continue;
+        var matr=String(rawM).trim();
+        var giorni=parseInt(row3[hdr.giorni])||0;
+        if(FC_EMP[matr]){FC_EMP[matr].ml=giorni;matched++;}else notFound++;
+      }
+    } else {
+      // fallback cognome+nome (stesso formato del mensile)
+      var nameLookup={};
+      Object.values(FC_EMP).forEach(function(emp){
+        var key=(emp.c||'').toUpperCase().trim()+'|'+(emp.n||'').toUpperCase().trim();
+        nameLookup[key]=emp.m;
+      });
+      for(var ri4=hdrRow+1;ri4<json.length;ri4++){
+        var row4=json[ri4];if(!row4)continue;
+        var cogn=String(row4[hdr.cogn]||'').toUpperCase().trim();
+        if(!cogn)continue;
+        var nomeVal=hdr.nome>=0?String(row4[hdr.nome]||'').toUpperCase().trim():'';
+        var days=Math.round(parseFloat(row4[hdr.giorni])||0);
+        if(days<=0)continue;
+        var key=cogn+'|'+nomeVal;
+        var matrFound=nameLookup[key];
+        if(matrFound!=null){FC_EMP[matrFound].ml=days;matched++;}else notFound++;
+      }
     }
     autoSave();rCFcvm();rAFcvm();rSources();
     alert('Malattie FC/VM: '+matched+' abbinate'+(notFound>0?', '+notFound+' non trovate':'')+'.\n\n'+SICK_50+' gg → 50% · '+SICK_0+' gg → 0%');
