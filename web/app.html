@@ -653,7 +653,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='8.94'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='8.95'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -2133,11 +2133,11 @@ function buildLetterUSA(e){
 // info: {acc, vel, pctMatrix, recognized, used, reserveIn, reserveOut, sasv} oppure null.
 // Mostra la matrice (logica) in prev+cons; il risultato puntuale solo in cons.
 var _SAS_LT={
-  ITALIANO:{title:"VALORE SAS → FATTURATO",logic:"Quota del valore SAS del negozio riconosciuta nel fatturato verso il target (in base ad accettazione e velocità). Fino al 100%; l'avanzo è riserva riportata al mese successivo.",vel:"Velocità",acc:"Accettazione",recPct:"% riconosciuta",sasVal:"Valore SAS negozio",recVal:"Valore SAS riconosciuto",applied:"Applicato al fatturato",resIn:"Riserva mese prec.",reserve:"Riserva riportata",nodata:"Dato SAS non disponibile per questo negozio."},
-  INGLESE:{title:"SAS VALUE → TURNOVER",logic:"Share of the store's SAS value recognised toward the turnover target (based on acceptance and speed). Up to 100%; the surplus is a reserve carried to next month.",vel:"Speed",acc:"Acceptance",recPct:"Recognised %",sasVal:"Store SAS value",recVal:"Recognised SAS value",applied:"Applied to turnover",resIn:"Previous month reserve",reserve:"Reserve carried over",nodata:"SAS data not available for this store."},
-  FRANCESE:{title:"VALEUR SAS → CA",logic:"Part de la valeur SAS du magasin reconnue dans le CA vers l'objectif (selon acceptation et rapidité). Jusqu'à 100% ; l'excédent est une réserve reportée au mois suivant.",vel:"Rapidité",acc:"Acceptation",recPct:"% reconnue",sasVal:"Valeur SAS magasin",recVal:"Valeur SAS reconnue",applied:"Appliqué au CA",resIn:"Réserve mois préc.",reserve:"Réserve reportée",nodata:"Donnée SAS non disponible pour ce magasin."},
-  TEDESCO:{title:"SAS-WERT → UMSATZ",logic:"Anteil des SAS-Werts des Stores, der auf das Umsatzziel angerechnet wird (nach Annahme und Geschwindigkeit). Bis 100%; der Überschuss ist eine in den Folgemonat übertragene Reserve.",vel:"Geschwindigkeit",acc:"Annahme",recPct:"Anerkannt %",sasVal:"SAS-Wert Store",recVal:"Anerkannter SAS-Wert",applied:"Auf Umsatz angerechnet",resIn:"Reserve Vormonat",reserve:"Übertragene Reserve",nodata:"SAS-Daten für diesen Store nicht verfügbar."},
-  SPAGNOLO:{title:"VALOR SAS → FACTURACIÓN",logic:"Parte del valor SAS de la tienda reconocida en la facturación hacia el objetivo (según aceptación y velocidad). Hasta el 100%; el excedente es reserva trasladada al mes siguiente.",vel:"Velocidad",acc:"Aceptación",recPct:"% reconocido",sasVal:"Valor SAS tienda",recVal:"Valor SAS reconocido",applied:"Aplicado a facturación",resIn:"Reserva mes ant.",reserve:"Reserva trasladada",nodata:"Dato SAS no disponible para esta tienda."}
+  ITALIANO:{title:"VALORE SAS → FATTURATO",logic:"Quota del valore SAS del negozio riconosciuta nel fatturato verso il target (in base ad accettazione e velocità). Fino al 100%; l'avanzo è riserva riportata al mese successivo.",vel:"Velocità",velLabel:"% gestiti entro 4h",acc:"Accettazione",recPct:"% riconosciuta",sasVal:"Valore SAS negozio",recVal:"Valore SAS riconosciuto",applied:"Applicato al fatturato",resIn:"Riserva mese prec.",reserve:"Riserva riportata",nodata:"Dato SAS non disponibile per questo negozio."},
+  INGLESE:{title:"SAS VALUE → TURNOVER",logic:"Share of the store's SAS value recognised toward the turnover target (based on acceptance and speed). Up to 100%; the surplus is a reserve carried to next month.",vel:"Speed",velLabel:"% handled within 4h",acc:"Acceptance",recPct:"Recognised %",sasVal:"Store SAS value",recVal:"Recognised SAS value",applied:"Applied to turnover",resIn:"Previous month reserve",reserve:"Reserve carried over",nodata:"SAS data not available for this store."},
+  FRANCESE:{title:"VALEUR SAS → CA",logic:"Part de la valeur SAS du magasin reconnue dans le CA vers l'objectif (selon acceptation et rapidité). Jusqu'à 100% ; l'excédent est une réserve reportée au mois suivant.",vel:"Rapidité",velLabel:"% traités sous 4h",acc:"Acceptation",recPct:"% reconnue",sasVal:"Valeur SAS magasin",recVal:"Valeur SAS reconnue",applied:"Appliqué au CA",resIn:"Réserve mois préc.",reserve:"Réserve reportée",nodata:"Donnée SAS non disponible pour ce magasin."},
+  TEDESCO:{title:"SAS-WERT → UMSATZ",logic:"Anteil des SAS-Werts des Stores, der auf das Umsatzziel angerechnet wird (nach Annahme und Geschwindigkeit). Bis 100%; der Überschuss ist eine in den Folgemonat übertragene Reserve.",vel:"Geschwindigkeit",velLabel:"% innerhalb 4h bearbeitet",acc:"Annahme",recPct:"Anerkannt %",sasVal:"SAS-Wert Store",recVal:"Anerkannter SAS-Wert",applied:"Auf Umsatz angerechnet",resIn:"Reserve Vormonat",reserve:"Übertragene Reserve",nodata:"SAS-Daten für diesen Store nicht verfügbar."},
+  SPAGNOLO:{title:"VALOR SAS → FACTURACIÓN",logic:"Parte del valor SAS de la tienda reconocida en la facturación hacia el objetivo (según aceptación y velocidad). Hasta el 100%; el excedente es reserva trasladada al mes siguiente.",vel:"Velocidad",velLabel:"% gestionados en 4h",acc:"Aceptación",recPct:"% reconocido",sasVal:"Valor SAS tienda",recVal:"Valor SAS reconocido",applied:"Aplicado a facturación",resIn:"Reserva mes ant.",reserve:"Reserva trasladada",nodata:"Dato SAS no disponible para esta tienda."}
 };
 function _sasBandLbl(b,k){return k===0?'<'+Math.round(b[0]*100)+'%':(k===3?'≥'+Math.round(b[2]*100)+'%':Math.round(b[k-1]*100)+'-'+Math.round(b[k]*100)+'%');}
 function sasLetterBlock(lang,info,isP,cu){
@@ -2147,23 +2147,23 @@ function sasLetterBlock(lang,info,isP,cu){
   var ab=SAS_MATRIX.accBands,vb=SAS_MATRIX.velBands;
   var hasData=info&&info.acc!=null&&info.vel!=null;
   var aIdx=hasData?sasAccBandIdx(info.acc):-1,vIdx=hasData?sasVelBandIdx(info.vel):-1;
-  var h='<div style="margin-top:8px;padding:7px 9px;background:#faf8f4;border:1px solid #ece7df;border-radius:6px">';
-  h+='<div style="font-size:10px;font-weight:700;color:#a07d2c;margin-bottom:3px">'+esc(T.title)+'</div>';
-  h+='<div style="font-size:8px;color:#8a8680;line-height:1.4;margin-bottom:5px">'+esc(T.logic)+'</div>';
-  h+='<div style="font-size:8px;font-weight:700;color:#8a8680;text-align:center;margin-bottom:1px">'+esc(T.vel)+' — '+esc(SAS_MATRIX.velLabel)+' →</div>';
-  h+='<table style="border-collapse:collapse;font-size:8px;margin:0 auto '+(isP?'0':'6px')+'"><thead><tr><th style="padding:1px 4px;color:#a09a92;text-align:right;font-weight:700">↓ '+esc(T.acc)+'</th>';
-  for(var c=0;c<4;c++)h+='<th style="padding:1px 5px;color:#8a8680;font-weight:700">'+_sasBandLbl(vb,c)+'</th>';
+  var h='<div style="margin-top:10px;padding:11px 14px;background:#faf8f4;border:1px solid #ece7df;border-radius:7px">';
+  h+='<div style="font-size:12px;font-weight:700;color:#a07d2c;margin-bottom:4px">'+esc(T.title)+'</div>';
+  h+='<div style="font-size:10px;color:#8a8680;line-height:1.45;margin-bottom:8px">'+esc(T.logic)+'</div>';
+  h+='<div style="font-size:10px;font-weight:700;color:#8a8680;text-align:center;margin-bottom:3px">'+esc(T.vel)+' — '+esc(T.velLabel)+' →</div>';
+  h+='<table style="border-collapse:collapse;font-size:11px;margin:0 auto '+(isP?'0':'9px')+'"><thead><tr><th style="padding:3px 9px;color:#a09a92;text-align:right;font-weight:700">↓ '+esc(T.acc)+'</th>';
+  for(var c=0;c<4;c++)h+='<th style="padding:3px 11px;color:#8a8680;font-weight:700">'+_sasBandLbl(vb,c)+'</th>';
   h+='</tr></thead><tbody>';
   [3,2,1,0].forEach(function(ai){
-    h+='<tr><td style="padding:1px 5px;color:#6b6560;font-weight:700;text-align:right">'+_sasBandLbl(ab,ai)+'</td>';
-    for(var c2=0;c2<4;c2++){var hit=(!isP&&ai===aIdx&&c2===vIdx);h+='<td style="padding:1px 6px;text-align:center;'+(hit?'background:#c9a96e;color:#fff;font-weight:700':'color:#9a958d')+'">'+Math.round(SAS_MATRIX.grid[ai][c2]*100)+'</td>';}
+    h+='<tr><td style="padding:3px 9px;color:#6b6560;font-weight:700;text-align:right">'+_sasBandLbl(ab,ai)+'</td>';
+    for(var c2=0;c2<4;c2++){var hit=(!isP&&ai===aIdx&&c2===vIdx);h+='<td style="padding:3px 11px;text-align:center;'+(hit?'background:#c9a96e;color:#fff;font-weight:700;border-radius:3px':'color:#9a958d')+'">'+Math.round(SAS_MATRIX.grid[ai][c2]*100)+'</td>';}
     h+='</tr>';
   });
   h+='</tbody></table>';
   if(!isP){
-    if(!hasData||info.pctMatrix==null){h+='<div style="font-size:8.5px;color:#a09a92;font-style:italic">'+esc(T.nodata)+'</div>';}
+    if(!hasData||info.pctMatrix==null){h+='<div style="font-size:10.5px;color:#a09a92;font-style:italic">'+esc(T.nodata)+'</div>';}
     else{
-      var row=function(l,v){return '<div style="display:flex;justify-content:space-between;font-size:9px;padding:1px 0"><span style="color:#8a8680">'+esc(l)+'</span><span style="font-weight:600;color:#2c2925">'+v+'</span></div>';};
+      var row=function(l,v){return '<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0"><span style="color:#8a8680">'+esc(l)+'</span><span style="font-weight:600;color:#2c2925">'+v+'</span></div>';};
       var eur=function(v){return '<span class="lt-row-cur">'+cu+'</span>'+Math.round(v||0).toLocaleString("it-IT");};
       h+=row(T.acc,Math.round(info.acc*100)+'% ('+_sasBandLbl(ab,aIdx)+')');
       h+=row(T.vel,Math.round(info.vel*100)+'% ('+_sasBandLbl(vb,vIdx)+')');
@@ -8438,9 +8438,9 @@ function buildFcVmLetter(emp){
       var _LTf=_SAS_LT[lang]||_SAS_LT.INGLESE;
       var _totRecF=(r.stores||[]).reduce(function(s,d){return s+(d.sasRec||0);},0);
       if(_totRecF>0||(r.totSasUsed||0)>0){
-        h+='<div style="margin-top:6px;padding:7px 9px;background:#faf8f4;border:1px solid #ece7df;border-radius:6px;font-size:9px">';
-        h+='<div style="font-size:9px;font-weight:700;color:#a07d2c;margin-bottom:3px">'+esc(_LTf.title)+' \u2014 '+esc(T.area)+'</div>';
-        var _rwF=function(l,v){return '<div style="display:flex;justify-content:space-between;padding:1px 0"><span style="color:#8a8680">'+esc(l)+'</span><span style="font-weight:600;color:#2c2925">'+fc(v,'EUR')+'</span></div>';};
+        h+='<div style="margin-top:8px;padding:10px 13px;background:#faf8f4;border:1px solid #ece7df;border-radius:7px;font-size:11px">';
+        h+='<div style="font-size:11px;font-weight:700;color:#a07d2c;margin-bottom:4px">'+esc(_LTf.title)+' \u2014 '+esc(T.area)+'</div>';
+        var _rwF=function(l,v){return '<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#8a8680">'+esc(l)+'</span><span style="font-weight:600;color:#2c2925">'+fc(v,'EUR')+'</span></div>';};
         h+=_rwF(_LTf.recVal,_totRecF);
         h+=_rwF(_LTf.applied,r.totSasUsed||0);
         h+=_rwF(_LTf.reserve,r.totSasReserveOut||0);

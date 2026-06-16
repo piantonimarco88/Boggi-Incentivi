@@ -45,9 +45,9 @@ function buildFcVmLetter(emp){
       var _LTf=_SAS_LT[lang]||_SAS_LT.INGLESE;
       var _totRecF=(r.stores||[]).reduce(function(s,d){return s+(d.sasRec||0);},0);
       if(_totRecF>0||(r.totSasUsed||0)>0){
-        h+='<div style="margin-top:6px;padding:7px 9px;background:#faf8f4;border:1px solid #ece7df;border-radius:6px;font-size:9px">';
-        h+='<div style="font-size:9px;font-weight:700;color:#a07d2c;margin-bottom:3px">'+esc(_LTf.title)+' \u2014 '+esc(T.area)+'</div>';
-        var _rwF=function(l,v){return '<div style="display:flex;justify-content:space-between;padding:1px 0"><span style="color:#8a8680">'+esc(l)+'</span><span style="font-weight:600;color:#2c2925">'+fc(v,'EUR')+'</span></div>';};
+        h+='<div style="margin-top:8px;padding:10px 13px;background:#faf8f4;border:1px solid #ece7df;border-radius:7px;font-size:11px">';
+        h+='<div style="font-size:11px;font-weight:700;color:#a07d2c;margin-bottom:4px">'+esc(_LTf.title)+' \u2014 '+esc(T.area)+'</div>';
+        var _rwF=function(l,v){return '<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#8a8680">'+esc(l)+'</span><span style="font-weight:600;color:#2c2925">'+fc(v,'EUR')+'</span></div>';};
         h+=_rwF(_LTf.recVal,_totRecF);
         h+=_rwF(_LTf.applied,r.totSasUsed||0);
         h+=_rwF(_LTf.reserve,r.totSasReserveOut||0);
