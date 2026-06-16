@@ -310,12 +310,12 @@ function rT(){try{
     var _ab=SAS_MATRIX.accBands,_vb=SAS_MATRIX.velBands;
     var _bandLbl=function(b,k){return k===0?'<'+Math.round(b[0]*100)+'%':(k===3?'\u2265'+Math.round(b[2]*100)+'%':Math.round(b[k-1]*100)+'-'+Math.round(b[k]*100)+'%');};
     h+='<div style="font-size:10px;font-weight:700;color:#6b6560;text-align:center;margin:12px 0 2px">VELOCIT\u00c0 (asse orizzontale) \u2014 '+esc(SAS_MATRIX.velLabel)+' \u2192</div>';
-    h+='<table style="border-collapse:collapse;margin:0 0 8px"><thead><tr><th style="font-size:9px;font-weight:700;color:#6b6560;padding:3px 8px;text-align:right;white-space:nowrap">\u2193 % ACCETTAZIONE</th>';
+    h+='<table style="width:100%;border-collapse:collapse;table-layout:fixed;margin:0 0 8px"><thead><tr><th style="width:130px;font-size:9px;font-weight:700;color:#6b6560;padding:3px 8px;text-align:right;white-space:nowrap;vertical-align:bottom">% ACCETTAZIONE<br>(asse verticale) \u2193</th>';
     for(var _c=0;_c<4;_c++)h+='<th style="font-size:9px;font-weight:700;color:#8a8680;padding:3px 8px;text-align:center">'+_bandLbl(_vb,_c)+'</th>';
     h+='</tr></thead><tbody>';
     [3,2,1,0].forEach(function(_ai){
       h+='<tr><td style="font-size:9px;color:#6b6560;font-weight:700;padding:3px 8px;text-align:right;white-space:nowrap">'+_bandLbl(_ab,_ai)+'</td>';
-      for(var _c2=0;_c2<4;_c2++)h+='<td style="padding:2px"><input class="cfg-input sas-cell" type="number" data-sasr="'+_ai+'" data-sasc="'+_c2+'" value="'+Math.round(SAS_MATRIX.grid[_ai][_c2]*100)+'" step="1" min="0" max="100" style="width:62px;text-align:center"></td>';
+      for(var _c2=0;_c2<4;_c2++)h+='<td style="padding:2px;text-align:center"><input class="cfg-input sas-cell" type="number" data-sasr="'+_ai+'" data-sasc="'+_c2+'" value="'+Math.round(SAS_MATRIX.grid[_ai][_c2]*100)+'" step="1" min="0" max="100" style="width:62px;text-align:center"></td>';
       h+='</tr>';
     });
     h+='</tbody></table>';
