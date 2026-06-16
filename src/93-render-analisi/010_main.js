@@ -35,6 +35,20 @@ function rA(){
   h+='<div class="wg"><div class="wg-title">% Raggiungimento KPI \u2014 EUR</div><div class="wg-grid">';
   IT.forEach(function(it){if(it.k==="ra"&&!PARAMS.artEnabled)return;var s=kpiStats[it.k];if(!s||s.eligible===0)return;var pct=Math.round(s.achieved/s.eligible*100);
     h+='<div class="wg-item"><div class="wg-val" style="color:'+it.c+'">'+pct+'%</div><div class="wg-label">'+it.l+" ("+s.achieved+"/"+s.eligible+')</div><div class="wg-bar"><div class="wg-bar-fill" style="width:'+pct+"%;background:"+it.c+'"></div></div><div style="font-size:9px;color:#a09a92;margin-top:2px">'+fcEUR(s.total)+"</div></div>"});h+="</div></div>";
+  // Riepilogo SAS → fatturato (da Luglio 2026, mensile consuntivo). Aggregato per negozio (no doppi).
+  if(typeof sasNewActive==='function'&&sasNewActive()&&MODE==="consuntivo"){
+    var _seenS={},_sV=0,_sR=0,_sA=0,_sRes=0,_nS=0;
+    E.forEach(function(e){var sid=String(e.si);if(_seenS[sid])return;_seenS[sid]=1;
+      var info=(typeof storeSasInfo==='function')?storeSasInfo(sid):null;
+      if(info&&info.active&&info.pctMatrix!=null){var ex=e.ex||1;_sV+=info.sasv*ex;_sR+=info.recognized*ex;_sA+=info.used*ex;_sRes+=info.reserveOut*ex;_nS++;}
+    });
+    if(_nS>0){
+      h+='<div class="wg"><div class="wg-title">Valore SAS → Fatturato (EUR) — '+_nS+' negozi</div><div class="cg">';
+      [{l:"Valore SAS negozi",v:fcEUR(_sV),c:"#a07d2c"},{l:"Riconosciuto",v:fcEUR(_sR),c:"#c9a96e"},{l:"Applicato al fatturato",v:fcEUR(_sA),c:"#2d7a3a"},{l:"Riserva riportata",v:fcEUR(_sRes),c:"#5ba4cf"}].forEach(function(c){
+        h+='<div class="cd"><div style="font-size:9px;color:#a09a92;font-weight:600;text-transform:uppercase;letter-spacing:1px">'+c.l+'</div><div style="font-size:18px;font-weight:800;margin-top:3px;color:'+c.c+'">'+c.v+"</div></div>";});
+      h+="</div></div>";
+    }
+  }
   function thS(c,l){var ar=aSort.col===c?(aSort.dir>0?"\u25b2":"\u25bc"):"\u25b4";return'<th data-ac="'+c+'"'+(aSort.col===c?' class="sorted"':"")+">"+l+' <span class="arrow">'+ar+"</span></th>"}
   var showWG=MODE==="consuntivo";
   h+='<div style="overflow-x:auto"><table id="atbl"><thead><tr>'+thS("nm","Gruppo")+thS("n","N")+thS("t","Tot \u20ac")+"<th></th>"+thS("av","Media")+thS("b","BDG")+thS("d","Dig")+thS("sy","SY")+thS("p","Priv")+thS("sa","SAS")+(PARAMS.artEnabled?thS("ar","Art"):"")+thS("vi","Vis")+thS("ag","Agg")+(showWG?thS("wg","WG"):"")+thS("ml","Mal\u00d8")+"</tr></thead><tbody>";
