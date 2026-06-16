@@ -34,6 +34,11 @@ function rSourcesFcvm(){
     {label:'Risultati Mese Precedente (opt.)',ok:hasPrevResults},
     {label:'Malattie FC/VM (opt.)',ok:Object.values(FC_EMP).some(function(e){return(e.ml||0)>0;})}
   ]);
+  // SAS valore→fatturato: richiesto in consuntivo da luglio 2026
+  if(!isP&&typeof sasNewActive==='function'&&sasNewActive()){
+    var _hasSasF=Object.values(FC_RESULTS).some(function(r){return r.sasv_eur!=null||r.acc!=null||r.vel!=null;});
+    checks.push({label:'SAS (valore→fatturato)',ok:_hasSasF});
+  }
   var nOk=checks.filter(function(c){return c.ok;}).length;
   var pct=Math.round(nOk/checks.length*100);
   var barColor=pct===100?'#2d7a3a':pct>=50?'#c9a96e':'#cf5b5b';

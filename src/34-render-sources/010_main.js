@@ -130,11 +130,14 @@ function rSources(){try{
     if(!isP){
       var hasCons=Object.keys(D.c).length>0;
       var hasSC=hasCons&&Object.keys(D.c).some(function(k){return(D.c[k].sc||0)>0});
-      var hasSAS=hasCons&&Object.keys(D.c).some(function(k){return(D.c[k].s4||0)>0});
+      // SAS: da luglio 2026 si controlla il NUOVO dato (accettazione/velocità/valore),
+      // prima il vecchio conteggio "SAS on target" (s4).
+      var _sasNew=typeof sasNewActive==='function'&&sasNewActive();
+      var hasSAS=hasCons&&Object.keys(D.c).some(function(k){return _sasNew?(D.c[k].sasv!=null||D.c[k].vel!=null||D.c[k].sa!=null):((D.c[k].s4||0)>0);});
       var hasMal=E.some(function(e){return(e.ml||0)>0});
       var hasDigC=hasCons&&Object.keys(D.c).some(function(k){return(D.c[k].pd||0)>0});
       checks.push({l:"Risultati BDG",ok:hasSC,v:hasSC?Object.keys(D.c).length+" neg.":"Da caricare"});
-      checks.push({l:"SAS",ok:hasSAS,v:hasSAS?"OK":"Da caricare"});
+      checks.push({l:_sasNew?"SAS (valore→fatturato)":"SAS",ok:hasSAS,v:hasSAS?"OK":"Da caricare"});
       checks.push({l:"Malattie",ok:hasMal,v:hasMal?"OK":"Da caricare"});
       checks.push({l:"% Digital (cons.)",ok:hasDigC,v:hasDigC?"OK":"Da caricare"});
       checks.push({l:"Esubero",ok:hasCons&&Object.keys(D.c).some(function(k){return(D.c[k].es||0)>0}),v:"OK"});
