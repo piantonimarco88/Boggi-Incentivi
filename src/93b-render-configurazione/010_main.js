@@ -345,7 +345,14 @@ function rT(){try{
   RL.forEach(function(r,ri){
     var isBase=baseRoles.indexOf(r)>=0;
     h+='<tr class="tg-d'+(isBase?'':' kpi-variant')+'" style="background:'+(ri%2?"#faf9f7":"#fff")+';'+(isBase?'':'display:none')+'"><td'+(isBase?' style="font-weight:700"':' style="padding-left:18px;color:#6b6560"')+'>'+esc(r)+"</td>";
-    KP.forEach(function(k){if(k==="Visual")return;var on=TC[r]?TC[r][k]:false;h+='<td><button class="tb '+(on?"x":"o")+'" data-r="'+esc(r)+'" data-k="'+k+'"><span class="tk"></span></button></td>'});h+="</tr>"});
+    KP.forEach(function(k){if(k==="Visual")return;
+      var on=TC[r]?TC[r][k]:false,locked=false;
+      // Da Luglio 2026: vecchio SAS ritirato (off per tutti), SCS prende SY. Speculare a isOn().
+      if(sasNewActive()){
+        if(k==="SAS"){on=false;locked=true;}
+        else if(k==="SY"&&r.indexOf("SCS")>=0&&r.indexOf("NO SY")<0){on=true;locked=true;}
+      }
+      h+='<td><button class="tb '+(on?"x":"o")+'" data-r="'+esc(r)+'" data-k="'+k+'"'+(locked?' disabled title="Forzato da Luglio 2026 — SCS: SAS off, SY on" style="opacity:.55;cursor:not-allowed"':'')+'><span class="tk"></span></button></td>'});h+="</tr>"});
   h+="</tbody></table></div></div>";
 
   // === USA CONFIG section (hidden for Italia) ===
