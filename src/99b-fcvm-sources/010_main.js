@@ -543,7 +543,7 @@ function loadFcVmResults(file){
     if(json.length<2){alert('Foglio vuoto.');return;}
 
     // Rileva header — stesso formato del file SY LY ma anno corrente
-    var hdrRow=0,hdr={sid:-1,sales:-1,footfall:-1};
+    var hdrRow=0,hdr={sid:-1,sales:-1,footfall:-1,acc:-1,vel:-1,sasv:-1,sasr:-1};
     for(var ri=0;ri<Math.min(5,json.length);ri++){
       var row=json[ri];if(!row)continue;
       var found=false;
@@ -551,8 +551,13 @@ function loadFcVmResults(file){
         var h=String(cell||'').toLowerCase().trim();
         if(h==='store id'||h==='store_id'||h==='storeid'){hdr.sid=ci;found=true;}
         if((h.indexOf('gross sales')>=0||h.indexOf('gross_sales')>=0||h.indexOf('sales')>=0||h.indexOf('fatturato')>=0)
-           &&h.indexOf('traffic')<0&&h.indexOf('lc')<0&&hdr.sales<0){hdr.sales=ci;}
+           &&h.indexOf('traffic')<0&&h.indexOf('lc')<0&&h.indexOf('sas')<0&&hdr.sales<0){hdr.sales=ci;}
         if(h.indexOf('traffic')>=0||h.indexOf('footfall')>=0||h.indexOf('traffico')>=0){hdr.footfall=ci;}
+        // NUOVA logica SAS (da luglio 2026): accettazione, velocità, valore SAS EUR, riserva
+        if((h.indexOf('accettaz')>=0||h.indexOf('% accept')>=0||h.indexOf('% accettati')>=0)&&hdr.acc<0)hdr.acc=ci;
+        if((h.indexOf('gestiti entro')>=0||h.indexOf('% gestiti')>=0||h.indexOf('velocit')>=0||h.indexOf('% handled')>=0)&&hdr.vel<0)hdr.vel=ci;
+        if((h.indexOf('valore sas')>=0||h.indexOf('sas value')>=0||h.indexOf('sas eur')>=0)&&hdr.sasv<0)hdr.sasv=ci;
+        if((h.indexOf('riserva sas')>=0||h.indexOf('sas reserve')>=0)&&hdr.sasr<0)hdr.sasr=ci;
       });
       if(found){hdrRow=ri;break;}
     }
@@ -573,6 +578,10 @@ function loadFcVmResults(file){
       if(!agg[sid])agg[sid]={sales:0,footfall:0};
       agg[sid].sales+=sales;
       agg[sid].footfall+=ff;
+      if(hdr.acc>=0){var _av=parseFloat(row[hdr.acc]);if(!isNaN(_av)){if(_av>1)_av/=100;agg[sid].acc=Math.max(0,Math.min(1,_av));}}
+      if(hdr.vel>=0){var _vv=parseFloat(row[hdr.vel]);if(!isNaN(_vv)){if(_vv>1)_vv/=100;agg[sid].vel=Math.max(0,Math.min(1,_vv));}}
+      if(hdr.sasv>=0){var _sv=parseFloat(row[hdr.sasv]);if(!isNaN(_sv))agg[sid].sasv=(agg[sid].sasv||0)+_sv;}
+      if(hdr.sasr>=0){var _rv=parseFloat(row[hdr.sasr]);if(!isNaN(_rv))agg[sid].sasr=(agg[sid].sasr||0)+_rv;}
     }
 
     // Popola FC_RESULTS
@@ -585,6 +594,10 @@ function loadFcVmResults(file){
         footfall_cy:Math.round(a.footfall),
         sy_cy:sy_cy
       };
+      if(a.acc!=null)FC_RESULTS[sid].acc=a.acc;
+      if(a.vel!=null)FC_RESULTS[sid].vel=a.vel;
+      if(a.sasv!=null)FC_RESULTS[sid].sasv_eur=Math.round(a.sasv*100)/100;
+      if(a.sasr!=null)FC_RESULTS[sid].sasr_eur=Math.round(a.sasr*100)/100;
       if(a.footfall<=0)noTraffic++;
       imported++;
     });

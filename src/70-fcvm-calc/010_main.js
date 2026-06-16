@@ -12,7 +12,7 @@ function calcFcVmPremio(matr){
     if(emp.j==="VM"&&vmArr.indexOf(matr)>=0)stores.push(sid);
   });
   if(!stores.length&&!(emp.bdg_stores&&emp.bdg_stores.length))return{premio:0,premio_eur:0,esito:"no_stores",stores:[],totTarget:0,totCons:0,pct:0,syOk:false,totSyCy:0,totSyLy:0};
-  var totTarget=0,totCons=0,detail=[];
+  var totTarget=0,totCons=0,detail=[],totSasUsed=0,totSasReserveOut=0;
   // Aggregati SY LY (da FC_SYLY)
   var totSalesLy=0,totFootfallLy=0,hasSyLy=false;
   // Aggregati SY CY (da FC_RESULTS in consuntivo)
@@ -24,7 +24,16 @@ function calcFcVmPremio(matr){
     var flg=FC_STORE_FLAGS[sid]||{};
     var to=(!flg.excl_fatt)?(tg.to_eur||0):0;
     var sc=(!flg.excl_fatt)?(isCons?(cn.sc_eur||0):to):0;
-    totTarget+=to; totCons+=sc;
+    // SAS riconosciuto del negozio (da Luglio 2026, EUR): colma il gap al target, cap 100%, avanzo→riserva
+    var sasUsed=0,sasRec=0,sasResIn=0,sasResOut=0;
+    if(isCons&&sasNewActive()&&!flg.excl_fatt){
+      sasRec=sasRecognizedValue(cn.acc,cn.vel,cn.sasv_eur||0);
+      sasResIn=cn.sasr_eur||0;
+      var _sr=sasReserveCalc(sc,to,sasRec,sasResIn);
+      sasUsed=_sr.used;sasResOut=_sr.reserveOut;
+      totSasUsed+=sasUsed;totSasReserveOut+=sasResOut;
+    }
+    totTarget+=to; totCons+=sc+sasUsed;
     // SY LY aggregata (esclusa se excl_sy)
     if(!flg.excl_sy&&ly.sales_ly!=null&&ly.footfall_ly!=null&&ly.footfall_ly>0){
       totSalesLy+=ly.sales_ly; totFootfallLy+=ly.footfall_ly; hasSyLy=true;
@@ -33,7 +42,7 @@ function calcFcVmPremio(matr){
     if(!flg.excl_sy&&isCons&&cn.sc_eur!=null&&cn.footfall_cy!=null&&cn.footfall_cy>0){
       totSalesCy+=cn.sc_eur; totFootfallCy+=cn.footfall_cy; hasSyCy=true;
     }
-    detail.push({sid:sid,to:to,sc:sc,exclFatt:!!flg.excl_fatt,exclSy:!!flg.excl_sy});
+    detail.push({sid:sid,to:to,sc:sc,exclFatt:!!flg.excl_fatt,exclSy:!!flg.excl_sy,sasRec:sasRec,sasUsed:sasUsed,sasResIn:sasResIn,sasResOut:sasResOut});
   });
   // ── Esubero mese precedente (area netta) ─────────────────────────────────
   // I negozi in deficit compensano quelli in surplus: max(0, Σ(cons-target) area)
@@ -84,18 +93,27 @@ function calcFcVmPremio(matr){
       var sc=isCons?(cn.sc_eur||0):0;
       var prevBdg=FC_PREV_RESULTS[String(b.sid)]||{};
       var esubBdg=isCons&&(prevBdg.to_eur||0)>0?Math.max(0,(prevBdg.sc_eur||0)-(prevBdg.to_eur||0)):0;
-      var scTotBdg=sc+esubBdg;
-      var earned=isCons?(scTotBdg>to&&to>0):false;
+      // SAS riconosciuto del negozio (da Luglio 2026): colma il gap al target, cap 100%
+      var sasOn=isCons&&sasNewActive(),sasUsedB=0,sasRecB=0,sasResInB=0,sasResOutB=0;
+      if(sasOn){
+        sasRecB=sasRecognizedValue(cn.acc,cn.vel,cn.sasv_eur||0);
+        sasResInB=cn.sasr_eur||0;
+        var _srB=sasReserveCalc(sc+esubBdg,to,sasRecB,sasResInB);
+        sasUsedB=_srB.used;sasResOutB=_srB.reserveOut;
+      }
+      var scTotBdg=sc+esubBdg+sasUsedB;
+      // Da luglio target raggiunto a >=100% (coerente con area e mensile); prima >100% (legacy)
+      var earned=isCons?((sasOn?scTotBdg>=to:scTotBdg>to)&&to>0):false;
       var prize=isCons?(earned?Math.round(b.ib*smFcvm*100)/100:0):b.ib;
       var prizeEur=Math.round(prize*exRate*100)/100;
       bdgPrize+=prize; bdgPrizeEur+=prizeEur;
-      bdgDetail.push({sid:b.sid,s:b.s,to:to,sc:sc,esubero:esubBdg,scTotale:scTotBdg,ib:b.ib,earned:earned,prize:prize,prizeEur:prizeEur});
+      bdgDetail.push({sid:b.sid,s:b.s,to:to,sc:sc,esubero:esubBdg,sasRec:sasRecB,sasUsed:sasUsedB,sasResIn:sasResInB,sasResOut:sasResOutB,scTotale:scTotBdg,ib:b.ib,earned:earned,prize:prize,prizeEur:prizeEur});
     });
   }
   var premioEur=Math.round(premioLC*exRate*100)/100;
   var totalPremioLC=premioLC+bdgPrize;
   var totalPremioEur=Math.round(totalPremioLC*exRate*100)/100;
-  return{premio:premioLC,premio_eur:premioEur,esito:esito,pct:pct,totTarget:totTarget,totCons:totCons,totEsubero:totEsubero,totConsWithEsub:totConsWithEsub,syOk:syOk,syLyArea:syLyArea,syAreaCy:syAreaCy,hasSyLy:hasSyLy,hasSyCy:hasSyCy,syAreaAvg:syAreaAvg,stores:detail,bdgPrize:bdgPrize,bdgPrizeEur:bdgPrizeEur,bdgDetail:bdgDetail,totalPremioLC:totalPremioLC,totalPremioEur:totalPremioEur,hasBdg:bdgDetail.length>0,ml:emp.ml||0,sm:smFcvm};
+  return{premio:premioLC,premio_eur:premioEur,esito:esito,pct:pct,totTarget:totTarget,totCons:totCons,totEsubero:totEsubero,totConsWithEsub:totConsWithEsub,syOk:syOk,syLyArea:syLyArea,syAreaCy:syAreaCy,hasSyLy:hasSyLy,hasSyCy:hasSyCy,syAreaAvg:syAreaAvg,stores:detail,bdgPrize:bdgPrize,bdgPrizeEur:bdgPrizeEur,bdgDetail:bdgDetail,totalPremioLC:totalPremioLC,totalPremioEur:totalPremioEur,hasBdg:bdgDetail.length>0,totSasUsed:totSasUsed,totSasReserveOut:totSasReserveOut,ml:emp.ml||0,sm:smFcvm};
 }
 function getFcVmPool(){return Object.values(FC_EMP);}
 
