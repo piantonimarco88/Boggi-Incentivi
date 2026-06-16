@@ -58,12 +58,14 @@ function _buildMensileSnap(){
     }
     MODE="preventivo";
     var mass=Math.round(calcE(e)*ex*100)/100;
+    var rbMass=isOn(e.j,"rb")&&!e.ibFromAY?Math.round(getVal(e,"rb")*ex*100)/100:0;
     MODE=oldMode;
     employees.push({
       matricola:e.m,cognome:e.c||"",nome:e.n||"",ente:e.en||210,
       store_id:String(e.si||""),store_name:e.s||"",job:e.j||"",
       gross_salary_eur:Math.round((e.rl||0)*ex*100)/100,
       massimale_eur:mass,fcvm_massimale_eur:0,
+      rb_massimale_eur:rbMass,
       rb_eur:Math.round(rb*ex*100)/100,
       vi_eur:Math.round(vi*ex*100)/100,rd_eur:Math.round(rd*ex*100)/100,
       rp_eur:Math.round(rp*ex*100)/100,rs_eur:Math.round(rs*ex*100)/100,
@@ -167,7 +169,8 @@ function _mBuildEnteRow(rows,year,month,ente){
   var fcvm=_mSum(rows,'fcvm_actual_eur'),seas=_mSum(rows,'seasonal_eur');
   var Ev=Math.round(rb+vi+rd+rp+rs+ra+rsa+rdc+rcs+pq+fcvm+seas);
   var G=_mSum(rows,'massimale_eur'),H=_mSum(rows,'fcvm_massimale_eur');
-  return[year,month,ente,Math.round(D),Ev,D>0?Ev/D:0,Math.round(G),Math.round(H),0,Math.round(vi),0,Math.round(rd),Math.round(rp),0,0,Math.round(rs),Math.round(ra),0,0,Math.round(rsa),Math.round(rdc),Math.round(rcs),0,Math.round(seas)];
+  var rbMass=_mSum(rows,'rb_massimale_eur');
+  return[year,month,ente,Math.round(D),Ev,D>0?Ev/D:0,Math.round(rb),Math.round(rbMass),Math.round(G),Math.round(H),0,Math.round(vi),0,Math.round(rd),Math.round(rp),0,0,Math.round(rs),Math.round(ra),0,0,Math.round(rsa),Math.round(rdc),Math.round(rcs),0,Math.round(seas)];
 }
 
 function _mBuildStoreRow(rows,year,month,ente,sid,sname){
@@ -178,14 +181,15 @@ function _mBuildStoreRow(rows,year,month,ente,sid,sname){
   var fcvm=_mSum(rows,'fcvm_actual_eur'),seas=_mSum(rows,'seasonal_eur');
   var Ev=Math.round(rb+vi+rd+rp+rs+ra+rsa+rdc+rcs+pq+fcvm+seas);
   var G=_mSum(rows,'massimale_eur'),H=_mSum(rows,'fcvm_massimale_eur');
-  return[year,month,ente,sid,sname||"",Math.round(D),Ev,D>0?Ev/D:0,Math.round(G),Math.round(H),0,Math.round(vi),0,Math.round(rd),Math.round(rp),0,0,Math.round(rs),Math.round(ra),0,0,Math.round(rsa),Math.round(rdc),Math.round(rcs),0,Math.round(seas)];
+  var rbMass=_mSum(rows,'rb_massimale_eur');
+  return[year,month,ente,sid,sname||"",Math.round(D),Ev,D>0?Ev/D:0,Math.round(rb),Math.round(rbMass),Math.round(G),Math.round(H),0,Math.round(vi),0,Math.round(rd),Math.round(rp),0,0,Math.round(rs),Math.round(ra),0,0,Math.round(rsa),Math.round(rdc),Math.round(rcs),0,Math.round(seas)];
 }
 
 function _mBuildMatRow(r){
   var Ev=Math.round((r.rb_eur||0)+(r.vi_eur||0)+(r.rd_eur||0)+(r.rp_eur||0)+(r.rs_eur||0)+(r.ra_eur||0)+(r.rsa_eur||0)+(r.rdc_eur||0)+(r.rcs_eur||0)+(r.pq_eur||0)+(r.fcvm_actual_eur||0)+(r.seasonal_eur||0));
   var D=r.gross_salary_eur||0;
   return[r.year,r.month,r.ente,r.store_id,r.store_name||"",r.matricola,r.cognome,r.nome,r.job,
-    Math.round(D),Ev,D>0?Ev/D:0,Math.round(r.massimale_eur),Math.round(r.fcvm_massimale_eur||0),
+    Math.round(D),Ev,D>0?Ev/D:0,Math.round(r.rb_eur||0),Math.round(r.rb_massimale_eur||0),Math.round(r.massimale_eur),Math.round(r.fcvm_massimale_eur||0),
     0,Math.round(r.vi_eur),0,Math.round(r.rd_eur),Math.round(r.rp_eur),0,0,Math.round(r.rs_eur),Math.round(r.ra_eur),0,0,Math.round(r.rsa_eur),Math.round(r.rdc_eur),Math.round(r.rcs_eur||0),0,Math.round(r.seasonal_eur)];
 }
 
@@ -210,6 +214,7 @@ function exportMonitorExcel(){
   }
   var baseHdrs=["Year","Mese","Ente",
     "Gross Salary "+yr,"Total Incentive Cost "+yr,"Weight On Gross Salary % "+yr,
+    "BDG Incentive "+yr,"BDG Massimale "+yr,
     "Fcst Incentive TOT "+yr,"Fcst Incentive FC & VM "+yr,
     "Boost Incentive "+yr,"VisualInStore Incentive "+yr,"Boost Fc Incentive "+yr,
     "Digital Incentive "+yr,"New Privilege Incentive (Target) "+yr,

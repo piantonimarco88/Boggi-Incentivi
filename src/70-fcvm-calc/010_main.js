@@ -67,6 +67,12 @@ function calcFcVmPremio(matr){
   var ov=FC_OVERRIDES[matr];
   if(isCons&&ov==='100'){esito='full';premioLC=emp.ib;}
   else if(isCons&&ov==='60'){esito='partial';premioLC=Math.round(emp.ib*FCVM_PARAMS.pct60*100)/100;}
+  // ── Malattia / sospeso (solo consuntivo) ────────────────────────────────
+  var smFcvm=1;
+  if(isCons){
+    if(emp.ps==="SI"){esito="sospeso";premioLC=0;smFcvm=0;}
+    else{smFcvm=sickMult(emp.ml||0);premioLC=Math.round(premioLC*smFcvm*100)/100;}
+  }
   var exRate=(emp.ex&&emp.ex!==1&&emp.ex>0)?emp.ex:getFcVmExRate(emp.cu);
   // ── Premi BDG singoli negozi ─────────────────────────────────────────────
   var bdgPrize=0,bdgPrizeEur=0,bdgDetail=[];
@@ -80,7 +86,7 @@ function calcFcVmPremio(matr){
       var esubBdg=isCons&&(prevBdg.to_eur||0)>0?Math.max(0,(prevBdg.sc_eur||0)-(prevBdg.to_eur||0)):0;
       var scTotBdg=sc+esubBdg;
       var earned=isCons?(scTotBdg>to&&to>0):false;
-      var prize=isCons?(earned?b.ib:0):b.ib;
+      var prize=isCons?(earned?Math.round(b.ib*smFcvm*100)/100:0):b.ib;
       var prizeEur=Math.round(prize*exRate*100)/100;
       bdgPrize+=prize; bdgPrizeEur+=prizeEur;
       bdgDetail.push({sid:b.sid,s:b.s,to:to,sc:sc,esubero:esubBdg,scTotale:scTotBdg,ib:b.ib,earned:earned,prize:prize,prizeEur:prizeEur});
@@ -89,7 +95,7 @@ function calcFcVmPremio(matr){
   var premioEur=Math.round(premioLC*exRate*100)/100;
   var totalPremioLC=premioLC+bdgPrize;
   var totalPremioEur=Math.round(totalPremioLC*exRate*100)/100;
-  return{premio:premioLC,premio_eur:premioEur,esito:esito,pct:pct,totTarget:totTarget,totCons:totCons,totEsubero:totEsubero,totConsWithEsub:totConsWithEsub,syOk:syOk,syLyArea:syLyArea,syAreaCy:syAreaCy,hasSyLy:hasSyLy,hasSyCy:hasSyCy,syAreaAvg:syAreaAvg,stores:detail,bdgPrize:bdgPrize,bdgPrizeEur:bdgPrizeEur,bdgDetail:bdgDetail,totalPremioLC:totalPremioLC,totalPremioEur:totalPremioEur,hasBdg:bdgDetail.length>0};
+  return{premio:premioLC,premio_eur:premioEur,esito:esito,pct:pct,totTarget:totTarget,totCons:totCons,totEsubero:totEsubero,totConsWithEsub:totConsWithEsub,syOk:syOk,syLyArea:syLyArea,syAreaCy:syAreaCy,hasSyLy:hasSyLy,hasSyCy:hasSyCy,syAreaAvg:syAreaAvg,stores:detail,bdgPrize:bdgPrize,bdgPrizeEur:bdgPrizeEur,bdgDetail:bdgDetail,totalPremioLC:totalPremioLC,totalPremioEur:totalPremioEur,hasBdg:bdgDetail.length>0,ml:emp.ml||0,sm:smFcvm};
 }
 function getFcVmPool(){return Object.values(FC_EMP);}
 

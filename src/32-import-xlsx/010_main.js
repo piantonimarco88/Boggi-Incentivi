@@ -106,6 +106,13 @@ function loadAnagraficaExcel(file){
         // Rileva colonna Field Coach dall'header
         var fcColIT=-1;
         (json[hdrRow]||[]).forEach(function(cell,ci){var s=String(cell||'').toLowerCase().replace(/[\s\n\r]+/g,'');if(s==='fc'||s.indexOf('fieldcoach')>=0||s.indexOf('field coach')>=0||s.indexOf('coach')>=0)fcColIT=ci;});
+        // Rileva colonne BDG per nome header (sovrascrive indici fissi se trovati)
+        // BDG lordo = "azienda_per_costi" (col P=15); BDG netto = "matricola_foglio_presenze" (col AY=50)
+        (json[hdrRow]||[]).forEach(function(cell,ci){
+          var s=String(cell||'').toLowerCase().replace(/[\s\n\r_]+/g,'');
+          if(s.indexOf('azienda')>=0&&s.indexOf('costi')>=0)ZC.bdg=ci;
+          if(s.indexOf('foglio')>=0&&s.indexOf('presenz')>=0)ZC.bdgFb=ci;
+        });
         // Valid base job codes from incentive plan
         var validBaseJobs=PRIZE_MODE==="seasonal"?["SM","VSM"]:["SM","VSM","SSA","SSAP","SA","JSA","SCS"];
         function isValidJob(code){
@@ -443,7 +450,7 @@ function showImportReport(imported,errors,sheet,filename,cutoffStr){
   if(imported.length>0){
     h+='<div style="display:flex;gap:8px;margin-bottom:10px">';
     h+='<button class="exp-btn primary" onclick="applyImportedAnagrafica()">&#10004; Applica '+imported.length+' dipendenti</button>';
-    h+='<button class="exp-btn" onclick="window._pendingImport=null;window._pendingErrors=null;var el=document.getElementById(\'scanResults\');if(el)el.innerHTML=\'\'">&#10005; Cancella</button>';
+    h+='<button class="exp-btn" onclick="window._pendingImport=null;window._pendingErrors=null;window._pendingDuplicates=null;var el=document.getElementById(\'scanResults\');if(el)el.innerHTML=\'\'">&#10005; Cancella</button>';
     h+='<button class="exp-btn" onclick="downloadImportLog()" style="margin-left:auto">&#128190; Scarica Report</button>';
     h+='</div>';
     h+='<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:10px;color:#856404">';
@@ -476,14 +483,85 @@ function showImportReport(imported,errors,sheet,filename,cutoffStr){
     if(imported.length>20)h+='<tr><td colspan="9" style="padding:4px;text-align:center;color:#8a8680;font-style:italic">... e altri '+(imported.length-20)+' dipendenti</td></tr>';
     h+='</tbody></table></div></div>';
   }
+  // Abbinamento secondo negozio — solo mensile internazionale
+  if(!isIT&&PRIZE_MODE!=="seasonal"&&imported.length>0){
+    h+='<div style="margin-top:14px;border:1px solid #d5d0c8;border-radius:6px;overflow:hidden">';
+    h+='<div onclick="toggleDup2()" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#f5f2ee;cursor:pointer">';
+    h+='<span style="font-size:11px;font-weight:700;color:#6b6560">⇄ Secondo negozio <span id="dup2Badge" style="display:none;background:#c9a96e;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;margin-left:4px"></span></span>';
+    h+='<span id="dup2Arr" style="font-size:10px;color:#8a8680">▸ espandi</span>';
+    h+='</div>';
+    h+='<div id="dup2Body" style="display:none;padding:10px 12px">';
+    h+='<div style="font-size:10px;color:#8a8680;margin-bottom:10px">Abbina un dipendente a un secondo negozio. Verrà creata una riga identica (stesso stipendio, BDG, ruolo) ma con store diverso — i calcoli premi delle due righe sono indipendenti. La matricola del duplicato avrà suffisso <b>_2</b>.</div>';
+    h+='<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:8px">';
+    h+='<div style="flex:3;min-width:200px"><label style="font-size:10px;color:#6b6560;display:block;margin-bottom:3px">Dipendente</label>';
+    h+='<select id="dup2EmpSel" style="width:100%;padding:5px 8px;border:1px solid #d5d0c8;border-radius:4px;font-size:11px"><option value="">— scegli —</option>';
+    imported.forEach(function(e,i){h+='<option value="'+i+'">'+esc(e.c)+' '+esc(e.n)+' · Store '+esc(String(e.si))+' · '+esc(e.f)+'</option>';});
+    h+='</select></div>';
+    h+='<div style="flex:1;min-width:90px"><label style="font-size:10px;color:#6b6560;display:block;margin-bottom:3px">Store 2°</label>';
+    h+='<input id="dup2StoreId" type="number" placeholder="ID store" style="width:100%;padding:5px 8px;border:1px solid #d5d0c8;border-radius:4px;font-size:11px;text-align:center"></div>';
+    h+='<button onclick="addDup2()" style="padding:5px 16px;background:#4a7c59;color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer;flex-shrink:0">+ Aggiungi</button>';
+    h+='</div>';
+    h+='<div id="dup2List"><div style="font-size:10px;color:#a09a92;font-style:italic">Nessun abbinamento aggiunto.</div></div>';
+    h+='</div></div>';
+  }
   h+='</div>';
 
   window._pendingImport=imported;
   window._pendingErrors=errors;
   window._pendingFile=filename;
+  window._pendingDuplicates=[];
 
   var el=document.getElementById("scanResults");
   if(el)el.innerHTML=h;
+}
+
+function toggleDup2(){
+  var b=document.getElementById("dup2Body"),a=document.getElementById("dup2Arr");
+  if(!b||!a)return;
+  var show=b.style.display==="none";
+  b.style.display=show?"block":"none";
+  a.textContent=show?"▾ comprimi":"▸ espandi";
+}
+function addDup2(){
+  var sel=document.getElementById("dup2EmpSel"),inp=document.getElementById("dup2StoreId");
+  if(!sel||!inp)return;
+  var idx=parseInt(sel.value),si2=parseInt(inp.value);
+  var imp=window._pendingImport||[];
+  if(isNaN(idx)||idx<0||idx>=imp.length){alert("Seleziona un dipendente.");return;}
+  if(isNaN(si2)||si2<=0){alert("Inserisci uno Store ID valido.");return;}
+  var emp=imp[idx];
+  if(!window._pendingDuplicates)window._pendingDuplicates=[];
+  if(window._pendingDuplicates.some(function(d){return d.origM===emp.m&&d.si2===si2;})){alert("Abbinamento già presente.");return;}
+  // Nome store 2°: cerca tra gli importati, fallback a stringa ID
+  var s2=String(si2);
+  imp.forEach(function(e){if(Number(e.si)===si2&&e.s)s2=e.s;});
+  window._pendingDuplicates.push({origM:emp.m,empIdx:idx,si2:si2,s2:s2});
+  renderDup2();
+}
+function removeDup2(i){if(window._pendingDuplicates)window._pendingDuplicates.splice(i,1);renderDup2();}
+function renderDup2(){
+  var el=document.getElementById("dup2List"),badge=document.getElementById("dup2Badge");
+  if(!el)return;
+  var dups=window._pendingDuplicates||[],imp=window._pendingImport||[];
+  if(badge){badge.style.display=dups.length?"":"none";badge.textContent=dups.length;}
+  if(!dups.length){el.innerHTML='<div style="font-size:10px;color:#a09a92;font-style:italic">Nessun abbinamento aggiunto.</div>';return;}
+  var h='<table style="width:100%;font-size:10px;border-collapse:collapse"><thead><tr style="background:#f5f2ee">';
+  h+='<th style="padding:4px 6px;text-align:left">Dipendente</th><th style="padding:4px 6px;text-align:center">Store orig.</th>';
+  h+='<th style="padding:4px 6px;text-align:center">Store 2°</th><th style="padding:4px 6px;text-align:center">Ruolo</th>';
+  h+='<th style="padding:4px 6px;text-align:right">Stipendio</th><th style="padding:4px 6px;text-align:right">BDG</th><th></th></tr></thead><tbody>';
+  dups.forEach(function(d,i){
+    var e=imp[d.empIdx]||{c:"?",n:"",si:"",f:"",rl:0,ib:0,cu:"EUR"};
+    h+='<tr style="background:'+(i%2?"#faf9f7":"#fff")+'">';
+    h+='<td style="padding:3px 6px">'+esc(e.c)+' '+esc(e.n)+'</td>';
+    h+='<td style="padding:3px 6px;text-align:center;color:#8a8680">'+esc(String(e.si))+'</td>';
+    h+='<td style="padding:3px 6px;text-align:center;font-weight:700;color:#4a7c59">'+d.si2+'</td>';
+    h+='<td style="padding:3px 6px;text-align:center">'+esc(e.f)+'</td>';
+    h+='<td style="padding:3px 6px;text-align:right">'+e.rl+'</td>';
+    h+='<td style="padding:3px 6px;text-align:right">'+e.ib+'</td>';
+    h+='<td style="padding:3px 6px;text-align:center"><button onclick="removeDup2('+i+')" style="color:#cf5b5b;border:none;background:none;cursor:pointer;font-size:11px" title="Rimuovi">×</button></td></tr>';
+  });
+  h+='</tbody></table>';
+  el.innerHTML=h;
 }
 
 function applyImportedAnagrafica(){
@@ -532,9 +610,25 @@ function applyImportedAnagrafica(){
   var hs=document.getElementById("hs");
   updateHeaderCount();
 
+  // Applica duplicati "secondo negozio"
+  var dups2=window._pendingDuplicates||[];var dup2Count=0;
+  dups2.forEach(function(d){
+    var origEmp=(window._pendingImport||[])[d.empIdx];if(!origEmp)return;
+    var dup={};for(var k in origEmp)dup[k]=origEmp[k];
+    dup.m=origEmp.m+"_2";dup.si=d.si2;dup.s=d.s2||String(d.si2);
+    // Reset campi calcolo premi
+    dup.rb=0;dup.rbn=0;dup.rd=0;dup.rs=0;dup.rp=0;dup.rsa=0;dup.rdc=0;dup.rcs=0;dup.ra=0;
+    dup.ml=0;dup.vi=0;dup.tl=0;dup.tn=0;dup.sc=0;dup.il=0;dup.ps="NO";dup.dv=0;dup.md=0;dup.pq=0;
+    // FC per il nuovo store (FC_MAP se disponibile, altrimenti ENTE_FC)
+    (function(){var _mp=FC_MAP[String(d.si2)];if(_mp){var _fa=Array.isArray(_mp.fc)?_mp.fc[0]:_mp.fc;if(_fa&&FC_EMP[_fa]){var _fe=FC_EMP[_fa];dup.fc=_fe.n+' '+_fe.c;dup.mf=(_fe.n+' '+_fe.c).toLowerCase().replace(/ /g,'.')+'@boggi.com';return;}}dup.fc=ENTE_FC[String(dup.en)]||'';dup.mf=dup.fc?dup.fc.toLowerCase().replace(/ /g,'.')+'@boggi.com':'';})();
+    E.push(dup);
+    if(!D.s[String(d.si2)])D.s[String(d.si2)]={l:"",f:0,s:0,e:0,r:0};
+    dup2Count++;
+  });
+  window._pendingDuplicates=null;
   // Rebuild all tabs
   rC();rA();rSources();rDist();rAgg();rT();autoSave();
-  alert("Anagrafica aggiornata: "+E.length+" dipendenti (precedenti: "+oldLen+").\n\nTarget, consuntivo e KPI azzerati. Ricarica i dati per "+getMonthYearLabel()+".");
+  alert("Anagrafica aggiornata: "+E.length+" dipendenti"+(dup2Count>0?" (di cui "+dup2Count+" secondo-negozio)":"")+" (precedenti: "+oldLen+").\n\nTarget, consuntivo e KPI azzerati. Ricarica i dati per "+getMonthYearLabel()+".");
 }
 
 // ── IMPORT MAPPING FC PER MODALITÀ MENSILE INTERNAZIONALE ───────────────────

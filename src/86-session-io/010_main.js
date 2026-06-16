@@ -1,6 +1,19 @@
 // === SESSION SAVE / LOAD (file-based) ===
+// Flush pending input[data-digmob] values to STORE_FLAGS before any save.
+// Needed because those inputs use onchange (fires on blur), so if the user types
+// a value and immediately clicks Save without leaving the field the edit would be lost.
+function _flushDigMobInputs(){
+  document.querySelectorAll("input[data-digmob]").forEach(function(inp){
+    var sid=inp.getAttribute("data-digmob");
+    var v=parseFloat(inp.value);
+    if(!STORE_FLAGS[sid])STORE_FLAGS[sid]={digType:"mobility"};
+    if(!isNaN(v)&&v>0){STORE_FLAGS[sid].digMinMob=Math.round(v*100)/10000;}
+    else{delete STORE_FLAGS[sid].digMinMob;}
+  });
+}
 function saveSession(){
   try{
+    _flushDigMobInputs();
     var state={
       _type:"boggi_session",v:AUTO_VERSION,
       D:{e:E,t:D.t,c:D.c,cs:D.cs,s:D.s,v:D.v,tr:D.tr,usa:D.usa,us:D.us,d:D.d,vl:D.vl,ur:D.ur},
@@ -53,6 +66,7 @@ function loadSession(input){
     if(state.agg)AGG=state.agg;if(state.vl)VL=state.vl;if(state.usa_p){for(var r in state.usa_p)USA_P[r]=state.usa_p[r]}
     if(state.cfg_month)CFG_MONTH=state.cfg_month;if(state.cfg_year)CFG_YEAR=state.cfg_year;if(state.cfg_pdf_path!==undefined)CFG_PDF_PATH=state.cfg_pdf_path;if(state.cfg_season)CFG_SEASON=state.cfg_season;
     if(state.store_flags){STORE_FLAGS={};for(var sid in state.store_flags)STORE_FLAGS[sid]=state.store_flags[sid]}
+    initStoreFlags(); // risemina DEPT stores mancanti (per sessioni salvate prima dell'aggiunta dei flag)
     if(state.seas){SEAS=state.seas;}
     if(state.seas_targets){for(var sk in state.seas_targets)SEAS_TARGETS[sk]=state.seas_targets[sk];}
     if(state.monthly_syly)MONTHLY_SYLY=state.monthly_syly;
@@ -85,6 +99,7 @@ function loadSession(input){
     if(state.mode)MODE=state.mode;if(state.region)REGION=state.region;if(state.prize_mode){PRIZE_MODE=state.prize_mode;setPrizeMode(PRIZE_MODE);}if(state.season_period){SEASON_PERIOD=state.season_period;setSeasonPeriod(SEASON_PERIOD);}
     document.getElementById("modeP").className="gbtn"+(MODE==="preventivo"?" on":"");document.getElementById("modeC").className="gbtn"+(MODE==="consuntivo"?" on":"");
     document.getElementById("regInt").className="gbtn"+(REGION==="international"?" on":"");document.getElementById("regIt").className="gbtn"+(REGION==="italia"?" on":"");
+    updateHeader();updateHeaderCount();
     _origTC=JSON.stringify(TC);_origS50=SICK_50;_origS0=SICK_0;_origP=JSON.stringify(PARAMS);_origUSA=JSON.stringify(USA_P);_origMonth=CFG_MONTH;_origYear=CFG_YEAR;_origPdfPath=CFG_PDF_PATH;_origSeason=CFG_SEASON;_origSF=JSON.stringify(STORE_FLAGS);_origSeasCfg=JSON.stringify(SEAS_CFG);_origPrizeMode=PRIZE_MODE;_origSeasonPeriod=SEASON_PERIOD;
     var loadMsg;
     if(PRIZE_MODE==="fcvm"){
@@ -104,6 +119,7 @@ function loadSession(input){
 var _origTC=JSON.stringify(TC),_origS50=SICK_50,_origS0=SICK_0,_origP=JSON.stringify(PARAMS),_origUSA=JSON.stringify(USA_P),_origMonth=CFG_MONTH,_origYear=CFG_YEAR,_origPdfPath=CFG_PDF_PATH,_origSeason=CFG_SEASON,_origSF=JSON.stringify(STORE_FLAGS),_origSeasCfg=JSON.stringify(SEAS_CFG),_origPrizeMode=PRIZE_MODE,_origSeasonPeriod=SEASON_PERIOD;
 function markDirty(){var dirty=JSON.stringify(TC)!==_origTC||SICK_50!==_origS50||SICK_0!==_origS0||JSON.stringify(PARAMS)!==_origP||JSON.stringify(USA_P)!==_origUSA||CFG_MONTH!==_origMonth||CFG_YEAR!==_origYear||CFG_PDF_PATH!==_origPdfPath||CFG_SEASON!==_origSeason||JSON.stringify(STORE_FLAGS)!==_origSF||JSON.stringify(SEAS_CFG)!==_origSeasCfg||PRIZE_MODE!==_origPrizeMode||SEASON_PERIOD!==_origSeasonPeriod;document.getElementById("saveBar").className="save-bar"+(dirty?" show":"");var cnt=document.querySelector(".cnt");if(cnt)cnt.style.paddingBottom=dirty?"60px":""}
 function saveConfig(){
+  _flushDigMobInputs();
   var cfg={tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,seas_cfg:SEAS_CFG,agg:AGG,vl:VL,usa_p:USA_P,store_flags:STORE_FLAGS,cfg_month:CFG_MONTH,cfg_year:CFG_YEAR,cfg_pdf_path:CFG_PDF_PATH,cfg_season:CFG_SEASON,saved:new Date().toISOString()};
   var blob=new Blob([JSON.stringify(cfg,null,2)],{type:"application/json"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="boggi_config_"+getPdfSubfolder().fileBase+".json";a.click();
   _origTC=JSON.stringify(TC);_origS50=SICK_50;_origS0=SICK_0;_origP=JSON.stringify(PARAMS);_origUSA=JSON.stringify(USA_P);_origMonth=CFG_MONTH;_origYear=CFG_YEAR;_origPdfPath=CFG_PDF_PATH;_origSeason=CFG_SEASON;_origSF=JSON.stringify(STORE_FLAGS);_origSeasCfg=JSON.stringify(SEAS_CFG);_origPrizeMode=PRIZE_MODE;_origSeasonPeriod=SEASON_PERIOD;document.getElementById("saveBar").className="save-bar";autoSave()}
@@ -138,6 +154,7 @@ function loadConfig(evt){var f=evt.target.files[0];if(!f)return;var reader=new F
     if(cfg.agg)AGG=cfg.agg;if(cfg.vl)VL=cfg.vl;if(cfg.usa_p){for(var r in cfg.usa_p)USA_P[r]=cfg.usa_p[r]}
     if(cfg.cfg_month)CFG_MONTH=cfg.cfg_month;if(cfg.cfg_year)CFG_YEAR=cfg.cfg_year;if(cfg.cfg_pdf_path!==undefined)CFG_PDF_PATH=cfg.cfg_pdf_path;if(cfg.cfg_season)CFG_SEASON=cfg.cfg_season;
     if(cfg.store_flags){STORE_FLAGS={};for(var sid in cfg.store_flags)STORE_FLAGS[sid]=cfg.store_flags[sid]}
+    initStoreFlags(); // risemina DEPT stores mancanti
     if(cfg.seas_cfg){
       if(cfg.seas_cfg.basePct!==undefined)SEAS_CFG.basePct=cfg.seas_cfg.basePct;
       if(cfg.seas_cfg.kpi)SEAS_CFG.kpi=cfg.seas_cfg.kpi;
@@ -164,3 +181,4 @@ function loadConfig(evt){var f=evt.target.files[0];if(!f)return;var reader=new F
     _origTC=JSON.stringify(TC);_origS50=SICK_50;_origS0=SICK_0;_origP=JSON.stringify(PARAMS);_origUSA=JSON.stringify(USA_P);_origMonth=CFG_MONTH;_origYear=CFG_YEAR;_origPdfPath=CFG_PDF_PATH;_origSeason=CFG_SEASON;_origSF=JSON.stringify(STORE_FLAGS);_origSeasCfg=JSON.stringify(SEAS_CFG);_origPrizeMode=PRIZE_MODE;_origSeasonPeriod=SEASON_PERIOD;
     document.getElementById("saveBar").className="save-bar";updateHeader();rT();rC();rA();rSources();rAgg();if(typeof rStores==="function")rStores();autoSave();alert("Configurazione caricata!");
   }catch(ex){alert("Errore nel file: "+ex.message)}};reader.readAsText(f)}
+

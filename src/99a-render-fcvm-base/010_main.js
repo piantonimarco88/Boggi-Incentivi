@@ -40,20 +40,23 @@ function rCFcvm(){
   function thS(label){return'<th>'+label+'</th>';}
   h+='<div class="scroll-wrap"><table id="ctbl"><thead><tr>';
   h+=thS('Matr.')+thS('Cognome')+thS('Nome')+thS('Ruolo')+thS('Val.')+thS('N.Store');
-  h+=thS('Target EUR')+thS('Max Premio')+(!isP?thS('Consuntivo EUR'):'')+(!isP?thS('Esubero'):'')+(!isP?thS('Cons. Tot.'):'')+thS('% Area')+thS('SY LY')+thS('SY CY')+thS('Premio LC')+thS('Premio EUR')+thS('BDG')+thS('Esito')+(!isP?'<th style="text-align:center;background:#e8f5e9;color:#2d7a3a;cursor:default">100%</th>':'')+(!isP?'<th style="text-align:center;background:#fff3e0;color:#cf8b4e;cursor:default">60%</th>':'')+thS('Lingua');
+  h+=thS('Target EUR')+thS('Max Premio')+(!isP?thS('Consuntivo EUR'):'')+(!isP?thS('Esubero'):'')+(!isP?thS('Cons. Tot.'):'')+thS('% Area')+thS('SY LY')+thS('SY CY')+thS('Premio LC')+thS('Premio EUR')+thS('BDG')+thS('Esito')+(!isP?'<th style="text-align:center;background:#e8f5e9;color:#2d7a3a;cursor:default">100%</th>':'')+(!isP?'<th style="text-align:center;background:#fff3e0;color:#cf8b4e;cursor:default">60%</th>':'')+thS('Lingua')+(!isP?'<th style="text-align:center;cursor:default;min-width:40px">Mal.</th>':'')+'<th style="text-align:center;cursor:default;min-width:36px">Sosp.</th>';
   h+='</tr></thead><tbody>';
 
   fl.forEach(function(emp,i){
     var r=calcFcVmPremio(emp.m);
-    var ec={full:'#2d7a3a',partial:'#cf8b4e',none:'#cf5b5b',preventivo:'#c9a96e',no_data:'#a09a92',no_stores:'#cf5b5b'}[r.esito]||'#a09a92';
-    var el={full:'\u2713 Pieno',partial:fPct(FCVM_PARAMS.pct60),none:'\u2717',preventivo:'\u2014',no_data:'\u2014',no_stores:'Nessun negozio'}[r.esito]||r.esito;
+    var psOn=emp.ps==="SI";
+    var ml=emp.ml||0;
+    var mlc=ml===0?"ml-0":ml<SICK_50?"ml-0":ml<SICK_0?"ml-low":"ml-high";
+    var ec={full:'#2d7a3a',partial:'#cf8b4e',none:'#cf5b5b',preventivo:'#c9a96e',no_data:'#a09a92',no_stores:'#cf5b5b',sospeso:'#b0a99f'}[r.esito]||'#a09a92';
+    var el={full:'\u2713 Pieno',partial:fPct(FCVM_PARAMS.pct60),none:'\u2717',preventivo:'\u2014',no_data:'\u2014',no_stores:'Nessun negozio',sospeso:'Sosp.'}[r.esito]||r.esito;
     var nStores=Object.keys(FC_MAP).filter(function(sid){
       var mp=FC_MAP[sid];if(mp.tipo==='BDG')return false;
       var arr=Array.isArray(emp.j==='FC'?mp.fc:mp.vm)?(emp.j==='FC'?mp.fc:mp.vm):[(emp.j==='FC'?mp.fc:mp.vm)];
       return arr.indexOf(emp.m)>=0;
     }).length;
     var pc=r.totTarget>0?r.pct:null;
-    h+='<tr class="ck" data-m="'+esc(emp.m)+'">';
+    h+='<tr class="ck" data-m="'+esc(emp.m)+'"'+(psOn?' style="opacity:.45"':'')+'>';
     h+='<td class="mn">'+esc(emp.m)+'</td>';
     h+='<td>'+esc(emp.c)+'</td>';
     h+='<td>'+esc(emp.n)+'</td>';
@@ -111,6 +114,10 @@ function rCFcvm(){
       });
       h+='</select></td>';
     }
+    // Malattia (solo consuntivo)
+    if(!isP)h+='<td style="text-align:center" onclick="event.stopPropagation()"><span class="ml-dot '+mlc+'"></span>'+ml+'</td>';
+    // Sospendi premio
+    h+='<td style="text-align:center" onclick="event.stopPropagation()"><button class="tb '+(psOn?"x":"o")+'" data-fcvm-ps="'+esc(emp.m)+'" style="width:28px;height:16px" title="Sospendi premio" onclick="event.stopPropagation()"><span class="tk" style="width:10px;height:10px;top:3px"></span></button></td>';
     h+='</tr>';
   });
   h+='</tbody></table></div><div id="fcvmDetail"></div>';
@@ -131,6 +138,13 @@ function rCFcvm(){
   if(qEl){qEl.oninput=function(){_fcvmF.q=this.value;rCFcvm();var el2=document.getElementById('fcvmQ');if(el2){el2.focus();}};}
   var jEl=document.getElementById('fcvmJ');
   if(jEl){jEl.onchange=function(){_fcvmF.j=this.value;rCFcvm();};}
+  document.querySelectorAll("button[data-fcvm-ps]").forEach(function(btn){btn.onclick=function(ev){
+    ev.stopPropagation();var m=btn.getAttribute("data-fcvm-ps");
+    var sw=document.querySelector(".scroll-wrap");var scrollTop=sw?sw.scrollTop:0;
+    if(FC_EMP[m])FC_EMP[m].ps=FC_EMP[m].ps==="SI"?"NO":"SI";
+    autoSave();rCFcvm();if(typeof rAFcvm==='function')rAFcvm();
+    var sw2=document.querySelector(".scroll-wrap");if(sw2)sw2.scrollTop=scrollTop;
+  };});
 }
 
 function setFcVmLang(sel){

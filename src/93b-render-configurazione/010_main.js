@@ -28,6 +28,12 @@ function rT(){try{
     h+='&#9679; Area ≥ '+fPct(FCVM_PARAMS.soglia60)+' + SY CY > SY LY → <b>Premio ridotto ('+fPct(FCVM_PARAMS.pct60)+' del massimale)</b><br>';
     h+='&#9679; Altrimenti → <b>Nessun premio</b>';
     h+='</div></div>';
+    // Malattia FC+VM
+    h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">&#129298; Malattia &mdash; FC + VM (Consuntivo)</div>';
+    h+='<div style="font-size:10px;color:#8a8680;margin-bottom:12px">Soglie giorni assenza per riduzione premio. Stessi parametri del mensile.</div>';
+    h+='<div class="cfg-row"><span class="cfg-label">Giorni per 50%</span><input class="cfg-input" type="number" id="sick50_fcvm" value="'+SICK_50+'" min="1" max="30"></div>';
+    h+='<div class="cfg-row"><span class="cfg-label">Giorni per 0%</span><input class="cfg-input" type="number" id="sick0_fcvm" value="'+SICK_0+'" min="1" max="31"></div>';
+    h+='<div style="font-size:10px;color:#8a8680;margin-top:8px;padding:8px 12px;background:#faf9f7;border-radius:5px;border:1px solid #e5e1db">Assenze &ge; <b>'+SICK_50+'gg</b> → 50% del premio &nbsp;&#183;&nbsp; Assenze &ge; <b>'+SICK_0+'gg</b> → 0%</div></div>';
     document.getElementById("p3").innerHTML=h;
     // Bindings
     var selM=document.getElementById("cfgMonth2");
@@ -42,6 +48,10 @@ function rT(){try{
     if(inp60)inp60.onchange=function(){FCVM_PARAMS.soglia60=Math.max(0.5,Math.min(0.999,parseFloat(this.value)/100));markDirty();rC();rT();};
     var inpPct=document.getElementById("fcvm_pct60");
     if(inpPct)inpPct.onchange=function(){FCVM_PARAMS.pct60=Math.max(0.01,Math.min(0.99,parseFloat(this.value)/100));markDirty();rC();rT();};
+    var inpS50f=document.getElementById("sick50_fcvm");
+    if(inpS50f)inpS50f.onchange=function(){SICK_50=parseInt(this.value)||1;markDirty();rC();rA();rT();};
+    var inpS0f=document.getElementById("sick0_fcvm");
+    if(inpS0f)inpS0f.onchange=function(){SICK_0=parseInt(this.value)||2;markDirty();rC();rA();rT();};
     return;
   }
   // In seasonal mode, show only Periodo/Output + Seasonal Config

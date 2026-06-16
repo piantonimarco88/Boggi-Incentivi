@@ -13,6 +13,7 @@ function rSourcesFcvm(){
   h+='<label class="exp-btn btn-violet" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128200; SY LY (Fatt.+Traffico LY)<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_syly" style="display:none" onchange="loadFcVmFile(this)"></label>';
   h+='<label class="exp-btn btn-green" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128200; Risultati (Fatt.+Traffico CY)<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_results" style="display:none" onchange="loadFcVmFile(this)"></label>';
   h+='<label class="exp-btn btn-blue" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128194; Risultati Mese Precedente<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_prev" style="display:none" onchange="loadFcVmFile(this)"></label>';
+  if(!isP)h+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#129298; Malattie FC/VM<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_malattie" style="display:none" onchange="loadFcVmFile(this)"></label>';
   h+='<button onclick="clearFcVmData()" class="exp-btn btn-red">&#128465; Reset Dati</button>';
   h+='</div>';
   h+='<div style="font-size:9px;color:#a09a92;margin-top:8px;line-height:1.6">';
@@ -29,7 +30,8 @@ function rSourcesFcvm(){
   if(!isP)checks=checks.concat([
     {label:'Risultati (Fatt.+Traffico CY)',ok:hasResults},
     {label:'SY CY calcolata',ok:hasResults&&Object.values(FC_RESULTS).some(function(r){return r.sy_cy!=null;})},
-    {label:'Risultati Mese Precedente (opt.)',ok:hasPrevResults}
+    {label:'Risultati Mese Precedente (opt.)',ok:hasPrevResults},
+    {label:'Malattie FC/VM (opt.)',ok:Object.values(FC_EMP).some(function(e){return(e.ml||0)>0;})}
   ]);
   var nOk=checks.filter(function(c){return c.ok;}).length;
   var pct=Math.round(nOk/checks.length*100);
@@ -74,7 +76,67 @@ function loadFcVmFile(input){
   if(srcId==='fcvm_syly'){loadFcVmSyLy(file);return;}
   if(srcId==='fcvm_results'){loadFcVmResults(file);return;}
   if(srcId==='fcvm_prev'){loadFcVmPrevResults(file);return;}
+  if(srcId==='fcvm_malattie'){loadFcVmMalattie(file);return;}
   alert('Sorgente non riconosciuta: '+srcId);
+}
+
+function loadFcVmMalattie(file){
+  var reader=new FileReader();
+  reader.onload=function(ev){setTimeout(function(){try{
+    var data=new Uint8Array(ev.target.result);
+    var wb=XLSX.read(data,{type:'array'});
+    var sheet=wb.SheetNames[0];
+    wb.SheetNames.forEach(function(sn){var snl=sn.toLowerCase();if(snl.indexOf('malatt')>=0||snl.indexOf('assenz')>=0||snl.indexOf('sick')>=0)sheet=sn;});
+    var ws=wb.Sheets[sheet];
+    var json=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+    if(json.length<2){alert('Foglio vuoto o non riconosciuto.');return;}
+    var hdrRow=0,hdr={matr:-1,cogn:-1,nome:-1,giorni:-1};
+    for(var ri2=0;ri2<Math.min(5,json.length);ri2++){
+      var row2=json[ri2];if(!row2)continue;
+      var rowStr=row2.map(function(c){return String(c||'').toLowerCase().trim();});
+      var foundKey=false;
+      rowStr.forEach(function(hh,ci){
+        if(hh==='matricola'||hh.indexOf('matr')>=0){hdr.matr=ci;foundKey=true;}
+        else if(hh.indexOf('cognome')>=0){hdr.cogn=ci;foundKey=true;}
+        if(hh.indexOf('giorni')>=0||hh.indexOf('assenz')>=0||hh.indexOf('malatt')>=0||hh.indexOf('sick')>=0||hh.indexOf('days')>=0){hdr.giorni=ci;}
+      });
+      // nome: colonna diversa da cognome che contiene "nome"
+      if(hdr.cogn>=0&&hdr.nome<0){for(var ci2=0;ci2<rowStr.length;ci2++){if(ci2!==hdr.cogn&&rowStr[ci2].indexOf('nome')>=0){hdr.nome=ci2;break;}}}
+      if(foundKey&&hdr.giorni>=0){hdrRow=ri2;break;}
+    }
+    if(hdr.giorni<0||(hdr.matr<0&&hdr.cogn<0)){alert('Colonne non riconosciute.\nCerco: Matricola (o Cognome+Nome) + Giorni assenza/malattia.');return;}
+    var matched=0,notFound=0;
+    if(hdr.matr>=0){
+      for(var ri3=hdrRow+1;ri3<json.length;ri3++){
+        var row3=json[ri3];if(!row3)continue;
+        var rawM=row3[hdr.matr];if(rawM==null||String(rawM).trim()==='')continue;
+        var matr=String(rawM).trim();
+        var giorni=parseInt(row3[hdr.giorni])||0;
+        if(FC_EMP[matr]){FC_EMP[matr].ml=giorni;matched++;}else notFound++;
+      }
+    } else {
+      // fallback cognome+nome (stesso formato del mensile)
+      var nameLookup={};
+      Object.values(FC_EMP).forEach(function(emp){
+        var key=(emp.c||'').toUpperCase().trim()+'|'+(emp.n||'').toUpperCase().trim();
+        nameLookup[key]=emp.m;
+      });
+      for(var ri4=hdrRow+1;ri4<json.length;ri4++){
+        var row4=json[ri4];if(!row4)continue;
+        var cogn=String(row4[hdr.cogn]||'').toUpperCase().trim();
+        if(!cogn)continue;
+        var nomeVal=hdr.nome>=0?String(row4[hdr.nome]||'').toUpperCase().trim():'';
+        var days=Math.round(parseFloat(row4[hdr.giorni])||0);
+        if(days<=0)continue;
+        var key=cogn+'|'+nomeVal;
+        var matrFound=nameLookup[key];
+        if(matrFound!=null){FC_EMP[matrFound].ml=days;matched++;}else notFound++;
+      }
+    }
+    autoSave();rCFcvm();rAFcvm();rSources();
+    alert('Malattie FC/VM: '+matched+' abbinate'+(notFound>0?', '+notFound+' non trovate':'')+'.\n\n'+SICK_50+' gg → 50% · '+SICK_0+' gg → 0%');
+  }catch(ex){alert('Errore lettura malattie:\n'+ex.message);}},50);};
+  reader.readAsArrayBuffer(file);
 }
 
 function loadFcVmAnagrafica(file){
@@ -185,7 +247,7 @@ function loadFcVmAnagrafica(file){
       if(!FC_EMP[matr]){
         var mailVal=hdr.mail>=0?String(row[hdr.mail]||'').trim().toLowerCase():'';
         var cfVal=hdr.cf>=0?String(row[hdr.cf]||'').trim().toUpperCase():'';
-        var empObj={m:matr,c:cogn,n:nome,j:ruolo,cu:cu,ex:ex,ib:0,lang:'INGLESE',bdg_stores:[],mp:mailVal,mf:'',cf:cfVal};
+        var empObj={m:matr,c:cogn,n:nome,j:ruolo,cu:cu,ex:ex,ib:0,lang:'INGLESE',bdg_stores:[],mp:mailVal,mf:'',cf:cfVal,ml:0,ps:'NO'};
         FC_EMP[matr]=empObj;
         importedList.push(empObj);
         imported++;

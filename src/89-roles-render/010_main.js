@@ -60,6 +60,7 @@ function gR(e){
     if(sm<1)R.push({t:"warn",x:e.ml+" gg malattia \u2192 "+(sm*100)+"%"})}
   // Aggiunte (always shown if present)
   var at=aggTotal(e.m);
+  if(e.ibFromAY)R.push({t:"warn",x:"BDG NETTO \u2014 valore da colonna 'matricola_foglio_presenze'. In busta paga: TRASFERTE cod.\u00a0380 (non PREMIO DI RISULTATO cod.\u00a0225)."});
   if(at>0)R.push({t:"success",x:fc(at,cu)+" \u2014 Aggiunte manuali (bypass regole/malattia)."});
   return R}
 

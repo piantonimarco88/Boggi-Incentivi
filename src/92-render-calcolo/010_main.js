@@ -39,7 +39,9 @@ function rC(){
         h+='<td class="r mn b" style="color:#cf5b5b" title="'+esc(tipSA)+'">0</td>';
         return;
       }
-      h+='<td class="r mn '+(val>0&&!psOn?"g":"gy")+'"'+(on?"":" style=\"text-decoration:line-through;opacity:.3\"")+">"+(val>0?fc(psOn?0:val,cu):"\u2014")+"</td>"});
+      var _cellVal=val>0?fc(psOn?0:val,cu):"\u2014";
+      if(it.k==="rb"&&e.ibFromAY&&val>0&&!psOn)_cellVal+='<sup style="font-size:7px;color:#c9a96e;font-weight:700;margin-left:2px" title="BDG NETTO \u2014 pagato come TRASFERTE (cod. 380)">N</sup>';
+      h+='<td class="r mn '+(val>0&&!psOn?"g":"gy")+'"'+(on?"":" style=\"text-decoration:line-through;opacity:.3\"")+">"+_cellVal+"</td>"});
     h+='<td class="r mn" style="color:'+(at>0?"#c9a96e":"#d5d0c8")+'">'+(at>0?fc(psOn?0:at,cu):"\u2014")+"</td>";
     h+='<td class="r mn b" style="color:'+(t>0&&!psOn?"#2c2925":"#b0a99f")+'">'+fc(psOn?0:t,cu)+"</td>";
     if(MODE==="consuntivo"){h+='<td style="text-align:center"><button class="tb '+(e.ov_b100==="SI"?"x":"o")+'" data-ov-b100="'+esc(e.m)+'" style="width:28px;height:16px" title="BDG 100%" onclick="event.stopPropagation()"><span class="tk" style="width:10px;height:10px;top:3px"></span></button></td>';h+='<td style="text-align:center"><button class="tb '+(e.ov_rid==="SI"?"x":"o")+'" data-ov-rid="'+esc(e.m)+'" style="width:28px;height:16px" title="BDG ridotto" onclick="event.stopPropagation()"><span class="tk" style="width:10px;height:10px;top:3px"></span></button></td>';h+='<td style="text-align:center"><button class="tb '+(e.ov_wg==="SI"?"x":"o")+'" data-ov-wg="'+esc(e.m)+'" style="width:28px;height:16px" title="Workgame" onclick="event.stopPropagation()"><span class="tk" style="width:10px;height:10px;top:3px"></span></button></td>';}

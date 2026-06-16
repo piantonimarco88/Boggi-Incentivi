@@ -301,7 +301,7 @@ var storeFilter="";
     document.getElementById('p2').innerHTML='<div class="wg" style="text-align:center;padding:40px;color:#a09a92"><div style="font-size:32px;margin-bottom:12px">&#128202;</div><div>Carica i dati FC+VM per vedere le analisi.</div></div>'+renderMonitorSection();
     return;
   }
-  var totEur=0,nFull=0,nPartial=0,nPartialNosy=0,nNone=0,nPrev=0;
+  var totEur=0,nFull=0,nPartial=0,nPartialNosy=0,nNone=0,nPrev=0,nSospesi=0;
   var totTargetEur=0,totConsEur=0,totEsuberoEur=0;
   var fcData=[],vmData=[];
   pool.forEach(function(emp){
@@ -311,12 +311,14 @@ var storeFilter="";
     totTargetEur+=r.totTarget;
     totConsEur+=(!isP?r.totCons:r.totTarget);
     totEsuberoEur+=(!isP?r.totEsubero:0);
-    if(r.esito==='full')nFull++;
+    if(r.esito==='sospeso')nSospesi++;
+    else if(r.esito==='full')nFull++;
     else if(r.esito==='partial')nPartial++;
     else if(r.esito==='partial_nosy')nPartialNosy++;
     else if(r.esito==='none')nNone++;
     else nPrev++;
-    var row={m:emp.m,c:emp.c,n:emp.n,j:emp.j,cu:emp.cu,ib:emp.ib,r:r,exR:exR};
+    if(emp.ps!=="SI"&&emp.ml>0&&r.sm<1&&r.esito!=='sospeso'){if(r.esito==='full'||r.esito==='partial')r.esito='malattia';}
+    var row={m:emp.m,c:emp.c,n:emp.n,j:emp.j,cu:emp.cu,ib:emp.ib,r:r,exR:exR,ml:emp.ml||0,ps:emp.ps};
     if(emp.j==='FC')fcData.push(row);else vmData.push(row);
   });
   var areaPct=totTargetEur>0?totConsEur/totTargetEur:null;
@@ -324,8 +326,8 @@ var storeFilter="";
   var h='<div class="wg" style="margin-bottom:16px"><div class="wg-title">&#128202; FC + VM — Riepilogo '+MONTH_NAMES.IT[CFG_MONTH]+' '+CFG_YEAR+(isP?' — PREVENTIVO':' — CONSUNTIVO')+'</div>';
 
   // KPI cards
-  h+='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px">';
-  [{l:'Dipendenti',v:pool.length,c:'#5b6abf'},{l:'Premio pieno',v:nFull,c:'#2d7a3a'},{l:'Premio ridotto',v:nPartial,c:'#cf8b4e'},{l:'Soglia/no SY',v:nPartialNosy,c:'#856404'},{l:'Nessun premio',v:nNone,c:'#cf5b5b'}].forEach(function(s){
+  h+='<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px">';
+  [{l:'Dipendenti',v:pool.length,c:'#5b6abf'},{l:'Premio pieno',v:nFull,c:'#2d7a3a'},{l:'Premio ridotto',v:nPartial,c:'#cf8b4e'},{l:'Soglia/no SY',v:nPartialNosy,c:'#856404'},{l:'Nessun premio',v:nNone,c:'#cf5b5b'},{l:'Sospesi',v:nSospesi,c:'#b0a99f'}].forEach(function(s){
     h+='<div style="background:#faf9f7;border:1px solid #e5e1db;border-radius:8px;padding:12px;text-align:center">';
     h+='<div style="font-size:22px;font-weight:800;color:'+s.c+'">'+s.v+'</div>';
     h+='<div style="font-size:10px;color:#8a8680;margin-top:3px">'+s.l+'</div></div>';
@@ -370,16 +372,18 @@ var storeFilter="";
     h+='<th style="text-align:right;padding:6px 8px">Premio LC</th>';
     h+='<th style="text-align:right;padding:6px 8px">Premio EUR</th>';
     h+='<th style="text-align:center;padding:6px 8px">Esito</th>';
+    if(!isP)h+='<th style="text-align:center;padding:6px 8px">Mal.</th>';
     h+='</tr></thead><tbody>';
     var totTgt=0,totCns=0,totEsub=0,totPremEur=0;
     group.data.forEach(function(row,i){
       var r=row.r;
-      var ec2={full:'#2d7a3a',partial:'#cf8b4e',partial_nosy:'#856404',none:'#cf5b5b',preventivo:'#c9a96e'}[r.esito]||'#a09a92';
-      var el2={full:'✓ Pieno',partial:fPct(FCVM_PARAMS.pct60),partial_nosy:'Soglia/—SY',none:'✗',preventivo:'Max'}[r.esito]||r.esito;
+      var ec2={full:'#2d7a3a',partial:'#cf8b4e',partial_nosy:'#856404',none:'#cf5b5b',preventivo:'#c9a96e',sospeso:'#b0a99f',malattia:'#c9a96e'}[r.esito]||'#a09a92';
+      var el2={full:'✓ Pieno',partial:fPct(FCVM_PARAMS.pct60),partial_nosy:'Soglia/—SY',none:'✗',preventivo:'Max',sospeso:'Sospeso',malattia:'Ridotto'}[r.esito]||r.esito;
       var pc=r.totTarget>0?r.pct:null;
       var bg=i%2===0?'#fff':'#faf9f7';
+      var rowOpacity=row.ps==="SI"?'opacity:.45;':'';
       totTgt+=r.totTarget; totCns+=(!isP?r.totCons:r.totTarget); totEsub+=(!isP?r.totEsubero:0); var aggRowEur2=Math.round((AGG_FCVM[row.m]||0)*getFcVmExRate(row.cu)*100)/100;totPremEur+=(r.hasBdg?r.totalPremioEur:r.premio_eur)+aggRowEur2;
-      h+='<tr style="background:'+bg+'">';
+      h+='<tr style="background:'+bg+';'+rowOpacity+'">';
       h+='<td style="padding:4px 10px;font-family:monospace;color:#8a8680">'+esc(String(row.m))+'</td>';
       h+='<td style="padding:4px 8px;font-weight:600">'+esc(row.c)+' '+esc(row.n)+'</td>';
       h+='<td style="padding:4px 8px;text-align:right">'+fc(r.totTarget,'EUR')+'</td>';
@@ -396,6 +400,7 @@ var storeFilter="";
       h+='<td style="padding:4px 8px;text-align:right;font-weight:700;color:'+ec2+'">'+fc(finalRowLC,row.cu||'EUR')+(AGG_FCVM[row.m]?'<span style="font-size:8px;color:#c9a96e"> +'+fc(AGG_FCVM[row.m],row.cu||'EUR')+'</span>':'')+'</td>';
       h+='<td style="padding:4px 8px;text-align:right;font-weight:700;color:'+ec2+'">'+fc(finalRowEur,'EUR')+'</td>';
       h+='<td style="padding:4px 8px;text-align:center;font-weight:700;color:'+ec2+'">'+el2+'</td>';
+      if(!isP){var mlA=row.ml||0;var mlcA=mlA===0?'ml-0':mlA<SICK_50?'ml-0':mlA<SICK_0?'ml-low':'ml-high';h+='<td style="padding:4px 8px;text-align:center"><span class="ml-dot '+mlcA+'"></span>'+(mlA>0?mlA:'—')+'</td>';}
       h+='</tr>';
     });
     // Totale gruppo
@@ -407,7 +412,9 @@ var storeFilter="";
     h+='<td></td><td></td>';
     if(!isP)h+='<td></td>';
     h+='<td colspan="2" style="padding:5px 8px;text-align:right;font-weight:800;color:#c9a96e">'+fc(Math.round(totPremEur),'EUR')+'</td>';
-    h+='<td></td></tr>';
+    h+='<td></td>';
+    if(!isP)h+='<td></td>';
+    h+='</tr>';
     h+='</tbody></table></div></div>';
   });
 
