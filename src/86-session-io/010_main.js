@@ -18,7 +18,7 @@ function saveSession(){
       _type:"boggi_session",v:AUTO_VERSION,
       D:{e:E,t:D.t,c:D.c,cs:D.cs,s:D.s,v:D.v,tr:D.tr,usa:D.usa,us:D.us,d:D.d,vl:D.vl,ur:D.ur},
       tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,
-      seas:SEAS,seas_cfg:SEAS_CFG,seas_targets:SEAS_TARGETS,
+      seas:SEAS,seas_cfg:SEAS_CFG,seas_targets:SEAS_TARGETS,sas_matrix:SAS_MATRIX,
       agg:AGG,vl:VL,usa_p:USA_P,store_flags:STORE_FLAGS,
       cfg_month:CFG_MONTH,cfg_year:CFG_YEAR,cfg_pdf_path:CFG_PDF_PATH,cfg_season:CFG_SEASON,
       monthly_syly:MONTHLY_SYLY,
@@ -86,6 +86,12 @@ function loadSession(input){
         });
       }
     }
+    if(state.sas_matrix){
+      if(state.sas_matrix.grid)SAS_MATRIX.grid=state.sas_matrix.grid;
+      if(state.sas_matrix.accBands)SAS_MATRIX.accBands=state.sas_matrix.accBands;
+      if(state.sas_matrix.velBands)SAS_MATRIX.velBands=state.sas_matrix.velBands;
+      if(state.sas_matrix.velLabel!==undefined)SAS_MATRIX.velLabel=state.sas_matrix.velLabel;
+    }
     // Ripristina FC+VM prima di setPrizeMode: rAFcvm() gira con i dati già pronti (inclusa lang)
     if(state.fc_emp)FC_EMP=state.fc_emp;
     if(state.fc_map)FC_MAP=state.fc_map;
@@ -100,7 +106,7 @@ function loadSession(input){
     document.getElementById("modeP").className="gbtn"+(MODE==="preventivo"?" on":"");document.getElementById("modeC").className="gbtn"+(MODE==="consuntivo"?" on":"");
     document.getElementById("regInt").className="gbtn"+(REGION==="international"?" on":"");document.getElementById("regIt").className="gbtn"+(REGION==="italia"?" on":"");
     updateHeader();updateHeaderCount();
-    _origTC=JSON.stringify(TC);_origS50=SICK_50;_origS0=SICK_0;_origP=JSON.stringify(PARAMS);_origUSA=JSON.stringify(USA_P);_origMonth=CFG_MONTH;_origYear=CFG_YEAR;_origPdfPath=CFG_PDF_PATH;_origSeason=CFG_SEASON;_origSF=JSON.stringify(STORE_FLAGS);_origSeasCfg=JSON.stringify(SEAS_CFG);_origPrizeMode=PRIZE_MODE;_origSeasonPeriod=SEASON_PERIOD;
+    _origTC=JSON.stringify(TC);_origS50=SICK_50;_origS0=SICK_0;_origP=JSON.stringify(PARAMS);_origUSA=JSON.stringify(USA_P);_origMonth=CFG_MONTH;_origYear=CFG_YEAR;_origPdfPath=CFG_PDF_PATH;_origSeason=CFG_SEASON;_origSF=JSON.stringify(STORE_FLAGS);_origSeasCfg=JSON.stringify(SEAS_CFG);_origPrizeMode=PRIZE_MODE;_origSeasonPeriod=SEASON_PERIOD;_origSasMatrix=JSON.stringify(SAS_MATRIX);
     var loadMsg;
     if(PRIZE_MODE==="fcvm"){
       var fcvmCount=Object.keys(FC_EMP).length;
@@ -116,14 +122,14 @@ function loadSession(input){
 }
 
 // Save/Dirty
-var _origTC=JSON.stringify(TC),_origS50=SICK_50,_origS0=SICK_0,_origP=JSON.stringify(PARAMS),_origUSA=JSON.stringify(USA_P),_origMonth=CFG_MONTH,_origYear=CFG_YEAR,_origPdfPath=CFG_PDF_PATH,_origSeason=CFG_SEASON,_origSF=JSON.stringify(STORE_FLAGS),_origSeasCfg=JSON.stringify(SEAS_CFG),_origPrizeMode=PRIZE_MODE,_origSeasonPeriod=SEASON_PERIOD;
-function markDirty(){var dirty=JSON.stringify(TC)!==_origTC||SICK_50!==_origS50||SICK_0!==_origS0||JSON.stringify(PARAMS)!==_origP||JSON.stringify(USA_P)!==_origUSA||CFG_MONTH!==_origMonth||CFG_YEAR!==_origYear||CFG_PDF_PATH!==_origPdfPath||CFG_SEASON!==_origSeason||JSON.stringify(STORE_FLAGS)!==_origSF||JSON.stringify(SEAS_CFG)!==_origSeasCfg||PRIZE_MODE!==_origPrizeMode||SEASON_PERIOD!==_origSeasonPeriod;document.getElementById("saveBar").className="save-bar"+(dirty?" show":"");var cnt=document.querySelector(".cnt");if(cnt)cnt.style.paddingBottom=dirty?"60px":""}
+var _origTC=JSON.stringify(TC),_origS50=SICK_50,_origS0=SICK_0,_origP=JSON.stringify(PARAMS),_origUSA=JSON.stringify(USA_P),_origMonth=CFG_MONTH,_origYear=CFG_YEAR,_origPdfPath=CFG_PDF_PATH,_origSeason=CFG_SEASON,_origSF=JSON.stringify(STORE_FLAGS),_origSeasCfg=JSON.stringify(SEAS_CFG),_origPrizeMode=PRIZE_MODE,_origSeasonPeriod=SEASON_PERIOD,_origSasMatrix=JSON.stringify(SAS_MATRIX);
+function markDirty(){var dirty=JSON.stringify(TC)!==_origTC||SICK_50!==_origS50||SICK_0!==_origS0||JSON.stringify(PARAMS)!==_origP||JSON.stringify(USA_P)!==_origUSA||CFG_MONTH!==_origMonth||CFG_YEAR!==_origYear||CFG_PDF_PATH!==_origPdfPath||CFG_SEASON!==_origSeason||JSON.stringify(STORE_FLAGS)!==_origSF||JSON.stringify(SEAS_CFG)!==_origSeasCfg||JSON.stringify(SAS_MATRIX)!==_origSasMatrix||PRIZE_MODE!==_origPrizeMode||SEASON_PERIOD!==_origSeasonPeriod;document.getElementById("saveBar").className="save-bar"+(dirty?" show":"");var cnt=document.querySelector(".cnt");if(cnt)cnt.style.paddingBottom=dirty?"60px":""}
 function saveConfig(){
   _flushDigMobInputs();
-  var cfg={tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,seas_cfg:SEAS_CFG,agg:AGG,vl:VL,usa_p:USA_P,store_flags:STORE_FLAGS,cfg_month:CFG_MONTH,cfg_year:CFG_YEAR,cfg_pdf_path:CFG_PDF_PATH,cfg_season:CFG_SEASON,saved:new Date().toISOString()};
+  var cfg={tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,seas_cfg:SEAS_CFG,sas_matrix:SAS_MATRIX,agg:AGG,vl:VL,usa_p:USA_P,store_flags:STORE_FLAGS,cfg_month:CFG_MONTH,cfg_year:CFG_YEAR,cfg_pdf_path:CFG_PDF_PATH,cfg_season:CFG_SEASON,saved:new Date().toISOString()};
   var blob=new Blob([JSON.stringify(cfg,null,2)],{type:"application/json"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="boggi_config_"+getPdfSubfolder().fileBase+".json";a.click();
-  _origTC=JSON.stringify(TC);_origS50=SICK_50;_origS0=SICK_0;_origP=JSON.stringify(PARAMS);_origUSA=JSON.stringify(USA_P);_origMonth=CFG_MONTH;_origYear=CFG_YEAR;_origPdfPath=CFG_PDF_PATH;_origSeason=CFG_SEASON;_origSF=JSON.stringify(STORE_FLAGS);_origSeasCfg=JSON.stringify(SEAS_CFG);_origPrizeMode=PRIZE_MODE;_origSeasonPeriod=SEASON_PERIOD;document.getElementById("saveBar").className="save-bar";autoSave()}
-function discardChanges(){TC=JSON.parse(_origTC);SICK_50=_origS50;SICK_0=_origS0;PARAMS=JSON.parse(_origP);USA_P=JSON.parse(_origUSA);CFG_MONTH=_origMonth;CFG_YEAR=_origYear;CFG_PDF_PATH=_origPdfPath;CFG_SEASON=_origSeason;STORE_FLAGS=JSON.parse(_origSF);SEAS_CFG=JSON.parse(_origSeasCfg);PRIZE_MODE=_origPrizeMode;SEASON_PERIOD=_origSeasonPeriod;document.getElementById("saveBar").className="save-bar";setPrizeMode(PRIZE_MODE);setSeasonPeriod(SEASON_PERIOD);rT();rC()}
+  _origTC=JSON.stringify(TC);_origS50=SICK_50;_origS0=SICK_0;_origP=JSON.stringify(PARAMS);_origUSA=JSON.stringify(USA_P);_origMonth=CFG_MONTH;_origYear=CFG_YEAR;_origPdfPath=CFG_PDF_PATH;_origSeason=CFG_SEASON;_origSF=JSON.stringify(STORE_FLAGS);_origSeasCfg=JSON.stringify(SEAS_CFG);_origPrizeMode=PRIZE_MODE;_origSeasonPeriod=SEASON_PERIOD;_origSasMatrix=JSON.stringify(SAS_MATRIX);document.getElementById("saveBar").className="save-bar";autoSave()}
+function discardChanges(){TC=JSON.parse(_origTC);SICK_50=_origS50;SICK_0=_origS0;PARAMS=JSON.parse(_origP);USA_P=JSON.parse(_origUSA);CFG_MONTH=_origMonth;CFG_YEAR=_origYear;CFG_PDF_PATH=_origPdfPath;CFG_SEASON=_origSeason;STORE_FLAGS=JSON.parse(_origSF);SEAS_CFG=JSON.parse(_origSeasCfg);SAS_MATRIX=JSON.parse(_origSasMatrix);PRIZE_MODE=_origPrizeMode;SEASON_PERIOD=_origSeasonPeriod;document.getElementById("saveBar").className="save-bar";setPrizeMode(PRIZE_MODE);setSeasonPeriod(SEASON_PERIOD);rT();rC()}
 function loadConfig(evt){var f=evt.target.files[0];if(!f)return;var reader=new FileReader();
   reader.onload=function(ev){try{
     var txt=ev.target.result;

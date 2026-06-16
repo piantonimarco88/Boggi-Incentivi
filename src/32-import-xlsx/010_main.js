@@ -1438,7 +1438,14 @@ function loadResultsExcel(file){
       else if(type==="sas_results"){
         var cSid=fH("store id","store_id");var cS4=fH("processed within 4","within 4h");
         var cSa=fH("% accepted","% accettati","accepted %","accepted","% accettazione","accettati %","sas accepted","% acceptance");
-        var withAcc=0;
+        // NUOVA logica SAS (da luglio 2026): velocità, valore SAS (LC/EUR), riserva riportata
+        var cVel=fH("% gestiti entro","% sas gestiti","gestiti entro","velocit","velocity","% handled");
+        var cValE=fH("valore sas eur","sas value eur","valore sas euro");
+        var cValL=fH("valore sas lc","sas value lc");
+        var cValP=fH("valore sas","sas value"); // senza suffisso → assunto LC
+        var cValLc=cValL>=0?cValL:((cValP>=0&&cValP!==cValE)?cValP:-1);
+        var cRes=fH("riserva sas","sas reserve","riserva carry","riserva");
+        var withAcc=0,withVel=0,withVal=0;
         for(var ri=dataStart;ri<json.length;ri++){
           var row=json[ri];if(!row)continue;var sid=row[cSid];if(!sid)continue;
           sid=String(parseInt(sid));if(sid==="NaN")continue;
@@ -1453,9 +1460,16 @@ function loadResultsExcel(file){
               D.c[sid].sa=av;withAcc++;
             }
           }
+          if(cVel>=0){
+            var vv=parseNum(row[cVel]);
+            if(!isNaN(vv)){if(vv>1)vv=vv/100;if(vv<0)vv=0;if(vv>1)vv=1;D.c[sid].vel=vv;withVel++;}
+          }
+          if(cValLc>=0){var sv=parseNum(row[cValLc]);if(!isNaN(sv)){D.c[sid].sasv=sv;withVal++;}}
+          if(cValE>=0){var sve=parseNum(row[cValE]);if(!isNaN(sve))D.c[sid].sasv_eur=sve;}
+          if(cRes>=0){var rv=parseNum(row[cRes]);if(!isNaN(rv))D.c[sid].sasr=rv;}
           imported++;
         }
-        report="SAS caricati: "+imported+" negozi"+(cSa>=0?(" (% accettati: "+withAcc+")"):" (colonna % accettati non rilevata)")+".";
+        report="SAS caricati: "+imported+" negozi"+(cSa>=0?(" · acc:"+withAcc):"")+(cVel>=0?(" · vel:"+withVel):"")+((cValLc>=0||cValE>=0)?(" · valore:"+withVal):"")+".";
       }
 
       else if(type==="malattie"){

@@ -1,17 +1,75 @@
-var PARAMS={bdg100:0.995,kpi100:0.995,bdg60:0.95,bdg60mult:0.6,digMinClassic:0.03,digMinMobility:0.05,digPct:0.3,syPct:0.03,privPct:0.02,sasRate:2,sasMax:200,sasMinAccPct:0.70,dccRate:0.002,dccMax:100,qtyPct:0.5,artPct:0.3,artEnabled:true,workgamePct:0.30};
-// Soglia % SAS accettati per erogare premio SAS (solo modalità mensile, attiva da Giugno 2026)
-// Se cn.sa < sasMinAccPct → premio SAS azzerato.
-var SAS_ACC_START_YEAR=2026, SAS_ACC_START_MONTH=6;
-function sasAccActive(){return PRIZE_MODE==="mensile"&&((CFG_YEAR>SAS_ACC_START_YEAR)||(CFG_YEAR===SAS_ACC_START_YEAR&&CFG_MONTH>=SAS_ACC_START_MONTH));}
-// Returns true if SAS premium must be zeroed for this employee due to %SAS accettati under threshold.
-// Only applies in monthly mode from June 2026 onwards, in consuntivo, when cn.sa is defined.
-function sasZeroByAcc(e){
-  if(MODE!=="consuntivo")return false;
-  if(!sasAccActive())return false;
-  if(!e||isUSA&&isUSA(e.si,e))return false;
-  var cn=(D&&D.c)?D.c[String(e.si)]:null;
-  if(!cn||cn.sa==null)return false; // dato mancante: non azzerare
-  return cn.sa<PARAMS.sasMinAccPct;
+var PARAMS={bdg100:0.995,kpi100:0.995,bdg60:0.95,bdg60mult:0.6,digMinClassic:0.03,digMinMobility:0.05,digPct:0.3,syPct:0.03,privPct:0.02,sasRate:2,sasMax:200,dccRate:0.002,dccMax:100,qtyPct:0.5,artPct:0.3,artEnabled:true,workgamePct:0.30};
+// Il vecchio gate "% min SAS accettati" (giugno 2026, vecchia policy interim) è stato
+// rimosso: dispatch a luglio 2026 con la nuova logica a matrice. Le due funzioni
+// restano come stub no-op per non rompere i call site nelle lettere/calcolo.
+function sasAccActive(){return false;}
+function sasZeroByAcc(e){return false;}
+
+// ============================================================
+// NUOVA LOGICA SAS (da Luglio 2026, solo mensile + FC+VM)
+// ------------------------------------------------------------
+// Il valore dei SAS gestiti dal negozio viene riconosciuto in parte
+// (% da matrice accettazione × velocità) e sommato al fatturato verso
+// il target BDG, fino al 100% (cap). L'avanzo si accantona come
+// RISERVA SAS dedicata, separata dall'esubero fatturato, e si riporta
+// al mese successivo. Vedi sasReserveCalc().
+// ------------------------------------------------------------
+// Matrice editabile in Configurazione: celle (% riconosciuta) + soglie
+// delle fasce di accettazione e velocità. accBands/velBands sono i punti
+// di taglio interni; grid[accIdx][velIdx] è la frazione riconosciuta 0..1.
+//   accIdx: ≥accBands[0]→0, ≥[1]→1, ≥[2]→2, else 3 (alta→bassa accettazione)
+//   velIdx: <velBands[0]→0, <[1]→1, <[2]→2, else 3 (bassa→alta velocità)
+var SAS_MATRIX={
+  velLabel:"% gestiti entro 4h",
+  accBands:[0.90,0.80,0.70],
+  velBands:[0.70,0.80,0.90],
+  grid:[
+    [0.70,0.80,0.90,1.00],
+    [0.55,0.65,0.75,0.85],
+    [0.40,0.50,0.60,0.70],
+    [0.00,0.25,0.35,0.45]
+  ]
+};
+var SAS_NEW_START_YEAR=2026, SAS_NEW_START_MONTH=7;
+// Attiva solo in mensile + FC+VM da luglio 2026 (mai seasonal, mai prima).
+function sasNewActive(){
+  if(PRIZE_MODE!=="mensile"&&PRIZE_MODE!=="fcvm")return false;
+  return (CFG_YEAR>SAS_NEW_START_YEAR)||(CFG_YEAR===SAS_NEW_START_YEAR&&CFG_MONTH>=SAS_NEW_START_MONTH);
+}
+// Indice di fascia accettazione (0 = migliore) per una % 0..1.
+function sasAccBandIdx(acc){
+  var b=SAS_MATRIX.accBands;
+  if(acc>=b[0])return 0;if(acc>=b[1])return 1;if(acc>=b[2])return 2;return 3;
+}
+// Indice di fascia velocità (0 = peggiore) per una % 0..1.
+function sasVelBandIdx(vel){
+  var b=SAS_MATRIX.velBands;
+  if(vel<b[0])return 0;if(vel<b[1])return 1;if(vel<b[2])return 2;return 3;
+}
+// % riconosciuta (0..1) data accettazione e velocità. null se un dato manca.
+function sasMatrixPct(acc,vel){
+  if(acc==null||vel==null||isNaN(acc)||isNaN(vel))return null;
+  return SAS_MATRIX.grid[sasAccBandIdx(acc)][sasVelBandIdx(vel)];
+}
+// Valore SAS riconosciuto = % matrice × valore SAS. 0 se dato mancante.
+function sasRecognizedValue(acc,vel,value){
+  var p=sasMatrixPct(acc,vel);
+  if(p==null||!value)return 0;
+  return p*value;
+}
+// Logica riserva: il riconosciuto (+riserva precedente) colma il gap verso
+// il target fino al 100%; l'avanzo diventa riserva del mese dopo.
+//   base       = fatturato + esubero fatturato precedente
+//   target     = obiettivo fatturato
+//   recognized = valore SAS riconosciuto questo mese
+//   reserveIn  = riserva SAS riportata dal mese precedente
+// Ritorna {avail, gap, used, reserveOut, num} dove num = numeratore verso target.
+function sasReserveCalc(base,target,recognized,reserveIn){
+  base=base||0;target=target||0;
+  var avail=(recognized||0)+(reserveIn||0);
+  var gap=Math.max(0,target-base);
+  var used=Math.min(avail,gap);
+  return {avail:avail,gap:gap,used:used,reserveOut:avail-used,num:base+used};
 }
 
 // === SEASONAL BONUS CONFIG ===

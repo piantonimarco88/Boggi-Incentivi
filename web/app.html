@@ -332,20 +332,78 @@ var DISCL={
 };
 function getDiscl(e){return DISCL[trLang(e)]||DISCL["INGLESE"]}
 
-var PARAMS={bdg100:0.995,kpi100:0.995,bdg60:0.95,bdg60mult:0.6,digMinClassic:0.03,digMinMobility:0.05,digPct:0.3,syPct:0.03,privPct:0.02,sasRate:2,sasMax:200,sasMinAccPct:0.70,dccRate:0.002,dccMax:100,qtyPct:0.5,artPct:0.3,artEnabled:true,workgamePct:0.30};
-// Soglia % SAS accettati per erogare premio SAS (solo modalità mensile, attiva da Giugno 2026)
-// Se cn.sa < sasMinAccPct → premio SAS azzerato.
-var SAS_ACC_START_YEAR=2026, SAS_ACC_START_MONTH=6;
-function sasAccActive(){return PRIZE_MODE==="mensile"&&((CFG_YEAR>SAS_ACC_START_YEAR)||(CFG_YEAR===SAS_ACC_START_YEAR&&CFG_MONTH>=SAS_ACC_START_MONTH));}
-// Returns true if SAS premium must be zeroed for this employee due to %SAS accettati under threshold.
-// Only applies in monthly mode from June 2026 onwards, in consuntivo, when cn.sa is defined.
-function sasZeroByAcc(e){
-  if(MODE!=="consuntivo")return false;
-  if(!sasAccActive())return false;
-  if(!e||isUSA&&isUSA(e.si,e))return false;
-  var cn=(D&&D.c)?D.c[String(e.si)]:null;
-  if(!cn||cn.sa==null)return false; // dato mancante: non azzerare
-  return cn.sa<PARAMS.sasMinAccPct;
+var PARAMS={bdg100:0.995,kpi100:0.995,bdg60:0.95,bdg60mult:0.6,digMinClassic:0.03,digMinMobility:0.05,digPct:0.3,syPct:0.03,privPct:0.02,sasRate:2,sasMax:200,dccRate:0.002,dccMax:100,qtyPct:0.5,artPct:0.3,artEnabled:true,workgamePct:0.30};
+// Il vecchio gate "% min SAS accettati" (giugno 2026, vecchia policy interim) è stato
+// rimosso: dispatch a luglio 2026 con la nuova logica a matrice. Le due funzioni
+// restano come stub no-op per non rompere i call site nelle lettere/calcolo.
+function sasAccActive(){return false;}
+function sasZeroByAcc(e){return false;}
+
+// ============================================================
+// NUOVA LOGICA SAS (da Luglio 2026, solo mensile + FC+VM)
+// ------------------------------------------------------------
+// Il valore dei SAS gestiti dal negozio viene riconosciuto in parte
+// (% da matrice accettazione × velocità) e sommato al fatturato verso
+// il target BDG, fino al 100% (cap). L'avanzo si accantona come
+// RISERVA SAS dedicata, separata dall'esubero fatturato, e si riporta
+// al mese successivo. Vedi sasReserveCalc().
+// ------------------------------------------------------------
+// Matrice editabile in Configurazione: celle (% riconosciuta) + soglie
+// delle fasce di accettazione e velocità. accBands/velBands sono i punti
+// di taglio interni; grid[accIdx][velIdx] è la frazione riconosciuta 0..1.
+//   accIdx: ≥accBands[0]→0, ≥[1]→1, ≥[2]→2, else 3 (alta→bassa accettazione)
+//   velIdx: <velBands[0]→0, <[1]→1, <[2]→2, else 3 (bassa→alta velocità)
+var SAS_MATRIX={
+  velLabel:"% gestiti entro 4h",
+  accBands:[0.90,0.80,0.70],
+  velBands:[0.70,0.80,0.90],
+  grid:[
+    [0.70,0.80,0.90,1.00],
+    [0.55,0.65,0.75,0.85],
+    [0.40,0.50,0.60,0.70],
+    [0.00,0.25,0.35,0.45]
+  ]
+};
+var SAS_NEW_START_YEAR=2026, SAS_NEW_START_MONTH=7;
+// Attiva solo in mensile + FC+VM da luglio 2026 (mai seasonal, mai prima).
+function sasNewActive(){
+  if(PRIZE_MODE!=="mensile"&&PRIZE_MODE!=="fcvm")return false;
+  return (CFG_YEAR>SAS_NEW_START_YEAR)||(CFG_YEAR===SAS_NEW_START_YEAR&&CFG_MONTH>=SAS_NEW_START_MONTH);
+}
+// Indice di fascia accettazione (0 = migliore) per una % 0..1.
+function sasAccBandIdx(acc){
+  var b=SAS_MATRIX.accBands;
+  if(acc>=b[0])return 0;if(acc>=b[1])return 1;if(acc>=b[2])return 2;return 3;
+}
+// Indice di fascia velocità (0 = peggiore) per una % 0..1.
+function sasVelBandIdx(vel){
+  var b=SAS_MATRIX.velBands;
+  if(vel<b[0])return 0;if(vel<b[1])return 1;if(vel<b[2])return 2;return 3;
+}
+// % riconosciuta (0..1) data accettazione e velocità. null se un dato manca.
+function sasMatrixPct(acc,vel){
+  if(acc==null||vel==null||isNaN(acc)||isNaN(vel))return null;
+  return SAS_MATRIX.grid[sasAccBandIdx(acc)][sasVelBandIdx(vel)];
+}
+// Valore SAS riconosciuto = % matrice × valore SAS. 0 se dato mancante.
+function sasRecognizedValue(acc,vel,value){
+  var p=sasMatrixPct(acc,vel);
+  if(p==null||!value)return 0;
+  return p*value;
+}
+// Logica riserva: il riconosciuto (+riserva precedente) colma il gap verso
+// il target fino al 100%; l'avanzo diventa riserva del mese dopo.
+//   base       = fatturato + esubero fatturato precedente
+//   target     = obiettivo fatturato
+//   recognized = valore SAS riconosciuto questo mese
+//   reserveIn  = riserva SAS riportata dal mese precedente
+// Ritorna {avail, gap, used, reserveOut, num} dove num = numeratore verso target.
+function sasReserveCalc(base,target,recognized,reserveIn){
+  base=base||0;target=target||0;
+  var avail=(recognized||0)+(reserveIn||0);
+  var gap=Math.max(0,target-base);
+  var used=Math.min(avail,gap);
+  return {avail:avail,gap:gap,used:used,reserveOut:avail-used,num:base+used};
 }
 
 // === SEASONAL BONUS CONFIG ===
@@ -576,7 +634,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='8.84'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='8.85'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -636,6 +694,12 @@ if(window._autoState){try{
     if(as.seas_cfg.molt_turnover){SEAS_CFG.molt_turnover=as.seas_cfg.molt_turnover.map(function(r){return{from:r.from===null?-Infinity:r.from,to:r.to===null?Infinity:r.to,coeff:r.coeff,label:r.label||""};})}
     if(as.seas_cfg.molt_inventario){SEAS_CFG.molt_inventario=as.seas_cfg.molt_inventario.map(function(r){return{from:r.from===null?-Infinity:r.from,to:r.to===null?Infinity:r.to,coeff:r.coeff,label:r.label||""};})}
   }
+  if(as.sas_matrix){
+    if(as.sas_matrix.grid)SAS_MATRIX.grid=as.sas_matrix.grid;
+    if(as.sas_matrix.accBands)SAS_MATRIX.accBands=as.sas_matrix.accBands;
+    if(as.sas_matrix.velBands)SAS_MATRIX.velBands=as.sas_matrix.velBands;
+    if(as.sas_matrix.velLabel!==undefined)SAS_MATRIX.velLabel=as.sas_matrix.velLabel;
+  }
   if(as.cfg_month)CFG_MONTH=as.cfg_month;
   if(as.cfg_year)CFG_YEAR=as.cfg_year;
   if(as.cfg_pdf_path!==undefined)CFG_PDF_PATH=as.cfg_pdf_path;
@@ -679,7 +743,7 @@ function autoSave(){
       v:AUTO_VERSION,
       D:{e:E,t:D.t,c:D.c,cs:D.cs,s:D.s,v:D.v,tr:D.tr,usa:D.usa,us:D.us,d:D.d,vl:D.vl},
       tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,
-      seas:SEAS,seas_cfg:SEAS_CFG,seas_targets:SEAS_TARGETS,
+      seas:SEAS,seas_cfg:SEAS_CFG,seas_targets:SEAS_TARGETS,sas_matrix:SAS_MATRIX,
       agg:AGG,vl:VL,usa_p:USA_P,store_flags:STORE_FLAGS,
       cfg_month:CFG_MONTH,cfg_year:CFG_YEAR,cfg_pdf_path:CFG_PDF_PATH,cfg_season:CFG_SEASON,
       monthly_syly:MONTHLY_SYLY,
@@ -725,7 +789,7 @@ function saveSession(){
       _type:"boggi_session",v:AUTO_VERSION,
       D:{e:E,t:D.t,c:D.c,cs:D.cs,s:D.s,v:D.v,tr:D.tr,usa:D.usa,us:D.us,d:D.d,vl:D.vl,ur:D.ur},
       tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,
-      seas:SEAS,seas_cfg:SEAS_CFG,seas_targets:SEAS_TARGETS,
+      seas:SEAS,seas_cfg:SEAS_CFG,seas_targets:SEAS_TARGETS,sas_matrix:SAS_MATRIX,
       agg:AGG,vl:VL,usa_p:USA_P,store_flags:STORE_FLAGS,
       cfg_month:CFG_MONTH,cfg_year:CFG_YEAR,cfg_pdf_path:CFG_PDF_PATH,cfg_season:CFG_SEASON,
       monthly_syly:MONTHLY_SYLY,
@@ -793,6 +857,12 @@ function loadSession(input){
         });
       }
     }
+    if(state.sas_matrix){
+      if(state.sas_matrix.grid)SAS_MATRIX.grid=state.sas_matrix.grid;
+      if(state.sas_matrix.accBands)SAS_MATRIX.accBands=state.sas_matrix.accBands;
+      if(state.sas_matrix.velBands)SAS_MATRIX.velBands=state.sas_matrix.velBands;
+      if(state.sas_matrix.velLabel!==undefined)SAS_MATRIX.velLabel=state.sas_matrix.velLabel;
+    }
     // Ripristina FC+VM prima di setPrizeMode: rAFcvm() gira con i dati già pronti (inclusa lang)
     if(state.fc_emp)FC_EMP=state.fc_emp;
     if(state.fc_map)FC_MAP=state.fc_map;
@@ -807,7 +877,7 @@ function loadSession(input){
     document.getElementById("modeP").className="gbtn"+(MODE==="preventivo"?" on":"");document.getElementById("modeC").className="gbtn"+(MODE==="consuntivo"?" on":"");
     document.getElementById("regInt").className="gbtn"+(REGION==="international"?" on":"");document.getElementById("regIt").className="gbtn"+(REGION==="italia"?" on":"");
     updateHeader();updateHeaderCount();
-    _origTC=JSON.stringify(TC);_origS50=SICK_50;_origS0=SICK_0;_origP=JSON.stringify(PARAMS);_origUSA=JSON.stringify(USA_P);_origMonth=CFG_MONTH;_origYear=CFG_YEAR;_origPdfPath=CFG_PDF_PATH;_origSeason=CFG_SEASON;_origSF=JSON.stringify(STORE_FLAGS);_origSeasCfg=JSON.stringify(SEAS_CFG);_origPrizeMode=PRIZE_MODE;_origSeasonPeriod=SEASON_PERIOD;
+    _origTC=JSON.stringify(TC);_origS50=SICK_50;_origS0=SICK_0;_origP=JSON.stringify(PARAMS);_origUSA=JSON.stringify(USA_P);_origMonth=CFG_MONTH;_origYear=CFG_YEAR;_origPdfPath=CFG_PDF_PATH;_origSeason=CFG_SEASON;_origSF=JSON.stringify(STORE_FLAGS);_origSeasCfg=JSON.stringify(SEAS_CFG);_origPrizeMode=PRIZE_MODE;_origSeasonPeriod=SEASON_PERIOD;_origSasMatrix=JSON.stringify(SAS_MATRIX);
     var loadMsg;
     if(PRIZE_MODE==="fcvm"){
       var fcvmCount=Object.keys(FC_EMP).length;
@@ -823,14 +893,14 @@ function loadSession(input){
 }
 
 // Save/Dirty
-var _origTC=JSON.stringify(TC),_origS50=SICK_50,_origS0=SICK_0,_origP=JSON.stringify(PARAMS),_origUSA=JSON.stringify(USA_P),_origMonth=CFG_MONTH,_origYear=CFG_YEAR,_origPdfPath=CFG_PDF_PATH,_origSeason=CFG_SEASON,_origSF=JSON.stringify(STORE_FLAGS),_origSeasCfg=JSON.stringify(SEAS_CFG),_origPrizeMode=PRIZE_MODE,_origSeasonPeriod=SEASON_PERIOD;
-function markDirty(){var dirty=JSON.stringify(TC)!==_origTC||SICK_50!==_origS50||SICK_0!==_origS0||JSON.stringify(PARAMS)!==_origP||JSON.stringify(USA_P)!==_origUSA||CFG_MONTH!==_origMonth||CFG_YEAR!==_origYear||CFG_PDF_PATH!==_origPdfPath||CFG_SEASON!==_origSeason||JSON.stringify(STORE_FLAGS)!==_origSF||JSON.stringify(SEAS_CFG)!==_origSeasCfg||PRIZE_MODE!==_origPrizeMode||SEASON_PERIOD!==_origSeasonPeriod;document.getElementById("saveBar").className="save-bar"+(dirty?" show":"");var cnt=document.querySelector(".cnt");if(cnt)cnt.style.paddingBottom=dirty?"60px":""}
+var _origTC=JSON.stringify(TC),_origS50=SICK_50,_origS0=SICK_0,_origP=JSON.stringify(PARAMS),_origUSA=JSON.stringify(USA_P),_origMonth=CFG_MONTH,_origYear=CFG_YEAR,_origPdfPath=CFG_PDF_PATH,_origSeason=CFG_SEASON,_origSF=JSON.stringify(STORE_FLAGS),_origSeasCfg=JSON.stringify(SEAS_CFG),_origPrizeMode=PRIZE_MODE,_origSeasonPeriod=SEASON_PERIOD,_origSasMatrix=JSON.stringify(SAS_MATRIX);
+function markDirty(){var dirty=JSON.stringify(TC)!==_origTC||SICK_50!==_origS50||SICK_0!==_origS0||JSON.stringify(PARAMS)!==_origP||JSON.stringify(USA_P)!==_origUSA||CFG_MONTH!==_origMonth||CFG_YEAR!==_origYear||CFG_PDF_PATH!==_origPdfPath||CFG_SEASON!==_origSeason||JSON.stringify(STORE_FLAGS)!==_origSF||JSON.stringify(SEAS_CFG)!==_origSeasCfg||JSON.stringify(SAS_MATRIX)!==_origSasMatrix||PRIZE_MODE!==_origPrizeMode||SEASON_PERIOD!==_origSeasonPeriod;document.getElementById("saveBar").className="save-bar"+(dirty?" show":"");var cnt=document.querySelector(".cnt");if(cnt)cnt.style.paddingBottom=dirty?"60px":""}
 function saveConfig(){
   _flushDigMobInputs();
-  var cfg={tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,seas_cfg:SEAS_CFG,agg:AGG,vl:VL,usa_p:USA_P,store_flags:STORE_FLAGS,cfg_month:CFG_MONTH,cfg_year:CFG_YEAR,cfg_pdf_path:CFG_PDF_PATH,cfg_season:CFG_SEASON,saved:new Date().toISOString()};
+  var cfg={tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,seas_cfg:SEAS_CFG,sas_matrix:SAS_MATRIX,agg:AGG,vl:VL,usa_p:USA_P,store_flags:STORE_FLAGS,cfg_month:CFG_MONTH,cfg_year:CFG_YEAR,cfg_pdf_path:CFG_PDF_PATH,cfg_season:CFG_SEASON,saved:new Date().toISOString()};
   var blob=new Blob([JSON.stringify(cfg,null,2)],{type:"application/json"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="boggi_config_"+getPdfSubfolder().fileBase+".json";a.click();
-  _origTC=JSON.stringify(TC);_origS50=SICK_50;_origS0=SICK_0;_origP=JSON.stringify(PARAMS);_origUSA=JSON.stringify(USA_P);_origMonth=CFG_MONTH;_origYear=CFG_YEAR;_origPdfPath=CFG_PDF_PATH;_origSeason=CFG_SEASON;_origSF=JSON.stringify(STORE_FLAGS);_origSeasCfg=JSON.stringify(SEAS_CFG);_origPrizeMode=PRIZE_MODE;_origSeasonPeriod=SEASON_PERIOD;document.getElementById("saveBar").className="save-bar";autoSave()}
-function discardChanges(){TC=JSON.parse(_origTC);SICK_50=_origS50;SICK_0=_origS0;PARAMS=JSON.parse(_origP);USA_P=JSON.parse(_origUSA);CFG_MONTH=_origMonth;CFG_YEAR=_origYear;CFG_PDF_PATH=_origPdfPath;CFG_SEASON=_origSeason;STORE_FLAGS=JSON.parse(_origSF);SEAS_CFG=JSON.parse(_origSeasCfg);PRIZE_MODE=_origPrizeMode;SEASON_PERIOD=_origSeasonPeriod;document.getElementById("saveBar").className="save-bar";setPrizeMode(PRIZE_MODE);setSeasonPeriod(SEASON_PERIOD);rT();rC()}
+  _origTC=JSON.stringify(TC);_origS50=SICK_50;_origS0=SICK_0;_origP=JSON.stringify(PARAMS);_origUSA=JSON.stringify(USA_P);_origMonth=CFG_MONTH;_origYear=CFG_YEAR;_origPdfPath=CFG_PDF_PATH;_origSeason=CFG_SEASON;_origSF=JSON.stringify(STORE_FLAGS);_origSeasCfg=JSON.stringify(SEAS_CFG);_origPrizeMode=PRIZE_MODE;_origSeasonPeriod=SEASON_PERIOD;_origSasMatrix=JSON.stringify(SAS_MATRIX);document.getElementById("saveBar").className="save-bar";autoSave()}
+function discardChanges(){TC=JSON.parse(_origTC);SICK_50=_origS50;SICK_0=_origS0;PARAMS=JSON.parse(_origP);USA_P=JSON.parse(_origUSA);CFG_MONTH=_origMonth;CFG_YEAR=_origYear;CFG_PDF_PATH=_origPdfPath;CFG_SEASON=_origSeason;STORE_FLAGS=JSON.parse(_origSF);SEAS_CFG=JSON.parse(_origSeasCfg);SAS_MATRIX=JSON.parse(_origSasMatrix);PRIZE_MODE=_origPrizeMode;SEASON_PERIOD=_origSeasonPeriod;document.getElementById("saveBar").className="save-bar";setPrizeMode(PRIZE_MODE);setSeasonPeriod(SEASON_PERIOD);rT();rC()}
 function loadConfig(evt){var f=evt.target.files[0];if(!f)return;var reader=new FileReader();
   reader.onload=function(ev){try{
     var txt=ev.target.result;
@@ -939,6 +1009,13 @@ var VL=D.vl||{};// loaded from JSON, editable
 var KM={"rb":"BDG","rd":"Digital","rs":"SY","rp":"Privilege","rsa":"SAS","rdc":"DCC","rcs":"CS","ra":"Articoli","vi":"Visual","pq":"QTY Dept"};
 function isOn(j,k){
   var kn=KM[k];if(!kn)return true;
+  // Regole SAS da luglio 2026 (mensile + FC+VM): il vecchio premio SAS
+  // individuale è ritirato per tutti; agli SCS si accende SY per compensare.
+  // Override basato su data → robusto rispetto a TC salvato in sessione.
+  if(sasNewActive()){
+    if(kn==="SAS")return false;
+    if(kn==="SY"&&j&&j.indexOf("SCS")>=0&&j.indexOf("NO SY")<0)return true;
+  }
   // Direct lookup
   if(TC[j])return TC[j][kn]!==false;
   // Legacy fallback: "SM VSM" -> try "SM" then "VSM"
@@ -949,6 +1026,21 @@ function isOn(j,k){
   return true;
 }
 function sickMult(ml){ml=ml||0;if(MODE==="preventivo")return 1;if(ml>=SICK_0)return 0;if(ml>=SICK_50)return 0.5;return 1}
+// === SAS → fatturato (mensile) ============================================
+// Info SAS riconosciuto/riserva per un negozio. In LC (come fatturato e target).
+// Quando sasNewActive è false (o negozio USA) ritorna il numeratore classico.
+function storeSasInfo(sid){
+  var tg=D.t[sid]||{},cn=D.c[sid]||{};
+  var to=tg.to||0,base=(cn.sc||0)+(cn.es||0);
+  if(!sasNewActive()||USA_STORES.indexOf(Number(sid))>=0){
+    return {active:false,base:base,to:to,recognized:0,reserveIn:0,avail:0,used:0,reserveOut:0,gap:Math.max(0,to-base),num:base,pct:to>0?base/to:0,pctMatrix:null,acc:cn.sa,vel:cn.vel,sasv:cn.sasv||0};
+  }
+  var recognized=sasRecognizedValue(cn.sa,cn.vel,cn.sasv||0);
+  var r=sasReserveCalc(base,to,recognized,cn.sasr||0);
+  return {active:true,base:base,to:to,recognized:recognized,reserveIn:cn.sasr||0,avail:r.avail,used:r.used,reserveOut:r.reserveOut,gap:r.gap,num:r.num,pct:to>0?r.num/to:0,pctMatrix:sasMatrixPct(cn.sa,cn.vel),acc:cn.sa,vel:cn.vel,sasv:cn.sasv||0};
+}
+// % verso target, SAS incluso (cap 100%). Unico punto di verità per il BDG mensile.
+function storePctOf(sid){return storeSasInfo(sid).pct;}
 
 // RECALC ENGINE
 function getVal(e,kpiKey){
@@ -959,7 +1051,7 @@ function getVal(e,kpiKey){
     case "rs":return Math.round(_rl*PARAMS.syPct*100)/100;case "rp":return Math.round(_rl*PARAMS.privPct*100)/100;
     case "rsa":return PARAMS.sasMax;case "rdc":return PARAMS.dccMax;case "rcs":return 0;case "ra":return 0;case "vi":{var _vle=VL[e.m];if(!_vle)return 0;if(Array.isArray(_vle)){var _vs=0;_vle.forEach(function(x){_vs+=x.amt||0;});return _vs;}return Number(_vle)||0;}
     case "pq":return dp?Math.round(e.ib*PARAMS.qtyPct*100)/100:0;default:return 0}}
-  if(!tg.to&&!cn.sc)return 0;var storePct=tg.to>0?(cn.sc+(cn.es||0))/tg.to:0;
+  if(!tg.to&&!cn.sc)return 0;var storePct=storePctOf(sid);
   switch(kpiKey){
     case "rb":if(e.ov_b100==="SI")return e.ib;if(e.ov_rid==="SI")return Math.round(e.ib*PARAMS.bdg60mult*100)/100;if(storePct>=PARAMS.bdg100)return e.ib;if(storePct>=PARAMS.bdg60){if(dp){if((tg.qt||0)>0&&(cn.qc||0)>=(tg.qt||0))return Math.round(e.ib*PARAMS.bdg60mult*100)/100}else{var syLyR=MONTHLY_SYLY[sid]||0;var syUp=(cn.sy||0)>syLyR&&syLyR>0;if(syUp)return Math.round(e.ib*PARAMS.bdg60mult*100)/100}}return 0;
     case "rd":if(storePct>=PARAMS.bdg100&&(cn.pd||0)>=getDigMin(e.si))return Math.round(e.ib*PARAMS.digPct*100)/100;return 0;
@@ -968,7 +1060,7 @@ function getVal(e,kpiKey){
     case "rsa":if(sasZeroByAcc(e))return 0;return Math.min((cn.s4||0)*PARAMS.sasRate,PARAMS.sasMax);
     case "rdc":return Math.round(Math.min((cn.dv||0)*PARAMS.dccRate,PARAMS.dccMax)*100)/100;
     case "rcs":return e.rcs||0;case "ra":if(!PARAMS.artEnabled||isUSA(e.si,e))return 0;if((e.ra||0)>0)return e.ra;var ac=cn.ac||0;return ac>0?Math.round(e.ib*PARAMS.artPct*ac*100)/100:0;
-    case "vi":{var _vle2=VL[e.m];if(!_vle2)return 0;if(!Array.isArray(_vle2)){var _vla=Number(_vle2)||0;return(_vla>0&&storePct>=PARAMS.bdg100)?_vla:0;}var _vtot=0;var _nEmpty=_vle2.filter(function(x){return !String(x.sid||'').trim();}).length;_vle2.forEach(function(entry){var _esid=String(entry.sid||'').trim();if(_esid){var _pi=parseInt(_esid);if(!isNaN(_pi))_esid=String(_pi);}var _spct;if(!_esid){_spct=(_nEmpty===1)?storePct:0;}else{var _etg=D.t[_esid]||{};var _ecn=D.c[_esid]||{};_spct=_etg.to>0?((_ecn.sc||0)+(_ecn.es||0))/_etg.to:0;}if(_spct>=PARAMS.bdg100)_vtot+=entry.amt||0;});return _vtot;}
+    case "vi":{var _vle2=VL[e.m];if(!_vle2)return 0;if(!Array.isArray(_vle2)){var _vla=Number(_vle2)||0;return(_vla>0&&storePct>=PARAMS.bdg100)?_vla:0;}var _vtot=0;var _nEmpty=_vle2.filter(function(x){return !String(x.sid||'').trim();}).length;_vle2.forEach(function(entry){var _esid=String(entry.sid||'').trim();if(_esid){var _pi=parseInt(_esid);if(!isNaN(_pi))_esid=String(_pi);}var _spct;if(!_esid){_spct=(_nEmpty===1)?storePct:0;}else{_spct=storePctOf(_esid);}if(_spct>=PARAMS.bdg100)_vtot+=entry.amt||0;});return _vtot;}
     case "pq":if((tg.qt||0)>0&&(cn.qc||0)>=(tg.qt||0)*PARAMS.kpi100)return Math.round(e.ib*PARAMS.qtyPct*100)/100;return 0;
     default:return 0}
 }
@@ -977,7 +1069,7 @@ function isRidotto(e){
   if(isUSA(e.si,e)||MODE!=="consuntivo")return false;
   var sid=String(e.si),tg=D.t[sid]||{},cn=D.c[sid]||{},dp=isD(e.si);
   if(!tg.to)return false;
-  var storePct=tg.to>0?(cn.sc+(cn.es||0))/tg.to:0;
+  var storePct=storePctOf(sid);
   if(storePct>=PARAMS.bdg100||storePct<PARAMS.bdg60)return false;
   if(dp)return (tg.qt||0)>0&&(cn.qc||0)>=(tg.qt||0);
   var syLy=MONTHLY_SYLY[sid]||0;
@@ -3841,9 +3933,29 @@ function rT(){try{
   h+=pRow("syPct","% RLM","",PARAMS.syPct*100,"%",0.01);
   h+='<div style="font-size:11px;font-weight:700;color:#5bb98c;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">Privilege</div>';
   h+=pRow("privPct","% RLM","",PARAMS.privPct*100,"%",0.01);
-  h+='<div style="font-size:11px;font-weight:700;color:#d4a94e;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">SAS</div>';
+  h+='<div style="font-size:11px;font-weight:700;color:#d4a94e;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">SAS \u2014 Valore riconosciuto (da Luglio 2026)</div>';
+  h+='<div style="font-size:10px;color:#8a8680;margin-bottom:8px">% del valore SAS del negozio riconosciuta nel fatturato verso il target BDG (riga = accettazione, colonna = velocit\u00e0). Fino al 100% del target; l\'avanzo diventa riserva SAS riportata al mese dopo.</div>';
+  h+='<div class="cfg-row"><span class="cfg-label">Etichetta velocit\u00e0</span><input class="cfg-input" id="sasVelLabel" type="text" value="'+esc(SAS_MATRIX.velLabel)+'" style="width:170px"></div>';
+  var _ab=SAS_MATRIX.accBands,_vb=SAS_MATRIX.velBands;
+  var _velH=['<'+Math.round(_vb[0]*100)+'%',Math.round(_vb[0]*100)+'-'+Math.round(_vb[1]*100)+'%',Math.round(_vb[1]*100)+'-'+Math.round(_vb[2]*100)+'%','\u2265'+Math.round(_vb[2]*100)+'%'];
+  var _accH=['\u2265'+Math.round(_ab[0]*100)+'%',Math.round(_ab[1]*100)+'-'+Math.round(_ab[0]*100)+'%',Math.round(_ab[2]*100)+'-'+Math.round(_ab[1]*100)+'%','<'+Math.round(_ab[2]*100)+'%'];
+  h+='<table style="border-collapse:collapse;margin:4px 0 8px"><thead><tr><th style="font-size:9px;color:#8a8680;padding:3px 6px;text-align:right">% Acc \\ Vel</th>';
+  for(var _c=0;_c<4;_c++)h+='<th style="font-size:9px;color:#8a8680;padding:3px 6px;text-align:center">'+_velH[_c]+'</th>';
+  h+='</tr></thead><tbody>';
+  for(var _r=0;_r<4;_r++){
+    h+='<tr><td style="font-size:9px;color:#6b6560;font-weight:600;padding:3px 6px;text-align:right">'+_accH[_r]+'</td>';
+    for(var _c2=0;_c2<4;_c2++)h+='<td style="padding:2px"><input class="cfg-input sas-cell" type="number" data-sasr="'+_r+'" data-sasc="'+_c2+'" value="'+Math.round(SAS_MATRIX.grid[_r][_c2]*100)+'" step="1" min="0" max="100" style="width:52px;text-align:center"></td>';
+    h+='</tr>';
+  }
+  h+='</tbody></table>';
+  h+='<div style="font-size:10px;color:#8a8680;margin:2px 0">Soglie fasce <b>accettazione</b> (%, alta\u2192bassa)</div><div style="display:flex;gap:6px;margin-bottom:6px">';
+  for(var _i=0;_i<3;_i++)h+='<input class="cfg-input sas-accband" type="number" data-i="'+_i+'" value="'+Math.round(_ab[_i]*100)+'" step="1" min="0" max="100" style="width:56px;text-align:center">';
+  h+='</div>';
+  h+='<div style="font-size:10px;color:#8a8680;margin:2px 0">Soglie fasce <b>velocit\u00e0</b> (%, bassa\u2192alta)</div><div style="display:flex;gap:6px;margin-bottom:8px">';
+  for(var _i2=0;_i2<3;_i2++)h+='<input class="cfg-input sas-velband" type="number" data-i="'+_i2+'" value="'+Math.round(_vb[_i2]*100)+'" step="1" min="0" max="100" style="width:56px;text-align:center">';
+  h+='</div>';
+  h+='<div style="font-size:10px;color:#a09a92;margin:6px 0 2px">Vecchio premio SAS individuale (fino a Giugno 2026)</div>';
   h+=pRow("sasRate","\u20ac/SAS","",PARAMS.sasRate,"\u20ac",0.5)+pRow("sasMax","Max","",PARAMS.sasMax,"\u20ac",10);
-  h+=pRow("sasMinAccPct","% min SAS accettati","Soglia minima % SAS accettati per erogare il premio (solo mensile, da Giugno 2026). Sotto soglia: premio SAS azzerato.",PARAMS.sasMinAccPct*100,"%",1);
   h+='<div style="font-size:11px;font-weight:700;color:#cf5b5b;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">DCC</div>';
   h+=pRow("dccRate","Aliquota","",PARAMS.dccRate*100,"%",0.01)+pRow("dccMax","Max","",PARAMS.dccMax,"\u20ac",10);
   h+='<div style="font-size:11px;font-weight:700;color:#cf8b4e;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;justify-content:space-between">Articoli Incentivati<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:10px;font-weight:400;color:#6b6560;text-transform:none;letter-spacing:0"><input type="checkbox" id="artEnabled"'+(PARAMS.artEnabled?' checked':'')+' style="accent-color:#cf8b4e;width:14px;height:14px;cursor:pointer"> Attivo</label></div>';
@@ -3912,8 +4024,19 @@ function rT(){try{
 
   document.querySelectorAll("input[data-pk]").forEach(function(inp){inp.onchange=function(){
     var pk=inp.getAttribute("data-pk"),v=parseFloat(inp.value);if(isNaN(v))return;
-    if(["bdg100","kpi100","bdg60","bdg60mult","digMinClassic","digMinMobility","digPct","syPct","privPct","dccRate","qtyPct","workgamePct","sasMinAccPct"].indexOf(pk)>=0)v=v/100;
+    if(["bdg100","kpi100","bdg60","bdg60mult","digMinClassic","digMinMobility","digPct","syPct","privPct","dccRate","qtyPct","workgamePct"].indexOf(pk)>=0)v=v/100;
     PARAMS[pk]=v;markDirty();rC();rA()}});
+  // SAS matrix bindings (celle + soglie fasce + etichetta velocità)
+  var _svl=document.getElementById("sasVelLabel");if(_svl)_svl.onchange=function(){SAS_MATRIX.velLabel=this.value;markDirty();};
+  document.querySelectorAll(".sas-cell").forEach(function(inp){inp.onchange=function(){
+    var r=parseInt(inp.getAttribute("data-sasr")),c=parseInt(inp.getAttribute("data-sasc")),v=parseFloat(inp.value);
+    if(isNaN(v))return;SAS_MATRIX.grid[r][c]=Math.max(0,Math.min(1,v/100));markDirty();rC();rA();}});
+  document.querySelectorAll(".sas-accband").forEach(function(inp){inp.onchange=function(){
+    var i=parseInt(inp.getAttribute("data-i")),v=parseFloat(inp.value);
+    if(isNaN(v))return;SAS_MATRIX.accBands[i]=v/100;markDirty();rC();rA();}});
+  document.querySelectorAll(".sas-velband").forEach(function(inp){inp.onchange=function(){
+    var i=parseInt(inp.getAttribute("data-i")),v=parseFloat(inp.value);
+    if(isNaN(v))return;SAS_MATRIX.velBands[i]=v/100;markDirty();rC();rA();}});
   var artEnabledCb=document.getElementById("artEnabled");if(artEnabledCb)artEnabledCb.onchange=function(){PARAMS.artEnabled=this.checked;var wrap=document.getElementById("artEnabledWrap");if(wrap)wrap.style.display=this.checked?"":"none";markDirty();rC();rA()};
   document.querySelectorAll(".tb").forEach(function(b){
     if(b.getAttribute("data-r")){b.onclick=function(){var r=b.getAttribute("data-r"),k=b.getAttribute("data-k");if(!TC[r]){TC[r]={};KP.forEach(function(kk){TC[r][kk]=false})}TC[r][k]=!TC[r][k];markDirty();rC();rA();rT()}}
@@ -6046,7 +6169,14 @@ function loadResultsExcel(file){
       else if(type==="sas_results"){
         var cSid=fH("store id","store_id");var cS4=fH("processed within 4","within 4h");
         var cSa=fH("% accepted","% accettati","accepted %","accepted","% accettazione","accettati %","sas accepted","% acceptance");
-        var withAcc=0;
+        // NUOVA logica SAS (da luglio 2026): velocità, valore SAS (LC/EUR), riserva riportata
+        var cVel=fH("% gestiti entro","% sas gestiti","gestiti entro","velocit","velocity","% handled");
+        var cValE=fH("valore sas eur","sas value eur","valore sas euro");
+        var cValL=fH("valore sas lc","sas value lc");
+        var cValP=fH("valore sas","sas value"); // senza suffisso → assunto LC
+        var cValLc=cValL>=0?cValL:((cValP>=0&&cValP!==cValE)?cValP:-1);
+        var cRes=fH("riserva sas","sas reserve","riserva carry","riserva");
+        var withAcc=0,withVel=0,withVal=0;
         for(var ri=dataStart;ri<json.length;ri++){
           var row=json[ri];if(!row)continue;var sid=row[cSid];if(!sid)continue;
           sid=String(parseInt(sid));if(sid==="NaN")continue;
@@ -6061,9 +6191,16 @@ function loadResultsExcel(file){
               D.c[sid].sa=av;withAcc++;
             }
           }
+          if(cVel>=0){
+            var vv=parseNum(row[cVel]);
+            if(!isNaN(vv)){if(vv>1)vv=vv/100;if(vv<0)vv=0;if(vv>1)vv=1;D.c[sid].vel=vv;withVel++;}
+          }
+          if(cValLc>=0){var sv=parseNum(row[cValLc]);if(!isNaN(sv)){D.c[sid].sasv=sv;withVal++;}}
+          if(cValE>=0){var sve=parseNum(row[cValE]);if(!isNaN(sve))D.c[sid].sasv_eur=sve;}
+          if(cRes>=0){var rv=parseNum(row[cRes]);if(!isNaN(rv))D.c[sid].sasr=rv;}
           imported++;
         }
-        report="SAS caricati: "+imported+" negozi"+(cSa>=0?(" (% accettati: "+withAcc+")"):" (colonna % accettati non rilevata)")+".";
+        report="SAS caricati: "+imported+" negozi"+(cSa>=0?(" · acc:"+withAcc):"")+(cVel>=0?(" · vel:"+withVel):"")+((cValLc>=0||cValE>=0)?(" · valore:"+withVal):"")+".";
       }
 
       else if(type==="malattie"){

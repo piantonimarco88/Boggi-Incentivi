@@ -302,9 +302,29 @@ function rT(){try{
   h+=pRow("syPct","% RLM","",PARAMS.syPct*100,"%",0.01);
   h+='<div style="font-size:11px;font-weight:700;color:#5bb98c;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">Privilege</div>';
   h+=pRow("privPct","% RLM","",PARAMS.privPct*100,"%",0.01);
-  h+='<div style="font-size:11px;font-weight:700;color:#d4a94e;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">SAS</div>';
+  h+='<div style="font-size:11px;font-weight:700;color:#d4a94e;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">SAS \u2014 Valore riconosciuto (da Luglio 2026)</div>';
+  h+='<div style="font-size:10px;color:#8a8680;margin-bottom:8px">% del valore SAS del negozio riconosciuta nel fatturato verso il target BDG (riga = accettazione, colonna = velocit\u00e0). Fino al 100% del target; l\'avanzo diventa riserva SAS riportata al mese dopo.</div>';
+  h+='<div class="cfg-row"><span class="cfg-label">Etichetta velocit\u00e0</span><input class="cfg-input" id="sasVelLabel" type="text" value="'+esc(SAS_MATRIX.velLabel)+'" style="width:170px"></div>';
+  var _ab=SAS_MATRIX.accBands,_vb=SAS_MATRIX.velBands;
+  var _velH=['<'+Math.round(_vb[0]*100)+'%',Math.round(_vb[0]*100)+'-'+Math.round(_vb[1]*100)+'%',Math.round(_vb[1]*100)+'-'+Math.round(_vb[2]*100)+'%','\u2265'+Math.round(_vb[2]*100)+'%'];
+  var _accH=['\u2265'+Math.round(_ab[0]*100)+'%',Math.round(_ab[1]*100)+'-'+Math.round(_ab[0]*100)+'%',Math.round(_ab[2]*100)+'-'+Math.round(_ab[1]*100)+'%','<'+Math.round(_ab[2]*100)+'%'];
+  h+='<table style="border-collapse:collapse;margin:4px 0 8px"><thead><tr><th style="font-size:9px;color:#8a8680;padding:3px 6px;text-align:right">% Acc \\ Vel</th>';
+  for(var _c=0;_c<4;_c++)h+='<th style="font-size:9px;color:#8a8680;padding:3px 6px;text-align:center">'+_velH[_c]+'</th>';
+  h+='</tr></thead><tbody>';
+  for(var _r=0;_r<4;_r++){
+    h+='<tr><td style="font-size:9px;color:#6b6560;font-weight:600;padding:3px 6px;text-align:right">'+_accH[_r]+'</td>';
+    for(var _c2=0;_c2<4;_c2++)h+='<td style="padding:2px"><input class="cfg-input sas-cell" type="number" data-sasr="'+_r+'" data-sasc="'+_c2+'" value="'+Math.round(SAS_MATRIX.grid[_r][_c2]*100)+'" step="1" min="0" max="100" style="width:52px;text-align:center"></td>';
+    h+='</tr>';
+  }
+  h+='</tbody></table>';
+  h+='<div style="font-size:10px;color:#8a8680;margin:2px 0">Soglie fasce <b>accettazione</b> (%, alta\u2192bassa)</div><div style="display:flex;gap:6px;margin-bottom:6px">';
+  for(var _i=0;_i<3;_i++)h+='<input class="cfg-input sas-accband" type="number" data-i="'+_i+'" value="'+Math.round(_ab[_i]*100)+'" step="1" min="0" max="100" style="width:56px;text-align:center">';
+  h+='</div>';
+  h+='<div style="font-size:10px;color:#8a8680;margin:2px 0">Soglie fasce <b>velocit\u00e0</b> (%, bassa\u2192alta)</div><div style="display:flex;gap:6px;margin-bottom:8px">';
+  for(var _i2=0;_i2<3;_i2++)h+='<input class="cfg-input sas-velband" type="number" data-i="'+_i2+'" value="'+Math.round(_vb[_i2]*100)+'" step="1" min="0" max="100" style="width:56px;text-align:center">';
+  h+='</div>';
+  h+='<div style="font-size:10px;color:#a09a92;margin:6px 0 2px">Vecchio premio SAS individuale (fino a Giugno 2026)</div>';
   h+=pRow("sasRate","\u20ac/SAS","",PARAMS.sasRate,"\u20ac",0.5)+pRow("sasMax","Max","",PARAMS.sasMax,"\u20ac",10);
-  h+=pRow("sasMinAccPct","% min SAS accettati","Soglia minima % SAS accettati per erogare il premio (solo mensile, da Giugno 2026). Sotto soglia: premio SAS azzerato.",PARAMS.sasMinAccPct*100,"%",1);
   h+='<div style="font-size:11px;font-weight:700;color:#cf5b5b;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">DCC</div>';
   h+=pRow("dccRate","Aliquota","",PARAMS.dccRate*100,"%",0.01)+pRow("dccMax","Max","",PARAMS.dccMax,"\u20ac",10);
   h+='<div style="font-size:11px;font-weight:700;color:#cf8b4e;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;justify-content:space-between">Articoli Incentivati<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:10px;font-weight:400;color:#6b6560;text-transform:none;letter-spacing:0"><input type="checkbox" id="artEnabled"'+(PARAMS.artEnabled?' checked':'')+' style="accent-color:#cf8b4e;width:14px;height:14px;cursor:pointer"> Attivo</label></div>';
@@ -373,8 +393,19 @@ function rT(){try{
 
   document.querySelectorAll("input[data-pk]").forEach(function(inp){inp.onchange=function(){
     var pk=inp.getAttribute("data-pk"),v=parseFloat(inp.value);if(isNaN(v))return;
-    if(["bdg100","kpi100","bdg60","bdg60mult","digMinClassic","digMinMobility","digPct","syPct","privPct","dccRate","qtyPct","workgamePct","sasMinAccPct"].indexOf(pk)>=0)v=v/100;
+    if(["bdg100","kpi100","bdg60","bdg60mult","digMinClassic","digMinMobility","digPct","syPct","privPct","dccRate","qtyPct","workgamePct"].indexOf(pk)>=0)v=v/100;
     PARAMS[pk]=v;markDirty();rC();rA()}});
+  // SAS matrix bindings (celle + soglie fasce + etichetta velocità)
+  var _svl=document.getElementById("sasVelLabel");if(_svl)_svl.onchange=function(){SAS_MATRIX.velLabel=this.value;markDirty();};
+  document.querySelectorAll(".sas-cell").forEach(function(inp){inp.onchange=function(){
+    var r=parseInt(inp.getAttribute("data-sasr")),c=parseInt(inp.getAttribute("data-sasc")),v=parseFloat(inp.value);
+    if(isNaN(v))return;SAS_MATRIX.grid[r][c]=Math.max(0,Math.min(1,v/100));markDirty();rC();rA();}});
+  document.querySelectorAll(".sas-accband").forEach(function(inp){inp.onchange=function(){
+    var i=parseInt(inp.getAttribute("data-i")),v=parseFloat(inp.value);
+    if(isNaN(v))return;SAS_MATRIX.accBands[i]=v/100;markDirty();rC();rA();}});
+  document.querySelectorAll(".sas-velband").forEach(function(inp){inp.onchange=function(){
+    var i=parseInt(inp.getAttribute("data-i")),v=parseFloat(inp.value);
+    if(isNaN(v))return;SAS_MATRIX.velBands[i]=v/100;markDirty();rC();rA();}});
   var artEnabledCb=document.getElementById("artEnabled");if(artEnabledCb)artEnabledCb.onchange=function(){PARAMS.artEnabled=this.checked;var wrap=document.getElementById("artEnabledWrap");if(wrap)wrap.style.display=this.checked?"":"none";markDirty();rC();rA()};
   document.querySelectorAll(".tb").forEach(function(b){
     if(b.getAttribute("data-r")){b.onclick=function(){var r=b.getAttribute("data-r"),k=b.getAttribute("data-k");if(!TC[r]){TC[r]={};KP.forEach(function(kk){TC[r][kk]=false})}TC[r][k]=!TC[r][k];markDirty();rC();rA();rT()}}

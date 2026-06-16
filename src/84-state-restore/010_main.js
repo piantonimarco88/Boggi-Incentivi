@@ -15,6 +15,12 @@ if(window._autoState){try{
     if(as.seas_cfg.molt_turnover){SEAS_CFG.molt_turnover=as.seas_cfg.molt_turnover.map(function(r){return{from:r.from===null?-Infinity:r.from,to:r.to===null?Infinity:r.to,coeff:r.coeff,label:r.label||""};})}
     if(as.seas_cfg.molt_inventario){SEAS_CFG.molt_inventario=as.seas_cfg.molt_inventario.map(function(r){return{from:r.from===null?-Infinity:r.from,to:r.to===null?Infinity:r.to,coeff:r.coeff,label:r.label||""};})}
   }
+  if(as.sas_matrix){
+    if(as.sas_matrix.grid)SAS_MATRIX.grid=as.sas_matrix.grid;
+    if(as.sas_matrix.accBands)SAS_MATRIX.accBands=as.sas_matrix.accBands;
+    if(as.sas_matrix.velBands)SAS_MATRIX.velBands=as.sas_matrix.velBands;
+    if(as.sas_matrix.velLabel!==undefined)SAS_MATRIX.velLabel=as.sas_matrix.velLabel;
+  }
   if(as.cfg_month)CFG_MONTH=as.cfg_month;
   if(as.cfg_year)CFG_YEAR=as.cfg_year;
   if(as.cfg_pdf_path!==undefined)CFG_PDF_PATH=as.cfg_pdf_path;
@@ -58,7 +64,7 @@ function autoSave(){
       v:AUTO_VERSION,
       D:{e:E,t:D.t,c:D.c,cs:D.cs,s:D.s,v:D.v,tr:D.tr,usa:D.usa,us:D.us,d:D.d,vl:D.vl},
       tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,
-      seas:SEAS,seas_cfg:SEAS_CFG,seas_targets:SEAS_TARGETS,
+      seas:SEAS,seas_cfg:SEAS_CFG,seas_targets:SEAS_TARGETS,sas_matrix:SAS_MATRIX,
       agg:AGG,vl:VL,usa_p:USA_P,store_flags:STORE_FLAGS,
       cfg_month:CFG_MONTH,cfg_year:CFG_YEAR,cfg_pdf_path:CFG_PDF_PATH,cfg_season:CFG_SEASON,
       monthly_syly:MONTHLY_SYLY,

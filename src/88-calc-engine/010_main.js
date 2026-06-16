@@ -48,6 +48,13 @@ var VL=D.vl||{};// loaded from JSON, editable
 var KM={"rb":"BDG","rd":"Digital","rs":"SY","rp":"Privilege","rsa":"SAS","rdc":"DCC","rcs":"CS","ra":"Articoli","vi":"Visual","pq":"QTY Dept"};
 function isOn(j,k){
   var kn=KM[k];if(!kn)return true;
+  // Regole SAS da luglio 2026 (mensile + FC+VM): il vecchio premio SAS
+  // individuale è ritirato per tutti; agli SCS si accende SY per compensare.
+  // Override basato su data → robusto rispetto a TC salvato in sessione.
+  if(sasNewActive()){
+    if(kn==="SAS")return false;
+    if(kn==="SY"&&j&&j.indexOf("SCS")>=0&&j.indexOf("NO SY")<0)return true;
+  }
   // Direct lookup
   if(TC[j])return TC[j][kn]!==false;
   // Legacy fallback: "SM VSM" -> try "SM" then "VSM"
@@ -58,6 +65,21 @@ function isOn(j,k){
   return true;
 }
 function sickMult(ml){ml=ml||0;if(MODE==="preventivo")return 1;if(ml>=SICK_0)return 0;if(ml>=SICK_50)return 0.5;return 1}
+// === SAS → fatturato (mensile) ============================================
+// Info SAS riconosciuto/riserva per un negozio. In LC (come fatturato e target).
+// Quando sasNewActive è false (o negozio USA) ritorna il numeratore classico.
+function storeSasInfo(sid){
+  var tg=D.t[sid]||{},cn=D.c[sid]||{};
+  var to=tg.to||0,base=(cn.sc||0)+(cn.es||0);
+  if(!sasNewActive()||USA_STORES.indexOf(Number(sid))>=0){
+    return {active:false,base:base,to:to,recognized:0,reserveIn:0,avail:0,used:0,reserveOut:0,gap:Math.max(0,to-base),num:base,pct:to>0?base/to:0,pctMatrix:null,acc:cn.sa,vel:cn.vel,sasv:cn.sasv||0};
+  }
+  var recognized=sasRecognizedValue(cn.sa,cn.vel,cn.sasv||0);
+  var r=sasReserveCalc(base,to,recognized,cn.sasr||0);
+  return {active:true,base:base,to:to,recognized:recognized,reserveIn:cn.sasr||0,avail:r.avail,used:r.used,reserveOut:r.reserveOut,gap:r.gap,num:r.num,pct:to>0?r.num/to:0,pctMatrix:sasMatrixPct(cn.sa,cn.vel),acc:cn.sa,vel:cn.vel,sasv:cn.sasv||0};
+}
+// % verso target, SAS incluso (cap 100%). Unico punto di verità per il BDG mensile.
+function storePctOf(sid){return storeSasInfo(sid).pct;}
 
 // RECALC ENGINE
 function getVal(e,kpiKey){
@@ -68,7 +90,7 @@ function getVal(e,kpiKey){
     case "rs":return Math.round(_rl*PARAMS.syPct*100)/100;case "rp":return Math.round(_rl*PARAMS.privPct*100)/100;
     case "rsa":return PARAMS.sasMax;case "rdc":return PARAMS.dccMax;case "rcs":return 0;case "ra":return 0;case "vi":{var _vle=VL[e.m];if(!_vle)return 0;if(Array.isArray(_vle)){var _vs=0;_vle.forEach(function(x){_vs+=x.amt||0;});return _vs;}return Number(_vle)||0;}
     case "pq":return dp?Math.round(e.ib*PARAMS.qtyPct*100)/100:0;default:return 0}}
-  if(!tg.to&&!cn.sc)return 0;var storePct=tg.to>0?(cn.sc+(cn.es||0))/tg.to:0;
+  if(!tg.to&&!cn.sc)return 0;var storePct=storePctOf(sid);
   switch(kpiKey){
     case "rb":if(e.ov_b100==="SI")return e.ib;if(e.ov_rid==="SI")return Math.round(e.ib*PARAMS.bdg60mult*100)/100;if(storePct>=PARAMS.bdg100)return e.ib;if(storePct>=PARAMS.bdg60){if(dp){if((tg.qt||0)>0&&(cn.qc||0)>=(tg.qt||0))return Math.round(e.ib*PARAMS.bdg60mult*100)/100}else{var syLyR=MONTHLY_SYLY[sid]||0;var syUp=(cn.sy||0)>syLyR&&syLyR>0;if(syUp)return Math.round(e.ib*PARAMS.bdg60mult*100)/100}}return 0;
     case "rd":if(storePct>=PARAMS.bdg100&&(cn.pd||0)>=getDigMin(e.si))return Math.round(e.ib*PARAMS.digPct*100)/100;return 0;
@@ -77,7 +99,7 @@ function getVal(e,kpiKey){
     case "rsa":if(sasZeroByAcc(e))return 0;return Math.min((cn.s4||0)*PARAMS.sasRate,PARAMS.sasMax);
     case "rdc":return Math.round(Math.min((cn.dv||0)*PARAMS.dccRate,PARAMS.dccMax)*100)/100;
     case "rcs":return e.rcs||0;case "ra":if(!PARAMS.artEnabled||isUSA(e.si,e))return 0;if((e.ra||0)>0)return e.ra;var ac=cn.ac||0;return ac>0?Math.round(e.ib*PARAMS.artPct*ac*100)/100:0;
-    case "vi":{var _vle2=VL[e.m];if(!_vle2)return 0;if(!Array.isArray(_vle2)){var _vla=Number(_vle2)||0;return(_vla>0&&storePct>=PARAMS.bdg100)?_vla:0;}var _vtot=0;var _nEmpty=_vle2.filter(function(x){return !String(x.sid||'').trim();}).length;_vle2.forEach(function(entry){var _esid=String(entry.sid||'').trim();if(_esid){var _pi=parseInt(_esid);if(!isNaN(_pi))_esid=String(_pi);}var _spct;if(!_esid){_spct=(_nEmpty===1)?storePct:0;}else{var _etg=D.t[_esid]||{};var _ecn=D.c[_esid]||{};_spct=_etg.to>0?((_ecn.sc||0)+(_ecn.es||0))/_etg.to:0;}if(_spct>=PARAMS.bdg100)_vtot+=entry.amt||0;});return _vtot;}
+    case "vi":{var _vle2=VL[e.m];if(!_vle2)return 0;if(!Array.isArray(_vle2)){var _vla=Number(_vle2)||0;return(_vla>0&&storePct>=PARAMS.bdg100)?_vla:0;}var _vtot=0;var _nEmpty=_vle2.filter(function(x){return !String(x.sid||'').trim();}).length;_vle2.forEach(function(entry){var _esid=String(entry.sid||'').trim();if(_esid){var _pi=parseInt(_esid);if(!isNaN(_pi))_esid=String(_pi);}var _spct;if(!_esid){_spct=(_nEmpty===1)?storePct:0;}else{_spct=storePctOf(_esid);}if(_spct>=PARAMS.bdg100)_vtot+=entry.amt||0;});return _vtot;}
     case "pq":if((tg.qt||0)>0&&(cn.qc||0)>=(tg.qt||0)*PARAMS.kpi100)return Math.round(e.ib*PARAMS.qtyPct*100)/100;return 0;
     default:return 0}
 }
@@ -86,7 +108,7 @@ function isRidotto(e){
   if(isUSA(e.si,e)||MODE!=="consuntivo")return false;
   var sid=String(e.si),tg=D.t[sid]||{},cn=D.c[sid]||{},dp=isD(e.si);
   if(!tg.to)return false;
-  var storePct=tg.to>0?(cn.sc+(cn.es||0))/tg.to:0;
+  var storePct=storePctOf(sid);
   if(storePct>=PARAMS.bdg100||storePct<PARAMS.bdg60)return false;
   if(dp)return (tg.qt||0)>0&&(cn.qc||0)>=(tg.qt||0);
   var syLy=MONTHLY_SYLY[sid]||0;
