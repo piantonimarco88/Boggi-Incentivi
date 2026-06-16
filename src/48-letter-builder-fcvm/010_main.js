@@ -38,6 +38,24 @@ function buildFcVmLetter(emp){
   h+='<div style="margin-bottom:3px">\u2022 '+esc(T.r1)+'</div>';
   h+='<div>\u2022 '+esc(T.r2)+'</div></div>';
 
+  // \u2500\u2500 SAS \u2192 fatturato (da Luglio 2026): matrice logica + riepilogo area \u2500\u2500\u2500\u2500\u2500\u2500
+  if(typeof sasNewActive==='function'&&sasNewActive()){
+    h+=sasLetterBlock(lang,null,true,'EUR'); // solo matrice (logica), senza puntuale
+    if(!isP){
+      var _LTf=_SAS_LT[lang]||_SAS_LT.INGLESE;
+      var _totRecF=(r.stores||[]).reduce(function(s,d){return s+(d.sasRec||0);},0);
+      if(_totRecF>0||(r.totSasUsed||0)>0){
+        h+='<div style="margin-top:6px;padding:7px 9px;background:#faf8f4;border:1px solid #ece7df;border-radius:6px;font-size:9px">';
+        h+='<div style="font-size:9px;font-weight:700;color:#a07d2c;margin-bottom:3px">'+esc(_LTf.title)+' \u2014 '+esc(T.area)+'</div>';
+        var _rwF=function(l,v){return '<div style="display:flex;justify-content:space-between;padding:1px 0"><span style="color:#8a8680">'+esc(l)+'</span><span style="font-weight:600;color:#2c2925">'+fc(v,'EUR')+'</span></div>';};
+        h+=_rwF(_LTf.recVal,_totRecF);
+        h+=_rwF(_LTf.applied,r.totSasUsed||0);
+        h+=_rwF(_LTf.reserve,r.totSasReserveOut||0);
+        h+='</div>';
+      }
+    }
+  }
+
   var syLyVal=r.syLyArea;
   if(syLyVal!==null||(!isP&&r.syAreaCy!=null)||isP){
     h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px">';
@@ -68,7 +86,7 @@ function buildFcVmLetter(emp){
     var mapEntry=FC_MAP[sid]||{};
     var sname=mapEntry.s||sid;
     var bg=i%2===0?'#fff':'#faf9f7';
-    var stCn=isP?s.to:(FC_RESULTS[sid]?FC_RESULTS[sid].sc_eur||0:0);
+    var stCn=isP?s.to:((FC_RESULTS[sid]?FC_RESULTS[sid].sc_eur||0:0)+((!isP&&typeof sasNewActive==='function'&&sasNewActive())?(s.sasUsed||0):0));
     var stPct=s.to>0?stCn/s.to:null;
     var stPctColor=stPct===null?'#a09a92':stPct>=FCVM_PARAMS.soglia100?'#2d7a3a':stPct>=FCVM_PARAMS.soglia60?'#c9a96e':'#cf5b5b';
     h+='<div class="lt-kpi-row" style="grid-template-columns:'+gridCols+';background:'+bg+'">';

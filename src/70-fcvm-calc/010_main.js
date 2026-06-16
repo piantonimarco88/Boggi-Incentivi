@@ -42,7 +42,7 @@ function calcFcVmPremio(matr){
     if(!flg.excl_sy&&isCons&&cn.sc_eur!=null&&cn.footfall_cy!=null&&cn.footfall_cy>0){
       totSalesCy+=cn.sc_eur; totFootfallCy+=cn.footfall_cy; hasSyCy=true;
     }
-    detail.push({sid:sid,to:to,sc:sc,exclFatt:!!flg.excl_fatt,exclSy:!!flg.excl_sy,sasRec:sasRec,sasUsed:sasUsed,sasResIn:sasResIn,sasResOut:sasResOut});
+    detail.push({sid:sid,to:to,sc:sc,exclFatt:!!flg.excl_fatt,exclSy:!!flg.excl_sy,sasRec:sasRec,sasUsed:sasUsed,sasResIn:sasResIn,sasResOut:sasResOut,acc:cn.acc,vel:cn.vel,sasv:cn.sasv_eur||0});
   });
   // ── Esubero mese precedente (area netta) ─────────────────────────────────
   // I negozi in deficit compensano quelli in surplus: max(0, Σ(cons-target) area)
@@ -107,7 +107,7 @@ function calcFcVmPremio(matr){
       var prize=isCons?(earned?Math.round(b.ib*smFcvm*100)/100:0):b.ib;
       var prizeEur=Math.round(prize*exRate*100)/100;
       bdgPrize+=prize; bdgPrizeEur+=prizeEur;
-      bdgDetail.push({sid:b.sid,s:b.s,to:to,sc:sc,esubero:esubBdg,sasRec:sasRecB,sasUsed:sasUsedB,sasResIn:sasResInB,sasResOut:sasResOutB,scTotale:scTotBdg,ib:b.ib,earned:earned,prize:prize,prizeEur:prizeEur});
+      bdgDetail.push({sid:b.sid,s:b.s,to:to,sc:sc,esubero:esubBdg,sasRec:sasRecB,sasUsed:sasUsedB,sasResIn:sasResInB,sasResOut:sasResOutB,acc:cn.acc,vel:cn.vel,sasv:cn.sasv_eur||0,scTotale:scTotBdg,ib:b.ib,earned:earned,prize:prize,prizeEur:prizeEur});
     });
   }
   var premioEur=Math.round(premioLC*exRate*100)/100;

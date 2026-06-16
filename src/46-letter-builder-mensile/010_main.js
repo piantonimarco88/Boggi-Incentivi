@@ -77,12 +77,63 @@ function buildLetterUSA(e){
   return h;
 }
 
+// === Blocco SAS per le lettere (mensile + FC+VM), da Luglio 2026 =============
+// info: {acc, vel, pctMatrix, recognized, used, reserveIn, reserveOut, sasv} oppure null.
+// Mostra la matrice (logica) in prev+cons; il risultato puntuale solo in cons.
+var _SAS_LT={
+  ITALIANO:{title:"VALORE SAS → FATTURATO",logic:"Quota del valore SAS del negozio riconosciuta nel fatturato verso il target (in base ad accettazione e velocità). Fino al 100%; l'avanzo è riserva riportata al mese successivo.",vel:"Velocità",acc:"Accettazione",recPct:"% riconosciuta",sasVal:"Valore SAS negozio",recVal:"Valore SAS riconosciuto",applied:"Applicato al fatturato",resIn:"Riserva mese prec.",reserve:"Riserva riportata",nodata:"Dato SAS non disponibile per questo negozio."},
+  INGLESE:{title:"SAS VALUE → TURNOVER",logic:"Share of the store's SAS value recognised toward the turnover target (based on acceptance and speed). Up to 100%; the surplus is a reserve carried to next month.",vel:"Speed",acc:"Acceptance",recPct:"Recognised %",sasVal:"Store SAS value",recVal:"Recognised SAS value",applied:"Applied to turnover",resIn:"Previous month reserve",reserve:"Reserve carried over",nodata:"SAS data not available for this store."},
+  FRANCESE:{title:"VALEUR SAS → CA",logic:"Part de la valeur SAS du magasin reconnue dans le CA vers l'objectif (selon acceptation et rapidité). Jusqu'à 100% ; l'excédent est une réserve reportée au mois suivant.",vel:"Rapidité",acc:"Acceptation",recPct:"% reconnue",sasVal:"Valeur SAS magasin",recVal:"Valeur SAS reconnue",applied:"Appliqué au CA",resIn:"Réserve mois préc.",reserve:"Réserve reportée",nodata:"Donnée SAS non disponible pour ce magasin."},
+  TEDESCO:{title:"SAS-WERT → UMSATZ",logic:"Anteil des SAS-Werts des Stores, der auf das Umsatzziel angerechnet wird (nach Annahme und Geschwindigkeit). Bis 100%; der Überschuss ist eine in den Folgemonat übertragene Reserve.",vel:"Geschwindigkeit",acc:"Annahme",recPct:"Anerkannt %",sasVal:"SAS-Wert Store",recVal:"Anerkannter SAS-Wert",applied:"Auf Umsatz angerechnet",resIn:"Reserve Vormonat",reserve:"Übertragene Reserve",nodata:"SAS-Daten für diesen Store nicht verfügbar."},
+  SPAGNOLO:{title:"VALOR SAS → FACTURACIÓN",logic:"Parte del valor SAS de la tienda reconocida en la facturación hacia el objetivo (según aceptación y velocidad). Hasta el 100%; el excedente es reserva trasladada al mes siguiente.",vel:"Velocidad",acc:"Aceptación",recPct:"% reconocido",sasVal:"Valor SAS tienda",recVal:"Valor SAS reconocido",applied:"Aplicado a facturación",resIn:"Reserva mes ant.",reserve:"Reserva trasladada",nodata:"Dato SAS no disponible para esta tienda."}
+};
+function _sasBandLbl(b,k){return k===0?'<'+Math.round(b[0]*100)+'%':(k===3?'≥'+Math.round(b[2]*100)+'%':Math.round(b[k-1]*100)+'-'+Math.round(b[k]*100)+'%');}
+function sasLetterBlock(lang,info,isP,cu){
+  if(typeof sasNewActive!=='function'||!sasNewActive())return '';
+  if(info&&info.active===false)return ''; // negozio USA: niente SAS
+  var T=_SAS_LT[lang]||_SAS_LT.INGLESE;
+  var ab=SAS_MATRIX.accBands,vb=SAS_MATRIX.velBands;
+  var hasData=info&&info.acc!=null&&info.vel!=null;
+  var aIdx=hasData?sasAccBandIdx(info.acc):-1,vIdx=hasData?sasVelBandIdx(info.vel):-1;
+  var h='<div style="margin-top:8px;padding:7px 9px;background:#faf8f4;border:1px solid #ece7df;border-radius:6px">';
+  h+='<div style="font-size:10px;font-weight:700;color:#a07d2c;margin-bottom:3px">'+esc(T.title)+'</div>';
+  h+='<div style="font-size:8px;color:#8a8680;line-height:1.4;margin-bottom:5px">'+esc(T.logic)+'</div>';
+  h+='<div style="font-size:8px;font-weight:700;color:#8a8680;text-align:center;margin-bottom:1px">'+esc(T.vel)+' — '+esc(SAS_MATRIX.velLabel)+' →</div>';
+  h+='<table style="border-collapse:collapse;font-size:8px;margin:0 auto '+(isP?'0':'6px')+'"><thead><tr><th style="padding:1px 4px;color:#a09a92;text-align:right;font-weight:700">↓ '+esc(T.acc)+'</th>';
+  for(var c=0;c<4;c++)h+='<th style="padding:1px 5px;color:#8a8680;font-weight:700">'+_sasBandLbl(vb,c)+'</th>';
+  h+='</tr></thead><tbody>';
+  [3,2,1,0].forEach(function(ai){
+    h+='<tr><td style="padding:1px 5px;color:#6b6560;font-weight:700;text-align:right">'+_sasBandLbl(ab,ai)+'</td>';
+    for(var c2=0;c2<4;c2++){var hit=(!isP&&ai===aIdx&&c2===vIdx);h+='<td style="padding:1px 6px;text-align:center;'+(hit?'background:#c9a96e;color:#fff;font-weight:700':'color:#9a958d')+'">'+Math.round(SAS_MATRIX.grid[ai][c2]*100)+'</td>';}
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  if(!isP){
+    if(!hasData||info.pctMatrix==null){h+='<div style="font-size:8.5px;color:#a09a92;font-style:italic">'+esc(T.nodata)+'</div>';}
+    else{
+      var row=function(l,v){return '<div style="display:flex;justify-content:space-between;font-size:9px;padding:1px 0"><span style="color:#8a8680">'+esc(l)+'</span><span style="font-weight:600;color:#2c2925">'+v+'</span></div>';};
+      var eur=function(v){return '<span class="lt-row-cur">'+cu+'</span>'+Math.round(v||0).toLocaleString("it-IT");};
+      h+=row(T.acc,Math.round(info.acc*100)+'% ('+_sasBandLbl(ab,aIdx)+')');
+      h+=row(T.vel,Math.round(info.vel*100)+'% ('+_sasBandLbl(vb,vIdx)+')');
+      h+=row(T.recPct,Math.round(info.pctMatrix*100)+'%');
+      h+=row(T.sasVal,eur(info.sasv));
+      h+=row(T.recVal,eur(info.recognized));
+      h+=row(T.applied,eur(info.used));
+      if((info.reserveIn||0)>0)h+=row(T.resIn,eur(info.reserveIn));
+      h+=row(T.reserve,eur(info.reserveOut));
+    }
+  }
+  h+='</div>';
+  return h;
+}
+
 function buildLetter(e){
   var cu=e.cu||"EUR",sid=String(e.si),tg=D.t[sid]||{},cn=D.c[sid]||{},tc=calcE(e),sm=sickMult(e.ml),dp=isD(e.si);
   var _rlLt=e.rl||e.ib||0;var pctSal=_rlLt>0?((tc/_rlLt)*100).toFixed(2):"0";var lang=trLang(e);
   var mN=getMonthName(lang);
   var gr=({"ITALIANO":"Ciao","INGLESE":"Hi","FRANCESE":"Bonjour","TEDESCO":"Hallo","SPAGNOLO":"Hola"})[lang]||"Hi";
-  var isP=MODE==="preventivo",pctStore=tg.to>0&&cn.sc?((cn.sc+(cn.es||0))/tg.to*100).toFixed(1):"100.0",surplus=(cn.es||0);
+  var _ssiL=(typeof storeSasInfo==='function')?storeSasInfo(String(e.si)):null;
+  var isP=MODE==="preventivo",pctStore=(_ssiL&&_ssiL.active&&tg.to>0)?(_ssiL.pct*100).toFixed(1):(tg.to>0&&cn.sc?((cn.sc+(cn.es||0))/tg.to*100).toFixed(1):"100.0"),surplus=(cn.es||0);
   var mtL=({"ITALIANO":"IT","INGLESE":"EN","FRANCESE":"FR","TEDESCO":"DE","SPAGNOLO":"ES"})[lang]||"EN";
   var modeTag=isP?{IT:" (PREVENTIVO)",EN:" (FORECAST)",FR:" (PR\u00c9VISIONNEL)",DE:" (PROGNOSE)",ES:" (PREVISI\u00d3N)"}:{IT:"",EN:"",FR:"",DE:"",ES:""};
 
@@ -125,7 +176,7 @@ function buildLetter(e){
         var rdLbls={"ITALIANO":"Moltiplicatore ridotto al "+Math.round(PARAMS.bdg60mult*100)+"% applicato — negozio tra "+Math.round(PARAMS.bdg60*100)+"% e "+Math.round(PARAMS.bdg100*100)+"% del target"+(isD(e.si)?"":" (SY migliorata)"),"INGLESE":"Reduced multiplier at "+Math.round(PARAMS.bdg60mult*100)+"% applied — store between "+Math.round(PARAMS.bdg60*100)+"% and "+Math.round(PARAMS.bdg100*100)+"% of target"+(isD(e.si)?"":" (improved SY)"),"FRANCESE":"Multiplicateur réduit à "+Math.round(PARAMS.bdg60mult*100)+"% appliqué — magasin entre "+Math.round(PARAMS.bdg60*100)+"% et "+Math.round(PARAMS.bdg100*100)+"% de l'objectif"+(isD(e.si)?"":" (SY améliorée)"),"TEDESCO":"Reduzierter Multiplikator ("+Math.round(PARAMS.bdg60mult*100)+"%) angewendet — Store zwischen "+Math.round(PARAMS.bdg60*100)+"% und "+Math.round(PARAMS.bdg100*100)+"% des Ziels"+(isD(e.si)?"":" (SY verbessert)"),"SPAGNOLO":"Multiplicador reducido al "+Math.round(PARAMS.bdg60mult*100)+"% aplicado — tienda entre "+Math.round(PARAMS.bdg60*100)+"% y "+Math.round(PARAMS.bdg100*100)+"% del objetivo"+(isD(e.si)?"":" (SY mejorada)")};
         h+='<div style="font-size:9px;margin-top:6px;padding:4px 8px;background:#fff3e0;border-left:3px solid #c9a96e;color:#856404;border-radius:0 4px 4px 0">⚡ '+esc(rdLbls[_ovLang]||rdLbls["INGLESE"])+'</div>';
       }
-    }if(e.ibFromAY)h+='<div style="font-size:9px;margin-top:6px;padding:4px 8px;background:#fff8ee;border-left:3px solid #c9a96e;color:#856404;border-radius:0 4px 4px 0">BDG NETTO — pagato in busta paga come TRASFERTE (cod. 380)</div>';if(!isP)h+='<div style="font-size:9px;color:#8a8680;margin-top:4px">Store: '+pctStore+"%</div>";h+="</div></div>"}
+    }if(e.ibFromAY)h+='<div style="font-size:9px;margin-top:6px;padding:4px 8px;background:#fff8ee;border-left:3px solid #c9a96e;color:#856404;border-radius:0 4px 4px 0">BDG NETTO — pagato in busta paga come TRASFERTE (cod. 380)</div>';h+=sasLetterBlock(lang,_ssiL,isP,cu);if(!isP)h+='<div style="font-size:9px;color:#8a8680;margin-top:4px">Store: '+pctStore+"%</div>";h+="</div></div>"}
   if(isOn(e.j,"pq")){sN++;var val=getVal(e,"pq"),p=val>0,vS=Math.round(val*sm);h+=secHd(sN,"QTY",p,isP);if(!isP||tg.qt){h+=ltRow("TARGET","QTY "+(tg.qt||0));}h+=ltRow("MAX",'<span class="lt-row-cur">'+cu+"</span>"+Math.round(e.ib*PARAMS.qtyPct));if(!isP)h+=ltRow("RESULT","QTY "+(cn.qc||0));h+=secPd(pdLabel,vS,cu,p);h+="</div></div>"}
   if(isOn(e.j,"rd")){sN++;var val=getVal(e,"rd"),p=val>0,vS=Math.round(val*sm);var digThr=getDigMin(e.si);h+=secHd(sN,tr(e,"digital","DIGITAL TARGET"),p,isP);h+=ltRow("TARGET",fPct(digThr));h+=ltRow("INCENTIVE MAX",'<span class="lt-row-cur">'+cu+"</span>"+Math.round(e.ib*PARAMS.digPct));if(!isP)h+=ltRow("RESULT",fPct(cn.pd));h+=secPd(pdLabel,vS,cu,p);h+="</div></div>"}
   if(isOn(e.j,"rp")){sN++;var val=getVal(e,"rp"),p=val>0,vS=Math.round(val*sm);var _rlP=e.rl||e.ib||0;h+=secHd(sN,tr(e,"privilege","PRIVILEGE"),p,isP);if(!isP||tg.pr){h+=ltRow("TARGET",fPct(tg.pr));}h+=ltRow("FORMULA",(PARAMS.privPct*100)+"% RLM");h+=ltRow("INCENTIVE MAX",'<span class="lt-row-cur">'+cu+"</span>"+Math.round(_rlP*PARAMS.privPct));if(!isP)h+=ltRow("RESULT",fPct(cn.nf));h+=secPd(pdLabel,vS,cu,p);h+="</div></div>"}
