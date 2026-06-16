@@ -75,8 +75,8 @@ test("matrice: dato mancante → null", () => {
 });
 test("matrice: soglie fasce editabili cambiano il lookup", () => {
   const c = ctx({});
-  c.SAS_MATRIX.accBands = [0.95, 0.85, 0.75];
-  // acc 0.92 ora ricade sotto 0.95 → fascia 1; vel 0.95 → colonna 3 → grid[1][3]=0.85
+  c.SAS_MATRIX.accBands = [0.75, 0.85, 0.95]; // bassa→alta
+  // acc 0.92 ora ricade sotto 0.95 → fascia 2 (80-90); vel 0.95 → colonna 3 → grid[2][3]=0.85
   assert.strictEqual(c.sasMatrixPct(0.92, 0.95), 0.85);
 });
 

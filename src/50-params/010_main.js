@@ -17,17 +17,18 @@ function sasZeroByAcc(e){return false;}
 // Matrice editabile in Configurazione: celle (% riconosciuta) + soglie
 // delle fasce di accettazione e velocità. accBands/velBands sono i punti
 // di taglio interni; grid[accIdx][velIdx] è la frazione riconosciuta 0..1.
-//   accIdx: ≥accBands[0]→0, ≥[1]→1, ≥[2]→2, else 3 (alta→bassa accettazione)
-//   velIdx: <velBands[0]→0, <[1]→1, <[2]→2, else 3 (bassa→alta velocità)
+// Entrambi gli assi indicizzati bassa→alta (idx 0 = peggiore, 3 = migliore):
+//   accIdx/velIdx: <bands[0]→0, <[1]→1, <[2]→2, else 3
+// grid[accIdx][velIdx]: idx0=fascia <70%, idx3=fascia ≥90%.
 var SAS_MATRIX={
   velLabel:"% gestiti entro 4h",
-  accBands:[0.90,0.80,0.70],
+  accBands:[0.70,0.80,0.90],
   velBands:[0.70,0.80,0.90],
   grid:[
-    [0.70,0.80,0.90,1.00],
-    [0.55,0.65,0.75,0.85],
+    [0.00,0.25,0.35,0.45],
     [0.40,0.50,0.60,0.70],
-    [0.00,0.25,0.35,0.45]
+    [0.55,0.65,0.75,0.85],
+    [0.70,0.80,0.90,1.00]
   ]
 };
 var SAS_NEW_START_YEAR=2026, SAS_NEW_START_MONTH=7;
@@ -36,10 +37,10 @@ function sasNewActive(){
   if(PRIZE_MODE!=="mensile"&&PRIZE_MODE!=="fcvm")return false;
   return (CFG_YEAR>SAS_NEW_START_YEAR)||(CFG_YEAR===SAS_NEW_START_YEAR&&CFG_MONTH>=SAS_NEW_START_MONTH);
 }
-// Indice di fascia accettazione (0 = migliore) per una % 0..1.
+// Indice di fascia accettazione (0 = peggiore <70%, 3 = migliore ≥90%) per una % 0..1.
 function sasAccBandIdx(acc){
   var b=SAS_MATRIX.accBands;
-  if(acc>=b[0])return 0;if(acc>=b[1])return 1;if(acc>=b[2])return 2;return 3;
+  if(acc<b[0])return 0;if(acc<b[1])return 1;if(acc<b[2])return 2;return 3;
 }
 // Indice di fascia velocità (0 = peggiore) per una % 0..1.
 function sasVelBandIdx(vel){
