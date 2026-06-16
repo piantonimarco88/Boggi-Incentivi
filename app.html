@@ -653,7 +653,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='8.91'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='8.92'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -6271,12 +6271,14 @@ function loadResultsExcel(file){
       }
 
       else if(type==="sas_results"){
-        var cSid=fH("store id","store_id");var cS4=fH("processed within 4","within 4h");
-        var cSa=fH("% accepted","% accettati","accepted %","accepted","% accettazione","accettati %","sas accepted","% acceptance");
-        // NUOVA logica SAS (da luglio 2026): velocità, valore SAS (LC/EUR), riserva riportata
-        var cVel=fH("% gestiti entro","% sas gestiti","gestiti entro","velocit","velocity","% handled");
-        var cValE=fH("valore sas eur","sas value eur","valore sas euro");
-        var cValL=fH("valore sas lc","sas value lc");
+        var cSid=fH("store id","store_id");
+        var cSa=fH("% sas accepted","sas accepted","% accepted","% accettati","accepted %","accepted","% accettazione","accettati %","% acceptance");
+        // NUOVA logica SAS (da luglio 2026): velocità %, valore SAS (LC/EUR), riserva riportata
+        var cVel=fH("% processed within","processed within 4","% within 4","within 4h","% gestiti entro","% sas gestiti","gestiti entro","velocit","velocity","% handled");
+        // Vecchio conteggio "SAS on target" (giugno): solo se NON è la colonna velocità %
+        var cS4=fH("processed within 4","within 4h");if(cS4>=0&&cS4===cVel)cS4=-1;
+        var cValE=fH("valore eur","value eur","valore sas eur","sas value eur","valore euro");
+        var cValL=fH("valore lc","value lc","valore sas lc","sas value lc");
         var cValP=fH("valore sas","sas value"); // senza suffisso → assunto LC
         var cValLc=cValL>=0?cValL:((cValP>=0&&cValP!==cValE)?cValP:-1);
         var cRes=fH("riserva sas","sas reserve","riserva carry","riserva");
@@ -6285,7 +6287,7 @@ function loadResultsExcel(file){
           var row=json[ri];if(!row)continue;var sid=row[cSid];if(!sid)continue;
           sid=String(parseInt(sid));if(sid==="NaN")continue;
           if(!D.c[sid])D.c[sid]={sc:0,es:0,pd:0,cr:0,sy:0,nf:0,qc:0,s4:0,dv:0};
-          D.c[sid].s4=Math.round(parseNum(row[cS4]));
+          if(cS4>=0){var s4v=parseNum(row[cS4]);if(!isNaN(s4v))D.c[sid].s4=Math.round(s4v);}
           if(cSa>=0){
             var av=parseNum(row[cSa]);
             if(!isNaN(av)){
@@ -9311,10 +9313,10 @@ function loadFcVmResults(file){
            &&h.indexOf('traffic')<0&&h.indexOf('lc')<0&&h.indexOf('sas')<0&&hdr.sales<0){hdr.sales=ci;}
         if(h.indexOf('traffic')>=0||h.indexOf('footfall')>=0||h.indexOf('traffico')>=0){hdr.footfall=ci;}
         // NUOVA logica SAS (da luglio 2026): accettazione, velocità, valore SAS EUR, riserva
-        if((h.indexOf('accettaz')>=0||h.indexOf('% accept')>=0||h.indexOf('% accettati')>=0)&&hdr.acc<0)hdr.acc=ci;
-        if((h.indexOf('gestiti entro')>=0||h.indexOf('% gestiti')>=0||h.indexOf('velocit')>=0||h.indexOf('% handled')>=0)&&hdr.vel<0)hdr.vel=ci;
-        if((h.indexOf('valore sas')>=0||h.indexOf('sas value')>=0||h.indexOf('sas eur')>=0)&&hdr.sasv<0)hdr.sasv=ci;
-        if((h.indexOf('riserva sas')>=0||h.indexOf('sas reserve')>=0)&&hdr.sasr<0)hdr.sasr=ci;
+        if((h.indexOf('accettaz')>=0||h.indexOf('accepted')>=0||h.indexOf('% accept')>=0||h.indexOf('% accettati')>=0)&&hdr.acc<0)hdr.acc=ci;
+        if((h.indexOf('processed within')>=0||h.indexOf('within 4')>=0||h.indexOf('gestiti entro')>=0||h.indexOf('% gestiti')>=0||h.indexOf('velocit')>=0||h.indexOf('% handled')>=0)&&hdr.vel<0)hdr.vel=ci;
+        if((h.indexOf('valore eur')>=0||h.indexOf('value eur')>=0||h.indexOf('valore sas')>=0||h.indexOf('sas value')>=0||h.indexOf('sas eur')>=0)&&hdr.sasv<0)hdr.sasv=ci;
+        if((h.indexOf('riserva sas')>=0||h.indexOf('sas reserve')>=0||h.indexOf('riserva')>=0)&&hdr.sasr<0)hdr.sasr=ci;
       });
       if(found){hdrRow=ri;break;}
     }

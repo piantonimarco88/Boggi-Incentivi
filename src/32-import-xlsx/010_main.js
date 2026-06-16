@@ -1436,12 +1436,14 @@ function loadResultsExcel(file){
       }
 
       else if(type==="sas_results"){
-        var cSid=fH("store id","store_id");var cS4=fH("processed within 4","within 4h");
-        var cSa=fH("% accepted","% accettati","accepted %","accepted","% accettazione","accettati %","sas accepted","% acceptance");
-        // NUOVA logica SAS (da luglio 2026): velocità, valore SAS (LC/EUR), riserva riportata
-        var cVel=fH("% gestiti entro","% sas gestiti","gestiti entro","velocit","velocity","% handled");
-        var cValE=fH("valore sas eur","sas value eur","valore sas euro");
-        var cValL=fH("valore sas lc","sas value lc");
+        var cSid=fH("store id","store_id");
+        var cSa=fH("% sas accepted","sas accepted","% accepted","% accettati","accepted %","accepted","% accettazione","accettati %","% acceptance");
+        // NUOVA logica SAS (da luglio 2026): velocità %, valore SAS (LC/EUR), riserva riportata
+        var cVel=fH("% processed within","processed within 4","% within 4","within 4h","% gestiti entro","% sas gestiti","gestiti entro","velocit","velocity","% handled");
+        // Vecchio conteggio "SAS on target" (giugno): solo se NON è la colonna velocità %
+        var cS4=fH("processed within 4","within 4h");if(cS4>=0&&cS4===cVel)cS4=-1;
+        var cValE=fH("valore eur","value eur","valore sas eur","sas value eur","valore euro");
+        var cValL=fH("valore lc","value lc","valore sas lc","sas value lc");
         var cValP=fH("valore sas","sas value"); // senza suffisso → assunto LC
         var cValLc=cValL>=0?cValL:((cValP>=0&&cValP!==cValE)?cValP:-1);
         var cRes=fH("riserva sas","sas reserve","riserva carry","riserva");
@@ -1450,7 +1452,7 @@ function loadResultsExcel(file){
           var row=json[ri];if(!row)continue;var sid=row[cSid];if(!sid)continue;
           sid=String(parseInt(sid));if(sid==="NaN")continue;
           if(!D.c[sid])D.c[sid]={sc:0,es:0,pd:0,cr:0,sy:0,nf:0,qc:0,s4:0,dv:0};
-          D.c[sid].s4=Math.round(parseNum(row[cS4]));
+          if(cS4>=0){var s4v=parseNum(row[cS4]);if(!isNaN(s4v))D.c[sid].s4=Math.round(s4v);}
           if(cSa>=0){
             var av=parseNum(row[cSa]);
             if(!isNaN(av)){

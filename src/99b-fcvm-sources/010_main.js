@@ -554,10 +554,10 @@ function loadFcVmResults(file){
            &&h.indexOf('traffic')<0&&h.indexOf('lc')<0&&h.indexOf('sas')<0&&hdr.sales<0){hdr.sales=ci;}
         if(h.indexOf('traffic')>=0||h.indexOf('footfall')>=0||h.indexOf('traffico')>=0){hdr.footfall=ci;}
         // NUOVA logica SAS (da luglio 2026): accettazione, velocità, valore SAS EUR, riserva
-        if((h.indexOf('accettaz')>=0||h.indexOf('% accept')>=0||h.indexOf('% accettati')>=0)&&hdr.acc<0)hdr.acc=ci;
-        if((h.indexOf('gestiti entro')>=0||h.indexOf('% gestiti')>=0||h.indexOf('velocit')>=0||h.indexOf('% handled')>=0)&&hdr.vel<0)hdr.vel=ci;
-        if((h.indexOf('valore sas')>=0||h.indexOf('sas value')>=0||h.indexOf('sas eur')>=0)&&hdr.sasv<0)hdr.sasv=ci;
-        if((h.indexOf('riserva sas')>=0||h.indexOf('sas reserve')>=0)&&hdr.sasr<0)hdr.sasr=ci;
+        if((h.indexOf('accettaz')>=0||h.indexOf('accepted')>=0||h.indexOf('% accept')>=0||h.indexOf('% accettati')>=0)&&hdr.acc<0)hdr.acc=ci;
+        if((h.indexOf('processed within')>=0||h.indexOf('within 4')>=0||h.indexOf('gestiti entro')>=0||h.indexOf('% gestiti')>=0||h.indexOf('velocit')>=0||h.indexOf('% handled')>=0)&&hdr.vel<0)hdr.vel=ci;
+        if((h.indexOf('valore eur')>=0||h.indexOf('value eur')>=0||h.indexOf('valore sas')>=0||h.indexOf('sas value')>=0||h.indexOf('sas eur')>=0)&&hdr.sasv<0)hdr.sasv=ci;
+        if((h.indexOf('riserva sas')>=0||h.indexOf('sas reserve')>=0||h.indexOf('riserva')>=0)&&hdr.sasr<0)hdr.sasr=ci;
       });
       if(found){hdrRow=ri;break;}
     }
