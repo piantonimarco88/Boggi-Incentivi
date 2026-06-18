@@ -653,7 +653,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='8.97'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='8.98'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -6320,10 +6320,16 @@ function loadResultsExcel(file){
         var cValP=fH("valore sas","sas value"); // senza suffisso → assunto LC
         var cValLc=cValL>=0?cValL:((cValP>=0&&cValP!==cValE)?cValP:-1);
         var cRes=fH("riserva sas","sas reserve","riserva carry","riserva");
+        // Da luglio 2026: colonne retail year / retail month per filtrare per periodo
+        var cRetYear=fH("retail year","retail_year");
+        var cRetMonth=fH("retail month","retail_month");
         var withAcc=0,withVel=0,withVal=0;
         for(var ri=dataStart;ri<json.length;ri++){
           var row=json[ri];if(!row)continue;var sid=row[cSid];if(!sid)continue;
           sid=String(parseInt(sid));if(sid==="NaN")continue;
+          // Filtra per anno/mese retail se le colonne sono presenti e valorizzate
+          if(cRetYear>=0){var ry=parseInt(row[cRetYear]);if(!isNaN(ry)&&ry!==CFG_YEAR)continue;}
+          if(cRetMonth>=0){var rm=parseInt(row[cRetMonth]);if(!isNaN(rm)&&rm!==CFG_MONTH)continue;}
           if(!D.c[sid])D.c[sid]={sc:0,es:0,pd:0,cr:0,sy:0,nf:0,qc:0,s4:0,dv:0};
           if(cS4>=0){var s4v=parseNum(row[cS4]);if(!isNaN(s4v))D.c[sid].s4=Math.round(s4v);}
           if(cSa>=0){
