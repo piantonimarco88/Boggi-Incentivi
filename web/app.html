@@ -653,7 +653,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='8.96'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='8.97'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -1520,6 +1520,7 @@ function rC(){
   var mL=MODE==="preventivo"?'<span style="background:#fff3cd;color:#856404;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700">\u26a0 PREVENTIVO</span>':'';
   mL+=' <button class="exp-btn" onclick="exportExcel()" style="font-size:10px;padding:4px 12px">&#128202; Export Excel</button>';
   if(MODE==="consuntivo")mL+=' <button class="exp-btn btn-lgreen" onclick="saveMonitorSnap()" style="font-size:10px;padding:4px 12px">&#128229; Salva per Monitor</button>';
+  if(REGION==="italia"&&MODE==="consuntivo")mL+=' <button class="exp-btn btn-blue" onclick="exportExcelConsuntivoIT()" style="font-size:10px;padding:4px 12px">&#128202; Export Consuntivo IT</button>';
   if(REGION==="international"&&MODE==="consuntivo")mL+=' <button class="exp-btn btn-amber" onclick="exportExcelUSA()" style="font-size:10px;padding:4px 12px">&#127482;&#127480; Export Excel USA</button>';
   var fl=E.filter(function(e){if(cF.j!=="ALL"&&e.j!==cF.j)return false;if(cF.s!=="ALL"&&e.s!==cF.s)return false;
     if(cF.q){var q=cF.q.toLowerCase();return(e.c&&e.c.toLowerCase().indexOf(q)>=0)||(e.n&&e.n.toLowerCase().indexOf(q)>=0)||(e.m&&e.m.toLowerCase().indexOf(q)>=0)||(e.s&&e.s.toLowerCase().indexOf(q)>=0)}return true});
@@ -1715,6 +1716,33 @@ function exportExcel(){
   var wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Consuntivo");
   XLSX.writeFile(wb,"Incentivi_"+MODE+"_"+getPdfSubfolder().fileBase+".xlsx");
+}
+
+function exportExcelConsuntivoIT(){
+  var headers=["MONTH","STORE ID","DESCR FILIALE","MATRICOLA DIPENDENTE","COGNOME","NOME","JOB","RML","IMPORTO BDG","IMPORTO BDG1","BDG","RISULTATO PREMIO BDG (LORDO)","RISULTATO PREMIO BDG (NETTO)","RISULTATO PREMIO DIGITAL","RISULTATO SHOPPER YIELD","RISULTATO NUOVE PRIVILEGE","RISULTATO SAS","RISULTATO DCC","RISULTATO CUSTOMER SERVICE","RISULTATO ARTICOLI INCENTIVATI","MALATTIE","VISUAL IN STORE"];
+  var rows=[headers];
+  E.forEach(function(e){
+    if(e.ps==="SI")return;
+    var sm=sickMult(e.ml);
+    var rbCalc=isOn(e.j,"rb")?getVal(e,"rb")*sm:0;
+    var rb=e.ibFromAY?0:rbCalc;
+    var rbn=e.ibFromAY?rbCalc:0;
+    var rd=isOn(e.j,"rd")?getVal(e,"rd")*sm:0;
+    var rs=isOn(e.j,"rs")?getVal(e,"rs")*sm:0;
+    var rp=isOn(e.j,"rp")?getVal(e,"rp")*sm:0;
+    var rsa=isOn(e.j,"rsa")?getVal(e,"rsa")*sm:0;
+    var rdc=isOn(e.j,"rdc")?getVal(e,"rdc")*sm:0;
+    var rcs=isOn(e.j,"rcs")?(getVal(e,"rcs")||0)*sm:0;
+    var ra=PARAMS.artEnabled&&isOn(e.j,"ra")?getVal(e,"ra")*sm:0;
+    var vi=(getVal(e,"vi")||0)*sm;
+    var ag=AGG[e.m]||{};
+    rb+=(ag.rb||0);rbn+=(ag.rbn||0);rd+=(ag.rd||0);rs+=(ag.rs||0);rp+=(ag.rp||0);rsa+=(ag.rsa||0);rdc+=(ag.rdc||0);rcs+=(ag.rcs||0);ra+=(ag.ra||0);
+    rows.push([CFG_MONTH,e.si,e.s,e.m,e.c,e.n,e.f||e.j,e.rl,e.ib,e.ib,e.ib,rb,rbn,rd,rs,rp,rsa,rdc,rcs,ra,e.ml||0,vi]);
+  });
+  var ws=XLSX.utils.aoa_to_sheet(rows);
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Consuntivo");
+  XLSX.writeFile(wb,"Incentivi_consuntivo_"+getPdfSubfolder().fileBase+".xlsx");
 }
 
 function exportExcelUSA(){
