@@ -653,7 +653,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='8.98'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='8.99'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -999,7 +999,7 @@ function calcUSA(e){
 
   var storeHit=false;
   if(MODE==="preventivo"){storeHit=true}
-  else if(tg&&cn){var pct=tg.to>0?cn.sc/tg.to:0;storeHit=pct>=PARAMS.bdg100}
+  else if(tg&&cn){var pct=tg.to>0?(cn.sc+(cn.esP||0))/tg.to:0;storeHit=pct>=PARAMS.bdg100}
   else{storeHit=ud.sb===1}
   if(MODE==="consuntivo"&&e.ov_b100==="SI")storeHit=true;
 
@@ -1109,19 +1109,20 @@ function gR(e){
     var rp=USA_P[job]||{noTargetMult:0.4,targetMult:1.0,useStore:false};
     var usaDept=ud.isDept||(STORE_FLAGS[String(e.si)]&&STORE_FLAGS[String(e.si)].usaDept);
     var useStoreSales=rp.useStore||usaDept;
-    var storePct=tg.to>0?cn.sc/tg.to:0,storeHit=MODE==="preventivo"||storePct>=PARAMS.bdg100||(MODE==="consuntivo"&&e.ov_b100==="SI");
+    var esP=cn.esP||0;
+    var storePct=tg.to>0?(cn.sc+esP)/tg.to:0,storeHit=MODE==="preventivo"||storePct>=PARAMS.bdg100||(MODE==="consuntivo"&&e.ov_b100==="SI");
     var base,baseLabel;
     if(useStoreSales){base=MODE==="preventivo"?(tg.to||0):(cn.sc||0);baseLabel="fatturato negozio"}
     else{base=ud.ps||0;baseLabel="vendite personali"}
     var mult=storeHit?rp.targetMult:rp.noTargetMult;var prize=Math.round(base*cm*mult*100)/100;
     var tPct=(rp.targetMult*100).toFixed(0),ntPct=(rp.noTargetMult*100).toFixed(0);
     if(MODE==="preventivo"){
-      // USA preventivo: mostra solo la logica del premio, non il massimale (non calcolabile)
       var baseDesc=useStoreSales?("Fatturato negozio \u00d7 "+(cm*100).toFixed(2)+"%"): ("Vendite personali \u00d7 "+(cm*100).toFixed(2)+"%");
       R.push({t:"info",x:"Premio: "+baseDesc+". Erogazione: "+tPct+"% se store a target, "+ntPct+"% se non a target. Importo calcolato a consuntivo."});
     }else{
-      if(storeHit)R.push({t:"success",x:fc(prize,cu)+" \u2014 Commission "+(cm*100).toFixed(2)+"% \u00d7 "+fc(base,cu)+" ("+baseLabel+") \u00d7 "+tPct+"%. Store "+(storePct*100).toFixed(1)+"% \u2265 target."});
-      else R.push({t:"partial",x:fc(prize,cu)+" \u2014 Commission "+(cm*100).toFixed(2)+"% \u00d7 "+fc(base,cu)+" ("+baseLabel+") \u00d7 "+ntPct+"%. Store "+(storePct*100).toFixed(1)+"% < target."});
+      var esPNote=esP>0?" (incl. esubero prec. "+fc(esP,cu)+")":"";
+      if(storeHit)R.push({t:"success",x:fc(prize,cu)+" \u2014 Commission "+(cm*100).toFixed(2)+"% \u00d7 "+fc(base,cu)+" ("+baseLabel+") \u00d7 "+tPct+"%. Store "+(storePct*100).toFixed(1)+"%"+esPNote+" \u2265 target."});
+      else R.push({t:"partial",x:fc(prize,cu)+" \u2014 Commission "+(cm*100).toFixed(2)+"% \u00d7 "+fc(base,cu)+" ("+baseLabel+") \u00d7 "+ntPct+"%. Store "+(storePct*100).toFixed(1)+"%"+esPNote+" < target."});
     }
     var at=aggTotal(e.m);if(at>0)R.push({t:"success",x:fc(at,cu)+" \u2014 Aggiunte."});
     return R;
@@ -1775,8 +1776,8 @@ function exportExcelUSA(){
     var usaDept=ud.isDept||(STORE_FLAGS[sid]&&STORE_FLAGS[sid].usaDept);
     var useStoreSales=rp.useStore||usaDept;
 
-    // Store hit logic
-    var storePct=tg.to>0?(cn.sc||0)/tg.to:0;
+    // Store hit logic (incl. esubero mese precedente USA se disponibile)
+    var storePct=tg.to>0?((cn.sc||0)+(cn.esP||0))/tg.to:0;
     var storeHit=(tg.to>0&&cn.sc)?storePct>=PARAMS.bdg100:(ud.sb===1);
     var mult=storeHit?rp.targetMult:rp.noTargetMult;
 
@@ -2119,9 +2120,9 @@ function buildLetterUSA(e){
     h+='</div>';
     h+='<div style="margin-top:14px;padding:12px 16px;background:#f5f4f1;border-radius:6px;font-size:10px;color:#6b6560">Prize calculated at month-end on actual results. No fixed salary component included in this incentive.</div>';
   } else {
-    // CONSUNTIVO USA
+    // CONSUNTIVO USA (esubero mese precedente incluso nel check target)
     var storeHit=false;
-    var storePct=tg.to>0?(cn.sc||0)/tg.to:0;
+    var storePct=tg.to>0?((cn.sc||0)+(cn.esP||0))/tg.to:0;
     if(tg.to>0&&cn.sc)storeHit=storePct>=PARAMS.bdg100;
     else storeHit=ud.sb===1;
     if(e.ov_b100==="SI")storeHit=true;
@@ -2136,9 +2137,10 @@ function buildLetterUSA(e){
     var storeTo=tg.to||0;
     if(storeTo>0)h+='<div class="lt-kpi-row" style="background:#f5f4f1"><span>Store Sales Target</span><span style="text-align:right;font-weight:600">'+fc(storeTo,cu)+'</span></div>';
     h+='<div class="lt-kpi-row" style="background:#faf9f7"><span>'+baseType+' (Actual)</span><span style="text-align:right;font-weight:700">'+fc(base,cu)+'</span></div>';
+    if((cn.esP||0)>0)h+='<div class="lt-kpi-row" style="background:#fff8ee"><span>Surplus Prev. Month</span><span style="text-align:right;font-weight:700;color:#a07d2c">'+fc(cn.esP,cu)+'</span></div>';
     // Vendite personali: mostra solo per chi ha premio su personal sales (non useStoreSales)
     if(!useStoreSales&&(ud.ps||0)>0)h+='<div class="lt-kpi-row"><span>Personal Sales</span><span style="text-align:right;font-weight:700">'+fc(ud.ps,cu)+'</span></div>';
-    h+='<div class="lt-kpi-row"><span>Store Performance</span><span style="text-align:right;font-weight:700;color:'+(storeHit?"#2d7a3a":"#cf5b5b")+'">'+(storeHit?"ON TARGET ✓":"BELOW TARGET ✗")+(tg.to>0?' ('+Math.round(storePct*100)+'% of target)':'')+'</span></div>';
+    h+='<div class="lt-kpi-row"><span>Store Performance</span><span style="text-align:right;font-weight:700;color:'+(storeHit?"#2d7a3a":"#cf5b5b")+'">'+(storeHit?"ON TARGET ✓":"BELOW TARGET ✗")+(tg.to>0?' ('+Math.round(storePct*100)+'% of target, incl. surplus)':'')+'</span></div>';
     h+='<div class="lt-kpi-row" style="background:#faf9f7"><span>Multiplier Applied</span><span style="text-align:right;font-weight:700">'+(mult*100).toFixed(0)+'% ('+( storeHit?tPct+" — target hit":ntPct+" — target not hit")+')</span></div>';
     h+='</div>';
 
@@ -6521,6 +6523,51 @@ function loadResultsExcel(file){
 }
 
 
+// Carica esubero mese precedente per negozi USA dallo stesso formato BDG Results
+function loadUSAPrevResults(file){
+  if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(ev){setTimeout(function(){try{
+    var data=new Uint8Array(ev.target.result);
+    var wb=XLSX.read(data,{type:"array",raw:true});
+    var updated=0,skipped=0;
+    for(var si=0;si<wb.SheetNames.length;si++){
+      var sn=wb.SheetNames[si];
+      var ws=wb.Sheets[sn];
+      var json=XLSX.utils.sheet_to_json(ws,{header:1,raw:true});
+      if(json.length<2)continue;
+      // Trova header row
+      var headerRow=-1,headers=[];
+      for(var hr=0;hr<Math.min(6,json.length);hr++){
+        var r=json[hr];if(!r||!Array.isArray(r))continue;
+        var hdr=[];for(var hc=0;hc<r.length;hc++){hdr.push(String(r[hc]==null?"":r[hc]).toLowerCase().trim())}
+        if(hdr.some(function(h){return h&&h.indexOf("store")>=0})){headerRow=hr;headers=hdr;break;}
+      }
+      if(headerRow<0)continue;
+      function fH2(){for(var ci=0;ci<headers.length;ci++){if(!headers[ci])continue;for(var i=0;i<arguments.length;i++){if(headers[ci].indexOf(arguments[i])>=0)return ci}}return-1}
+      var cSid=fH2("store id","store_id");var cTotSales=fH2("tot sales");var cEsubero=fH2("esubero");
+      if(cSid<0||cTotSales<0)continue;
+      for(var ri=headerRow+1;ri<json.length;ri++){
+        var row=json[ri];if(!row)continue;
+        var sid=row[cSid];if(!sid)continue;
+        sid=String(parseInt(sid));if(sid==="NaN")continue;
+        // Solo negozi USA
+        if(USA_STORES.indexOf(Number(sid))<0){skipped++;continue;}
+        var totSales=parseNum(row[cTotSales]);
+        var esub=cEsubero>=0?parseNum(row[cEsubero]):0;
+        var es=Math.round(esub);
+        if(!D.c[sid])D.c[sid]={sc:0,es:0,pd:0,cr:0,sy:0,nf:0,qc:0,s4:0,dv:0};
+        D.c[sid].esP=es;
+        updated++;
+      }
+      break; // primo foglio con store trovato è sufficiente
+    }
+    autoSave();rC();rA();rSources();
+    alert('Esubero precedente USA: '+updated+' negozi aggiornati'+(skipped>0?' ('+skipped+' negozi non-USA ignorati)':'')+'.');
+  }catch(ex){alert('Errore lettura esubero precedente USA:\n'+ex.message);}},50);};
+  reader.readAsArrayBuffer(file);
+}
+
 function rSources(){try{
   if(PRIZE_MODE==="fcvm"){document.getElementById("p4").innerHTML=rSourcesFcvm();return;}
   var isP=MODE==="preventivo",sh="";
@@ -6543,6 +6590,7 @@ function rSources(){try{
   if(REGION==="international"&&(PRIZE_MODE==="mensile"||PRIZE_MODE==="seasonal"))sh+='<label class="exp-btn btn-blue" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="Stessa anagrafica FC+VM — estrae solo il mapping Store→FC per popolare le email FC dei dipendenti">&#128101; Mapping FC (xlsx)<input type="file" accept=".xlsx,.xlsm,.xls" id="loadFcMapping" style="display:none"></label>';
   sh+='<label class="exp-btn primary" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128194; Carica Excel Target<input type="file" accept=".xlsx,.xlsm,.xls,.csv" id="loadTarget" style="display:none"></label>';
   sh+='<label class="exp-btn btn-purple" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128202; Carica Excel Results<input type="file" accept=".xlsx,.xlsm,.xls,.csv" id="loadCons" style="display:none"></label>';
+  if(REGION==="international"&&!isP)sh+='<label class="exp-btn btn-amber" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="Stesso formato BDG Results del mese precedente — estrae solo esubero per negozi USA">&#127482;&#127480; Esubero Prec. USA<input type="file" accept=".xlsx,.xlsm,.xls,.csv" onchange="loadUSAPrevResults(this.files[0]);this.value=\'\';" style="display:none"></label>';
   sh+='<button class="exp-btn btn-green" onclick="runValidationsAndReport(\'Verifica dati caricati\')" title="Esegue controlli di coerenza su anagrafica e configurazione: matricole duplicate, currency mancanti, store sconosciuti, ruoli non validi, ecc.">&#128269; Verifica Dati</button>';
   sh+='<button class="exp-btn btn-red" onclick="resetAllData()">&#128465; Reset Dati</button>';
   sh+='</div>';
@@ -6671,6 +6719,8 @@ function rSources(){try{
       if(!isIT){
         var hasUSAps=Object.keys(D.usa||{}).length>0&&Object.keys(D.usa).some(function(k){return(D.usa[k].ps||0)>0});
         checks.push({l:"Fatt. Personale USA",ok:hasUSAps,v:hasUSAps?"OK":"Da caricare"});
+        var hasUSAesP=Object.keys(D.c||{}).some(function(k){return USA_STORES.indexOf(Number(k))>=0&&(D.c[k].esP||0)>0;});
+        checks.push({l:"🇺🇸 Esubero Prec. USA",ok:hasUSAesP,v:hasUSAesP?"OK":"Opzionale"});
       }
     }
   }
