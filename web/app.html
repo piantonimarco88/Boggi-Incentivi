@@ -653,7 +653,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.01'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.02'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -5580,8 +5580,19 @@ function loadAnagraficaUSA(file){
   reader.onload=function(ev){
     try{
       var wb=XLSX.read(ev.target.result,{type:"array"});
-      var ws=wb.Sheets[wb.SheetNames[0]];
-      var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+      // Il file può avere più fogli (es. mesi diversi accumulati, tipo "APRIL"/"JUNE COMMISSION").
+      // Sceglie il foglio anagrafica valido (col. A = Store ID) con più colonne, così se un mese
+      // più recente aggiunge campi (es. Email) viene preferito rispetto a un foglio più vecchio/incompleto.
+      var ws=null,rows=null,wsBestScore=-1;
+      wb.SheetNames.forEach(function(sn){
+        var wsC=wb.Sheets[sn];
+        var rowsC=XLSX.utils.sheet_to_json(wsC,{header:1,defval:null});
+        if(!rowsC||rowsC.length<2||!rowsC[0])return;
+        if(String(rowsC[0][0]||"").toLowerCase().indexOf("store")<0)return;
+        var score=rowsC[0].length;
+        if(score>wsBestScore){wsBestScore=score;ws=wsC;rows=rowsC;}
+      });
+      if(!ws){ws=wb.Sheets[wb.SheetNames[0]];rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});}
       if(!rows||rows.length<2){alert("File USA vuoto o non leggibile.");return;}
 
       var imported=[],skipped=0,added=0;
