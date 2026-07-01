@@ -653,7 +653,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.03'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.04'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -3794,6 +3794,30 @@ function rT(){try{
     h+='&#9679; Area ≥ '+fPct(FCVM_PARAMS.soglia60)+' + SY CY > SY LY → <b>Premio ridotto ('+fPct(FCVM_PARAMS.pct60)+' del massimale)</b><br>';
     h+='&#9679; Altrimenti → <b>Nessun premio</b>';
     h+='</div></div>';
+    // SAS — condivide SAS_MATRIX col mensile (usata sia per l'area FC/VM che per i bdg_stores)
+    if(sasNewActive()){
+      h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">&#128202; SAS &mdash; FC + VM</div>';
+      h+='<div style="font-size:10px;color:#8a8680;margin-bottom:8px">Stessa matrice usata in modalità Mensile. % del valore SAS del negozio riconosciuta nel fatturato verso il target (area e negozi BDG). Fino al 100% del target; l\'avanzo diventa riserva SAS riportata al mese dopo.</div>';
+      h+='<div class="cfg-row"><span class="cfg-label">Etichetta velocità</span><input class="cfg-input" id="sasVelLabel" type="text" value="'+esc(SAS_MATRIX.velLabel)+'" style="width:170px"></div>';
+      var _ab=SAS_MATRIX.accBands,_vb=SAS_MATRIX.velBands;
+      var _bandLbl=function(b,k){return k===0?'<'+Math.round(b[0]*100)+'%':(k===3?'≥'+Math.round(b[2]*100)+'%':Math.round(b[k-1]*100)+'-'+Math.round(b[k]*100)+'%');};
+      h+='<div style="font-size:10px;font-weight:700;color:#6b6560;text-align:center;margin:12px 0 2px">VELOCITÀ (asse orizzontale) — '+esc(SAS_MATRIX.velLabel)+' →</div>';
+      h+='<table style="width:100%;border-collapse:collapse;table-layout:fixed;margin:0 0 8px"><thead><tr><th style="width:130px;font-size:9px;font-weight:700;color:#6b6560;padding:3px 8px;text-align:right;white-space:nowrap;vertical-align:bottom">% ACCETTAZIONE<br>(asse verticale) ↓</th>';
+      for(var _c=0;_c<4;_c++)h+='<th style="font-size:9px;font-weight:700;color:#8a8680;padding:3px 8px;text-align:center">'+_bandLbl(_vb,_c)+'</th>';
+      h+='</tr></thead><tbody>';
+      [3,2,1,0].forEach(function(_ai){
+        h+='<tr><td style="font-size:9px;color:#6b6560;font-weight:700;padding:3px 8px;text-align:right;white-space:nowrap">'+_bandLbl(_ab,_ai)+'</td>';
+        for(var _c2=0;_c2<4;_c2++)h+='<td style="padding:2px;text-align:center"><input class="cfg-input sas-cell" type="number" data-sasr="'+_ai+'" data-sasc="'+_c2+'" value="'+Math.round(SAS_MATRIX.grid[_ai][_c2]*100)+'" step="1" min="0" max="100" style="width:62px;text-align:center"></td>';
+        h+='</tr>';
+      });
+      h+='</tbody></table>';
+      h+='<div style="font-size:10px;color:#8a8680;margin:2px 0">Soglie fasce <b>accettazione</b> (%, bassa→alta)</div><div style="display:flex;gap:6px;margin-bottom:6px">';
+      for(var _i=0;_i<3;_i++)h+='<input class="cfg-input sas-accband" type="number" data-i="'+_i+'" value="'+Math.round(_ab[_i]*100)+'" step="1" min="0" max="100" style="width:56px;text-align:center">';
+      h+='</div>';
+      h+='<div style="font-size:10px;color:#8a8680;margin:2px 0">Soglie fasce <b>velocità</b> (%, bassa→alta)</div><div style="display:flex;gap:6px;margin-bottom:8px">';
+      for(var _i2=0;_i2<3;_i2++)h+='<input class="cfg-input sas-velband" type="number" data-i="'+_i2+'" value="'+Math.round(_vb[_i2]*100)+'" step="1" min="0" max="100" style="width:56px;text-align:center">';
+      h+='</div></div>';
+    }
     // Malattia FC+VM
     h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">&#129298; Malattia &mdash; FC + VM (Consuntivo)</div>';
     h+='<div style="font-size:10px;color:#8a8680;margin-bottom:12px">Soglie giorni assenza per riduzione premio. Stessi parametri del mensile.</div>';
@@ -3818,6 +3842,17 @@ function rT(){try{
     if(inpS50f)inpS50f.onchange=function(){SICK_50=parseInt(this.value)||1;markDirty();rC();rA();rT();};
     var inpS0f=document.getElementById("sick0_fcvm");
     if(inpS0f)inpS0f.onchange=function(){SICK_0=parseInt(this.value)||2;markDirty();rC();rA();rT();};
+    // SAS matrix bindings (celle + soglie fasce + etichetta velocità) — condivisi col mensile
+    var _svlF=document.getElementById("sasVelLabel");if(_svlF)_svlF.onchange=function(){SAS_MATRIX.velLabel=this.value;markDirty();};
+    document.querySelectorAll(".sas-cell").forEach(function(inp){inp.onchange=function(){
+      var r=parseInt(inp.getAttribute("data-sasr")),c=parseInt(inp.getAttribute("data-sasc")),v=parseFloat(inp.value);
+      if(isNaN(v))return;SAS_MATRIX.grid[r][c]=Math.max(0,Math.min(1,v/100));markDirty();rC();rA();}});
+    document.querySelectorAll(".sas-accband").forEach(function(inp){inp.onchange=function(){
+      var i=parseInt(inp.getAttribute("data-i")),v=parseFloat(inp.value);
+      if(isNaN(v))return;SAS_MATRIX.accBands[i]=v/100;markDirty();rC();rA();}});
+    document.querySelectorAll(".sas-velband").forEach(function(inp){inp.onchange=function(){
+      var i=parseInt(inp.getAttribute("data-i")),v=parseFloat(inp.value);
+      if(isNaN(v))return;SAS_MATRIX.velBands[i]=v/100;markDirty();rC();rA();}});
     return;
   }
   // In seasonal mode, show only Periodo/Output + Seasonal Config
