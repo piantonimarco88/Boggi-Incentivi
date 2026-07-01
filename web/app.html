@@ -653,7 +653,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.00'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.01'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -5590,6 +5590,9 @@ function loadAnagraficaUSA(file){
       // Rileva colonna Field Coach dall'header (riga 0)
       var fcColUSA=-1;
       (rows[0]||[]).forEach(function(cell,ci){var s=String(cell||'').toLowerCase().replace(/[\s\n\r]+/g,'');if(s==='fc'||s.indexOf('fieldcoach')>=0||s.indexOf('field coach')>=0||s.indexOf('coach')>=0)fcColUSA=ci;});
+      // Rileva colonna Email dipendente dall'header (riga 0)
+      var emailColUSA=-1;
+      (rows[0]||[]).forEach(function(cell,ci){var s=String(cell||'').toLowerCase().replace(/[\s\n\r]+/g,'');if(s==='email'||s==='e-mail'||s.indexOf('email')>=0)emailColUSA=ci;});
 
       for(var i=1;i<rows.length;i++){
         var r=rows[i];
@@ -5645,7 +5648,7 @@ function loadAnagraficaUSA(file){
           ps:"NO",       // USA employees: premio attivo di default
           fc:(fcColUSA>=0&&r[fcColUSA])?String(r[fcColUSA]).trim():"",
           en:241,        // ente USA
-          mp:"",
+          mp:(emailColUSA>=0&&r[emailColUSA])?String(r[emailColUSA]).trim():"",
           mf:(function(){var _fn=(fcColUSA>=0&&r[fcColUSA])?String(r[fcColUSA]).trim():"";return _fn?_fn.toLowerCase().replace(/ /g,'.')+'@boggi.com':'';}()),
           rb:0,rbn:0,rd:0,rs:0,rp:0,rsa:0,rdc:0,rcs:0,ra:0,sc:0,il:0,dv:0,md:0,pq:0
         };
@@ -6594,7 +6597,7 @@ function rSources(){try{
   sh+='<button class="exp-btn btn-green" onclick="runValidationsAndReport(\'Verifica dati caricati\')" title="Esegue controlli di coerenza su anagrafica e configurazione: matricole duplicate, currency mancanti, store sconosciuti, ruoli non validi, ecc.">&#128269; Verifica Dati</button>';
   sh+='<button class="exp-btn btn-red" onclick="resetAllData()">&#128465; Reset Dati</button>';
   sh+='</div>';
-  sh+='<div style="font-size:9px;color:#a09a92;margin-top:6px">Anagrafica: carica il file con matricola, cognome, nome, negozio, ruolo, stipendio. Auto-scan: cerca i dati necessari in tutti i fogli.<br>🇺🇸 Anagrafica USA: formato Estrazione_Piantoni — col. A=StoreID, B=Store, C=Nome, D=Cognome, E=Job, G=Commission%, I=Tipo negozio. Righe con 0% escluse automaticamente.</div>';
+  sh+='<div style="font-size:9px;color:#a09a92;margin-top:6px">Anagrafica: carica il file con matricola, cognome, nome, negozio, ruolo, stipendio. Auto-scan: cerca i dati necessari in tutti i fogli.<br>🇺🇸 Anagrafica USA: formato Estrazione_Piantoni — col. A=StoreID, B=Store, C=Nome, D=Cognome, E=Job, G=Commission%, I=Tipo negozio. Righe con 0% escluse automaticamente. Colonna "Email" (se presente, rilevata per header) popola la mail diretta del dipendente per il tab Distribuzione.</div>';
   sh+='<div id="scanResults"></div></div>';
 
   // Shared checks used in both seasonal and mensile blocks
