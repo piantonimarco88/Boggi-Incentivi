@@ -653,7 +653,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.02'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.03'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -1728,6 +1728,9 @@ function exportExcelConsuntivoIT(){
     var rbCalc=isOn(e.j,"rb")?getVal(e,"rb")*sm:0;
     var rb=e.ibFromAY?0:rbCalc;
     var rbn=e.ibFromAY?rbCalc:0;
+    // Workgame: nessun codice payroll dedicato — confluisce nel cod. 225 (PREMIO DI RISULTATO),
+    // stessa logica di exportTracciatoPagamenti(). Qui non c'è colonna TOTALE che lo raccolga.
+    if(!e.ibFromAY&&MODE==="consuntivo"&&e.ov_wg==="SI"&&isOn(e.j,"rb"))rb+=Math.round(e.ib*(PARAMS.workgamePct||0)*100)/100;
     var rd=isOn(e.j,"rd")?getVal(e,"rd")*sm:0;
     var rs=isOn(e.j,"rs")?getVal(e,"rs")*sm:0;
     var rp=isOn(e.j,"rp")?getVal(e,"rp")*sm:0;
