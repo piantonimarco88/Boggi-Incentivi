@@ -666,7 +666,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.07'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.08'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -6276,7 +6276,7 @@ function loadResultsExcel(file){
           if(isDCC||type==="unknown"){type="dcc";bestSheet=sn;bestJson=json;bestHeaders=headers;bestDataStart=dStart;if(isDCC)break;continue}
         }
 
-        var cInc=fH("incentivo merce","riceve l'incentivo","riceve l\u2019incentivo","somma di riceve","incentivo da attribuire","somma di incentivo");
+        var cInc=fH("incentivo merce","riceve l'incentivo","riceve l\u2019incentivo","somma di riceve","incentivo da attribuire","somma di incentivo","da distribuire");
         if(cInc>=0&&(cSid>=0||cEtich>=0)){
           if(isArt||type==="unknown"){type="articoli";bestSheet=sn;bestJson=json;bestHeaders=headers;bestDataStart=dStart;if(isArt)break;continue}
         }
@@ -6339,7 +6339,7 @@ function loadResultsExcel(file){
 
       else if(type==="articoli"){
         var cSid=fH("store id","store_id");var cEtich=fH("etichette di riga","row label");
-        var cInc=fH("incentivo merce","riceve l'incentivo","riceve l\u2019incentivo","somma di riceve","incentivo da attribuire","somma di incentivo");
+        var cInc=fH("incentivo merce","riceve l'incentivo","riceve l\u2019incentivo","somma di riceve","incentivo da attribuire","somma di incentivo","da distribuire");
         var sidCol=cSid>=0?cSid:cEtich;
         for(var ri=dataStart;ri<json.length;ri++){
           var row=json[ri];if(!row)continue;
