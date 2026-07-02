@@ -653,7 +653,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.04'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.05'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -8067,8 +8067,9 @@ function sendMailEmployees(){
   if(!(window.chrome&&window.chrome.webview)){_empMailBrowser(targets,isSeasonal,isFcvm);return;}
   // Priorità: 1) CFG_PDF_PATH configurato, 2) path memorizzato da "Salva Tutti i PDF", 3) picker
   var baseF=CFG_PDF_PATH?CFG_PDF_PATH.replace(/[\/\\]$/,""):(_pdfSaveBaseFolder||null);
+  var pdfSub=MODE==="preventivo"?getPdfSubfolder().prev:getPdfSubfolder().cons;
   if(baseF){
-    _empPreflight(baseF+"\\"+getPdfSubfolder().cons.replace(/\//g,"\\"),targets,noEmail);
+    _empPreflight(baseF+"\\"+pdfSub.replace(/\//g,"\\"),targets,noEmail);
   }else{
     var h=null;
     h=function(ev){
@@ -8076,7 +8077,7 @@ function sendMailEmployees(){
         if(ev.data.startsWith('folderSelected:')){
           window.chrome.webview.removeEventListener('message',h);
           var sel=ev.data.slice('folderSelected:'.length);
-          var sub=getPdfSubfolder().cons.replace(/\//g,"\\");
+          var sub=pdfSub.replace(/\//g,"\\");
           _pdfSaveBaseFolder=sel.endsWith("\\"+sub)?sel.slice(0,sel.length-sub.length-1):sel;
           _empPreflight(sel,targets,noEmail);
         } else if(ev.data==='folderCancelled'){
