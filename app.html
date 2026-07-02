@@ -267,6 +267,19 @@ function esc(s){if(!s)return"";return String(s).replace(/&/g,"&amp;").replace(/<
 // Keys match Aggiunte sheet: rb=BDG lordo, rbn=BDG netto, rd=Digital, rs=SY, rp=Privilege, rsa=SAS, rdc=DCC, rcs=CS, ra=Articoli
 var AGG={};// keyed by matricola: {rb:0,rbn:0,rd:0,rs:0,rp:0,rsa:0,rdc:0,rcs:0,ra:0}
 var MONITOR_SNAPS=[];
+// Log invii email: {m,to,period,docType(preventivo/consuntivo),prizeMode,ts,status(sent/error/prepared)}
+// status "sent"=invio automatico confermato da Outlook via C#; "prepared"=bozza aperta/eml scaricato (non conferma invio effettivo)
+var MAIL_LOG=[];
+function logMailSent(matr,to,status){
+  MAIL_LOG.push({m:matr,to:to||"",period:getPdfSubfolder().fileBase,docType:MODE,prizeMode:PRIZE_MODE,ts:new Date().toISOString(),status:status});
+  autoSave();
+}
+function getLastMailLog(matr){
+  var period=getPdfSubfolder().fileBase;
+  var matches=MAIL_LOG.filter(function(l){return l.m===matr&&l.period===period&&l.docType===MODE&&l.prizeMode===PRIZE_MODE;});
+  if(!matches.length)return null;
+  return matches.reduce(function(a,b){return new Date(b.ts)>new Date(a.ts)?b:a;});
+}
 var AGG_KEYS=[{k:"rb",l:"BDG (Lordo)"},{k:"rbn",l:"BDG (Netto)"},{k:"rd",l:"Digital"},{k:"rs",l:"SY"},{k:"rp",l:"Privilege"},{k:"rsa",l:"SAS"},{k:"rdc",l:"DCC"},{k:"rcs",l:"CS"},{k:"ra",l:"Articoli"}];
 
 function getAgg(m){return AGG[m]||null}
@@ -653,7 +666,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.05'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.06'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -731,6 +744,7 @@ if(window._autoState){try{
   if(as.vl)VL=as.vl;
   if(as.monthly_syly)MONTHLY_SYLY=as.monthly_syly;
   if(as.monitor_snaps)MONITOR_SNAPS=as.monitor_snaps;
+  if(as.mail_log)MAIL_LOG=as.mail_log;
   // FC+VM: ripristina prima di setPrizeMode (che chiama rAFcvm con lang già popolato)
   if(as.fc_emp)FC_EMP=as.fc_emp;
   if(as.fc_map)FC_MAP=as.fc_map;
@@ -769,7 +783,7 @@ function autoSave(){
       fc_emp:FC_EMP,fc_map:FC_MAP,fc_targets:FC_TARGETS,fc_results:FC_RESULTS,
       fc_syly:FC_SYLY,fc_store_flags:FC_STORE_FLAGS,agg_fcvm:AGG_FCVM,
       fc_overrides:FC_OVERRIDES,fc_prev_results:FC_PREV_RESULTS,
-      monitor_snaps:MONITOR_SNAPS,
+      monitor_snaps:MONITOR_SNAPS,mail_log:MAIL_LOG,
       ts:new Date().toISOString()
     };
     var payload=JSON.stringify(state);
@@ -815,7 +829,7 @@ function saveSession(){
       fc_emp:FC_EMP,fc_map:FC_MAP,fc_targets:FC_TARGETS,fc_results:FC_RESULTS,
       fc_syly:FC_SYLY,fc_store_flags:FC_STORE_FLAGS,agg_fcvm:AGG_FCVM,
       fc_overrides:FC_OVERRIDES,fc_prev_results:FC_PREV_RESULTS,
-      monitor_snaps:MONITOR_SNAPS,
+      monitor_snaps:MONITOR_SNAPS,mail_log:MAIL_LOG,
       ts:new Date().toISOString()
     };
     var json=JSON.stringify(state);
@@ -892,6 +906,7 @@ function loadSession(input){
     if(state.agg_fcvm)AGG_FCVM=state.agg_fcvm;
     if(state.fc_overrides)FC_OVERRIDES=state.fc_overrides;
     if(state.fc_prev_results)FC_PREV_RESULTS=state.fc_prev_results;
+    if(state.mail_log)MAIL_LOG=state.mail_log;
     if(state.mode)MODE=state.mode;if(state.region)REGION=state.region;if(state.prize_mode){PRIZE_MODE=state.prize_mode;setPrizeMode(PRIZE_MODE);}if(state.season_period){SEASON_PERIOD=state.season_period;setSeasonPeriod(SEASON_PERIOD);}
     document.getElementById("modeP").className="gbtn"+(MODE==="preventivo"?" on":"");document.getElementById("modeC").className="gbtn"+(MODE==="consuntivo"?" on":"");
     document.getElementById("regInt").className="gbtn"+(REGION==="international"?" on":"");document.getElementById("regIt").className="gbtn"+(REGION==="italia"?" on":"");
@@ -7120,7 +7135,7 @@ function rDist(){
 
   h+='<input placeholder="Cerca matricola, nome..." id="distQ" style="width:100%;padding:6px 10px;border:1px solid #d5d0c8;border-radius:4px;font-size:11px;margin-bottom:8px">';
   h+='<div class="scroll-wrap" style="max-height:50vh"><table style="font-size:10px"><thead><tr style="background:#eae7e1">';
-  h+='<th style="padding:5px;cursor:default">Matr.</th><th style="padding:5px;cursor:default">Cognome</th><th style="padding:5px;cursor:default">Nome</th><th style="padding:5px;cursor:default">Ruolo</th><th style="padding:5px;cursor:default;min-width:160px">Email Personale</th>'+(PRIZE_MODE!=='fcvm'?'<th style="padding:5px;cursor:default;min-width:160px">Email FC</th>':'')+'<th style="padding:5px;cursor:default">PDF</th><th style="padding:5px;cursor:default;text-align:right">Totale</th>';
+  h+='<th style="padding:5px;cursor:default">Matr.</th><th style="padding:5px;cursor:default">Cognome</th><th style="padding:5px;cursor:default">Nome</th><th style="padding:5px;cursor:default">Ruolo</th><th style="padding:5px;cursor:default;min-width:160px">Email Personale</th>'+(PRIZE_MODE!=='fcvm'?'<th style="padding:5px;cursor:default;min-width:160px">Email FC</th>':'')+'<th style="padding:5px;cursor:default">PDF</th><th style="padding:5px;cursor:default;text-align:right">Totale</th><th style="padding:5px;cursor:default;min-width:120px">Ultimo invio</th>';
   h+="</tr></thead><tbody id=\"distBody\">";
   distPool.forEach(function(e,i){
     var tc=PRIZE_MODE==='fcvm'?calcFcVmPremio(e.m).totalPremioLC:calcE(e);
@@ -7135,7 +7150,19 @@ function rDist(){
     h+='<td style="padding:2px"><input type="email" data-em="'+esc(e.m)+'" data-ek="mp" value="'+esc(e.mp||"")+'" style="width:100%;padding:2px 4px;border:1px solid '+(hasEmail?"#d4edda":"#f8d7da")+';border-radius:3px;font-size:9px;font-family:inherit;background:'+(hasEmail?"#f0faf2":"#fef6f0")+'"></td>';
     if(PRIZE_MODE!=='fcvm')h+='<td style="padding:2px"><input type="email" data-em="'+esc(e.m)+'" data-ek="mf" value="'+esc(e.mf||"")+'" style="width:100%;padding:2px 4px;border:1px solid #e5e1db;border-radius:3px;font-size:9px;font-family:inherit"></td>';
     h+='<td style="padding:3px 5px;font-size:8px;color:#a09a92">'+folder+"/"+pdfName+"</td>";
-    h+='<td style="padding:3px 5px;text-align:right;font-weight:600;color:'+(tc>0?"#2c2925":"#b0a99f")+'">'+fc(tc,cu)+"</td></tr>"});
+    h+='<td style="padding:3px 5px;text-align:right;font-weight:600;color:'+(tc>0?"#2c2925":"#b0a99f")+'">'+fc(tc,cu)+"</td>";
+    var _lastLog=getLastMailLog(e.m);
+    if(_lastLog){
+      var _lts=new Date(_lastLog.ts);
+      var _ld=String(_lts.getDate()).padStart(2,"0")+"/"+String(_lts.getMonth()+1).padStart(2,"0")+" "+String(_lts.getHours()).padStart(2,"0")+":"+String(_lts.getMinutes()).padStart(2,"0");
+      var _lCol=_lastLog.status==='sent'?'#2d7a3a':(_lastLog.status==='error'?'#cf5b5b':'#c9a96e');
+      var _lIcon=_lastLog.status==='sent'?'✓':(_lastLog.status==='error'?'✗':'✉');
+      var _lLbl=_lastLog.status==='sent'?'Inviata':(_lastLog.status==='error'?'Errore':'Preparata');
+      h+='<td style="padding:3px 5px;font-size:9px;color:'+_lCol+'" title="'+esc(_lLbl+' il '+_lts.toLocaleString("it-IT"))+'">'+_lIcon+' '+_ld+'</td>';
+    } else {
+      h+='<td style="padding:3px 5px;font-size:9px;color:#b0a99f">—</td>';
+    }
+    h+="</tr>"});
   h+="</tbody></table></div></div>";
 
   document.getElementById("p6").innerHTML=h;
@@ -7988,6 +8015,7 @@ function _downloadEmlWithPdf(e, pdfBlob, pdfName){
         pdfBase64:b64,
         pdfName:pdfName
       });
+      logMailSent(e.m,e.mp,'prepared');
       return;
     }
     // Fallback browser: scarica .eml
@@ -8000,6 +8028,7 @@ function _downloadEmlWithPdf(e, pdfBlob, pdfName){
     var a=document.createElement("a");a.href=URL.createObjectURL(emlBlob);a.download=pdfName.replace(".pdf",".eml");
     document.body.appendChild(a);a.click();document.body.removeChild(a);
     setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
+    logMailSent(e.m,e.mp,'prepared');
   };
   reader.readAsDataURL(pdfBlob);
 }
@@ -8170,7 +8199,7 @@ function _empSendLoop(folder,queue,preResults){
       else{lastOk=false;lastErr=r.indexOf('err:')===0?r.slice(4):r;}
     } else if(ev.data==='mailDone'){
       var e=queue[done];
-      if(e)results.push({e:e,ok:lastOk,skipped:false,reason:lastOk?'Inviata':lastErr,retryable:!lastOk});
+      if(e){results.push({e:e,ok:lastOk,skipped:false,reason:lastOk?'Inviata':lastErr,retryable:!lastOk});logMailSent(e.m,e.mp,lastOk?'sent':'error');}
       done++;
       var bar=document.getElementById('empBar'),cnt=document.getElementById('empCount');
       if(bar)bar.style.width=Math.round(done/total*100)+'%';
