@@ -666,7 +666,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.08'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.09'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -6380,9 +6380,12 @@ function loadResultsExcel(file){
       else if(type==="sas_results"){
         var cSid=fH("store id","store_id");
         var cSa=fH("% sas accepted","sas accepted","% accepted","% accettati","accepted %","accepted","% accettazione","accettati %","% acceptance");
-        // NUOVA logica SAS (da luglio 2026): velocità %, valore SAS (LC/EUR), riserva riportata
-        var cVel=fH("% processed within","processed within 4","% within 4","within 4h","% gestiti entro","% sas gestiti","gestiti entro","velocit","velocity","% handled");
-        // Vecchio conteggio "SAS on target" (giugno): solo se NON è la colonna velocità %
+        // NUOVA logica SAS (da luglio 2026): velocità %, valore SAS (LC/EUR), riserva riportata.
+        // Richiede il simbolo "%" nell'header per non confondersi con la vecchia colonna "Processed
+        // within 4h" (conteggio SAS, non percentuale) usata fino a giugno 2026.
+        var cVel=-1;
+        headers.forEach(function(hh,ci){if(hh&&hh.indexOf('%')>=0&&(hh.indexOf('processed within')>=0||hh.indexOf('within 4h')>=0||hh.indexOf('gestiti entro')>=0||hh.indexOf('sas gestiti')>=0||hh.indexOf('velocit')>=0||hh.indexOf('velocity')>=0||hh.indexOf('handled')>=0)){cVel=ci;}});
+        // Vecchio conteggio "SAS on target" (fino a giugno 2026): stesso testo ma senza "%"
         var cS4=fH("processed within 4","within 4h");if(cS4>=0&&cS4===cVel)cS4=-1;
         var cValE=fH("valore eur","value eur","valore sas eur","sas value eur","valore euro");
         var cValL=fH("valore lc","value lc","valore sas lc","sas value lc");
