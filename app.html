@@ -666,7 +666,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.09'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.10'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -7514,11 +7514,12 @@ function exportTracciatoPagamenti(){
 
   if(isSeasItalia){
     // Seasonal Italia: una sola riga per dipendente — PREMIO SEMESTRALE cod 695
+    var isMidExp=SEASON_PERIOD==="mid";
     E.forEach(function(e){
       // Escludi dipendenti con premio sospeso
       if(SEAS&&SEAS[e.m]&&SEAS[e.m].excluded)return;
       var matrNum=e.m.replace(/^[A-Za-z]+/,"");
-      var val=calcSeasonal(e);
+      var val=isMidExp?calcMidSeason(e):calcSeasonal(e);
       var rounded=Math.round(val);
       if(rounded<=0)return;
       var importo=String(rounded*100);
