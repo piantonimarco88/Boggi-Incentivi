@@ -666,7 +666,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.10'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.11'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -1094,20 +1094,48 @@ function getVal(e,kpiKey){
     case "rsa":if(sasZeroByAcc(e))return 0;return Math.min((cn.s4||0)*PARAMS.sasRate,PARAMS.sasMax);
     case "rdc":return Math.round(Math.min((cn.dv||0)*PARAMS.dccRate,PARAMS.dccMax)*100)/100;
     case "rcs":return e.rcs||0;case "ra":if(!PARAMS.artEnabled||isUSA(e.si,e))return 0;if((e.ra||0)>0)return e.ra;var ac=cn.ac||0;return ac>0?Math.round(e.ib*PARAMS.artPct*ac*100)/100:0;
-    case "vi":{var _vle2=VL[e.m];if(!_vle2)return 0;if(!Array.isArray(_vle2)){var _vla=Number(_vle2)||0;return(_vla>0&&storePct>=PARAMS.bdg100)?_vla:0;}var _vtot=0;var _nEmpty=_vle2.filter(function(x){return !String(x.sid||'').trim();}).length;_vle2.forEach(function(entry){var _esid=String(entry.sid||'').trim();if(_esid){var _pi=parseInt(_esid);if(!isNaN(_pi))_esid=String(_pi);}var _spct;if(!_esid){_spct=(_nEmpty===1)?storePct:0;}else{_spct=storePctOf(_esid);}if(_spct>=PARAMS.bdg100)_vtot+=entry.amt||0;});return _vtot;}
+    case "vi":{var _vle2=VL[e.m];if(!_vle2)return 0;
+      if(!Array.isArray(_vle2)){
+        var _vla=Number(_vle2)||0;if(_vla<=0)return 0;
+        if(e.ov_b100==="SI")return _vla;
+        if(e.ov_rid==="SI")return Math.round(_vla*PARAMS.bdg60mult*100)/100;
+        if(storePct>=PARAMS.bdg100)return _vla;
+        if(isRidottoStore(sid))return Math.round(_vla*PARAMS.bdg60mult*100)/100;
+        return 0;
+      }
+      var _vtot=0;var _nEmpty=_vle2.filter(function(x){return !String(x.sid||'').trim();}).length;
+      _vle2.forEach(function(entry){
+        var _esid=String(entry.sid||'').trim();if(_esid){var _pi=parseInt(_esid);if(!isNaN(_pi))_esid=String(_pi);}
+        var _amt=entry.amt||0;if(_amt<=0)return;
+        if(e.ov_b100==="SI"){_vtot+=_amt;return;}
+        if(e.ov_rid==="SI"){_vtot+=Math.round(_amt*PARAMS.bdg60mult*100)/100;return;}
+        if(!_esid&&_nEmpty!==1)return; // store ambiguo, non determinabile → 0 (comportamento invariato)
+        var _ridSid=_esid||sid;
+        var _spct=storePctOf(_ridSid);
+        if(_spct>=PARAMS.bdg100){_vtot+=_amt;}
+        else if(isRidottoStore(_ridSid)){_vtot+=Math.round(_amt*PARAMS.bdg60mult*100)/100;}
+      });
+      return _vtot;}
     case "pq":if((tg.qt||0)>0&&(cn.qc||0)>=(tg.qt||0)*PARAMS.kpi100)return Math.round(e.ib*PARAMS.qtyPct*100)/100;return 0;
     default:return 0}
 }
-// isRidotto: true se l'employee riceve il premio BDG moltiplicato ridotto (60%)
-function isRidotto(e){
-  if(isUSA(e.si,e)||MODE!=="consuntivo")return false;
-  var sid=String(e.si),tg=D.t[sid]||{},cn=D.c[sid]||{},dp=isD(e.si);
+// isRidottoStore: come isRidotto(e) ma per un negozio specifico (sid) invece che per il negozio
+// "di casa" del dipendente — serve per premi multi-negozio come Visual In Store, dove ogni riga
+// (entry) può appartenere a un negozio diverso e va valutata con i propri dati di target/consuntivo.
+function isRidottoStore(sid){
+  if(MODE!=="consuntivo")return false;
+  var tg=D.t[sid]||{},cn=D.c[sid]||{},dp=isD(sid);
   if(!tg.to)return false;
   var storePct=storePctOf(sid);
   if(storePct>=PARAMS.bdg100||storePct<PARAMS.bdg60)return false;
   if(dp)return (tg.qt||0)>0&&(cn.qc||0)>=(tg.qt||0);
   var syLy=MONTHLY_SYLY[sid]||0;
   return (cn.sy||0)>syLy&&syLy>0;
+}
+// isRidotto: true se l'employee riceve il premio BDG moltiplicato ridotto (60%)
+function isRidotto(e){
+  if(isUSA(e.si,e))return false;
+  return isRidottoStore(String(e.si));
 }
 // calcE: normal calc + aggiunte. Returns 0 if premio sospeso in consuntivo
 function calcE(e){if(MODE==="consuntivo"&&e.ps==="SI")return 0;if(isUSA(e.si,e)){if(MODE==="preventivo")return 0;return calcUSA(e)+aggTotal(e.m);}var t=0,sm=sickMult(e.ml);IT.forEach(function(it){if(it.k==="vi")return;if(it.k==="ra"&&!PARAMS.artEnabled)return;if(isOn(e.j,it.k))t+=getVal(e,it.k)});t+=getVal(e,"vi");var result=Math.round(t*sm*100)/100+aggTotal(e.m);if(MODE==="consuntivo"&&e.ov_wg==="SI"&&isOn(e.j,"rb"))result+=Math.round(e.ib*(PARAMS.workgamePct||0)*100)/100;return result}
@@ -2321,7 +2349,7 @@ function buildLetter(e){
     h+="</div></div>"}
   if(PARAMS.artEnabled&&isOn(e.j,"ra")){sN++;var val=getVal(e,"ra"),p=val>0,vS=Math.round(val*sm);var acCnt=cn.ac||0;h+=secHd(sN,tr(e,"articles","ITEMS"),isP?true:p,isP);h+=ltRow("FORMULA",(PARAMS.artPct*100)+"% "+tr(e,"turnover","BDG")+" x N. "+tr(e,"items","CAT"));if(isP){/* nessuna stima in preventivo */}else{if(acCnt>0)h+=ltRow(tr(e,"items","CATEGORIES")+" ON TARGET",String(acCnt));if(acCnt>0)h+=ltRow("INCENTIVE MAX",'<span class="lt-row-cur">'+cu+"</span>"+Math.round(e.ib*PARAMS.artPct*acCnt));h+=secPd(pdLabel,vS,cu,p)}h+="</div></div>"}
   if(isOn(e.j,"rdc")){sN++;var val=getVal(e,"rdc"),p=val>0,vS=Math.round(val*sm);h+=secHd(sN,"DCC TARGET",p,isP);h+=ltRow("FORMULA",(PARAMS.dccRate*100).toFixed(1)+"% max \u20ac"+PARAMS.dccMax);if(!isP)h+=ltRow("DCC VALUE",'<span class="lt-row-cur">'+cu+"</span>"+(cn.dv||0).toLocaleString("it-IT"));h+=secPd(pdLabel,vS,cu,p);h+="</div></div>"}
-  var _vlei=VL[e.m];var viVal=getVal(e,"vi");var _hasVI=viVal>0||(!isP&&Array.isArray(_vlei)&&_vlei.length>0);if(_hasVI){sN++;var _vLng=trLang(e);var _vLS={"ITALIANO":"NEGOZIO","INGLESE":"STORE","FRANCESE":"MAGASIN","TEDESCO":"STORE","SPAGNOLO":"TIENDA"};var _vLT={"ITALIANO":"TARGET FATTURATO","INGLESE":"TURNOVER TARGET","FRANCESE":"OBJECTIF CA","TEDESCO":"UMSATZZIEL","SPAGNOLO":"OBJETIVO"};var _vLA={"ITALIANO":"CONSUNTIVO","INGLESE":"ACTUAL","FRANCESE":"RÉEL","TEDESCO":"IST","SPAGNOLO":"REAL"};var _vLP={"ITALIANO":"PREMIO","INGLESE":"INCENTIVE","FRANCESE":"PRIME","TEDESCO":"PRÄMIE","SPAGNOLO":"INCENTIVO"};var _vLN={"ITALIANO":"Obiettivo non raggiunto","INGLESE":"Target not reached","FRANCESE":"Objectif non atteint","TEDESCO":"Ziel nicht erreicht","SPAGNOLO":"Objetivo no alcanzado"};h+=secHd(sN,"EXTRA BDG VISUAL IN STORE",viVal>0,isP);if(!isP){if(!Array.isArray(_vlei)){h+=ltRow('','<span style="color:#a09a92;font-size:10px;font-style:italic">Ricarica il file Visual In Store per visualizzare il dettaglio per negozio</span>');}else if(_vlei.length>0){var _nEmptyD=_vlei.filter(function(x){return !String(x.sid||'').trim();}).length;var _allEmpty=_nEmptyD===_vlei.length&&_vlei.length>1;if(_allEmpty){h+=ltRow('','<span style="color:#a09a92;font-size:10px;font-style:italic">Colonna Store ID non rilevata nel file Visual — ricaricarlo per il dettaglio per negozio</span>');}else{_vlei.forEach(function(entry){var _vsid=String(entry.sid||'').trim();if(_vsid){var _pi=parseInt(_vsid);if(!isNaN(_pi))_vsid=String(_pi);}var _vtg=_vsid?D.t[_vsid]||{}:tg;var _vcn=_vsid?D.c[_vsid]||{}:cn;var _vpct=_vtg.to>0?((_vcn.sc||0)+(_vcn.es||0))/_vtg.to:(!_vsid?storePct:0);var _vhit=_vpct>=PARAMS.bdg100;var _vprz=_vhit?Math.round((entry.amt||0)*sm):0;var _vname=(function(){var n='';E.forEach(function(emp){if(String(emp.si)===_vsid&&emp.s){n=emp.s;}});return n;}());var _vlbl=(_vLS[_vLng]||'STORE')+' '+(_vsid||String(e.si));if(_vname)_vlbl+='—'+_vname;h+=ltRow(_vlbl,(_vhit?'✅':'❌')+' '+fPct(_vpct));if((_vtg.to||0)>0){h+=ltRow(_vLT[_vLng]||'TARGET','<span class="lt-row-cur">'+cu+'</span>'+(_vtg.to).toLocaleString('it-IT'));h+=ltRow(_vLA[_vLng]||'ACTUAL','<span class="lt-row-cur">'+cu+'</span>'+Math.round((_vcn.sc||0)+(_vcn.es||0)).toLocaleString('it-IT'));}h+=ltRow(_vLP[_vLng]||'INCENTIVE',_vhit?('<span class="lt-row-cur">'+cu+'</span>'+_vprz):('<span style="color:#cf5b5b;font-style:italic">'+esc(_vLN[_vLng]||'Target not reached')+'</span>'));});}}}if(viVal>0)h+=secPd(pdLabel,Math.round(viVal*sm),cu,true);h+="</div></div>"}
+  var _vlei=VL[e.m];var viVal=getVal(e,"vi");var _hasVI=viVal>0||(!isP&&Array.isArray(_vlei)&&_vlei.length>0);if(_hasVI){sN++;var _vLng=trLang(e);var _vLS={"ITALIANO":"NEGOZIO","INGLESE":"STORE","FRANCESE":"MAGASIN","TEDESCO":"STORE","SPAGNOLO":"TIENDA"};var _vLT={"ITALIANO":"TARGET FATTURATO","INGLESE":"TURNOVER TARGET","FRANCESE":"OBJECTIF CA","TEDESCO":"UMSATZZIEL","SPAGNOLO":"OBJETIVO"};var _vLA={"ITALIANO":"CONSUNTIVO","INGLESE":"ACTUAL","FRANCESE":"RÉEL","TEDESCO":"IST","SPAGNOLO":"REAL"};var _vLP={"ITALIANO":"PREMIO","INGLESE":"INCENTIVE","FRANCESE":"PRIME","TEDESCO":"PRÄMIE","SPAGNOLO":"INCENTIVO"};var _vLN={"ITALIANO":"Obiettivo non raggiunto","INGLESE":"Target not reached","FRANCESE":"Objectif non atteint","TEDESCO":"Ziel nicht erreicht","SPAGNOLO":"Objetivo no alcanzado"};var _vLR={"ITALIANO":"Premio ridotto ("+Math.round(PARAMS.bdg60mult*100)+"%)","INGLESE":"Reduced prize ("+Math.round(PARAMS.bdg60mult*100)+"%)","FRANCESE":"Prime réduite ("+Math.round(PARAMS.bdg60mult*100)+"%)","TEDESCO":"Reduzierte Prämie ("+Math.round(PARAMS.bdg60mult*100)+"%)","SPAGNOLO":"Premio reducido ("+Math.round(PARAMS.bdg60mult*100)+"%)"};h+=secHd(sN,"EXTRA BDG VISUAL IN STORE",viVal>0,isP);if(!isP){if(!Array.isArray(_vlei)){h+=ltRow('','<span style="color:#a09a92;font-size:10px;font-style:italic">Ricarica il file Visual In Store per visualizzare il dettaglio per negozio</span>');}else if(_vlei.length>0){var _nEmptyD=_vlei.filter(function(x){return !String(x.sid||'').trim();}).length;var _allEmpty=_nEmptyD===_vlei.length&&_vlei.length>1;if(_allEmpty){h+=ltRow('','<span style="color:#a09a92;font-size:10px;font-style:italic">Colonna Store ID non rilevata nel file Visual — ricaricarlo per il dettaglio per negozio</span>');}else{var _vOvB100=e.ov_b100==="SI",_vOvRid=e.ov_rid==="SI";_vlei.forEach(function(entry){var _vsid=String(entry.sid||'').trim();if(_vsid){var _pi=parseInt(_vsid);if(!isNaN(_pi))_vsid=String(_pi);}var _ridSid=_vsid||sid;var _vtg=D.t[_ridSid]||{};var _vcn=D.c[_ridSid]||{};var _vpct=storePctOf(_ridSid);var _vtier=_vOvB100?'full':_vOvRid?'rid':(_vpct>=PARAMS.bdg100?'full':(isRidottoStore(_ridSid)?'rid':'none'));var _vprz=_vtier==='full'?Math.round((entry.amt||0)*sm):(_vtier==='rid'?Math.round((entry.amt||0)*PARAMS.bdg60mult*sm*100)/100:0);var _vname=(function(){var n='';E.forEach(function(emp){if(String(emp.si)===_vsid&&emp.s){n=emp.s;}});return n;}());var _vlbl=(_vLS[_vLng]||'STORE')+' '+(_vsid||String(e.si));if(_vname)_vlbl+='—'+_vname;var _vIcon=_vtier==='full'?'✅':(_vtier==='rid'?'🟡':'❌');h+=ltRow(_vlbl,_vIcon+' '+fPct(_vpct));if((_vtg.to||0)>0){h+=ltRow(_vLT[_vLng]||'TARGET','<span class="lt-row-cur">'+cu+'</span>'+(_vtg.to).toLocaleString('it-IT'));h+=ltRow(_vLA[_vLng]||'ACTUAL','<span class="lt-row-cur">'+cu+'</span>'+Math.round((_vcn.sc||0)+(_vcn.es||0)).toLocaleString('it-IT'));}h+=ltRow(_vLP[_vLng]||'INCENTIVE',_vtier==='full'?('<span class="lt-row-cur">'+cu+'</span>'+_vprz):(_vtier==='rid'?('<span class="lt-row-cur">'+cu+'</span>'+_vprz+' <span style="color:#c9a96e;font-size:9px">('+esc(_vLR[_vLng]||_vLR["INGLESE"])+')</span>'):('<span style="color:#cf5b5b;font-style:italic">'+esc(_vLN[_vLng]||'Target not reached')+'</span>')));});}}}if(viVal>0)h+=secPd(pdLabel,Math.round(viVal*sm),cu,true);h+="</div></div>"}
 
   // AGGIUNTE section in letter (if any)
   var at=aggTotal(e.m);
@@ -9925,7 +9953,8 @@ function exportFcVmExcel(){
   var mm=String(CFG_MONTH).padStart(2,'0');
   var rows=[['MATRICOLA','COGNOME','NOME','RUOLO','VALUTA','CAMBIO','PREMIO MAX LC',
              'N.STORE','TARGET EUR','CONS EUR','ESUBERO PREV','CONS TOT EUR','% AREA','SY CY','SY LY','SY OK',
-             'PREMIO LC','PREMIO EUR','ESITO','OVERRIDE']];
+             'PREMIO AREA LC','PREMIO AREA EUR','PREMIO BDG NEGOZI LC','PREMIO BDG NEGOZI EUR',
+             'PREMIO TOTALE LC','PREMIO TOTALE EUR','ESITO','OVERRIDE']];
   pool.forEach(function(emp){
     var r=calcFcVmPremio(emp.m);
     var nS=Object.keys(FC_MAP).filter(function(sid){
@@ -9938,7 +9967,8 @@ function exportFcVmExcel(){
                Math.round((r.totEsubero||0)*100)/100,Math.round((r.totConsWithEsub||r.totCons)*100)/100,
                r.totTarget>0?Math.round(r.pct*10000)/100:0,
                r.totSyCy||0,r.totSyLy||0,r.syOk?'SI':'NO',
-               r.premio,r.premio_eur,r.esito,FC_OVERRIDES[emp.m]||'']);
+               r.premio,r.premio_eur,r.bdgPrize||0,r.bdgPrizeEur||0,
+               r.totalPremioLC,r.totalPremioEur,r.esito,FC_OVERRIDES[emp.m]||'']);
   });
   var wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'FC VM');
