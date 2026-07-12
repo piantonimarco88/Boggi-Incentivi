@@ -2283,8 +2283,12 @@ function showQualityReport(){
     if(vals.length<3)return; const m=med(vals.map(x=>x.v)); if(!(m>0))return;
     vals.forEach(x=>{if(x.v>m*3||x.v<m/3) rmlOut.push({nm:(e.cognome+' '+e.nome).trim(),mk:x.mk,v:x.v,med:m,store:x.store});});
   });
-  // 2) Achievement > 200% (erogato/massimale)
-  const achOut=allData.filter(r=>r.massimale>0&&r.erogato/r.massimale>2).map(r=>({nm:nm(r),mk:r.monthKey,pct:r.erogato/r.massimale*100,store:r.store,erog:r.erogato,mass:r.massimale,naz:r._nazione}));
+  // 2) Achievement > 200% (erogato/massimale) — separati in due bucket per causa probabile:
+  //    massimale < €5 = quasi certamente un errore nel file sorgente (nessun tetto premio reale
+  //    scende sotto pochi euro); massimale plausibile = probabile pagamento straordinario/conguaglio
+  //    (il calcolo legge fedelmente il file, non è un bug nostro — va verificato con chi gestisce le buste paga).
+  const achAll=allData.filter(r=>r.massimale>0&&r.erogato/r.massimale>2).map(r=>({nm:nm(r),mk:r.monthKey,pct:r.erogato/r.massimale*100,store:r.store,erog:r.erogato,mass:r.massimale,naz:r._nazione}));
+  const achBug=achAll.filter(x=>x.mass<5), achOut=achAll.filter(x=>x.mass>=5);
   // 3) Enti senza cambio (valuta locale, cambio 1)
   const unk=[...new Set(allData.filter(r=>r._unknownEnte).map(r=>r.store))];
   // 4) Stesso dipendente (cognome|nome) con piu matricole (cambio matricola/sistema HR)
@@ -2298,8 +2302,14 @@ function showQualityReport(){
   let h='<div style="font-size:12px;color:#666;margin-bottom:8px">Righe: <b>'+allData.length.toLocaleString('it-IT')+'</b> · Dipendenti: <b>'+Object.keys(byEmp).length+'</b> · Negozi: <b>'+new Set(allData.map(r=>r.store)).size+'</b></div>';
   h+=sec('⚠️','RML mensile anomalo (vs mediana personale)',rmlOut.length,
     tbl(['Dipendente','Periodo','Negozio','RML','Mediana'],cap(rmlOut.sort((a,b)=>b.v/b.med-a.v/a.med),40).map(x=>x?'<tr><td style="padding:3px 6px">'+x.nm+'</td><td style="padding:3px 6px">'+mkLabel(x.mk)+'</td><td style="padding:3px 6px">'+x.store+'</td><td style="padding:3px 6px;color:#ef4444;font-weight:700">€ '+fmt(x.v)+'</td><td style="padding:3px 6px">€ '+fmt(x.med)+'</td></tr>':'<tr><td colspan="5" style="padding:3px 6px;color:#999">…e altri</td></tr>')));
-  h+=sec('⚠️','Achievement oltre 200% (erogato &gt; 2× massimale)',achOut.length,
-    tbl(['Dipendente','Periodo','Negozio','Nazione','Erogato €','Massimale €','Achievement'],cap(achOut.sort((a,b)=>b.pct-a.pct),30).map(x=>x?'<tr><td style="padding:3px 6px">'+x.nm+'</td><td style="padding:3px 6px">'+mkLabel(x.mk)+'</td><td style="padding:3px 6px">'+x.store+'</td><td style="padding:3px 6px">'+(x.naz||'')+'</td><td style="padding:3px 6px">€ '+fmt(x.erog)+'</td><td style="padding:3px 6px'+(x.mass<1?';color:#ef4444;font-weight:700':'')+'">€ '+(x.mass<1?x.mass.toFixed(4):fmt(x.mass))+'</td><td style="padding:3px 6px;color:#ef4444;font-weight:700">'+x.pct.toFixed(0)+'%</td></tr>':'<tr><td colspan="7" style="padding:3px 6px;color:#999">…e altri</td></tr>')));
+  const achHead=['Dipendente','Periodo','Negozio','Nazione','Erogato €','Massimale €','Achievement'];
+  const achRow=(x)=>x?'<tr><td style="padding:3px 6px">'+x.nm+'</td><td style="padding:3px 6px">'+mkLabel(x.mk)+'</td><td style="padding:3px 6px">'+x.store+'</td><td style="padding:3px 6px">'+(x.naz||'')+'</td><td style="padding:3px 6px">€ '+fmt(x.erog)+'</td><td style="padding:3px 6px'+(x.mass<5?';color:#ef4444;font-weight:700':'')+'">€ '+(x.mass<5?x.mass.toFixed(4):fmt(x.mass))+'</td><td style="padding:3px 6px;color:#ef4444;font-weight:700">'+x.pct.toFixed(0)+'%</td></tr>':'<tr><td colspan="7" style="padding:3px 6px;color:#999">…e altri</td></tr>';
+  h+=sec('🐞','Massimale sospetto (probabile errore nel file sorgente)',achBug.length,
+    tbl(achHead,cap(achBug.sort((a,b)=>b.pct-a.pct),30).map(achRow))
+    +'<div style="font-size:11px;color:#999;margin-top:4px">Massimale sotto €5: nessun tetto premio reale scende così in basso — quasi certamente un valore mal digitato/troncato nel file sorgente per quella riga specifica.</div>');
+  h+=sec('⚠️','Achievement oltre 200% con massimale plausibile (probabile pagamento straordinario)',achOut.length,
+    tbl(achHead,cap(achOut.sort((a,b)=>b.pct-a.pct),30).map(achRow))
+    +'<div style="font-size:11px;color:#999;margin-top:4px">Il massimale qui è credibile: il calcolo legge fedelmente il file, non è un errore di formula. Probabile conguaglio/arretrato/bonus una tantum registrato nella stessa colonna dell\'incentivo — da confermare con chi gestisce le buste paga di quel negozio.</div>');
   h+=sec('⚠️','Enti senza cambio valuta (valori in valuta locale)',unk.length,
     '<div style="font-size:12px;color:#555">'+unk.join(' · ')+'</div>');
   h+=sec('ℹ️','Dipendenti con più matricole (cambio matricola/HR)',multiMatr.length,
