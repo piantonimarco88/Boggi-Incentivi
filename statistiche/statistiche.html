@@ -2284,7 +2284,7 @@ function showQualityReport(){
     vals.forEach(x=>{if(x.v>m*3||x.v<m/3) rmlOut.push({nm:(e.cognome+' '+e.nome).trim(),mk:x.mk,v:x.v,med:m,store:x.store});});
   });
   // 2) Achievement > 200% (erogato/massimale)
-  const achOut=allData.filter(r=>r.massimale>0&&r.erogato/r.massimale>2).map(r=>({nm:nm(r),mk:r.monthKey,pct:r.erogato/r.massimale*100,store:r.store}));
+  const achOut=allData.filter(r=>r.massimale>0&&r.erogato/r.massimale>2).map(r=>({nm:nm(r),mk:r.monthKey,pct:r.erogato/r.massimale*100,store:r.store,erog:r.erogato,mass:r.massimale,naz:r._nazione}));
   // 3) Enti senza cambio (valuta locale, cambio 1)
   const unk=[...new Set(allData.filter(r=>r._unknownEnte).map(r=>r.store))];
   // 4) Stesso dipendente (cognome|nome) con piu matricole (cambio matricola/sistema HR)
@@ -2299,7 +2299,7 @@ function showQualityReport(){
   h+=sec('⚠️','RML mensile anomalo (vs mediana personale)',rmlOut.length,
     tbl(['Dipendente','Periodo','Negozio','RML','Mediana'],cap(rmlOut.sort((a,b)=>b.v/b.med-a.v/a.med),40).map(x=>x?'<tr><td style="padding:3px 6px">'+x.nm+'</td><td style="padding:3px 6px">'+mkLabel(x.mk)+'</td><td style="padding:3px 6px">'+x.store+'</td><td style="padding:3px 6px;color:#ef4444;font-weight:700">€ '+fmt(x.v)+'</td><td style="padding:3px 6px">€ '+fmt(x.med)+'</td></tr>':'<tr><td colspan="5" style="padding:3px 6px;color:#999">…e altri</td></tr>')));
   h+=sec('⚠️','Achievement oltre 200% (erogato &gt; 2× massimale)',achOut.length,
-    tbl(['Dipendente','Periodo','Negozio','Achievement'],cap(achOut.sort((a,b)=>b.pct-a.pct),30).map(x=>x?'<tr><td style="padding:3px 6px">'+x.nm+'</td><td style="padding:3px 6px">'+mkLabel(x.mk)+'</td><td style="padding:3px 6px">'+x.store+'</td><td style="padding:3px 6px;color:#ef4444;font-weight:700">'+x.pct.toFixed(0)+'%</td></tr>':'<tr><td colspan="4" style="padding:3px 6px;color:#999">…e altri</td></tr>')));
+    tbl(['Dipendente','Periodo','Negozio','Nazione','Erogato €','Massimale €','Achievement'],cap(achOut.sort((a,b)=>b.pct-a.pct),30).map(x=>x?'<tr><td style="padding:3px 6px">'+x.nm+'</td><td style="padding:3px 6px">'+mkLabel(x.mk)+'</td><td style="padding:3px 6px">'+x.store+'</td><td style="padding:3px 6px">'+(x.naz||'')+'</td><td style="padding:3px 6px">€ '+fmt(x.erog)+'</td><td style="padding:3px 6px'+(x.mass<1?';color:#ef4444;font-weight:700':'')+'">€ '+(x.mass<1?x.mass.toFixed(4):fmt(x.mass))+'</td><td style="padding:3px 6px;color:#ef4444;font-weight:700">'+x.pct.toFixed(0)+'%</td></tr>':'<tr><td colspan="7" style="padding:3px 6px;color:#999">…e altri</td></tr>')));
   h+=sec('⚠️','Enti senza cambio valuta (valori in valuta locale)',unk.length,
     '<div style="font-size:12px;color:#555">'+unk.join(' · ')+'</div>');
   h+=sec('ℹ️','Dipendenti con più matricole (cambio matricola/HR)',multiMatr.length,
