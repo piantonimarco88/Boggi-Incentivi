@@ -1432,6 +1432,7 @@ function rebuild(){
   allData=Object.values(fileMap).flat();
   dedupData();
   normalizeStores();
+  resolveCrossRefEnte();
   applyUniformRates();
   try{ if(window.AgentTools) AgentTools.setData(allData); }catch(e){}
   try{ hashApply(); }catch(e){} // ripristina la vista da un link condiviso (#t=…) al primo load utile
@@ -1441,6 +1442,8 @@ function rebuild(){
   const unknownStores=[...new Set(allData.filter(r=>r._unknownEnte).map(r=>r.store))];
   if(unknownStores.length)
     msgs.push('⚠️ Cambio non trovato per: '+unknownStores.join(', ')+' — applicato cambio 1 (valori in valuta locale).');
+  if(_crossRefFixed)
+    msgs.push('✅ Ente risolto automaticamente per '+_crossRefFixed+' righe (matricola trovata in un altro file con ente noto).');
   if(rateNotes.realigned.length)
     msgs.push('🔄 Cambi allineati al file più recente: '+rateNotes.realigned.join(', ')+'.');
   if(rateNotes.guardrail.length)
@@ -1524,6 +1527,26 @@ window.addEventListener('load',()=>{try{tryRestoreSession();}catch(e){console.wa
 // con un solo fattore (verificato: in ogni riga tutte le colonne …EURO usano lo stesso
 // tasso). Idempotente: ricalcolata a ogni load/remove, riscala dal cambio attualmente
 // applicato a quello target → nessun doppio conteggio.
+// Risolve l'ente mancante (_ente=0, es. FC/VM con matricola non in FC_VM_ENTE) incrociando la
+// STESSA matricola in un'ALTRA riga di allData con ente già noto (tipicamente un file mensile
+// standard, dove l'ENTE è nel file). Root fix: non serve più mappare a mano ogni nuovo dipendente
+// in FC_VM_ENTE — basta che compaia anche in un file normale. Vince l'ente più frequente per quella
+// matricola (maggioranza, robusto a eventuali righe sporche). Se il dipendente non compare MAI in
+// un file con ente noto, resta irrisolto (va aggiunto a mano in FC_VM_ENTE).
+let _crossRefFixed=0;
+function resolveCrossRefEnte(){
+  _crossRefFixed=0;
+  const counts={};
+  allData.forEach(r=>{
+    if(r.matricola&&r._ente){const c=counts[r.matricola]||(counts[r.matricola]={});c[r._ente]=(c[r._ente]||0)+1;}
+  });
+  const best={};
+  Object.keys(counts).forEach(m=>{const c=counts[m];best[m]=+Object.keys(c).sort((a,b)=>c[b]-c[a])[0];});
+  allData.forEach(r=>{
+    if(!r._ente&&r.matricola&&best[r.matricola]){r._ente=best[r.matricola];r._nazione=enteNazione(r._ente);_crossRefFixed++;}
+  });
+  return _crossRefFixed;
+}
 function applyUniformRates(){
   rateNotes={realigned:[],guardrail:[]};
   // 1. Cambi derivati per ente e periodo (solo righe con RML locale + EURO validi)
