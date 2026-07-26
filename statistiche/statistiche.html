@@ -1799,7 +1799,9 @@ function parseRows(raw,fname,diag){
       // massimale BDG per tab Stipendi:
       // nuovo formato → MASSIMALE BDG EURO (esplicito) o fallback LC×cambio
       // vecchio formato → BDG×bdgMultiplier se riga ECI (TOTALE=0), altrimenti BDG×1
-      mBdg: (isSem||isFcVm)?0:(()=>{
+      // FC/VM → il loro unico incentivo è concettualmente un BDG-equivalente (nessun altro
+      // componente esiste nel file pivot FC/VM): massimale già calcolato sopra diventa mBdg.
+      mBdg: isSem?0:isFcVm?massimale:(()=>{
         if(isNewFmt) return n(r['MASSIMALE BDG EURO'])||n(r['MASSIMALE BDG'])*cambio;
         if(!bdgNomCol) return 0;
         const bv=n(r[bdgNomCol]);if(!bv) return 0;
@@ -1808,8 +1810,11 @@ function parseRows(raw,fname,diag){
       // componenti premio — derivate da COMP (singola fonte di verità):
       //   mensili    → 0 sulle righe semestrali/ECI
       //   semestrali → valorizzate solo per i file semestrali standard (isSem)
+      //   FC/VM      → SOLO cBdg = erogato (unico incentivo, nessun altro componente nel file);
+      //                gli altri restano 0 (non hanno Digital/SY/Subscription/ecc.)
       ...Object.fromEntries(COMP.map(c=>[c.k,
-        c.tipo==='mensile' ? ((isSem||isEci)?0:cv(c.ek)) : (isSem?cv(c.ek):0)
+        isFcVm ? (c.k==='cBdg'?erogato:0)
+        : c.tipo==='mensile' ? ((isSem||isEci)?0:cv(c.ek)) : (isSem?cv(c.ek):0)
       ])),
       malattie:n(r['MALATTIE']),
       rml_period:isFcVm
@@ -1994,6 +1999,16 @@ function popFilters(){
   ]);
 }
 
+// FC/VM è trattato come 'mensile' nei filtri "Tipo Premio" (coerente con l'agente Lament1, che già usa
+// questa logica): l'etichetta "FC / VM" resta selezionabile a parte per isolarlo, ma selezionando
+// "Mensile" lo include automaticamente — il loro unico incentivo è un BDG-equivalente (vedi mBdg/cBdg
+// in buildRows), quindi appartiene concettualmente al mensile, non a una categoria a sé.
+function _tipoIncl(sel,tipo){
+  const s=sel instanceof Set?sel:new Set(sel);
+  if(!s.size) return true;
+  if(s.has(tipo)) return true;
+  return tipo==='fc vm'&&s.has('mensile');
+}
 function filter(){
   const meses=getMsVals('ms-mese');
   const stores=getMsVals('ms-store');
@@ -2006,7 +2021,7 @@ function filter(){
     if(meses.length&&!meses.includes(String(r.monthKey||r.month||0))) return false;
     if(stores.length&&!stores.includes(r.store)) return false;
     if(jobs.length&&!jobs.includes(r.job)) return false;
-    if(tipi.length&&!tipi.includes(r._tipo)) return false;
+    if(!_tipoIncl(tipi,r._tipo)) return false;
     if(q){const h=(r.cognome+' '+r.nome+' '+r.store+' '+r.matricola+' '+r.job).toLowerCase();if(!h.includes(q)) return false;}
     return true;
   });
@@ -2622,7 +2637,7 @@ function _baseTabFilter(prefix,requireRml){
     if(jobs.length&&!jobs.includes(r.job)) return false;
     if(naz.length&&!naz.includes(r._nazione)) return false;
     if(stores.length&&!stores.includes(r.store)) return false;
-    if(tipi.length&&!tipi.includes(r._tipo)) return false;
+    if(!_tipoIncl(tipi,r._tipo)) return false;
     if(comps.length&&!comps.some(k=>r[k]>0)) return false;
     if(q){const h=(r.cognome+' '+r.nome+' '+r.matricola).toLowerCase();if(!h.includes(q)) return false;}
     return true;
@@ -3163,7 +3178,7 @@ function compEligible(c,r){const dept=(typeof isDeptStore==='function')&&isDeptS
   switch(c.k){
     case 'cBdg': case 'cArt': return true;                       // tutti i ruoli, tutti gli store
     case 'cQty': return dept;                                    // tutti i ruoli, solo DEPT
-    case 'cDigital': case 'cShopper': case 'cPrivilege': return !dept; // tutti i ruoli, solo NORM
+    case 'cDigital': case 'cShopper': case 'cPrivilege': return !dept&&r._tipo!=='fc vm'; // tutti i ruoli, solo NORM (FC/VM esclusi: hanno solo BDG)
     case 'cSas': case 'cDcc': return job==='SCS'&&!dept&&!scsStoreExcluded(r); // solo cassa, NORM, no CH/Asia/aeroporti
     case 'cCrSem': case 'cSySem': case 'cUptSem': case 'cSubSem': case 'cSasSem':
       return (job==='SM'||job==='VSM')&&!dept;                   // semestrali standard: solo SM/VSM nei NORMALI (i dept hanno KPI diversi)
@@ -4364,7 +4379,7 @@ function getAlertRows(){
     if(years.length&&!years.includes(String(r.year))) return false;
     if(naz.length&&!naz.includes(r._nazione)) return false;
     if(jobs.length&&!jobs.includes(r.job)) return false;
-    if(tipi.length&&!tipi.includes(r._tipo)) return false;
+    if(!_tipoIncl(tipi,r._tipo)) return false;
     if(stores.length&&!stores.includes(r.store)) return false;
     return true;
   });
@@ -4608,7 +4623,7 @@ function exportAlert(){
 let _malV='naz', _malCache=null, _malYears=new Set(), _malMonths=new Set();
 function _malInPer(r){const yr=r.year||Math.floor((r.monthKey||0)/100),mo=(r.monthKey||0)%100;return (!_malYears.size||_malYears.has(yr))&&(!_malMonths.size||_malMonths.has(mo));}
 function _malCompute(){
-  const C=[{k:'cBdg',base:r=>r.mBdg||0,ok:()=>true},{k:'cDigital',base:r=>r.mBdg||0,ok:r=>!isDeptStore(r.store)}];
+  const C=[{k:'cBdg',base:r=>r.mBdg||0,ok:()=>true},{k:'cDigital',base:r=>r.mBdg||0,ok:r=>!isDeptStore(r.store)&&r._tipo!=='fc vm'}];
   const grp={};const ek=r=>r.matricola||_empKey(r);
   allData.forEach(r=>{if(isSemRow(r)||!r.monthKey)return;const g=(r.store||'?')+'|'+r.monthKey;(grp[g]||(grp[g]=[])).push(r);});
   const byNaz={},byStore={},byEmp={};let total=0,sickN=0,reconN=0;
@@ -4787,7 +4802,7 @@ function cmpComputeGroups(){
   const subjKey=cmpSubjectKey(); if(!subjKey) return null;
   const [from,to]=cmpPeriod();
   const tipi=new Set(getMsVals('cmp-tipo'));
-  const inScope=r=>{const mk=r.monthKey||0;if(mk<from||mk>to)return false;if(tipi.size&&!tipi.has(r._tipo))return false;return true;};
+  const inScope=r=>{const mk=r.monthKey||0;if(mk<from||mk>to)return false;if(!_tipoIncl(tipi,r._tipo))return false;return true;};
   const subjRows=allData.filter(r=>inScope(r)&&(r.matricola||_empKey(r))===subjKey);
   const subj=cmpAggByEmp(subjRows)[0]||null;
   const jobs=new Set(getMsVals('cmp-job')),naz=new Set(getMsVals('cmp-naz')),stores=new Set(getMsVals('cmp-store')),emps=cmpEmpSel;
