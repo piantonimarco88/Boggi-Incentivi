@@ -1433,6 +1433,7 @@ function rebuild(){
   dedupData();
   normalizeStores();
   resolveCrossRefEnte();
+  fixFcVmLegacyRows();
   applyUniformRates();
   try{ if(window.AgentTools) AgentTools.setData(allData); }catch(e){}
   try{ hashApply(); }catch(e){} // ripristina la vista da un link condiviso (#t=…) al primo load utile
@@ -1444,6 +1445,8 @@ function rebuild(){
     msgs.push('⚠️ Cambio non trovato per: '+unknownStores.join(', ')+' — applicato cambio 1 (valori in valuta locale).');
   if(_crossRefFixed)
     msgs.push('✅ Ente risolto automaticamente per '+_crossRefFixed+' righe (matricola trovata in un altro file con ente noto).');
+  if(_fcVmFixed)
+    msgs.push('✅ Premio BDG allineato automaticamente per '+_fcVmFixed+' righe FC/VM già caricate.');
   if(rateNotes.realigned.length)
     msgs.push('🔄 Cambi allineati al file più recente: '+rateNotes.realigned.join(', ')+'.');
   if(rateNotes.guardrail.length)
@@ -1534,6 +1537,21 @@ window.addEventListener('load',()=>{try{tryRestoreSession();}catch(e){console.wa
 // matricola (maggioranza, robusto a eventuali righe sporche). Se il dipendente non compare MAI in
 // un file con ente noto, resta irrisolto (va aggiunto a mano in FC_VM_ENTE).
 let _crossRefFixed=0;
+// Corregge le righe FC/VM già presenti in allData (caricate/ripristinate PRIMA del fix mBdg=massimale/
+// cBdg=erogato del 26/07/2026): senza questo passaggio, i file già importati (o ripristinati da
+// IndexedDB) resterebbero "congelati" con mBdg/cBdg a 0, perché parseRows gira solo su import nuovi.
+// Va PRIMA di applyUniformRates: se il cambio viene riallineato, massimale/erogato/mBdg/cBdg vengono
+// rescalati tutti insieme dallo stesso fattore (sono negli stessi RATE_FIELDS) → l'uguaglianza resta valida.
+let _fcVmFixed=0;
+function fixFcVmLegacyRows(){
+  _fcVmFixed=0;
+  allData.forEach(r=>{
+    if(r._tipo==='fc vm'&&(r.mBdg!==r.massimale||r.cBdg!==r.erogato)){
+      r.mBdg=r.massimale; r.cBdg=r.erogato; _fcVmFixed++;
+    }
+  });
+  return _fcVmFixed;
+}
 function resolveCrossRefEnte(){
   _crossRefFixed=0;
   const counts={};
