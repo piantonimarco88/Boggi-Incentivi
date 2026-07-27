@@ -1744,8 +1744,13 @@ function parseRows(raw,fname,diag){
   // ricostruisce da INCIDENZA × RML × 6 × 1.5. I dept store semestrali hanno
   // PREMIO FINALE e vanno al ramo isEci, quindi li escludiamo qui.
   const isSem=('TOTALE INCENTIVO SEASONAL' in raw[0])&&!('PREMIO FINALE' in raw[0]);
-  // FC/VM: pivot table export, massimale = "Somma di INCENTIVO RIPARTITO CORRETTO"
-  const isFcVm=('Somma di INCENTIVO RIPARTITO CORRETTO' in raw[0]);
+  // FC/VM vecchio formato: pivot table export, massimale = "Somma di INCENTIVO RIPARTITO CORRETTO"
+  const isFcVmOld=('Somma di INCENTIVO RIPARTITO CORRETTO' in raw[0]);
+  // FC/VM nuovo formato (da lug-2026, "NUOVO PROGRAMMA INCENTIVI"): colonne dirette
+  // MATRICOLA/COGNOME/NOME/RUOLO + CAMBIO/VALUTA espliciti + PREMIO MAX LC/PREMIO EUR.
+  // Non ha ancora una colonna RML (verrà aggiunta in futuro) → rml_period resta 0 per queste righe.
+  const isFcVmNew=('PREMIO MAX LC' in raw[0])&&('RUOLO' in raw[0])&&('PREMIO EUR' in raw[0]);
+  const isFcVm=isFcVmOld||isFcVmNew;
   // semestrali ECI/dept store: has PREMIO FINALE + BDG, massimale = BDG*6*1.5
   const isEci=!isSem&&!isFcVm&&('PREMIO FINALE' in raw[0])&&('BDG' in raw[0]);
   // NUOVO FORMATO (Incentivi_consuntivo_*): ha "TOTALE INCENTIVO EROGATO (LC)" come colonna esplicita.
@@ -1816,6 +1821,10 @@ function parseRows(raw,fname,diag){
     if(!oldFmt){
       cambio=(rml_lc>0&&rml_eur>0&&Math.abs(rml_lc-rml_eur)>0.1)?rml_eur/rml_lc:1;
       if(ENTE_CAMBI[ente]) valuta=ENTE_CAMBI[ente].valuta;
+    } else if(isFcVmNew){
+      // il nuovo formato fornisce già CAMBIO/VALUTA per riga: non serve la mappa statica,
+      // quindi anche se l'ente non è risolvibile non è un vero "cambio sconosciuto".
+      cambio=n(r['CAMBIO'])||1; valuta=s(r['VALUTA'])||'EUR';
     } else {
       if(ENTE_CAMBI[ente]){cambio=ENTE_CAMBI[ente].cambio;valuta=ENTE_CAMBI[ente].valuta;}
       else{cambio=1;_unknownEnte=true;}
@@ -1838,9 +1847,12 @@ function parseRows(raw,fname,diag){
     } else if(isEci){
       massimale=n(r['BDG'])*6*1.5*cambio;
       erogato=n(r['PREMIO FINALE'])*cambio;
-    } else if(isFcVm){
+    } else if(isFcVmOld){
       massimale=n(r['Somma di INCENTIVO RIPARTITO CORRETTO'])*cambio;
       erogato=n(r['PREMIO FINALE'])*cambio;
+    } else if(isFcVmNew){
+      massimale=n(r['PREMIO MAX LC'])*cambio;
+      erogato=n(r['PREMIO EUR'])||n(r['PREMIO LC'])*cambio;
     } else if(isNewFmt){
       // ── NUOVO FORMATO (Incentivi_consuntivo_*) ───────────────
       // Massimale: usa MASSIMALE TOTALE EURO (colonna esplicita aggiunta nel file)
@@ -1866,10 +1878,16 @@ function parseRows(raw,fname,diag){
     const pct=massimale>0?+((erogato/massimale)*100).toFixed(1):0;
 
     // Job / Store
-    const job=isFcVm?s(r['FUNZIONE']):(s(r['FUNZIONE'])||s(r['JOB']));
-    // FC/VM: no store column → use FUNZIONE as group; split full NOME into cognome/nome
+    const job=isFcVmNew?s(r['RUOLO']):isFcVm?s(r['FUNZIONE']):(s(r['FUNZIONE'])||s(r['JOB']));
+    // FC/VM: no store column → use FUNZIONE/RUOLO as group; vecchio formato ha NOME
+    // completo da spezzare, nuovo formato ha già COGNOME/NOME separati.
     let store,cognome,nome,matricola;
-    if(isFcVm){
+    if(isFcVmNew){
+      store=s(r['RUOLO'])||'FC/VM';
+      cognome=s(r['COGNOME']);
+      nome=s(r['NOME']);
+      matricola=rawMatr;
+    } else if(isFcVmOld){
       store=s(r['FUNZIONE'])||'FC/VM';
       const parts=s(r['NOME']).split(' ');
       cognome=parts.length>1?parts[parts.length-1]:parts[0];
@@ -1915,7 +1933,10 @@ function parseRows(raw,fname,diag){
         : c.tipo==='mensile' ? ((isSem||isEci)?0:cv(c.ek)) : (isSem?cv(c.ek):0)
       ])),
       malattie:n(r['MALATTIE']),
-      rml_period:isFcVm
+      // nuovo formato FC/VM: nessuna colonna RML disponibile ancora (verrà aggiunta in futuro) → 0.
+      rml_period:isFcVmNew
+        ?0
+        :isFcVmOld
         ?n(r['Somma di RML RIPARTITA'])*cambio
         :(isSem||isEci)
           ?rml_lc*cambio*6
