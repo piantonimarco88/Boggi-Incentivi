@@ -126,6 +126,18 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 .b4{background:#dcfce7;color:#16a34a}
 .b5{background:#f3e8ff;color:#9333ea;border:1px solid #d8b4fe}
 .bjob{background:#f1f5f9;color:#475569;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600}
+.sas-bar{width:46px;height:5px;border-radius:3px;background:#eceef3;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:6px}
+.sas-bar>span{display:block;height:100%;border-radius:3px}
+.sas-bar.good>span{background:#22c55e}.sas-bar.warn>span{background:#f59e0b}.sas-bar.bad>span{background:#ef4444}
+.sas-esito{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.sas-esito.full{background:#e9f7ee;color:#16a34a}.sas-esito.ridotto{background:#fff7e6;color:#b45309}.sas-esito.none{background:#f1f5f9;color:#94a3b8}
+.sas-bdg{display:inline-flex;flex-direction:column;align-items:flex-end;line-height:1.15}
+.sas-bdg b{font-size:12.5px}.sas-bdg small{font-size:9.5px;color:#999}
+.sas-bdg.hi b{color:#16a34a}.sas-bdg.mid b{color:#b45309}.sas-bdg.lo b{color:#dc2626}
+.sas-badge{display:inline-flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;color:#b45309;background:#fffbeb;border:1px solid #fcd34d;padding:1px 6px;border-radius:6px;margin-right:5px}
+.sas-chip-file{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;background:#eff6ff;border:1px solid #93c5fd;color:#1d4ed8;border-radius:8px;padding:5px 10px}
+.sas-chip-file .x{cursor:pointer;color:#93c5fd;font-weight:800;margin-left:2px}
+.sas-chip-file .x:hover{color:#dc2626}
 
 /* PROGRESS */
 .pct-cell{display:flex;align-items:center;gap:6px;min-width:110px}
@@ -339,6 +351,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 <!-- TAB BAR -->
 <div class="tab-bar">
   <button class="tab-btn active" data-tab="dash" onclick="switchTab('dash')">📊 Dashboard</button>
+  <button class="tab-btn" data-tab="sas" onclick="switchTab('sas')">🎯 SAS → Fatturato</button>
   <button class="tab-btn" data-tab="yoy" onclick="switchTab('yoy')">📅 Anno su Anno</button>
   <button class="tab-btn" data-tab="sal" onclick="switchTab('sal')">💶 Stipendi</button>
   <button class="tab-btn" data-tab="whatif" onclick="switchTab('whatif')">🔮 What-if</button>
@@ -483,6 +496,59 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 </div>
 
 </div><!-- end #tabDash -->
+
+<!-- ═══════════ SAS → FATTURATO TAB ═══════════ -->
+<div id="tabSas" style="display:none">
+  <div style="margin:18px 28px 14px;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap">
+    <div>
+      <h2 style="margin:0;font-size:17px;font-weight:800;display:flex;align-items:center;gap:6px">🎯 SAS → Fatturato <span class="info-tip" data-tip="Policy attiva da Luglio 2026: il valore SAS riconosciuto può colmare (in tutto o in parte) il gap tra consuntivo e target fatturato di negozio/area. Import mensile da app esterna (JSON), un file per 'Negozi' e uno per 'FC + VM'.&#10;I calcoli (esito, % riconosciuta, ecc.) arrivano già pronti dal file: qui vengono solo mostrati, filtrati e incrociati con lo storico BDG.">i</span></h2>
+      <div style="font-size:12px;color:#888;margin-top:3px" id="sasSubtitle">Nessun dato caricato.</div>
+    </div>
+    <select id="sasMonth" onchange="renderSas()" style="min-width:160px"><option value="">— nessun mese caricato —</option></select>
+  </div>
+
+  <div style="margin:0 28px 16px">
+    <div class="dz" id="sasDz" onclick="document.getElementById('sasFi').click()" ondrop="sasDrop(event)" ondragover="event.preventDefault()" style="padding:16px 20px;text-align:left;display:flex;align-items:center;gap:12px">
+      <div style="font-size:22px">📂</div>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:13px">Carica i JSON mensili SAS → Fatturato</div>
+        <div style="font-size:11.5px;color:#888">Trascina qui, o clicca per selezionare, i file "dashboard_sas_negozi_*.json" e "dashboard_sas_fcvm_*.json" del mese</div>
+      </div>
+    </div>
+    <input type="file" id="sasFi" accept=".json" multiple style="display:none" onchange="sasHandleFiles(this.files);this.value=''">
+    <div id="sasChips" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"></div>
+  </div>
+
+  <div class="kpi-row" id="sasKpiRow"></div>
+
+  <div style="margin:0 28px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <div class="l4l-toggle" id="sasViewToggle">
+      <button class="l4l-btn active" data-view="negozi" onclick="sasSetView('negozi')">Negozi</button>
+      <button class="l4l-btn" data-view="fcvm" onclick="sasSetView('fcvm')">FC + VM</button>
+    </div>
+    <input type="text" id="sasQ" placeholder="Cerca negozio, store ID, nome…" oninput="renderSas()" style="padding:8px 11px;border:1px solid #dde1ea;border-radius:8px;font-size:12.5px;min-width:190px">
+    <select id="sasFEsito" onchange="renderSas()"><option value="">Tutti gli esiti</option><option value="full">Pieno</option><option value="ridotto">Ridotto</option><option value="none">Nessuno</option></select>
+    <select id="sasFRole" onchange="renderSas()" style="display:none"><option value="">Tutti i ruoli</option><option value="FC">Field Coach</option><option value="VM">Visual Merchandiser</option></select>
+    <div class="l4l-wrap"><label class="fg" style="font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.4px">Solo SAS determinante</label>
+      <div class="l4l-toggle" style="display:flex">
+        <button class="l4l-btn active" id="sasFDet-no" style="flex:1" onclick="sasSetDet(false)">No</button>
+        <button class="l4l-btn" id="sasFDet-si" style="flex:1" onclick="sasSetDet(true)">Sì</button>
+      </div></div>
+    <div style="display:flex;align-items:center;gap:6px;margin-left:auto;font-size:11.5px;color:#888;font-weight:600">
+      <span>Storico BDG</span>
+      <select id="sasBdgFrom" onchange="renderSas()"></select><span>→</span><select id="sasBdgTo" onchange="renderSas()"></select>
+      <span class="info-tip" data-tip="Quante volte il premio BDG è stato raggiunto nell'intervallo scelto, per lo stesso negozio (Store ID) o la stessa persona FC/VM (match per nome, con fuzzy-matching per gli omonimi — stessa logica di Lament1). Riusa la definizione di 'raggiunto' già usata in Anno su Anno (Frequenza raggiungimento premi): erogato BDG > 0 sui mesi mensili dello storico caricato.&#10;'—' = nessuno storico trovato per quel negozio/persona nell'intervallo scelto.">i</span>
+    </div>
+  </div>
+
+  <div class="yoy-tbl">
+    <div class="yoy-tbl-head" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <h2>Dettaglio <span id="sasCountNote" style="font-weight:400;text-transform:none;letter-spacing:0;color:#aaa"></span></h2>
+      <button class="btn-exp" onclick="sasExport()" title="Esporta la vista corrente in Excel">📊 Export Excel</button>
+    </div>
+    <div class="tbl-scroll" id="sasTbl"></div>
+  </div>
+</div><!-- end #tabSas -->
 
 <!-- ═══════════ ANNO SU ANNO TAB ═══════════ -->
 <div id="tabYoy" style="display:none">
@@ -1458,7 +1524,7 @@ function rebuild(){
   } else {
     warn.style.display='none';
   }
-  if(allData.length) idbAutoSave(); else idbClearSession();
+  if(allData.length||Object.keys(sasFiles).length) idbAutoSave(); else idbClearSession(); // sasFiles: non svuotare i JSON SAS se resta solo lo storico xlsx a zero
 }
 
 // ─── DIFF IMPORT: cosa è cambiato rispetto al caricamento precedente ───
@@ -1503,7 +1569,7 @@ function importDiff(){
 const IDB_NAME='boggiPremiDB', IDB_STORE='session';
 function idbOpen(){return new Promise((res,rej)=>{const r=indexedDB.open(IDB_NAME,1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains(IDB_STORE))r.result.createObjectStore(IDB_STORE);};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
 let _idbT=null;
-function idbAutoSave(){clearTimeout(_idbT);_idbT=setTimeout(async()=>{try{const db=await idbOpen();db.transaction(IDB_STORE,'readwrite').objectStore(IDB_STORE).put({rows:allData,savedAt:new Date().toISOString()},'current');}catch(e){console.warn('IDB save fallito',e);}},1500);}
+function idbAutoSave(){clearTimeout(_idbT);_idbT=setTimeout(async()=>{try{const db=await idbOpen();db.transaction(IDB_STORE,'readwrite').objectStore(IDB_STORE).put({rows:allData,savedAt:new Date().toISOString(),sasFiles:(typeof sasFiles!=='undefined'?sasFiles:{})},'current');}catch(e){console.warn('IDB save fallito',e);}},1500);}
 async function idbLoadSession(){try{const db=await idbOpen();return await new Promise(res=>{const r=db.transaction(IDB_STORE,'readonly').objectStore(IDB_STORE).get('current');r.onsuccess=()=>res(r.result||null);r.onerror=()=>res(null);});}catch(e){return null;}}
 async function idbClearSession(){try{const db=await idbOpen();db.transaction(IDB_STORE,'readwrite').objectStore(IDB_STORE).delete('current');}catch(e){}}
 async function tryRestoreSession(){
@@ -1523,7 +1589,16 @@ async function tryRestoreSession(){
   fileMap[label]=s.rows;
   rebuild(); addChip(label,s.rows.length,true,'mensile'); refresh();
 }
-window.addEventListener('load',()=>{try{tryRestoreSession();}catch(e){console.warn(e);}});
+// I JSON SAS→Fatturato sono un dataset indipendente da allData: si ripristinano sempre (anche se
+// non c'è nessuno storico xlsx caricato), a differenza di tryRestoreSession che si ferma se
+// allData è già popolato.
+async function tryRestoreSasSession(){
+  try{
+    const s=await idbLoadSession();
+    if(s&&s.sasFiles&&Object.keys(s.sasFiles).length){sasFiles=s.sasFiles;sasRenderChips();sasPopulateMonths();}
+  }catch(e){console.warn('Ripristino SAS fallito',e);}
+}
+window.addEventListener('load',()=>{try{tryRestoreSession();}catch(e){console.warn(e);}try{tryRestoreSasSession();}catch(e){console.warn(e);}});
 
 // Applica, per ente, il cambio ricavato dal file più recente (periodo massimo),
 // uniformandolo a TUTTE le righe di quell'ente (vecchie e nuove). Riscala i campi €
@@ -2558,6 +2633,7 @@ function loadSession(evt){
 // ═══════════════════════════════════════════════════════════════
 function switchTab(tab){
   document.getElementById('tabDash').style.display=tab==='dash'?'':'none';
+  document.getElementById('tabSas').style.display=tab==='sas'?'':'none';
   document.getElementById('tabYoy').style.display=tab==='yoy'?'':'none';
   document.getElementById('tabSal').style.display=tab==='sal'?'':'none';
   document.getElementById('tabWhatif').style.display=tab==='whatif'?'':'none';
@@ -2572,6 +2648,7 @@ function switchTab(tab){
   if(tab==='alert'&&allData.length){popAlertFilters();renderAlert();}
   if(tab==='cmp'&&allData.length){popCmpFilters();renderCmp();}
   if(tab==='asst'){asstInit();}
+  if(tab==='sas'){try{renderSas();}catch(e){}}
   if(tab!=='yoy'){try{hashUpdate(tab);}catch(e){}} // su yoy ci pensa renderYoy (include i filtri)
 }
 
@@ -4713,6 +4790,216 @@ function malExport(){
     'Dipendente':e.n,'Ruolo':e.job,'Negozio':e.store,'Giorni malattia':Math.round(e.gg),'Maggior premio stimato EUR (BDG+Digital)':Math.round(e.c)}));
   if(!rows.length){alert('Nessuna stima da esportare.');return;}
   _writeXlsx(rows,'Stima malattia','BoggiPremi_StimaMalattia_');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ─── SAS → FATTURATO (import JSON esterno + storico BDG) ─────
+// Tab indipendente dal pipeline xlsx: importa JSON pre-calcolati da un'app esterna (policy SAS→
+// Fatturato attiva da luglio 2026). Non ricalcoliamo la policy (esito/riconosciuto/applicato arrivano
+// già pronti dal file): mostriamo, filtriamo, e incrociamo con lo storico BDG già presente in allData.
+// ═══════════════════════════════════════════════════════════════
+let sasFiles={}; // fname -> {kind:'negozi'|'fcvm', period:{month,year,monthKey,label}, meta, rows, fname}
+let sasView='negozi';
+const SAS_MESI_IT=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
+
+// Estrae mese/anno dal subtitle del JSON (es. "... — Consuntivo Luglio 2026 · ..."). Non c'è un campo
+// mese/anno strutturato nello schema, quindi il subtitle è l'unica fonte affidabile.
+function sasParsePeriod(meta){
+  const src=(meta&&(meta.subtitle||meta.filename))||'';
+  const m=src.match(/consuntivo\s+(\p{L}+)\s+(\d{4})/iu);
+  if(!m)return null;
+  const idx=SAS_MESI_IT.findIndex(x=>x.toLowerCase()===m[1].toLowerCase());
+  if(idx<0)return null;
+  const month=idx+1,year=+m[2];
+  return {month,year,monthKey:year*100+month,label:m[1].charAt(0).toUpperCase()+m[1].slice(1).toLowerCase()+' '+year};
+}
+
+function sasHandleFiles(fileList){
+  [...fileList].filter(f=>f.name.toLowerCase().endsWith('.json')).forEach(f=>{
+    const rd=new FileReader();
+    rd.onload=e=>{
+      let json;
+      try{json=JSON.parse(e.target.result);}catch(err){alert('File "'+f.name+'" non è un JSON valido: '+err.message);return;}
+      const kind=json.meta&&json.meta.kind;
+      if(kind!=='negozi'&&kind!=='fcvm'){alert('File "'+f.name+'": campo meta.kind non riconosciuto (atteso "negozi" o "fcvm").');return;}
+      if(!Array.isArray(json.rows)||!json.rows.length){alert('File "'+f.name+'": nessuna riga in "rows".');return;}
+      const period=sasParsePeriod(json.meta);
+      if(!period){alert('File "'+f.name+'": non riesco a determinare mese/anno dal subtitle (atteso "Consuntivo <Mese> <Anno>").');return;}
+      if(json.meta.schemaVersion!=null&&json.meta.schemaVersion!==1)console.warn('sasHandleFiles: schemaVersion inattesa per '+f.name,json.meta.schemaVersion);
+      sasFiles[f.name]={kind,period,meta:json.meta,rows:json.rows,fname:f.name};
+      sasRenderChips();sasPopulateMonths();renderSas();try{idbAutoSave();}catch(e2){}
+    };
+    rd.readAsText(f);
+  });
+}
+function sasDrop(ev){ev.preventDefault();sasHandleFiles(ev.dataTransfer.files);}
+function sasRemoveFile(fname){delete sasFiles[fname];sasRenderChips();sasPopulateMonths();renderSas();try{idbAutoSave();}catch(e){}}
+function sasRenderChips(){
+  const c=document.getElementById('sasChips');if(!c)return;
+  const names=Object.keys(sasFiles);
+  c.innerHTML=names.length?names.map(fn=>{const f=sasFiles[fn];
+    return '<span class="sas-chip-file">✅ '+agEsc(fn)+' · '+f.rows.length+' <span class="x" onclick="sasRemoveFile(\''+fn.replace(/'/g,"\\'")+'\')" title="Rimuovi">✕</span></span>';
+  }).join(''):'<span style="font-size:11.5px;color:#bbb">Nessun file caricato — trascina qui i JSON mensili (Negozi + FC/VM)</span>';
+}
+function sasPopulateMonths(){
+  const sel=document.getElementById('sasMonth');if(!sel)return;
+  const cur=sel.value;
+  const keys=[...new Set(Object.values(sasFiles).map(f=>f.period.monthKey))].sort((a,b)=>b-a);
+  if(!keys.length){sel.innerHTML='<option value="">— nessun mese caricato —</option>';return;}
+  sel.innerHTML=keys.map(k=>{const f=Object.values(sasFiles).find(x=>x.period.monthKey===k);return '<option value="'+k+'">'+f.period.label+'</option>';}).join('');
+  sel.value=keys.includes(+cur)?cur:keys[0];
+}
+function sasCurrentFile(){
+  const mk=+((document.getElementById('sasMonth')||{}).value||0);
+  return Object.values(sasFiles).find(f=>f.kind===sasView&&f.period.monthKey===mk)||null;
+}
+function sasSetView(v){
+  sasView=v;
+  document.querySelectorAll('#sasViewToggle .l4l-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
+  const fr=document.getElementById('sasFRole');if(fr)fr.style.display=v==='fcvm'?'':'none';
+  sasPopulateMonths();renderSas();
+}
+function sasSetDet(v){
+  const no=document.getElementById('sasFDet-no'),si=document.getElementById('sasFDet-si');
+  if(no)no.classList.toggle('active',!v); if(si)si.classList.toggle('active',v);
+  renderSas();
+}
+// Popola il selettore Da→A dello storico BDG con i mesi REALI presenti nello storico caricato (allData).
+function sasPopulateBdgPeriod(){
+  const fromSel=document.getElementById('sasBdgFrom'),toSel=document.getElementById('sasBdgTo');
+  if(!fromSel||!toSel)return;
+  const keys=[...new Set(allData.filter(r=>!isSemRow(r)).map(r=>r.monthKey||0).filter(Boolean))].sort((a,b)=>a-b);
+  if(!keys.length){fromSel.innerHTML=toSel.innerHTML='<option value="">—</option>';return;}
+  const keepFrom=+fromSel.value,keepTo=+toSel.value;
+  const opts=keys.map(k=>'<option value="'+k+'">'+mkLabel(k)+'</option>').join('');
+  fromSel.innerHTML=opts;toSel.innerHTML=opts;
+  const defFromIdx=Math.max(0,keys.length-6); // default: ultimi 6 mesi disponibili
+  fromSel.value=keys.includes(keepFrom)?keepFrom:keys[defFromIdx];
+  toSel.value=keys.includes(keepTo)?keepTo:keys[keys.length-1];
+}
+// Levenshtein locale (piccola copia — la versione completa vive nella closure dell'agente Lament1,
+// non accessibile da qui) per il fuzzy-match sui nomi FC/VM, stessa soglia (distanza<=1) di resolveEmp.
+function _sasLev(a,b){a=(a||'').toUpperCase();b=(b||'').toUpperCase();const m=a.length,n=b.length,d=Array.from({length:m+1},(_,i)=>[i].concat(Array(n).fill(0)));for(let j=0;j<=n;j++)d[0][j]=j;for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[m][n];}
+// Trova le righe storiche FC/VM (allData, _tipo==='fc vm') che corrispondono al "Nome Cognome" del JSON.
+// Stessa euristica di resolveEmp in Lament1: cognome (ultima parola) come chiave primaria; se non c'è
+// match esatto, fuzzy (distanza<=1, candidato unico); se restano omonimi, disambigua con le parole del
+// nome. Se resta ambiguo, NON indoviniamo: nessun match (meglio "—" che un numero sbagliato).
+function sasMatchFcVmRows(fullName){
+  const parts=String(fullName||'').trim().split(/\s+/);
+  if(!parts.length)return[];
+  const cognome=parts[parts.length-1].toUpperCase();
+  const nome=parts.slice(0,-1).join(' ').toUpperCase();
+  const byKey={};
+  allData.forEach(r=>{if(r._tipo!=='fc vm')return;const k=_empKey(r);(byKey[k]||(byKey[k]=[])).push(r);});
+  let keys=Object.keys(byKey).filter(k=>(k.split('|')[0]||'').toUpperCase()===cognome);
+  if(!keys.length){
+    let best=null,bd=99,ties=0;
+    Object.keys(byKey).forEach(k=>{const c=(k.split('|')[0]||'').toUpperCase();if(c.length>=3){const d=_sasLev(c,cognome);if(d<bd){bd=d;best=k;ties=1;}else if(d===bd&&k!==best)ties++;}});
+    if(best&&bd<=1&&ties===1)keys=[best];
+  }
+  if(keys.length>1&&nome){
+    const nomeWords=nome.split(' ').filter(Boolean);
+    const filtered=keys.filter(k=>{const n=(k.split('|')[1]||'').toUpperCase();return nomeWords.some(w=>n.includes(w));});
+    if(filtered.length===1)keys=filtered;
+  }
+  return keys.length===1?byKey[keys[0]]:[];
+}
+// Quante volte il BDG è stato raggiunto (erogato>0) nell'intervallo Da→A, sulle righe storiche già
+// individuate (stesso negozio o stessa persona). Stessa definizione di "raggiunto" usata in Anno su
+// Anno (Frequenza raggiungimento premi): componente cBdg>0, solo righe mensili (no semestrali).
+function sasBdgHist(rows,fromKey,toKey){
+  const sub=rows.filter(r=>!isSemRow(r)&&(r.monthKey||0)>=fromKey&&(r.monthKey||0)<=toKey);
+  if(!sub.length)return null;
+  const n=sub.filter(r=>(r.cBdg||0)>0).length;
+  return {n,N:sub.length,pct:Math.round(n/sub.length*100)};
+}
+function renderSas(){
+  sasPopulateMonths();sasPopulateBdgPeriod();
+  const file=sasCurrentFile();
+  const subEl=document.getElementById('sasSubtitle'),kpiEl=document.getElementById('sasKpiRow'),cnEl=document.getElementById('sasCountNote');
+  if(!file){
+    if(subEl)subEl.textContent=Object.keys(sasFiles).length?('Nessun dato "'+(sasView==='negozi'?'Negozi':'FC + VM')+'" per il mese selezionato — cambia mese/vista o carica il JSON mancante.'):'Nessun dato caricato — trascina i JSON mensili qui sopra.';
+    if(kpiEl)kpiEl.innerHTML='';
+    if(cnEl)cnEl.textContent='';
+    const tbl=document.getElementById('sasTbl');if(tbl)tbl.innerHTML='<div style="text-align:center;padding:40px;color:#ccc">Nessun dato</div>';
+    return;
+  }
+  if(subEl)subEl.textContent=file.meta.subtitle||file.period.label;
+
+  const fromKey=+((document.getElementById('sasBdgFrom')||{}).value)||0, toKey=+((document.getElementById('sasBdgTo')||{}).value)||99999999;
+  let rows=file.rows.map(r=>Object.assign({},r));
+  rows.forEach(r=>{
+    const hrows=file.kind==='negozi'
+      ?allData.filter(h=>!isSemRow(h)&&_storeId(h.store)===String(r.sid))
+      :sasMatchFcVmRows(r.name);
+    r._bdg=hrows.length?sasBdgHist(hrows,fromKey,toKey):null;
+  });
+
+  const q=(document.getElementById('sasQ').value||'').toLowerCase();
+  const fEsito=document.getElementById('sasFEsito').value;
+  const fRole=document.getElementById('sasFRole').value;
+  const onlyDet=(document.getElementById('sasFDet-si')||{}).classList.contains('active');
+  rows=rows.filter(r=>{
+    if(q&&!((r.name||'')+' '+(r.sid||'')).toLowerCase().includes(q))return false;
+    if(fEsito&&r.esito!==fEsito)return false;
+    if(fRole&&r.role!==fRole)return false;
+    if(onlyDet&&!r.determinante)return false;
+    return true;
+  });
+
+  const totApplied=rows.reduce((s,r)=>s+(r.applied||0),0), totRec=rows.reduce((s,r)=>s+(r.recValue||0),0);
+  const det=rows.filter(r=>r.determinante).length;
+  if(kpiEl)kpiEl.innerHTML=
+    '<div class="kpi"><div class="kpi-lbl">'+(sasView==='negozi'?'Negozi':'Field Coach + VM')+'</div><div class="kpi-val">'+rows.length+'</div></div>'
+    +'<div class="kpi a"><div class="kpi-lbl">SAS determinante</div><div class="kpi-val">'+det+'</div><div class="kpi-sub">portati a target dal SAS</div></div>'
+    +'<div class="kpi p"><div class="kpi-lbl">Valore SAS riconosciuto</div><div class="kpi-val">€ '+fmt(totRec)+'</div></div>'
+    +'<div class="kpi g"><div class="kpi-lbl">Applicato al fatturato</div><div class="kpi-val">€ '+fmt(totApplied)+'</div></div>'
+    +'<div class="kpi"><div class="kpi-lbl">Riserva riportata</div><div class="kpi-val">€ '+fmt(totRec-totApplied)+'</div><div class="kpi-sub">ricon. non necessario</div></div>';
+  if(cnEl)cnEl.textContent='('+rows.length+' di '+file.rows.length+')';
+
+  const eu=v=>'€ '+fmt(Math.round(v||0));
+  const eud=v=>v>0?eu(v):'<span class="dash">—</span>';
+  const bar=(p,cls)=>'<span class="sas-bar '+cls+'"><span style="width:'+Math.max(0,Math.min(100,p))+'%"></span></span>';
+  const pctCls=p=>p>=1?'good':(p>=0.95?'warn':'bad');
+  const esitoChip=r=>'<span class="sas-esito '+r.esito+'">'+agEsc(r.esitoLabel||r.esito)+'</span>';
+  const syCell=r=>{const d=(r.resultSY||0)-(r.targetSY||0);return r.resultSY.toFixed(1)+' <small style="color:'+(d>=0?'#16a34a':'#dc2626')+'">('+(d>=0?'+':'')+d.toFixed(1)+')</small>';};
+  const bdgCell=r=>{if(!r._bdg)return{disp:'<span class="dash">—</span>',val:-1};const h=r._bdg,cls=h.pct>=70?'hi':h.pct>=45?'mid':'lo';return{disp:'<span class="sas-bdg '+cls+'"><b>'+h.pct+'%</b><small>'+h.n+'/'+h.N+' mesi</small></span>',val:h.pct};};
+
+  const identCols=sasView==='negozi'
+    ?[{label:'Store ID',filter:'text'},{label:'Negozio',filter:'text'}]
+    :[{label:'Nome',filter:'text'},{label:'Ruolo',filter:'select'},{label:'N. Negozi',align:'right',filter:'none'}];
+  const cols=identCols.concat([
+    {label:'Target',align:'right',filter:'none'},{label:'Consuntivo',align:'right',filter:'none'},{label:'Esub. prec.',align:'right',filter:'none'},
+    {label:'SY (vs LY)',align:'right',filter:'none'},{label:'% senza SAS',align:'right',filter:'none'},{label:'Valore SAS',align:'right',filter:'none'},
+    {label:'Ricon.',align:'right',filter:'none'},{label:'Applicato',align:'right',filter:'none'},{label:'% finale',align:'right',filter:'none'},
+    {label:'Esito',filter:'select'},{label:'BDG storico',align:'right',filter:'none'},
+  ]);
+  const trows=rows.map(r=>{
+    const identCells=sasView==='negozi'
+      ?[{disp:r.sid,val:r.sid},{disp:agEsc(r.name),val:r.name}]
+      :[{disp:agEsc(r.name),val:r.name},{disp:'<span class="bjob">'+r.role+'</span>',val:r.role},{disp:r.nStores,val:r.nStores}];
+    return {cells:identCells.concat([
+      {disp:eu(r.target),val:r.target},{disp:eu(r.actual),val:r.actual},{disp:eud(r.esubero),val:r.esubero},
+      {disp:syCell(r),val:r.resultSY},
+      {disp:bar(r.pctBase*100,pctCls(r.pctBase))+(r.pctBase*100).toFixed(1)+'%',val:r.pctBase},
+      {disp:eu(r.sasValue),val:r.sasValue},{disp:Math.round(r.recPct)+'%',val:r.recPct},{disp:eud(r.applied),val:r.applied},
+      {disp:(r.determinante?'<span class="sas-badge">⚡SAS</span>':'')+bar(r.pctFinal*100,pctCls(r.pctFinal))+'<b>'+(r.pctFinal*100).toFixed(1)+'%</b>',val:r.pctFinal},
+      {disp:esitoChip(r),val:r.esito},bdgCell(r),
+    ])};
+  });
+  makeSortTable('sasTbl','sas'+sasView,cols,trows,{i:cols.length-2,dir:1}); // default: % finale ascendente (i piu' deboli prima)
+}
+function sasExport(){
+  const file=sasCurrentFile();if(!file){alert('Nessun dato da esportare per questo mese/vista.');return;}
+  const rows=file.rows.map(r=>{
+    const o={};
+    if(sasView==='negozi'){o['Store ID']=r.sid;o['Negozio']=r.name;}else{o['Nome']=r.name;o['Ruolo']=r.role;o['N. Negozi']=r.nStores;}
+    return Object.assign(o,{'Target':Math.round(r.target),'Consuntivo':Math.round(r.actual),'Esub. prec.':Math.round(r.esubero||0),
+      'Target SY':r.targetSY,'Risultato SY':r.resultSY,'% senza SAS':+((r.pctBase||0)*100).toFixed(1),'Valore SAS':Math.round(r.sasValue),
+      'Riconosciuto %':r.recPct,'Valore riconosciuto':Math.round(r.recValue),'Applicato':Math.round(r.applied),
+      '% finale':+((r.pctFinal||0)*100).toFixed(1),'Esito':r.esitoLabel,'Determinante':r.determinante?'Sì':'No'});
+  });
+  _writeXlsx(rows,'SAS Fatturato','BoggiPremi_SasFatturato_');
 }
 
 // ═══════════════════════════════════════════════════════════════
