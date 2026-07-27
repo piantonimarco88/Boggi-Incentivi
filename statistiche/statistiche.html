@@ -504,7 +504,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
       <h2 style="margin:0;font-size:17px;font-weight:800;display:flex;align-items:center;gap:6px">🎯 SAS → Fatturato <span class="info-tip" data-tip="Policy attiva da Luglio 2026: il valore SAS riconosciuto può colmare (in tutto o in parte) il gap tra consuntivo e target fatturato di negozio/area. Import mensile da app esterna (JSON), un file per 'Negozi' e uno per 'FC + VM'.&#10;I calcoli (esito, % riconosciuta, ecc.) arrivano già pronti dal file: qui vengono solo mostrati, filtrati e incrociati con lo storico BDG.">i</span></h2>
       <div style="font-size:12px;color:#888;margin-top:3px" id="sasSubtitle">Nessun dato caricato.</div>
     </div>
-    <select id="sasMonth" onchange="renderSas()" style="min-width:160px"><option value="">— nessun mese caricato —</option></select>
+    <select id="sasMonth" onchange="renderSas()" style="min-width:160px;padding:4px 7px;border:1px solid #dde1ea;border-radius:6px;font-size:12px;background:#fff"><option value="">— nessun mese caricato —</option></select>
   </div>
 
   <div style="margin:0 28px 16px">
@@ -521,24 +521,27 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 
   <div class="kpi-row" id="sasKpiRow"></div>
 
-  <div style="margin:0 28px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-    <div class="l4l-toggle" id="sasViewToggle">
-      <button class="l4l-btn active" data-view="negozi" onclick="sasSetView('negozi')">Negozi</button>
-      <button class="l4l-btn" data-view="fcvm" onclick="sasSetView('fcvm')">FC + VM</button>
-    </div>
-    <input type="text" id="sasQ" placeholder="Cerca negozio, store ID, nome…" oninput="renderSas()" style="padding:8px 11px;border:1px solid #dde1ea;border-radius:8px;font-size:12.5px;min-width:190px">
-    <select id="sasFEsito" onchange="renderSas()"><option value="">Tutti gli esiti</option><option value="full">Pieno</option><option value="ridotto">Ridotto</option><option value="none">Nessuno</option></select>
-    <select id="sasFRole" onchange="renderSas()" style="display:none"><option value="">Tutti i ruoli</option><option value="FC">Field Coach</option><option value="VM">Visual Merchandiser</option></select>
-    <div class="l4l-wrap"><label class="fg" style="font-size:9px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.4px">Solo SAS determinante</label>
+  <div class="yoy-filters" style="margin:18px 28px 14px">
+    <div class="fg"><label>Vista</label>
+      <div class="l4l-toggle" id="sasViewToggle">
+        <button class="l4l-btn active" data-view="negozi" onclick="sasSetView('negozi')">Negozi</button>
+        <button class="l4l-btn" data-view="fcvm" onclick="sasSetView('fcvm')">FC + VM</button>
+      </div></div>
+    <div class="fg"><label>Cerca</label>
+      <input type="text" id="sasQ" placeholder="Negozio, store ID, nome…" oninput="renderSas()"></div>
+    <div class="fg"><label>Esito</label>
+      <div class="ms-wrap" id="sas-esito"><button class="ms-btn" id="sas-esito-btn" onclick="toggleMs(event,'sas-esito')">Tutti</button><div class="ms-panel" id="sas-esito-panel" style="display:none"></div></div></div>
+    <div class="fg" id="sasRoleWrap" style="display:none"><label>Ruolo</label>
+      <div class="ms-wrap" id="sas-role"><button class="ms-btn" id="sas-role-btn" onclick="toggleMs(event,'sas-role')">Tutti</button><div class="ms-panel" id="sas-role-panel" style="display:none"></div></div></div>
+    <div class="fg"><label>Solo SAS determinante</label>
       <div class="l4l-toggle" style="display:flex">
         <button class="l4l-btn active" id="sasFDet-no" style="flex:1" onclick="sasSetDet(false)">No</button>
         <button class="l4l-btn" id="sasFDet-si" style="flex:1" onclick="sasSetDet(true)">Sì</button>
       </div></div>
-    <div style="display:flex;align-items:center;gap:6px;margin-left:auto;font-size:11.5px;color:#888;font-weight:600">
-      <span>Storico BDG</span>
-      <select id="sasBdgFrom" onchange="renderSas()"></select><span>→</span><select id="sasBdgTo" onchange="renderSas()"></select>
-      <span class="info-tip" data-tip="Quante volte il premio BDG è stato raggiunto nell'intervallo scelto, per lo stesso negozio (Store ID) o la stessa persona FC/VM (match per nome, con fuzzy-matching per gli omonimi — stessa logica di Lament1). Riusa la definizione di 'raggiunto' già usata in Anno su Anno (Frequenza raggiungimento premi): erogato BDG > 0 sui mesi mensili dello storico caricato.&#10;'—' = nessuno storico trovato per quel negozio/persona nell'intervallo scelto.">i</span>
-    </div>
+    <div class="fg"><label>Storico BDG — da <span class="info-tip" data-tip="Quante volte il premio BDG è stato raggiunto nell'intervallo scelto, per lo stesso negozio (Store ID) o la stessa persona FC/VM (match per nome, con fuzzy-matching per gli omonimi — stessa logica di Lament1). Riusa la definizione di 'raggiunto' già usata in Anno su Anno (Frequenza raggiungimento premi): erogato BDG > 0 sui mesi mensili dello storico caricato.&#10;'—' = nessuno storico trovato per quel negozio/persona nell'intervallo scelto.">i</span></label>
+      <select id="sasBdgFrom" onchange="renderSas()" style="padding:4px 7px;border:1px solid #dde1ea;border-radius:6px;font-size:12px"></select></div>
+    <div class="fg"><label>a</label>
+      <select id="sasBdgTo" onchange="renderSas()" style="padding:4px 7px;border:1px solid #dde1ea;border-radius:6px;font-size:12px"></select></div>
   </div>
 
   <div class="yoy-tbl">
@@ -4853,10 +4856,18 @@ function sasCurrentFile(){
   const mk=+((document.getElementById('sasMonth')||{}).value||0);
   return Object.values(sasFiles).find(f=>f.kind===sasView&&f.period.monthKey===mk)||null;
 }
+let _sasFiltersInit=false;
+// Popola i due menu a tendina "veri" (stesso componente ms-wrap/checkbox usato in tutti gli altri tab
+// per Tipo Premio/Ruolo/Nazione/ecc.), invece di <select> nativi — coerenza grafica col resto dell'app.
+function sasPopulateFilters(){
+  if(_sasFiltersInit)return;_sasFiltersInit=true;
+  setMsOpts('sas-esito',[{v:'full',l:'Pieno'},{v:'ridotto',l:'Ridotto'},{v:'none',l:'Nessuno'}],renderSas);
+  setMsOpts('sas-role',[{v:'FC',l:'Field Coach'},{v:'VM',l:'Visual Merchandiser'}],renderSas);
+}
 function sasSetView(v){
   sasView=v;
   document.querySelectorAll('#sasViewToggle .l4l-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
-  const fr=document.getElementById('sasFRole');if(fr)fr.style.display=v==='fcvm'?'':'none';
+  const fr=document.getElementById('sasRoleWrap');if(fr)fr.style.display=v==='fcvm'?'':'none';
   sasPopulateMonths();renderSas();
 }
 function sasSetDet(v){
@@ -4914,7 +4925,7 @@ function sasBdgHist(rows,fromKey,toKey){
   return {n,N:sub.length,pct:Math.round(n/sub.length*100)};
 }
 function renderSas(){
-  sasPopulateMonths();sasPopulateBdgPeriod();
+  sasPopulateMonths();sasPopulateBdgPeriod();sasPopulateFilters();
   const file=sasCurrentFile();
   const subEl=document.getElementById('sasSubtitle'),kpiEl=document.getElementById('sasKpiRow'),cnEl=document.getElementById('sasCountNote');
   if(!file){
@@ -4936,13 +4947,12 @@ function renderSas(){
   });
 
   const q=(document.getElementById('sasQ').value||'').toLowerCase();
-  const fEsito=document.getElementById('sasFEsito').value;
-  const fRole=document.getElementById('sasFRole').value;
+  const fEsito=getMsVals('sas-esito'), fRole=getMsVals('sas-role');
   const onlyDet=(document.getElementById('sasFDet-si')||{}).classList.contains('active');
   rows=rows.filter(r=>{
     if(q&&!((r.name||'')+' '+(r.sid||'')).toLowerCase().includes(q))return false;
-    if(fEsito&&r.esito!==fEsito)return false;
-    if(fRole&&r.role!==fRole)return false;
+    if(fEsito.length&&!fEsito.includes(r.esito))return false;
+    if(fRole.length&&!fRole.includes(r.role))return false;
     if(onlyDet&&!r.determinante)return false;
     return true;
   });
