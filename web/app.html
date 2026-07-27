@@ -670,7 +670,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.16'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.17'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -1843,6 +1843,7 @@ function _sasDashHtml(cfg){
   html+='if(col.type==="eur-muted-dash0")return \'<td class="num tabular muted">\'+(v>0?fmtEur(v):\'<span class="dash">—</span>\')+"</td>";';
   html+='if(col.type==="pct0")return \'<td class="num tabular">\'+ (v==null?\'<span class="dash">—</span>\':Math.round(v)+"%") +"</td>";';
   html+='if(col.type==="int")return \'<td class="num tabular">\'+ (v==null?"":v) +"</td>";';
+  html+='if(col.type==="dec1")return \'<td class="num tabular">\'+ (v==null?\'<span class="dash">—</span>\':v.toFixed(1).replace(".",",")) +"</td>";';
   html+='if(col.type==="pctbar")return \'<td class="num tabular"><span class="pct-cell" style="justify-content:flex-end"><span class="bar \'+pctBarClass(v)+\'"><span style="width:\'+Math.min(100,v*100)+\'%"></span></span>\'+fmtPct(v)+"</span></td>";';
   html+='if(col.type==="pctbar-badge")return \'<td class="num tabular"><span class="pct-cell" style="justify-content:flex-end;gap:6px">\'+(row.determinante?\'<span class="sas-badge">⚡ SAS</span>\':"")+\'<span class="bar \'+pctBarClass(v)+\'"><span style="width:\'+Math.min(100,v*100)+\'%"></span></span><strong>\'+fmtPct(v)+"</strong></span></td>";';
   html+='if(col.type==="esitochip")return "<td>"+esitoChip(row.esito,row.esitoLabel)+"</td>";';
@@ -1887,12 +1888,14 @@ function exportSasDashboardStores(){
   if(!sids.length){alert("Nessun negozio con dati SAS+fatturato disponibili.\nCarica Target, Risultati BDG e SAS dal tab Fonti Dati.");return;}
   var rows=sids.map(function(sid){
     var info=storeSasInfo(sid);
+    var tg=D.t[sid]||{},cn=D.c[sid]||{};
     var pctBase=info.to>0?info.base/info.to:0;
     var pctFinal=info.pct;
     var determinante=pctBase<PARAMS.bdg100&&pctFinal>=PARAMS.bdg100;
     var esito=pctFinal>=PARAMS.bdg100?"full":(isRidottoStore(sid)?"ridotto":"none");
     var esitoLabel=esito==="full"?"Pieno":(esito==="ridotto"?"Ridotto 60%":"Nessuno");
     return{sid:sid,name:storeNames[sid],target:Math.round(info.to),actual:Math.round(info.base),pctBase:pctBase,
+      esubero:Math.round(cn.es||0),targetSY:tg.sy!=null?tg.sy:null,resultSY:cn.sy!=null?cn.sy:null,
       sasValue:Math.round(info.sasv||0),recPct:info.pctMatrix!=null?Math.round(info.pctMatrix*100):null,
       recValue:Math.round(info.recognized||0),applied:Math.round(info.used||0),pctFinal:pctFinal,
       esito:esito,esitoLabel:esitoLabel,determinante:determinante,_search:(sid+" "+storeNames[sid]).toLowerCase()};
@@ -1917,17 +1920,20 @@ function exportSasDashboardStores(){
     ],
     esitoOptions:[{value:"full",label:"Premio pieno"},{value:"ridotto",label:"Premio ridotto"},{value:"none",label:"Nessun premio"}],
     columns:[
-      {key:"sid",label:"Store ID",type:"mono",width:6},
-      {key:"name",label:"Negozio",type:"text",width:16},
-      {key:"target",label:"Target",type:"eur",align:"num",width:9},
-      {key:"actual",label:"Consuntivo",type:"eur",align:"num",width:9},
-      {key:"pctBase",label:"% senza SAS",type:"pctbar",align:"num",width:11},
-      {key:"sasValue",label:"Valore SAS",type:"eur-muted",align:"num",width:8},
-      {key:"recPct",label:"Riconosciuto",type:"pct0",align:"num",width:6},
-      {key:"recValue",label:"Valore ricon.",type:"eur-muted-dash0",align:"num",width:9},
-      {key:"applied",label:"Applicato",type:"eur-dash0",align:"num",width:8},
-      {key:"pctFinal",label:"% finale",type:"pctbar-badge",align:"num",width:13},
-      {key:"esito",label:"Esito",type:"esitochip",width:9}
+      {key:"sid",label:"Store ID",type:"mono",width:5},
+      {key:"name",label:"Negozio",type:"text",width:13},
+      {key:"target",label:"Target",type:"eur",align:"num",width:8},
+      {key:"actual",label:"Consuntivo",type:"eur",align:"num",width:8},
+      {key:"esubero",label:"Esub. prec.",type:"eur-dash0",align:"num",width:7},
+      {key:"targetSY",label:"Target SY",type:"dec1",align:"num",width:6},
+      {key:"resultSY",label:"Risultato SY",type:"dec1",align:"num",width:6},
+      {key:"pctBase",label:"% senza SAS",type:"pctbar",align:"num",width:10},
+      {key:"sasValue",label:"Valore SAS",type:"eur-muted",align:"num",width:7},
+      {key:"recPct",label:"Riconosciuto",type:"pct0",align:"num",width:5},
+      {key:"recValue",label:"Valore ricon.",type:"eur-muted-dash0",align:"num",width:8},
+      {key:"applied",label:"Applicato",type:"eur-dash0",align:"num",width:7},
+      {key:"pctFinal",label:"% finale",type:"pctbar-badge",align:"num",width:11},
+      {key:"esito",label:"Esito",type:"esitochip",width:7}
     ],
     rows:rows
   };
@@ -1947,7 +1953,8 @@ function exportSasDashboardFcvm(){
     var esitoMap={full:["full","Pieno"],partial:["ridotto","Ridotto 60%"],partial_nosy:["none","Soglia/no SY"],none:["none","Nessuno"],sospeso:["none","Sospeso"],preventivo:["none","—"]};
     var em=esitoMap[r.esito]||["none",r.esito];
     return{name:emp.n+" "+emp.c,role:emp.j,nStores:(r.stores||[]).length,target:Math.round(r.totTarget||0),
-      actual:Math.round(pureCons),pctBase:pctBase,sasValue:Math.round((FC_AREA_SAS[emp.m]||{}).sasv_eur||0),
+      actual:Math.round(pureCons),esubero:Math.round(r.totEsubero||0),targetSY:r.syLyArea!=null?r.syLyArea:null,resultSY:r.syAreaCy!=null?r.syAreaCy:null,
+      pctBase:pctBase,sasValue:Math.round((FC_AREA_SAS[emp.m]||{}).sasv_eur||0),
       recPct:sasMatrixPct((FC_AREA_SAS[emp.m]||{}).acc,(FC_AREA_SAS[emp.m]||{}).vel)!=null?Math.round(sasMatrixPct((FC_AREA_SAS[emp.m]||{}).acc,(FC_AREA_SAS[emp.m]||{}).vel)*100):null,
       recValue:Math.round(r.totSasRec||0),applied:Math.round(r.totSasUsed||0),pctFinal:pctFinal,
       esito:em[0],esitoLabel:em[1],determinante:determinante,_search:(emp.n+" "+emp.c+" "+emp.j).toLowerCase()};
@@ -1974,18 +1981,21 @@ function exportSasDashboardFcvm(){
     roleOptions:[{value:"FC",label:"Field Coach"},{value:"VM",label:"Visual Merchandiser"}],
     roleAllLabel:"Tutti i ruoli",
     columns:[
-      {key:"name",label:"Nome",type:"text",width:14},
-      {key:"role",label:"Ruolo",type:"mono",width:5},
-      {key:"nStores",label:"N. Negozi",type:"int",align:"num",width:6},
-      {key:"target",label:"Target Area",type:"eur",align:"num",width:9},
-      {key:"actual",label:"Consuntivo Area",type:"eur",align:"num",width:9},
-      {key:"pctBase",label:"% senza SAS",type:"pctbar",align:"num",width:11},
-      {key:"sasValue",label:"Valore SAS",type:"eur-muted",align:"num",width:8},
-      {key:"recPct",label:"Riconosciuto",type:"pct0",align:"num",width:6},
-      {key:"recValue",label:"Valore ricon.",type:"eur-muted-dash0",align:"num",width:9},
-      {key:"applied",label:"Applicato",type:"eur-dash0",align:"num",width:8},
-      {key:"pctFinal",label:"% finale",type:"pctbar-badge",align:"num",width:13},
-      {key:"esito",label:"Esito",type:"esitochip",width:8}
+      {key:"name",label:"Nome",type:"text",width:11},
+      {key:"role",label:"Ruolo",type:"mono",width:4},
+      {key:"nStores",label:"N. Negozi",type:"int",align:"num",width:5},
+      {key:"target",label:"Target Area",type:"eur",align:"num",width:8},
+      {key:"actual",label:"Consuntivo Area",type:"eur",align:"num",width:8},
+      {key:"esubero",label:"Esub. prec.",type:"eur-dash0",align:"num",width:7},
+      {key:"targetSY",label:"SY LY (rif.)",type:"dec1",align:"num",width:6},
+      {key:"resultSY",label:"SY CY",type:"dec1",align:"num",width:6},
+      {key:"pctBase",label:"% senza SAS",type:"pctbar",align:"num",width:10},
+      {key:"sasValue",label:"Valore SAS",type:"eur-muted",align:"num",width:7},
+      {key:"recPct",label:"Riconosciuto",type:"pct0",align:"num",width:5},
+      {key:"recValue",label:"Valore ricon.",type:"eur-muted-dash0",align:"num",width:7},
+      {key:"applied",label:"Applicato",type:"eur-dash0",align:"num",width:6},
+      {key:"pctFinal",label:"% finale",type:"pctbar-badge",align:"num",width:10},
+      {key:"esito",label:"Esito",type:"esitochip",width:6}
     ],
     rows:rows
   };
