@@ -529,6 +529,8 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
       </div></div>
     <div class="fg"><label>Cerca</label>
       <input type="text" id="sasQ" placeholder="Negozio, store ID, nome…" oninput="renderSas()"></div>
+    <div class="fg"><label>Nome / Cognome</label>
+      <div class="ms-wrap" id="sas-name"><button class="ms-btn" id="sas-name-btn" onclick="toggleMs(event,'sas-name')">Tutti</button><div class="ms-panel" id="sas-name-panel" style="display:none"></div></div></div>
     <div class="fg"><label>Esito</label>
       <div class="ms-wrap" id="sas-esito"><button class="ms-btn" id="sas-esito-btn" onclick="toggleMs(event,'sas-esito')">Tutti</button><div class="ms-panel" id="sas-esito-panel" style="display:none"></div></div></div>
     <div class="fg" id="sasRoleWrap" style="display:none"><label>Ruolo</label>
@@ -2750,7 +2752,7 @@ function _updateCompOpts(prefix,renderFn){
     const wantMensile=selTipi.has('mensile')||selTipi.has('fc vm');
     const wantSem=selTipi.has('semestrale')||selTipi.has('semestrale eci');
     comps=COMP.filter(c=>(wantMensile&&c.tipo==='mensile')||(wantSem&&c.tipo==='semestrale'))
-              .filter(c=>allData.some(r=>r[c.k]>0));
+              .filter(c=>allData.some(r=>r[c.k]>0&&_tipoIncl(selTipi,r._tipo)));
   }
   const curSel=getMsVals(prefix+'-comp');
   setMsOpts(prefix+'-comp',comps.map(c=>({v:c.k,l:c.l})),renderFn);
@@ -4966,6 +4968,12 @@ function sasBdgHist(rows,fromKey,toKey){
   const n=sub.filter(r=>(r.cBdg||0)>0).length;
   return {n,N:sub.length,pct:Math.round(n/sub.length*100)};
 }
+// Opzioni "Nome/Cognome" ricostruite ad ogni render sui nomi del file/vista correnti
+// (negozi → nome negozio, FC+VM → nome persona) — stesso pattern di sasPopulateMonths.
+function sasPopulateNameFilter(file){
+  const names=[...new Set(file.rows.map(r=>r.name).filter(Boolean))].sort();
+  setMsOpts('sas-name',names.map(n=>({v:n,l:n})),renderSas);
+}
 function renderSas(){
   sasPopulateMonths();sasPopulateBdgPeriod();sasPopulateFilters();
   const file=sasCurrentFile();
@@ -4978,6 +4986,7 @@ function renderSas(){
     return;
   }
   if(subEl)subEl.textContent=file.meta.subtitle||file.period.label;
+  sasPopulateNameFilter(file);
 
   const fromKey=+((document.getElementById('sasBdgFrom')||{}).value)||0, toKey=+((document.getElementById('sasBdgTo')||{}).value)||99999999;
   let rows=file.rows.map(r=>Object.assign({},r));
@@ -4989,10 +4998,11 @@ function renderSas(){
   });
 
   const q=(document.getElementById('sasQ').value||'').toLowerCase();
-  const fEsito=getMsVals('sas-esito'), fRole=getMsVals('sas-role');
+  const fEsito=getMsVals('sas-esito'), fRole=getMsVals('sas-role'), fName=getMsVals('sas-name');
   const onlyDet=(document.getElementById('sasFDet-si')||{}).classList.contains('active');
   rows=rows.filter(r=>{
     if(q&&!((r.name||'')+' '+(r.sid||'')).toLowerCase().includes(q))return false;
+    if(fName.length&&!fName.includes(r.name))return false;
     if(fEsito.length&&!fEsito.includes(r.esito))return false;
     if(fRole.length&&!fRole.includes(r.role))return false;
     if(onlyDet&&!r.determinante)return false;
