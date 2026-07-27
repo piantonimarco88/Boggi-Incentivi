@@ -2381,6 +2381,47 @@ function closeModalOutside(e){if(e.target===document.getElementById('modalOverla
 
 // ─── QUALITÀ DATI ────────────────────────────────────────────
 // Cruscotto di anomalie a monte: aiuta a trovare errori nei file sorgente.
+// ─── COPERTURA MENSILE (Negozi vs FC/VM, fino a un mese target) ───────────
+// Risponde a "quali mesi mancano per essere aggiornati?" senza bisogno di ispezionare i file a mano.
+// Genera l'elenco dei mesi mancanti tra il primo mese presente per quel flusso (_tipo) e il target.
+function qdMissingMonths(pred,fromKey,toKey){
+  const present=new Set(allData.filter(pred).map(r=>r.monthKey||0).filter(Boolean));
+  const out=[];let y=Math.floor(fromKey/100),m=fromKey%100;
+  while(y*100+m<=toKey){const mk=y*100+m;if(!present.has(mk))out.push(mk);m++;if(m>12){m=1;y++;}}
+  return out;
+}
+function qdCoverageBlock(label,pred,toKey){
+  const keys=[...new Set(allData.filter(pred).map(r=>r.monthKey||0).filter(Boolean))].sort((a,b)=>a-b);
+  if(!keys.length)return '<div style="margin-bottom:7px"><b>'+label+'</b>: <span style="color:#ef4444;font-weight:700">nessun dato caricato</span></div>';
+  const missing=qdMissingMonths(pred,keys[0],toKey);
+  return '<div style="margin-bottom:7px"><b>'+label+'</b> <span style="color:#aaa;font-weight:400">(dati da '+mkLabel(keys[0])+')</span>: '
+    +(missing.length?'<span style="color:#ef4444;font-weight:700">'+missing.length+' mes'+(missing.length>1?'i mancanti':'e mancante')+'</span> — '+missing.map(mkLabel).join(', ')
+      :'<span style="color:#22c55e;font-weight:700">✓ completo fino a '+mkLabel(toKey)+'</span>')+'</div>';
+}
+// Mese target di default = ultimo mese solare completo secondo la data odierna (es. oggi luglio → target giugno).
+function qdDefaultTargetKey(){
+  const t=new Date();let y=t.getFullYear(),m=t.getMonth(); // getMonth() 0-based = mese 1-based PRECEDENTE
+  if(m===0){m=12;y--;}
+  return y*100+m;
+}
+function qdCoverageOptions(sel){
+  const now=new Date();let y=now.getFullYear(),m=now.getMonth()+2; if(m>12){m-=12;y++;} // fino a +1 mese da oggi
+  const opts=[];for(let yy=2024;yy<=y;yy++){for(let mm=1;mm<=12;mm++){if(yy===y&&mm>m)break;opts.push(yy*100+mm);}}
+  return opts.map(k=>'<option value="'+k+'"'+(k===sel?' selected':'')+'>'+mkLabel(k)+'</option>').join('');
+}
+function qdCoverageSection(){
+  const target=qdDefaultTargetKey();
+  return '<div style="margin:10px 0 16px;padding:10px 12px;background:#f7f8fc;border-radius:9px">'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-weight:700;font-size:12.5px;color:#444">📅 Copertura mensile — aggiornato fino a '
+    +'<select id="qdCovTarget" onchange="qdRefreshCoverage()" style="padding:4px 7px;border:1px solid #dde1ea;border-radius:6px;font-size:12px;background:#fff">'+qdCoverageOptions(target)+'</select></div>'
+    +'<div id="qdCovBody" style="font-size:12px">'+qdCoverageBlock('Negozi (premi mensili)',r=>r._tipo==='mensile',target)+qdCoverageBlock('FC + VM (premi mensili)',r=>r._tipo==='fc vm',target)+'</div>'
+    +'</div>';
+}
+function qdRefreshCoverage(){
+  const toKey=+((document.getElementById('qdCovTarget')||{}).value)||qdDefaultTargetKey();
+  const el=document.getElementById('qdCovBody');if(!el)return;
+  el.innerHTML=qdCoverageBlock('Negozi (premi mensili)',r=>r._tipo==='mensile',toKey)+qdCoverageBlock('FC + VM (premi mensili)',r=>r._tipo==='fc vm',toKey);
+}
 function showQualityReport(){
   if(!allData.length) return;
   const med=arr=>{const a=arr.slice().sort((x,y)=>x-y),n=a.length;return n?(n%2?a[(n-1)/2]:(a[n/2-1]+a[n/2])/2):0;};
@@ -2411,6 +2452,7 @@ function showQualityReport(){
   const tbl=(head,rows)=>'<table style="width:100%;border-collapse:collapse;font-size:11.5px"><thead><tr>'+head.map(h=>'<th style="text-align:left;border-bottom:1px solid #eee;padding:3px 6px;color:#888">'+h+'</th>').join('')+'</tr></thead><tbody>'+rows.join('')+'</tbody></table>';
   const cap=(a,n)=>a.length>n?a.slice(0,n).concat([null]):a; // null = riga "...altri"
   let h='<div style="font-size:12px;color:#666;margin-bottom:8px">Righe: <b>'+allData.length.toLocaleString('it-IT')+'</b> · Dipendenti: <b>'+Object.keys(byEmp).length+'</b> · Negozi: <b>'+new Set(allData.map(r=>r.store)).size+'</b></div>';
+  h+=qdCoverageSection();
   h+=sec('⚠️','RML mensile anomalo (vs mediana personale)',rmlOut.length,
     tbl(['Dipendente','Periodo','Negozio','RML','Mediana'],cap(rmlOut.sort((a,b)=>b.v/b.med-a.v/a.med),40).map(x=>x?'<tr><td style="padding:3px 6px">'+x.nm+'</td><td style="padding:3px 6px">'+mkLabel(x.mk)+'</td><td style="padding:3px 6px">'+x.store+'</td><td style="padding:3px 6px;color:#ef4444;font-weight:700">€ '+fmt(x.v)+'</td><td style="padding:3px 6px">€ '+fmt(x.med)+'</td></tr>':'<tr><td colspan="5" style="padding:3px 6px;color:#999">…e altri</td></tr>')));
   const achHead=['Dipendente','Periodo','Negozio','Nazione','Erogato €','Massimale €','Achievement'];
