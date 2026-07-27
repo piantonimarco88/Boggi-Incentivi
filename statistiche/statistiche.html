@@ -1746,10 +1746,12 @@ function parseRows(raw,fname,diag){
   const isSem=('TOTALE INCENTIVO SEASONAL' in raw[0])&&!('PREMIO FINALE' in raw[0]);
   // FC/VM vecchio formato: pivot table export, massimale = "Somma di INCENTIVO RIPARTITO CORRETTO"
   const isFcVmOld=('Somma di INCENTIVO RIPARTITO CORRETTO' in raw[0]);
-  // FC/VM nuovo formato (da lug-2026, "NUOVO PROGRAMMA INCENTIVI"): colonne dirette
-  // MATRICOLA/COGNOME/NOME/RUOLO + CAMBIO/VALUTA espliciti + PREMIO MAX LC/PREMIO EUR.
+  // FC/VM nuovo formato (da apr-2026, "NUOVO PROGRAMMA INCENTIVI"): colonne dirette
+  // MATRICOLA/COGNOME/NOME/RUOLO + CAMBIO/VALUTA espliciti + PREMIO MAX LC + un totale erogato,
+  // che nelle varianti viste finora è "PREMIO EUR"/"PREMIO LC" (mag/giu 2026) oppure
+  // "PREMIO TOTALE EUR"/"PREMIO TOTALE LC" = somma di PREMIO AREA + PREMIO BDG NEGOZI (apr 2026).
   // Non ha ancora una colonna RML (verrà aggiunta in futuro) → rml_period resta 0 per queste righe.
-  const isFcVmNew=('PREMIO MAX LC' in raw[0])&&('RUOLO' in raw[0])&&('PREMIO EUR' in raw[0]);
+  const isFcVmNew=('PREMIO MAX LC' in raw[0])&&('RUOLO' in raw[0]);
   const isFcVm=isFcVmOld||isFcVmNew;
   // semestrali ECI/dept store: has PREMIO FINALE + BDG, massimale = BDG*6*1.5
   const isEci=!isSem&&!isFcVm&&('PREMIO FINALE' in raw[0])&&('BDG' in raw[0]);
@@ -1852,7 +1854,8 @@ function parseRows(raw,fname,diag){
       erogato=n(r['PREMIO FINALE'])*cambio;
     } else if(isFcVmNew){
       massimale=n(r['PREMIO MAX LC'])*cambio;
-      erogato=n(r['PREMIO EUR'])||n(r['PREMIO LC'])*cambio;
+      const erogEur=n(r['PREMIO EUR'])||n(r['PREMIO TOTALE EUR']);
+      erogato=erogEur>0?erogEur:(n(r['PREMIO LC'])||n(r['PREMIO TOTALE LC']))*cambio;
     } else if(isNewFmt){
       // ── NUOVO FORMATO (Incentivi_consuntivo_*) ───────────────
       // Massimale: usa MASSIMALE TOTALE EURO (colonna esplicita aggiunta nel file)
