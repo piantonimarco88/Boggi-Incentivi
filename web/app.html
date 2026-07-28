@@ -673,7 +673,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.25'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.26'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -8598,7 +8598,8 @@ function rCFcvm(){
   function thS(label){return'<th>'+label+'</th>';}
   h+='<div class="scroll-wrap"><table id="ctbl"><thead><tr>';
   h+=thS('Matr.')+thS('Cognome')+thS('Nome')+thS('Ruolo')+thS('Val.')+thS('N.Store');
-  h+=thS('Target EUR')+thS('Max Premio')+(!isP?thS('Consuntivo EUR'):'')+(!isP?thS('Esubero'):'')+(!isP?thS('Cons. Tot.'):'')+thS('% Area')+thS('SY LY')+thS('SY CY')+thS('Premio LC')+thS('Premio EUR')+thS('BDG')+thS('Esito')+(!isP?'<th style="text-align:center;background:#e8f5e9;color:#2d7a3a;cursor:default">100%</th>':'')+(!isP?'<th style="text-align:center;background:#fff3e0;color:#cf8b4e;cursor:default">60%</th>':'')+thS('Lingua')+(!isP?'<th style="text-align:center;cursor:default;min-width:40px">Mal.</th>':'')+'<th style="text-align:center;cursor:default;min-width:36px">Sosp.</th>';
+  var _fcSasCols=!isP&&typeof sasNewActive==='function'&&sasNewActive();
+  h+=thS('Target EUR')+thS('Max Premio')+(!isP?thS('Consuntivo EUR'):'')+(!isP?thS('Esubero'):'')+(_fcSasCols?thS('Valore SAS')+thS('% Ricon.')+thS('Valore Ricon.'):'')+(!isP?thS('Cons. Tot.'):'')+thS('% Area')+thS('SY LY')+thS('SY CY')+thS('Premio LC')+thS('Premio EUR')+thS('BDG')+thS('Esito')+(!isP?'<th style="text-align:center;background:#e8f5e9;color:#2d7a3a;cursor:default;padding:4px 3px">100%</th>':'')+(!isP?'<th style="text-align:center;background:#fff3e0;color:#cf8b4e;cursor:default;padding:4px 3px">60%</th>':'')+'<th style="padding:4px 3px">Lingua</th>'+(!isP?'<th style="text-align:center;cursor:default;min-width:40px">Mal.</th>':'')+'<th style="text-align:center;cursor:default;min-width:36px">Sosp.</th>';
   h+='</tr></thead><tbody>';
 
   fl.forEach(function(emp,i){
@@ -8626,19 +8627,24 @@ function rCFcvm(){
     var maxTot=emp.ib+maxBdg;
     var aggFcvm=AGG_FCVM[emp.m]||0;
     h+='<td style="text-align:right;font-weight:700;color:#c9a96e">'+fc(maxTot,emp.cu||'EUR')+(aggFcvm>0?'<span style="font-size:8px;color:#c9a96e;margin-left:2px">+'+fc(aggFcvm,emp.cu||'EUR')+'</span>':'')+'</td>';
-    if(!isP)h+='<td style="text-align:right">'+fc(r.totCons,'EUR')+'</td>';
+    if(!isP)h+='<td style="text-align:right">'+fc(Math.round(r.totConsPreSas!=null?r.totConsPreSas:r.totCons),'EUR')+'</td>';
     if(!isP){
       h+='<td style="text-align:right;color:#5b6abf;font-size:10px">'+(r.totEsubero>0?'+'+fc(Math.round(r.totEsubero),'EUR'):'\u2014')+'</td>';
+    }
+    // Colonne SAS (da luglio 2026): valore grezzo, % riconosciuta da matrice, valore
+    // applicato al fatturato (quello che compone il Cons. Tot. insieme a Consuntivo+Esubero)
+    if(_fcSasCols){
+      var _sasRawV=r.sasAreaValRaw||0;
+      h+='<td style="text-align:right;color:#8a8680">'+(_sasRawV>0?fc(Math.round(_sasRawV),'EUR'):'\u2014')+'</td>';
+      h+='<td style="text-align:center;color:#8a8680">'+(r.sasAreaPctMatrix!=null?Math.round(r.sasAreaPctMatrix*100)+'%':'\u2014')+'</td>';
+      var _tipFcSas='Riconosciuto da matrice: '+fc(Math.round(r.totSasRec||0),'EUR')+' \u2014 Applicato al fatturato: '+fc(Math.round(r.totSasUsed||0),'EUR')+((r.totSasReserveIn||0)>0?(' \u2014 Riserva mese prec. usata: '+fc(Math.round(r.totSasReserveIn),'EUR')):'')+((r.totSasReserveOut||0)>0?(' \u2014 Riserva riportata: '+fc(Math.round(r.totSasReserveOut),'EUR')):'');
+      h+='<td style="text-align:right;font-weight:700;color:#a07d2c" title="'+esc(_tipFcSas)+'">'+((r.totSasUsed||0)>0?fc(Math.round(r.totSasUsed),'EUR'):'\u2014')+'</td>';
+    }
+    if(!isP){
       var consCol=r.totConsWithEsub>0?'#2c2925':'#b0a99f';
       h+='<td style="text-align:right;font-weight:700;color:'+consCol+'">'+fc(Math.round(r.totConsWithEsub),'EUR')+'</td>';
     }
-    // Indicatore SAS sull'area (da luglio 2026): SAS applicato al fatturato verso il target
-    var _fcSasSup='';
-    if(!isP&&typeof sasNewActive==='function'&&sasNewActive()&&(r.totSasRec>0||r.totSasUsed>0)){
-      var _tipFcSas='SAS applicato al fatturato area: '+fc(Math.round(r.totSasUsed||0),'EUR')+(r.sasAreaPctMatrix!=null?(' \u2014 '+Math.round(r.sasAreaPctMatrix*100)+'% di '+fc(Math.round(r.sasAreaValRaw||0),'EUR')+((r.totSasReserveOut||0)>0?(', riserva '+fc(Math.round(r.totSasReserveOut),'EUR')):'')):'');
-      _fcSasSup='<sup style="font-size:7px;color:#a07d2c;font-weight:700;margin-left:2px" title="'+esc(_tipFcSas)+'">S</sup>';
-    }
-    h+='<td style="text-align:right;font-weight:700;color:'+(pc===null?'#a09a92':pc>=FCVM_PARAMS.soglia100?'#2d7a3a':pc>=FCVM_PARAMS.soglia60?'#cf8b4e':'#cf5b5b')+'">'+(pc===null?'\u2014':fPct(pc))+_fcSasSup+'</td>';
+    h+='<td style="text-align:right;font-weight:700;color:'+(pc===null?'#a09a92':pc>=FCVM_PARAMS.soglia100?'#2d7a3a':pc>=FCVM_PARAMS.soglia60?'#cf8b4e':'#cf5b5b')+'">'+(pc===null?'\u2014':fPct(pc))+'</td>';
     // SY LY (aggregato area da FC_SYLY)
     var syLyDisp=r.syLyArea!=null?fDec(r.syLyArea,2):'\u2014';
     // SY CY (aggregato area da FC_RESULTS in consuntivo)
@@ -8664,15 +8670,15 @@ function rCFcvm(){
     // Toggle override manuale 100% / 60% (solo consuntivo)
     if(!isP){
       var ov100=FC_OVERRIDES[emp.m]==='100',ov60=FC_OVERRIDES[emp.m]==='60';
-      h+='<td style="text-align:center" onclick="event.stopPropagation()"><button onclick="setFcVmOverride(\''+esc(emp.m)+'\',\'100\')" style="padding:2px 8px;font-size:9px;font-weight:700;border-radius:4px;border:2px solid '+(ov100?'#2d7a3a':'#d5d0c8')+';background:'+(ov100?'#2d7a3a':'#fff')+';color:'+(ov100?'#fff':'#8a8680')+';cursor:pointer">✓ 100%</button></td>';
-      h+='<td style="text-align:center" onclick="event.stopPropagation()"><button onclick="setFcVmOverride(\''+esc(emp.m)+'\',\'60\')" style="padding:2px 8px;font-size:9px;font-weight:700;border-radius:4px;border:2px solid '+(ov60?'#cf8b4e':'#d5d0c8')+';background:'+(ov60?'#cf8b4e':'#fff')+';color:'+(ov60?'#fff':'#8a8680')+';cursor:pointer">✓ 60%</button></td>';
+      h+='<td style="text-align:center;padding:4px 3px" onclick="event.stopPropagation()"><button onclick="setFcVmOverride(\''+esc(emp.m)+'\',\'100\')" style="padding:1px 4px;font-size:8px;font-weight:700;border-radius:4px;border:2px solid '+(ov100?'#2d7a3a':'#d5d0c8')+';background:'+(ov100?'#2d7a3a':'#fff')+';color:'+(ov100?'#fff':'#8a8680')+';cursor:pointer">100%</button></td>';
+      h+='<td style="text-align:center;padding:4px 3px" onclick="event.stopPropagation()"><button onclick="setFcVmOverride(\''+esc(emp.m)+'\',\'60\')" style="padding:1px 4px;font-size:8px;font-weight:700;border-radius:4px;border:2px solid '+(ov60?'#cf8b4e':'#d5d0c8')+';background:'+(ov60?'#cf8b4e':'#fff')+';color:'+(ov60?'#fff':'#8a8680')+';cursor:pointer">60%</button></td>';
     }
     // Selezione lingua
     if(REGION==="italia"){
       if(!emp.lang||emp.lang!=="ITALIANO"){emp.lang="ITALIANO";}
-      h+='<td style="text-align:center;font-size:9px;font-weight:700;color:#4e4b48">ITA</td>';
+      h+='<td style="text-align:center;font-size:9px;font-weight:700;color:#4e4b48;padding:4px 3px">ITA</td>';
     }else{
-      h+='<td onclick="event.stopPropagation()"><select style="font-size:9px;padding:2px 4px;border:1px solid #d5d0c8;border-radius:3px;font-family:inherit" data-fcmatr="'+esc(emp.m)+'" onchange="setFcVmLang(this);event.stopPropagation()">';
+      h+='<td style="padding:4px 3px" onclick="event.stopPropagation()"><select style="font-size:8px;padding:1px 2px;border:1px solid #d5d0c8;border-radius:3px;font-family:inherit" data-fcmatr="'+esc(emp.m)+'" onchange="setFcVmLang(this);event.stopPropagation()">';
       ['ITALIANO','INGLESE','FRANCESE','TEDESCO','SPAGNOLO'].forEach(function(l){
         h+='<option value="'+l+'"'+(emp.lang===l?' selected':'')+'>'+l.substring(0,3)+'</option>';
       });
