@@ -670,7 +670,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.19'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.20'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -6553,8 +6553,11 @@ function loadResultsExcel(file){
         var cRetMonth=fH("retail month","retail_month");
         var withAcc=0,withVel=0,withVal=0;
         for(var ri=dataStart;ri<json.length;ri++){
-          var row=json[ri];if(!row)continue;var sid=row[cSid];if(!sid)continue;
-          sid=String(parseInt(sid));if(sid==="NaN")continue;
+          var row=json[ri];if(!row)continue;var rawSid=row[cSid];if(rawSid==null||String(rawSid).trim()==="")continue;
+          // Scarta righe non numeriche (es. riga di firma/report "28 lug 2026, 09:46" in fondo al file):
+          // parseInt tronca al primo numero valido e creerebbe un negozio fantasma inesistente.
+          if(!/^\d+$/.test(String(rawSid).trim()))continue;
+          var sid=String(parseInt(rawSid));if(sid==="NaN")continue;
           // Filtra per anno/mese retail se le colonne sono presenti e valorizzate
           if(cRetYear>=0){var ry=parseInt(row[cRetYear]);if(!isNaN(ry)&&ry!==CFG_YEAR)continue;}
           if(cRetMonth>=0){var rm=parseInt(row[cRetMonth]);if(!isNaN(rm)&&rm!==CFG_MONTH)continue;}
