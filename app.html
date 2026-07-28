@@ -526,11 +526,12 @@ function calcFcVmPremio(matr){
   // (dato aggregato QWRT per field_coach, non più per negozio). Colma il gap al target
   // dell'area, cap 100%, avanzo→riserva. I negozi BDG extra (bdg_stores) restano invece
   // a SAS per-negozio, vedi loop più sotto.
-  var totSasRec=0;
+  var totSasRec=0,totSasReserveIn=0;
   if(isCons&&sasNewActive()){
     var areaSas=FC_AREA_SAS[matr]||{};
     totSasRec=sasRecognizedValue(areaSas.acc,areaSas.vel,areaSas.sasv_eur||0);
-    var _srArea=sasReserveCalc(totCons,totTarget,totSasRec,areaSas.sasr_eur||0);
+    totSasReserveIn=areaSas.sasr_eur||0;
+    var _srArea=sasReserveCalc(totCons,totTarget,totSasRec,totSasReserveIn);
     totSasUsed=_srArea.used;totSasReserveOut=_srArea.reserveOut;
     totCons+=totSasUsed;
   }
@@ -603,7 +604,7 @@ function calcFcVmPremio(matr){
   var premioEur=Math.round(premioLC*exRate*100)/100;
   var totalPremioLC=premioLC+bdgPrize;
   var totalPremioEur=Math.round(totalPremioLC*exRate*100)/100;
-  return{premio:premioLC,premio_eur:premioEur,esito:esito,pct:pct,totTarget:totTarget,totCons:totCons,totEsubero:totEsubero,totConsWithEsub:totConsWithEsub,syOk:syOk,syLyArea:syLyArea,syAreaCy:syAreaCy,hasSyLy:hasSyLy,hasSyCy:hasSyCy,syAreaAvg:syAreaAvg,stores:detail,bdgPrize:bdgPrize,bdgPrizeEur:bdgPrizeEur,bdgDetail:bdgDetail,totalPremioLC:totalPremioLC,totalPremioEur:totalPremioEur,hasBdg:bdgDetail.length>0,totSasRec:totSasRec,totSasUsed:totSasUsed,totSasReserveOut:totSasReserveOut,ml:emp.ml||0,sm:smFcvm};
+  return{premio:premioLC,premio_eur:premioEur,esito:esito,pct:pct,totTarget:totTarget,totCons:totCons,totEsubero:totEsubero,totConsWithEsub:totConsWithEsub,syOk:syOk,syLyArea:syLyArea,syAreaCy:syAreaCy,hasSyLy:hasSyLy,hasSyCy:hasSyCy,syAreaAvg:syAreaAvg,stores:detail,bdgPrize:bdgPrize,bdgPrizeEur:bdgPrizeEur,bdgDetail:bdgDetail,totalPremioLC:totalPremioLC,totalPremioEur:totalPremioEur,hasBdg:bdgDetail.length>0,totSasRec:totSasRec,totSasUsed:totSasUsed,totSasReserveIn:totSasReserveIn,totSasReserveOut:totSasReserveOut,ml:emp.ml||0,sm:smFcvm};
 }
 function getFcVmPool(){return Object.values(FC_EMP);}
 
@@ -670,7 +671,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.22'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.23'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -8829,6 +8830,7 @@ function buildFcVmLetter(emp){
         var _rwF=function(l,v){return '<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#8a8680">'+esc(l)+'</span><span style="font-weight:600;color:#2c2925">'+fc(v,'EUR')+'</span></div>';};
         h+=_rwF(_LTf.recVal,_totRecF);
         h+=_rwF(_LTf.applied,r.totSasUsed||0);
+        if((r.totSasReserveIn||0)>0)h+=_rwF(_LTf.resIn,r.totSasReserveIn);
         h+=_rwF(_LTf.reserve,r.totSasReserveOut||0);
         h+='</div>';
       }
