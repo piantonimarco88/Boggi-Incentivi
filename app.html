@@ -526,9 +526,11 @@ function calcFcVmPremio(matr){
   // (dato aggregato QWRT per field_coach, non più per negozio). Colma il gap al target
   // dell'area, cap 100%, avanzo→riserva. I negozi BDG extra (bdg_stores) restano invece
   // a SAS per-negozio, vedi loop più sotto.
-  var totSasRec=0,totSasReserveIn=0;
+  var totConsPreSas=totCons;
+  var totSasRec=0,totSasReserveIn=0,sasAreaAcc=null,sasAreaVel=null,sasAreaValRaw=0,sasAreaPctMatrix=null;
   if(isCons&&sasNewActive()){
     var areaSas=FC_AREA_SAS[matr]||{};
+    sasAreaAcc=areaSas.acc!=null?areaSas.acc:null;sasAreaVel=areaSas.vel!=null?areaSas.vel:null;sasAreaValRaw=areaSas.sasv_eur||0;sasAreaPctMatrix=sasMatrixPct(areaSas.acc,areaSas.vel);
     totSasRec=sasRecognizedValue(areaSas.acc,areaSas.vel,areaSas.sasv_eur||0);
     totSasReserveIn=areaSas.sasr_eur||0;
     var _srArea=sasReserveCalc(totCons,totTarget,totSasRec,totSasReserveIn);
@@ -604,7 +606,7 @@ function calcFcVmPremio(matr){
   var premioEur=Math.round(premioLC*exRate*100)/100;
   var totalPremioLC=premioLC+bdgPrize;
   var totalPremioEur=Math.round(totalPremioLC*exRate*100)/100;
-  return{premio:premioLC,premio_eur:premioEur,esito:esito,pct:pct,totTarget:totTarget,totCons:totCons,totEsubero:totEsubero,totConsWithEsub:totConsWithEsub,syOk:syOk,syLyArea:syLyArea,syAreaCy:syAreaCy,hasSyLy:hasSyLy,hasSyCy:hasSyCy,syAreaAvg:syAreaAvg,stores:detail,bdgPrize:bdgPrize,bdgPrizeEur:bdgPrizeEur,bdgDetail:bdgDetail,totalPremioLC:totalPremioLC,totalPremioEur:totalPremioEur,hasBdg:bdgDetail.length>0,totSasRec:totSasRec,totSasUsed:totSasUsed,totSasReserveIn:totSasReserveIn,totSasReserveOut:totSasReserveOut,ml:emp.ml||0,sm:smFcvm};
+  return{premio:premioLC,premio_eur:premioEur,esito:esito,pct:pct,totTarget:totTarget,totCons:totCons,totEsubero:totEsubero,totConsWithEsub:totConsWithEsub,syOk:syOk,syLyArea:syLyArea,syAreaCy:syAreaCy,hasSyLy:hasSyLy,hasSyCy:hasSyCy,syAreaAvg:syAreaAvg,stores:detail,bdgPrize:bdgPrize,bdgPrizeEur:bdgPrizeEur,bdgDetail:bdgDetail,totalPremioLC:totalPremioLC,totalPremioEur:totalPremioEur,hasBdg:bdgDetail.length>0,totSasRec:totSasRec,totSasUsed:totSasUsed,totSasReserveIn:totSasReserveIn,totSasReserveOut:totSasReserveOut,totConsPreSas:totConsPreSas,sasAreaAcc:sasAreaAcc,sasAreaVel:sasAreaVel,sasAreaValRaw:sasAreaValRaw,sasAreaPctMatrix:sasAreaPctMatrix,ml:emp.ml||0,sm:smFcvm};
 }
 function getFcVmPool(){return Object.values(FC_EMP);}
 
@@ -671,7 +673,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.23'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.24'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -2377,7 +2379,7 @@ var _SAS_LT={
   SPAGNOLO:{title:"VALOR SAS → FACTURACIÓN",logic:"Parte del valor SAS de la tienda reconocida en la facturación hacia el objetivo (según aceptación y velocidad). Hasta el 100%; el excedente es reserva trasladada al mes siguiente.",vel:"Velocidad",velLabel:"% gestionados en 4h",acc:"Aceptación",recPct:"% reconocido",sasVal:"Valor SAS tienda",recVal:"Valor SAS reconocido",applied:"Aplicado a facturación",resIn:"Reserva mes ant.",reserve:"Reserva trasladada",nodata:"Dato SAS no disponible para esta tienda.",towardTarget:"Facturación + SAS hacia objetivo",reached:"objetivo alcanzado",below:"bajo objetivo",withoutSas:"Sin SAS"}
 };
 function _sasBandLbl(b,k){return k===0?'<'+Math.round(b[0]*100)+'%':(k===3?'≥'+Math.round(b[2]*100)+'%':Math.round(b[k-1]*100)+'-'+Math.round(b[k]*100)+'%');}
-function sasLetterBlock(lang,info,isP,cu){
+function sasLetterBlock(lang,info,isP,cu,thPct){
   if(typeof sasNewActive!=='function'||!sasNewActive())return '';
   if(info&&info.active===false)return ''; // negozio USA: niente SAS
   var T=_SAS_LT[lang]||_SAS_LT.INGLESE;
@@ -2413,7 +2415,7 @@ function sasLetterBlock(lang,info,isP,cu){
       h+=row(T.reserve,eur(info.reserveOut));
       // Riassunto: fatturato + SAS verso target, esito, e confronto senza SAS
       if(info.to>0){
-        var _reached=info.pct>=PARAMS.bdg100,_pctWo=info.base/info.to;
+        var _reached=info.pct>=(thPct||PARAMS.bdg100),_pctWo=info.base/info.to;
         h+='<div style="border-top:1px dashed #e0d9cd;margin-top:6px;padding-top:5px">';
         h+='<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0"><span style="color:#8a8680;font-weight:600">'+esc(T.towardTarget)+'</span><span style="font-weight:700;color:#2c2925">'+eur(info.num)+' / '+eur(info.to)+'</span></div>';
         h+='<div style="font-size:10.5px;font-weight:700;color:'+(_reached?'#2d7a3a':'#a07d2c')+'">'+(info.pct*100).toFixed(1)+'% — '+esc(_reached?T.reached:T.below)+(_reached?' ✓':'')+'</div>';
@@ -8818,23 +8820,29 @@ function buildFcVmLetter(emp){
   h+='<div style="margin-bottom:3px">\u2022 '+esc(T.r1)+'</div>';
   h+='<div>\u2022 '+esc(T.r2)+'</div></div>';
 
-  // \u2500\u2500 SAS \u2192 fatturato (da Luglio 2026): matrice logica + riepilogo area \u2500\u2500\u2500\u2500\u2500\u2500
+  // \u2500\u2500 SAS \u2192 fatturato (da Luglio 2026): stesso blocco del negozio mensile
+  // (sasLetterBlock), con evidenza cella matrice + acc/vel/valore grezzo,
+  // ma soglia "raggiunto" propria di FC+VM (soglia100, non quella BDG mensile) \u2500\u2500
   if(typeof sasNewActive==='function'&&sasNewActive()){
-    h+=sasLetterBlock(lang,null,true,'EUR'); // solo matrice (logica), senza puntuale
+    var _areaInfo=null;
     if(!isP){
-      var _LTf=_SAS_LT[lang]||_SAS_LT.INGLESE;
-      var _totRecF=r.totSasRec||0;
-      if(_totRecF>0||(r.totSasUsed||0)>0){
-        h+='<div style="margin-top:8px;padding:10px 13px;background:#faf8f4;border:1px solid #ece7df;border-radius:7px;font-size:11px">';
-        h+='<div style="font-size:11px;font-weight:700;color:#a07d2c;margin-bottom:4px">'+esc(_LTf.title)+' \u2014 '+esc(T.area)+'</div>';
-        var _rwF=function(l,v){return '<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#8a8680">'+esc(l)+'</span><span style="font-weight:600;color:#2c2925">'+fc(v,'EUR')+'</span></div>';};
-        h+=_rwF(_LTf.recVal,_totRecF);
-        h+=_rwF(_LTf.applied,r.totSasUsed||0);
-        if((r.totSasReserveIn||0)>0)h+=_rwF(_LTf.resIn,r.totSasReserveIn);
-        h+=_rwF(_LTf.reserve,r.totSasReserveOut||0);
-        h+='</div>';
-      }
+      _areaInfo={
+        active:true,
+        base:(r.totConsPreSas||0)+(r.totEsubero||0),
+        to:r.totTarget,
+        recognized:r.totSasRec||0,
+        reserveIn:r.totSasReserveIn||0,
+        used:r.totSasUsed||0,
+        reserveOut:r.totSasReserveOut||0,
+        num:r.totConsWithEsub,
+        pct:r.totTarget>0?r.totConsWithEsub/r.totTarget:0,
+        pctMatrix:r.sasAreaPctMatrix,
+        acc:r.sasAreaAcc,
+        vel:r.sasAreaVel,
+        sasv:r.sasAreaValRaw||0
+      };
     }
+    h+=sasLetterBlock(lang,_areaInfo,isP,'EUR',FCVM_PARAMS.soglia100);
   }
 
   var syLyVal=r.syLyArea;
