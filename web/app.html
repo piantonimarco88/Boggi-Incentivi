@@ -673,7 +673,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.24'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.25'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -2372,23 +2372,26 @@ function buildLetterUSA(e){
 // info: {acc, vel, pctMatrix, recognized, used, reserveIn, reserveOut, sasv} oppure null.
 // Mostra la matrice (logica) in prev+cons; il risultato puntuale solo in cons.
 var _SAS_LT={
-  ITALIANO:{title:"VALORE SAS → FATTURATO",logic:"Quota del valore SAS del negozio riconosciuta nel fatturato verso il target (in base ad accettazione e velocità). Fino al 100%; l'avanzo è riserva riportata al mese successivo.",vel:"Velocità",velLabel:"% gestiti entro 4h",acc:"Accettazione",recPct:"% riconosciuta",sasVal:"Valore SAS negozio",recVal:"Valore SAS riconosciuto",applied:"Applicato al fatturato",resIn:"Riserva mese prec.",reserve:"Riserva riportata",nodata:"Dato SAS non disponibile per questo negozio.",towardTarget:"Fatturato + SAS verso target",reached:"target raggiunto",below:"sotto target",withoutSas:"Senza SAS"},
-  INGLESE:{title:"SAS VALUE → TURNOVER",logic:"Share of the store's SAS value recognised toward the turnover target (based on acceptance and speed). Up to 100%; the surplus is a reserve carried to next month.",vel:"Speed",velLabel:"% handled within 4h",acc:"Acceptance",recPct:"Recognised %",sasVal:"Store SAS value",recVal:"Recognised SAS value",applied:"Applied to turnover",resIn:"Previous month reserve",reserve:"Reserve carried over",nodata:"SAS data not available for this store.",towardTarget:"Turnover + SAS toward target",reached:"target reached",below:"below target",withoutSas:"Without SAS"},
-  FRANCESE:{title:"VALEUR SAS → CA",logic:"Part de la valeur SAS du magasin reconnue dans le CA vers l'objectif (selon acceptation et rapidité). Jusqu'à 100% ; l'excédent est une réserve reportée au mois suivant.",vel:"Rapidité",velLabel:"% traités sous 4h",acc:"Acceptation",recPct:"% reconnue",sasVal:"Valeur SAS magasin",recVal:"Valeur SAS reconnue",applied:"Appliqué au CA",resIn:"Réserve mois préc.",reserve:"Réserve reportée",nodata:"Donnée SAS non disponible pour ce magasin.",towardTarget:"CA + SAS vers l'objectif",reached:"objectif atteint",below:"sous l'objectif",withoutSas:"Sans SAS"},
-  TEDESCO:{title:"SAS-WERT → UMSATZ",logic:"Anteil des SAS-Werts des Stores, der auf das Umsatzziel angerechnet wird (nach Annahme und Geschwindigkeit). Bis 100%; der Überschuss ist eine in den Folgemonat übertragene Reserve.",vel:"Geschwindigkeit",velLabel:"% innerhalb 4h bearbeitet",acc:"Annahme",recPct:"Anerkannt %",sasVal:"SAS-Wert Store",recVal:"Anerkannter SAS-Wert",applied:"Auf Umsatz angerechnet",resIn:"Reserve Vormonat",reserve:"Übertragene Reserve",nodata:"SAS-Daten für diesen Store nicht verfügbar.",towardTarget:"Umsatz + SAS zum Ziel",reached:"Ziel erreicht",below:"unter Ziel",withoutSas:"Ohne SAS"},
-  SPAGNOLO:{title:"VALOR SAS → FACTURACIÓN",logic:"Parte del valor SAS de la tienda reconocida en la facturación hacia el objetivo (según aceptación y velocidad). Hasta el 100%; el excedente es reserva trasladada al mes siguiente.",vel:"Velocidad",velLabel:"% gestionados en 4h",acc:"Aceptación",recPct:"% reconocido",sasVal:"Valor SAS tienda",recVal:"Valor SAS reconocido",applied:"Aplicado a facturación",resIn:"Reserva mes ant.",reserve:"Reserva trasladada",nodata:"Dato SAS no disponible para esta tienda.",towardTarget:"Facturación + SAS hacia objetivo",reached:"objetivo alcanzado",below:"bajo objetivo",withoutSas:"Sin SAS"}
+  ITALIANO:{title:"VALORE SAS → FATTURATO",logic:"Quota del valore SAS del negozio riconosciuta nel fatturato verso il target (in base ad accettazione e velocità). Fino al 100%; l'avanzo è riserva riportata al mese successivo.",vel:"Velocità",velLabel:"% gestiti entro 4h",acc:"Accettazione",recPct:"% riconosciuta",sasVal:"Valore SAS negozio",recVal:"Valore SAS riconosciuto",applied:"Applicato al fatturato",resIn:"Riserva mese prec.",reserve:"Riserva riportata",nodata:"Dato SAS non disponibile per questo negozio.",towardTarget:"Fatturato + SAS verso target",reached:"target raggiunto",below:"sotto target",withoutSas:"Senza SAS",logicArea:"Quota del valore SAS dell'area riconosciuta nel fatturato verso il target (in base ad accettazione e velocità aggregate dell'area). Fino al 100%; l'avanzo è riserva riportata al mese successivo.",sasValArea:"Valore SAS area",nodataArea:"Dato SAS non disponibile per quest'area."},
+  INGLESE:{title:"SAS VALUE → TURNOVER",logic:"Share of the store's SAS value recognised toward the turnover target (based on acceptance and speed). Up to 100%; the surplus is a reserve carried to next month.",vel:"Speed",velLabel:"% handled within 4h",acc:"Acceptance",recPct:"Recognised %",sasVal:"Store SAS value",recVal:"Recognised SAS value",applied:"Applied to turnover",resIn:"Previous month reserve",reserve:"Reserve carried over",nodata:"SAS data not available for this store.",towardTarget:"Turnover + SAS toward target",reached:"target reached",below:"below target",withoutSas:"Without SAS",logicArea:"Share of the area's SAS value recognised toward the turnover target (based on the area's aggregate acceptance and speed). Up to 100%; the surplus is a reserve carried to next month.",sasValArea:"Area SAS value",nodataArea:"SAS data not available for this area."},
+  FRANCESE:{title:"VALEUR SAS → CA",logic:"Part de la valeur SAS du magasin reconnue dans le CA vers l'objectif (selon acceptation et rapidité). Jusqu'à 100% ; l'excédent est une réserve reportée au mois suivant.",vel:"Rapidité",velLabel:"% traités sous 4h",acc:"Acceptation",recPct:"% reconnue",sasVal:"Valeur SAS magasin",recVal:"Valeur SAS reconnue",applied:"Appliqué au CA",resIn:"Réserve mois préc.",reserve:"Réserve reportée",nodata:"Donnée SAS non disponible pour ce magasin.",towardTarget:"CA + SAS vers l'objectif",reached:"objectif atteint",below:"sous l'objectif",withoutSas:"Sans SAS",logicArea:"Part de la valeur SAS de la zone reconnue dans le CA vers l'objectif (selon l'acceptation et la rapidité agrégées de la zone). Jusqu'à 100% ; l'excédent est une réserve reportée au mois suivant.",sasValArea:"Valeur SAS zone",nodataArea:"Donnée SAS non disponible pour cette zone."},
+  TEDESCO:{title:"SAS-WERT → UMSATZ",logic:"Anteil des SAS-Werts des Stores, der auf das Umsatzziel angerechnet wird (nach Annahme und Geschwindigkeit). Bis 100%; der Überschuss ist eine in den Folgemonat übertragene Reserve.",vel:"Geschwindigkeit",velLabel:"% innerhalb 4h bearbeitet",acc:"Annahme",recPct:"Anerkannt %",sasVal:"SAS-Wert Store",recVal:"Anerkannter SAS-Wert",applied:"Auf Umsatz angerechnet",resIn:"Reserve Vormonat",reserve:"Übertragene Reserve",nodata:"SAS-Daten für diesen Store nicht verfügbar.",towardTarget:"Umsatz + SAS zum Ziel",reached:"Ziel erreicht",below:"unter Ziel",withoutSas:"Ohne SAS",logicArea:"Anteil des SAS-Werts des Bereichs, der auf das Umsatzziel angerechnet wird (nach aggregierter Annahme und Geschwindigkeit des Bereichs). Bis 100%; der Überschuss ist eine in den Folgemonat übertragene Reserve.",sasValArea:"SAS-Wert Bereich",nodataArea:"SAS-Daten für diesen Bereich nicht verfügbar."},
+  SPAGNOLO:{title:"VALOR SAS → FACTURACIÓN",logic:"Parte del valor SAS de la tienda reconocida en la facturación hacia el objetivo (según aceptación y velocidad). Hasta el 100%; el excedente es reserva trasladada al mes siguiente.",vel:"Velocidad",velLabel:"% gestionados en 4h",acc:"Aceptación",recPct:"% reconocido",sasVal:"Valor SAS tienda",recVal:"Valor SAS reconocido",applied:"Aplicado a facturación",resIn:"Reserva mes ant.",reserve:"Reserva trasladada",nodata:"Dato SAS no disponible para esta tienda.",towardTarget:"Facturación + SAS hacia objetivo",reached:"objetivo alcanzado",below:"bajo objetivo",withoutSas:"Sin SAS",logicArea:"Parte del valor SAS de la zona reconocida en la facturación hacia el objetivo (según aceptación y velocidad agregadas de la zona). Hasta el 100%; el excedente es reserva trasladada al mes siguiente.",sasValArea:"Valor SAS zona",nodataArea:"Dato SAS no disponible para esta zona."}
 };
 function _sasBandLbl(b,k){return k===0?'<'+Math.round(b[0]*100)+'%':(k===3?'≥'+Math.round(b[2]*100)+'%':Math.round(b[k-1]*100)+'-'+Math.round(b[k]*100)+'%');}
-function sasLetterBlock(lang,info,isP,cu,thPct){
+function sasLetterBlock(lang,info,isP,cu,thPct,isArea){
   if(typeof sasNewActive!=='function'||!sasNewActive())return '';
   if(info&&info.active===false)return ''; // negozio USA: niente SAS
   var T=_SAS_LT[lang]||_SAS_LT.INGLESE;
+  var _logicTxt=isArea?(T.logicArea||T.logic):T.logic;
+  var _sasValLbl=isArea?(T.sasValArea||T.sasVal):T.sasVal;
+  var _nodataTxt=isArea?(T.nodataArea||T.nodata):T.nodata;
   var ab=SAS_MATRIX.accBands,vb=SAS_MATRIX.velBands;
   var hasData=info&&info.acc!=null&&info.vel!=null;
   var aIdx=hasData?sasAccBandIdx(info.acc):-1,vIdx=hasData?sasVelBandIdx(info.vel):-1;
   var h='<div style="margin-top:10px;padding:11px 14px;background:#faf8f4;border:1px solid #ece7df;border-radius:7px">';
   h+='<div style="font-size:12px;font-weight:700;color:#a07d2c;margin-bottom:4px">'+esc(T.title)+'</div>';
-  h+='<div style="font-size:10px;color:#8a8680;line-height:1.45;margin-bottom:8px">'+esc(T.logic)+'</div>';
+  h+='<div style="font-size:10px;color:#8a8680;line-height:1.45;margin-bottom:8px">'+esc(_logicTxt)+'</div>';
   h+='<div style="font-size:10px;font-weight:700;color:#8a8680;text-align:center;margin-bottom:3px">'+esc(T.vel)+' — '+esc(T.velLabel)+' →</div>';
   h+='<table style="border-collapse:collapse;font-size:11px;margin:0 auto '+(isP?'0':'9px')+'"><thead><tr><th style="padding:3px 9px;color:#a09a92;text-align:right;font-weight:700">↓ '+esc(T.acc)+'</th>';
   for(var c=0;c<4;c++)h+='<th style="padding:3px 11px;color:#8a8680;font-weight:700">'+_sasBandLbl(vb,c)+'</th>';
@@ -2400,7 +2403,7 @@ function sasLetterBlock(lang,info,isP,cu,thPct){
   });
   h+='</tbody></table>';
   if(!isP){
-    if(!hasData||info.pctMatrix==null){h+='<div style="font-size:10.5px;color:#a09a92;font-style:italic">'+esc(T.nodata)+'</div>';}
+    if(!hasData||info.pctMatrix==null){h+='<div style="font-size:10.5px;color:#a09a92;font-style:italic">'+esc(_nodataTxt)+'</div>';}
     else{
       var row=function(l,v){return '<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0"><span style="color:#8a8680">'+esc(l)+'</span><span style="font-weight:600;color:#2c2925">'+v+'</span></div>';};
       // separatore migliaia manuale: toLocaleString("it-IT") nel WebView2 non raggruppa i numeri sotto le 5 cifre
@@ -2408,7 +2411,7 @@ function sasLetterBlock(lang,info,isP,cu,thPct){
       h+=row(T.acc,Math.round(info.acc*100)+'% ('+_sasBandLbl(ab,aIdx)+')');
       h+=row(T.vel,Math.round(info.vel*100)+'% ('+_sasBandLbl(vb,vIdx)+')');
       h+=row(T.recPct,Math.round(info.pctMatrix*100)+'%');
-      h+=row(T.sasVal,eur(info.sasv));
+      h+=row(_sasValLbl,eur(info.sasv));
       h+=row(T.recVal,eur(info.recognized));
       h+=row(T.applied,eur(info.used));
       if((info.reserveIn||0)>0)h+=row(T.resIn,eur(info.reserveIn));
@@ -8629,7 +8632,13 @@ function rCFcvm(){
       var consCol=r.totConsWithEsub>0?'#2c2925':'#b0a99f';
       h+='<td style="text-align:right;font-weight:700;color:'+consCol+'">'+fc(Math.round(r.totConsWithEsub),'EUR')+'</td>';
     }
-    h+='<td style="text-align:right;font-weight:700;color:'+(pc===null?'#a09a92':pc>=FCVM_PARAMS.soglia100?'#2d7a3a':pc>=FCVM_PARAMS.soglia60?'#cf8b4e':'#cf5b5b')+'">'+(pc===null?'\u2014':fPct(pc))+'</td>';
+    // Indicatore SAS sull'area (da luglio 2026): SAS applicato al fatturato verso il target
+    var _fcSasSup='';
+    if(!isP&&typeof sasNewActive==='function'&&sasNewActive()&&(r.totSasRec>0||r.totSasUsed>0)){
+      var _tipFcSas='SAS applicato al fatturato area: '+fc(Math.round(r.totSasUsed||0),'EUR')+(r.sasAreaPctMatrix!=null?(' \u2014 '+Math.round(r.sasAreaPctMatrix*100)+'% di '+fc(Math.round(r.sasAreaValRaw||0),'EUR')+((r.totSasReserveOut||0)>0?(', riserva '+fc(Math.round(r.totSasReserveOut),'EUR')):'')):'');
+      _fcSasSup='<sup style="font-size:7px;color:#a07d2c;font-weight:700;margin-left:2px" title="'+esc(_tipFcSas)+'">S</sup>';
+    }
+    h+='<td style="text-align:right;font-weight:700;color:'+(pc===null?'#a09a92':pc>=FCVM_PARAMS.soglia100?'#2d7a3a':pc>=FCVM_PARAMS.soglia60?'#cf8b4e':'#cf5b5b')+'">'+(pc===null?'\u2014':fPct(pc))+_fcSasSup+'</td>';
     // SY LY (aggregato area da FC_SYLY)
     var syLyDisp=r.syLyArea!=null?fDec(r.syLyArea,2):'\u2014';
     // SY CY (aggregato area da FC_RESULTS in consuntivo)
@@ -8842,7 +8851,7 @@ function buildFcVmLetter(emp){
         sasv:r.sasAreaValRaw||0
       };
     }
-    h+=sasLetterBlock(lang,_areaInfo,isP,'EUR',FCVM_PARAMS.soglia100);
+    h+=sasLetterBlock(lang,_areaInfo,isP,'EUR',FCVM_PARAMS.soglia100,true);
   }
 
   var syLyVal=r.syLyArea;
