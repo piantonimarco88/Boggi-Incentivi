@@ -670,7 +670,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.20'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.21'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
@@ -1573,6 +1573,7 @@ function rC(){
   if(REGION==="italia"&&MODE==="consuntivo")mL+=' <button class="exp-btn btn-blue" onclick="exportExcelConsuntivoIT()" style="font-size:10px;padding:4px 12px">&#128202; Export Consuntivo IT</button>';
   if(REGION==="international"&&MODE==="consuntivo")mL+=' <button class="exp-btn btn-amber" onclick="exportExcelUSA()" style="font-size:10px;padding:4px 12px">&#127482;&#127480; Export Excel USA</button>';
   if(MODE==="consuntivo"&&typeof sasNewActive==='function'&&sasNewActive())mL+=' <button class="exp-btn btn-violet" onclick="exportSasJsonStores()" style="font-size:10px;padding:4px 12px" title="JSON con target/consuntivo/SAS per negozio, per import in statistiche">&#128202; Esporta SAS Negozi (JSON)</button>';
+  if(MODE==="consuntivo"&&typeof sasNewActive==='function'&&sasNewActive())mL+=' <button class="exp-btn" onclick="exportSasReserveStores()" style="font-size:10px;padding:4px 12px" title="Excel con la riserva SAS non utilizzata questo mese, da ricaricare il mese prossimo (Carica Excel Results)">&#128230; Esporta Riserva SAS Negozi</button>';
   var fl=E.filter(function(e){if(cF.j!=="ALL"&&e.j!==cF.j)return false;if(cF.s!=="ALL"&&e.s!==cF.s)return false;
     if(cF.q){var q=cF.q.toLowerCase();return(e.c&&e.c.toLowerCase().indexOf(q)>=0)||(e.n&&e.n.toLowerCase().indexOf(q)>=0)||(e.m&&e.m.toLowerCase().indexOf(q)>=0)||(e.s&&e.s.toLowerCase().indexOf(q)>=0)}return true});
   fl.sort(function(a,b){var va,vb,col=cSort.col;
@@ -1907,6 +1908,48 @@ function exportSasJsonFcvm(){
     rows:rows
   };
   _downloadJson(payload,"sas_fcvm_"+getPdfSubfolder().fileBase+".json");
+}
+
+// Esporta la riserva SAS non utilizzata questo mese (round-trip): il file va ricaricato
+// il mese successivo tramite "Carica Excel Results" (mensile) — stesso file, stesso import,
+// riconosciuto in automatico grazie alla colonna "RISERVA SAS LC" (vedi cSasResCarry).
+function exportSasReserveStores(){
+  var storeNames={},storeCu={},storeEx={};
+  E.forEach(function(e){if(e.si){if(!storeNames[e.si])storeNames[e.si]=e.s||String(e.si);if(storeCu[e.si]===undefined){storeCu[e.si]=e.cu||"EUR";storeEx[e.si]=e.ex||1;}}});
+  var rows=[["STORE ID","NEGOZIO","RISERVA SAS LC","VALUTA","CAMBIO","RISERVA SAS EUR"]];
+  Object.keys(storeNames).forEach(function(sid){
+    var info=storeSasInfo(sid);
+    if(!info.active)return;
+    var res=info.reserveOut||0;
+    if(res<=0)return;
+    var ex=storeEx[sid]||1;
+    rows.push([sid,storeNames[sid],Math.round(res*100)/100,storeCu[sid]||"EUR",ex,Math.round(res*ex*100)/100]);
+  });
+  if(rows.length<=1){alert("Nessuna riserva SAS da riportare: tutti i negozi hanno riserva 0 (o dati SAS non caricati).");return;}
+  var ws=XLSX.utils.aoa_to_sheet(rows);
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Riserva SAS");
+  XLSX.writeFile(wb,"riserva_sas_negozi_"+getPdfSubfolder().fileBase+".xlsx");
+}
+
+// Esporta la riserva SAS Area non utilizzata questo mese (round-trip): il file va ricaricato
+// il mese successivo tramite il bottone "SAS Area (Field Coach)" — stesso import, riconosciuto
+// in automatico grazie alla colonna "RISERVA SAS EUR" anche senza colonne acc/vel/valore.
+function exportSasReserveFcvm(){
+  var pool=getFcVmPool();
+  if(!pool.length){alert("Nessun dato FC+VM caricato.");return;}
+  var rows=[["NOME","RUOLO","RISERVA SAS EUR"]];
+  pool.forEach(function(emp){
+    var r=calcFcVmPremio(emp.m);
+    var res=r.totSasReserveOut||0;
+    if(res<=0)return;
+    rows.push([emp.n+" "+emp.c,emp.j,Math.round(res*100)/100]);
+  });
+  if(rows.length<=1){alert("Nessuna riserva SAS da riportare: tutte le aree hanno riserva 0 (o dati SAS non caricati).");return;}
+  var ws=XLSX.utils.aoa_to_sheet(rows);
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Riserva SAS");
+  XLSX.writeFile(wb,"riserva_sas_fcvm_"+getPdfSubfolder().fileBase+".xlsx");
 }
 
 function exportExcelUSA(){
@@ -6433,7 +6476,10 @@ function loadResultsExcel(file){
         var cS4=fH("processed within 4","within 4h");
         // Formato QWRT (da luglio 2026): pct_accepted, pct_speed, store_sas_value_lc/eur
         var cSasQwrt=fH("pct_accepted","pct_speed","store_sas_value","recognised_pct");
-        if((cS4>=0||cSasQwrt>=0)&&cSid>=0&&type==="unknown"){type="sas_results";bestSheet=sn;bestJson=json;bestHeaders=headers;bestDataStart=dStart;continue}
+        // Riserva SAS mese precedente: file di solo round-trip (Store ID + Riserva SAS LC/EUR),
+        // esportato da "Esporta Riserva SAS Negozi" e re-importato qui il mese dopo.
+        var cSasResCarry=fH("riserva sas");
+        if((cS4>=0||cSasQwrt>=0||cSasResCarry>=0)&&cSid>=0&&type==="unknown"){type="sas_results";bestSheet=sn;bestJson=json;bestHeaders=headers;bestDataStart=dStart;continue}
 
         var cIll=fH("illnesses","illness");var cInj=fH("injuries","injury");var cMat=fH("maternity","paternity");
         var cMatr=fH("serial no","matricola");if(cMatr<0)cMatr=headers.indexOf("a");
@@ -6551,7 +6597,7 @@ function loadResultsExcel(file){
         // Da luglio 2026: colonne retail year / retail month per filtrare per periodo
         var cRetYear=fH("retail year","retail_year");
         var cRetMonth=fH("retail month","retail_month");
-        var withAcc=0,withVel=0,withVal=0;
+        var withAcc=0,withVel=0,withVal=0,withRes=0;
         for(var ri=dataStart;ri<json.length;ri++){
           var row=json[ri];if(!row)continue;var rawSid=row[cSid];if(rawSid==null||String(rawSid).trim()==="")continue;
           // Scarta righe non numeriche (es. riga di firma/report "28 lug 2026, 09:46" in fondo al file):
@@ -6578,10 +6624,10 @@ function loadResultsExcel(file){
           }
           if(cValLc>=0){var sv=parseNum(row[cValLc]);if(!isNaN(sv)){D.c[sid].sasv=sv;withVal++;}}
           if(cValE>=0){var sve=parseNum(row[cValE]);if(!isNaN(sve))D.c[sid].sasv_eur=sve;}
-          if(cRes>=0){var rv=parseNum(row[cRes]);if(!isNaN(rv))D.c[sid].sasr=rv;}
+          if(cRes>=0){var rv=parseNum(row[cRes]);if(!isNaN(rv)){D.c[sid].sasr=rv;withRes++;}}
           imported++;
         }
-        report="SAS caricati: "+imported+" negozi"+(cSa>=0?(" · acc:"+withAcc):"")+(cVel>=0?(" · vel:"+withVel):"")+((cValLc>=0||cValE>=0)?(" · valore:"+withVal):"")+".";
+        report="SAS caricati: "+imported+" negozi"+(cSa>=0?(" · acc:"+withAcc):"")+(cVel>=0?(" · vel:"+withVel):"")+((cValLc>=0||cValE>=0)?(" · valore:"+withVal):"")+(cRes>=0?(" · riserva:"+withRes):"")+".";
       }
 
       else if(type==="malattie"){
@@ -8511,6 +8557,7 @@ function rCFcvm(){
   mL+=' <button class="exp-btn" onclick="exportFcVmExcel()" style="font-size:10px;padding:4px 12px">&#128196; Export Excel</button>';
   if(MODE==="consuntivo")mL+=' <button class="exp-btn btn-lgreen" onclick="saveMonitorSnap()" style="font-size:10px;padding:4px 12px">&#128229; Salva per Monitor</button>';
   if(MODE==="consuntivo"&&typeof sasNewActive==='function'&&sasNewActive())mL+=' <button class="exp-btn btn-violet" onclick="exportSasJsonFcvm()" style="font-size:10px;padding:4px 12px" title="JSON con target/consuntivo/SAS per area FC/VM, per import in statistiche">&#128202; Esporta SAS Field Coach (JSON)</button>';
+  if(MODE==="consuntivo"&&typeof sasNewActive==='function'&&sasNewActive())mL+=' <button class="exp-btn" onclick="exportSasReserveFcvm()" style="font-size:10px;padding:4px 12px" title="Excel con la riserva SAS non utilizzata questo mese, da ricaricare il mese prossimo (SAS Area Field Coach)">&#128230; Esporta Riserva SAS Field Coach</button>';
 
   if(!pool.length){
     var h=mL+'<div class="wg" style="text-align:center;padding:40px;color:#a09a92">';
@@ -9708,7 +9755,9 @@ function loadFcVmSasArea(file){
       if(found){hdrRow=ri;break;}
     }
     if(hdr.name<0){alert('Colonna Field Coach non trovata.');return;}
-    if(hdr.acc<0&&hdr.vel<0&&hdr.sasv<0){alert('Nessuna colonna SAS riconosciuta (accettazione / velocità / valore).');return;}
+    // Accetta anche un file di solo round-trip riserva (Nome + Riserva SAS EUR, senza acc/vel/valore),
+    // esportato da "Esporta Riserva SAS Field Coach" e re-importato qui il mese dopo.
+    if(hdr.acc<0&&hdr.vel<0&&hdr.sasv<0&&hdr.sasr<0){alert('Nessuna colonna SAS riconosciuta (accettazione / velocità / valore / riserva).');return;}
     // Lookup nome→matricola: normalizza (maiuscolo, spazi singoli), prova sia "Nome Cognome" che "Cognome Nome"
     function normName(s){return String(s||'').toUpperCase().trim().replace(/\s+/g,' ');}
     var nameLookup={};
