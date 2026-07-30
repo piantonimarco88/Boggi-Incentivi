@@ -347,7 +347,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
     <p>Trascina uno o più file .xlsx, oppure clicca per selezionarli</p>
     <button class="btn-up" onclick="event.stopPropagation();document.getElementById('fi').click()">Seleziona file .xlsx</button>
     <input type="file" id="fi" accept=".xlsx,.xls" multiple style="display:none">
-    <div class="dz-hint">Compatibile con: "PREMI [MESE] PER LAURA" (vecchio sistema) · "Incentivi_consuntivo" (nuovo sistema)</div>
+    <div class="dz-hint">Compatibile con: "PREMI [MESE] PER LAURA" (vecchio sistema) · "Incentivi_consuntivo" (nuovo sistema) · trascina qui anche un file di sessione .json (equivalente a "Carica sessione", ma senza aprire il selettore file di Windows)</div>
   </div>
   <div id="chips" class="chips"></div>
   <div id="currWarn" style="display:none" class="curr-warn"></div>
@@ -1442,6 +1442,7 @@ function loadFiles(files){
   for(const f of files){
     if(fileMap[f.name]) continue;
     const ext=f.name.split('.').pop().toLowerCase();
+    if(ext==='json'){ loadSessionFile(f); continue; } // sessione trascinata qui invece di "Carica sessione"
     if(!['xlsx','xls'].includes(ext)) continue;
     const rd=new FileReader();
     rd.onload=e=>{
@@ -2674,8 +2675,10 @@ function saveSession(){
   a.click(); URL.revokeObjectURL(url);
 }
 
-function loadSession(evt){
-  const f=evt.target.files[0]; if(!f) return;
+// Carica un file di sessione JSON già letto come File — usata sia dall'input nativo
+// (bottone "Carica sessione") sia dal drop nella zona di caricamento xlsx in alto
+// (per evitare il selettore file di Windows quando si blocca/è lento).
+function loadSessionFile(f){
   const rd=new FileReader();
   rd.onload=e=>{
     try{
@@ -2700,9 +2703,12 @@ function loadSession(evt){
       fileMap[label]=s.rows;
       rebuild(); addChip(label,s.rows.length,true,'mensile'); refresh();
     }catch(err){ alert('Errore caricamento sessione:\n'+err.message); }
-    evt.target.value='';
   };
   rd.readAsText(f);
+}
+function loadSession(evt){
+  const f=evt.target.files[0]; if(f) loadSessionFile(f);
+  evt.target.value='';
 }
 
 // ═══════════════════════════════════════════════════════════════
