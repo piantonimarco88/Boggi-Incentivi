@@ -2667,12 +2667,19 @@ function exportExcel(){
 }
 
 // ─── SAVE / LOAD SESSION ──────────────────────────────────────
+// Nome file "parlante": si capisce cos'è senza aprirlo (sessione, data/ora, quante righe contiene).
+// Ora inclusa (non solo data) per evitare i suffissi "(1)"/"(2)" del browser se si salva più volte lo stesso giorno.
+function _sessionFileName(now,rowCount){
+  const pad=n=>String(n).padStart(2,'0');
+  const stamp=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'_'+pad(now.getHours())+pad(now.getMinutes());
+  return 'BoggiPremi_Sessione_'+stamp+'_'+rowCount+'righe.json';
+}
 function saveSession(){
   const session={version:'3.3',savedAt:new Date().toISOString(),fileNames:Object.keys(fileMap),rows:allData};
   const blob=new Blob([JSON.stringify(session)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url; a.download='BoggiPremi_'+new Date().toISOString().split('T')[0]+'.json';
+  a.href=url; a.download=_sessionFileName(new Date(),allData.length);
   a.click(); URL.revokeObjectURL(url);
 }
 
@@ -5091,7 +5098,7 @@ function renderSas(){
   const bar=(p,cls)=>'<span class="sas-bar '+cls+'"><span style="width:'+Math.max(0,Math.min(100,p))+'%"></span></span>';
   const pctCls=p=>p>=1?'good':(p>=0.95?'warn':'bad');
   const esitoChip=r=>'<span class="sas-esito '+r.esito+'">'+agEsc(r.esitoLabel||r.esito)+'</span>';
-  const syCell=r=>{const d=(r.resultSY||0)-(r.targetSY||0);return r.resultSY.toFixed(1)+' <small style="color:'+(d>=0?'#16a34a':'#dc2626')+'">('+(d>=0?'+':'')+d.toFixed(1)+')</small>';};
+  const syCell=r=>{const rs=r.resultSY||0,d=rs-(r.targetSY||0);return rs.toFixed(1)+' <small style="color:'+(d>=0?'#16a34a':'#dc2626')+'">('+(d>=0?'+':'')+d.toFixed(1)+')</small>';};
   const bdgCell=r=>{
     if(!r._bdg)return{disp:'<span class="dash">—</span>',val:-1};
     const h=r._bdg,cls=h.pct>=70?'hi':h.pct>=45?'mid':'lo';
