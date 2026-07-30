@@ -2675,7 +2675,10 @@ function _sessionFileName(now,rowCount){
   return 'BoggiPremi_Sessione_'+stamp+'_'+rowCount+'righe.json';
 }
 function saveSession(){
-  const session={version:'3.3',savedAt:new Date().toISOString(),fileNames:Object.keys(fileMap),rows:allData};
+  // sasFiles (JSON del tab SAS → Fatturato) è un dataset indipendente da allData, prima non
+  // veniva incluso nel salvataggio: chi ricaricava la sessione (o la condivideva con un collega)
+  // si ritrovava il tab SAS → Fatturato vuoto anche se i dati erano già stati caricati in precedenza.
+  const session={version:'3.3',savedAt:new Date().toISOString(),fileNames:Object.keys(fileMap),rows:allData,sasFiles:(typeof sasFiles!=='undefined'?sasFiles:{})};
   const blob=new Blob([JSON.stringify(session)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
@@ -2709,6 +2712,13 @@ function loadSessionFile(f){
       });
       const label='📋 Sessione '+s.savedAt.split('T')[0]+' ('+s.rows.length+' righe)';
       fileMap[label]=s.rows;
+      // sasFiles: si aggiungono a quelli già caricati (stesso approccio additivo di fileMap/allData),
+      // non li sostituiscono — così caricare una sessione non fa perdere JSON SAS già presenti.
+      if(s.sasFiles&&Object.keys(s.sasFiles).length){
+        sasFiles=Object.assign({},sasFiles,s.sasFiles);
+        try{sasRenderChips();sasPopulateMonths();}catch(e){}
+        try{if(document.getElementById('tabSas').style.display!=='none')renderSas();}catch(e){}
+      }
       rebuild(); addChip(label,s.rows.length,true,'mensile'); refresh();
     }catch(err){ alert('Errore caricamento sessione:\n'+err.message); }
   };
