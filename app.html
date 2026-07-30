@@ -673,20 +673,20 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.31'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.32'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.32: Tab Calcolo Premi — bottone per riassegnare manualmente il negozio",
   "9.31: Fix banner novità — non compariva al primo aggiornamento su PC con dati già salvati",
   "9.30: Il changelog ora è un banner nell'app (non più nel popup dell'exe)",
   "9.29: Fix import DCC — riconosce anche intestazione Converted BC Value",
   "9.28: Changelog nel popup di aggiornamento app",
   "9.27: Nomi file più descrittivi per export JSON (sessione/config/SAS)",
   "9.26: Tab Calcolo Premi FC+VM — colonne esplicite per il contributo SAS",
-  "9.25: SAS FC+VM — testo area (non negozio), badge su tab Calcolo Premi",
-  "9.24: Lettera FC+VM — box SAS identico al mensile (matrice, acc/vel/valore)"
+  "9.25: SAS FC+VM — testo area (non negozio), badge su tab Calcolo Premi"
 ];
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
@@ -1342,6 +1342,29 @@ function rebuildFilters(){
 var uJ=["ALL"],uS=["ALL"];
 rebuildFilters();
 
+// ── Riassegnazione manuale negozio (tab Calcolo Premi, mensile) ──────────────
+// Elenco unico {si,s} derivato dagli stessi dipendenti (nessuna anagrafica negozi
+// separata in questo formato): un negozio "esiste" se almeno un dipendente ci è assegnato.
+var _storeEditMatr=null;
+function _allStoresList(){
+  var seen={},list=[];
+  E.forEach(function(e){var sid=String(e.si);if(e.si!=null&&!seen[sid]){seen[sid]=1;list.push({si:e.si,s:e.s||sid});}});
+  list.sort(function(a,b){return(Number(a.si)||0)-(Number(b.si)||0);});
+  return list;
+}
+function startEditStore(matr){_storeEditMatr=matr;rC();}
+function cancelEditStore(){_storeEditMatr=null;rC();}
+function changeEmployeeStore(matr,newSi){
+  var emp=null;for(var i=0;i<E.length;i++){if(E[i].m===matr){emp=E[i];break;}}
+  if(!emp)return;
+  var target=null,stores=_allStoresList();
+  for(var j=0;j<stores.length;j++){if(String(stores[j].si)===String(newSi)){target=stores[j];break;}}
+  if(!target)return;
+  emp.si=target.si;emp.s=target.s;
+  _storeEditMatr=null;
+  rebuildFilters();autoSave();rC();rA();rSources();
+}
+
 // Store flags: modifiers applied to all employees in a store
 var STORE_FLAGS={}; // {storeId: {dept:bool, noSas:bool, noDig:bool, digType:"classic"|"mobility"}}
 initStoreFlags(); // seed from DEPT list
@@ -1663,7 +1686,14 @@ function rC(){
     var psOn=e.ps==="SI";
     var sf=STORE_FLAGS[String(e.si)]||{};
     var uUp=e.cu==="USD";
-    h+='<tr class="ck" data-m="'+esc(e.m)+'"><td class="mn">'+esc(e.m)+"</td><td>"+(uUp?esc(e.c).toUpperCase():esc(e.c))+"</td><td>"+(uUp?esc(e.n).toUpperCase():esc(e.n))+'</td><td style="font-size:10px;color:#8a8680">'+(uUp?esc(e.s).toUpperCase():esc(e.s))+'</td><td><span class="bg '+(sf.dept?"bg-d":"bg-n")+'" title="'+esc(e.j)+'">'+esc(e.f||e.j)+"</span></td>";
+    var _negCell;
+    if(_storeEditMatr===e.m){
+      var _stOpts='';_allStoresList().forEach(function(st){_stOpts+='<option value="'+esc(String(st.si))+'"'+(String(st.si)===String(e.si)?' selected':'')+'>'+esc(st.s)+'</option>'});
+      _negCell='<select onclick="event.stopPropagation()" onchange="event.stopPropagation();changeEmployeeStore(\''+esc(e.m)+'\',this.value)" style="font-size:9px;padding:2px 4px;border:1px solid #d5d0c8;border-radius:3px;max-width:150px;font-family:inherit">'+_stOpts+'</select><button onclick="event.stopPropagation();cancelEditStore()" style="background:none;border:none;color:#a09a92;cursor:pointer;font-size:11px;margin-left:2px;padding:0" title="Annulla">&#10005;</button>';
+    }else{
+      _negCell=(uUp?esc(e.s).toUpperCase():esc(e.s))+'<button onclick="event.stopPropagation();startEditStore(\''+esc(e.m)+'\')" style="background:none;border:none;color:#a09a92;cursor:pointer;font-size:10px;margin-left:4px;padding:0" title="Cambia negozio">&#9998;</button>';
+    }
+    h+='<tr class="ck" data-m="'+esc(e.m)+'"><td class="mn">'+esc(e.m)+"</td><td>"+(uUp?esc(e.c).toUpperCase():esc(e.c))+"</td><td>"+(uUp?esc(e.n).toUpperCase():esc(e.n))+'</td><td style="font-size:10px;color:#8a8680;white-space:nowrap">'+_negCell+'</td><td><span class="bg '+(sf.dept?"bg-d":"bg-n")+'" title="'+esc(e.j)+'">'+esc(e.f||e.j)+"</span></td>";
     h+='<td style="font-size:9px;color:#a09a92">'+cu+'</td><td style="text-align:center"><span class="ml-dot '+mlc+'"></span>'+ml+"</td>";
     var ridotto=!psOn&&t>0&&isRidotto(e)&&isOn(e.j,"rb");
     h+='<td style="text-align:center;font-size:13px" title="'+(ridotto?"Premio BDG ridotto ("+Math.round(PARAMS.bdg60mult*100)+"%)":"—")+'">'+(ridotto?'<span style="color:#c9a96e">&#11044;</span>':'—')+"</td>";
