@@ -673,20 +673,20 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.30'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.31'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.31: Fix banner novità — non compariva al primo aggiornamento su PC con dati già salvati",
   "9.30: Il changelog ora è un banner nell'app (non più nel popup dell'exe)",
   "9.29: Fix import DCC — riconosce anche intestazione Converted BC Value",
   "9.28: Changelog nel popup di aggiornamento app",
   "9.27: Nomi file più descrittivi per export JSON (sessione/config/SAS)",
   "9.26: Tab Calcolo Premi FC+VM — colonne esplicite per il contributo SAS",
   "9.25: SAS FC+VM — testo area (non negozio), badge su tab Calcolo Premi",
-  "9.24: Lettera FC+VM — box SAS identico al mensile (matrice, acc/vel/valore)",
-  "9.23: Lettera FC+VM — riga Riserva mese precedente (coerente col mensile)"
+  "9.24: Lettera FC+VM — box SAS identico al mensile (matrice, acc/vel/valore)"
 ];
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
@@ -807,11 +807,17 @@ RL.forEach(function(r){if(!TC[r]){TC[r]={};KP.forEach(function(k){
 // Banner "novità" in-app: mostrato quando APP_VERSION cambia rispetto all'ultima volta
 // che l'app è stata aperta su questo PC (localStorage, sopravvive alla sostituzione di
 // app.html fatta dall'auto-update). Non richiede rebuild/reinstall del wrapper .exe.
+// Non mostrato se non c'è mai stato uso precedente dell'app su questo PC (installazione
+// pulita) — ma un'installazione con dati già salvati (stato autoSave/wrapper) conta come
+// "uso precedente" anche se questa è la prima esecuzione del codice che traccia la versione
+// vista (altrimenti il primo aggiornamento dopo l'introduzione di questa funzionalità
+// verrebbe scambiato per un'installazione nuova e il banner non comparirebbe mai).
 (function(){
   try{
     if(typeof APP_VERSION==="undefined")return;
     var _lastSeen=localStorage.getItem("boggi_last_seen_version");
-    if(_lastSeen&&_lastSeen!==APP_VERSION){
+    var _hasPriorUsage=!!_lastSeen||!!window.__BOGGI_HAS_STATE__||!!localStorage.getItem("boggi_state");
+    if(_hasPriorUsage&&_lastSeen!==APP_VERSION){
       setTimeout(function(){_showChangelogBanner(APP_VERSION);},400);
     }
     localStorage.setItem("boggi_last_seen_version",APP_VERSION);
