@@ -673,11 +673,13 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.29'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
-// Changelog breve mostrato dal wrapper .exe nel popup di aggiornamento (vedi MainWindow.xaml.cs → ExtractChangelog).
+var APP_VERSION='9.30'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+// Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
+// all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
+// col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
-// Niente doppi apici dentro le stringhe (usati come delimitatore dal parser C#).
 var APP_CHANGELOG=[
+  "9.30: Il changelog ora è un banner nell'app (non più nel popup dell'exe)",
   "9.29: Fix import DCC — riconosce anche intestazione Converted BC Value",
   "9.28: Changelog nel popup di aggiornamento app",
   "9.27: Nomi file più descrittivi per export JSON (sessione/config/SAS)",
@@ -801,6 +803,41 @@ RL.forEach(function(r){if(!TC[r]){TC[r]={};KP.forEach(function(k){
 // AutoSave: persist full state to localStorage
 // Aggiorna badge versione con APP_VERSION
 (function(){var b=document.getElementById("appVerBadge");if(b&&typeof APP_VERSION!=="undefined")b.textContent="v"+APP_VERSION;})();
+
+// Banner "novità" in-app: mostrato quando APP_VERSION cambia rispetto all'ultima volta
+// che l'app è stata aperta su questo PC (localStorage, sopravvive alla sostituzione di
+// app.html fatta dall'auto-update). Non richiede rebuild/reinstall del wrapper .exe.
+(function(){
+  try{
+    if(typeof APP_VERSION==="undefined")return;
+    var _lastSeen=localStorage.getItem("boggi_last_seen_version");
+    if(_lastSeen&&_lastSeen!==APP_VERSION){
+      setTimeout(function(){_showChangelogBanner(APP_VERSION);},400);
+    }
+    localStorage.setItem("boggi_last_seen_version",APP_VERSION);
+  }catch(ex){}
+})();
+function _showChangelogBanner(toVer){
+  try{
+    var items=(typeof APP_CHANGELOG!=="undefined"?APP_CHANGELOG:[]).slice(0,6);
+    if(!items.length)return;
+    var d=document.createElement("div");
+    d.id="_changelogBanner";
+    d.style.cssText="position:fixed;bottom:18px;right:18px;max-width:340px;background:#2c2925;color:#f5f4f1;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.35);padding:14px 16px;z-index:99999;font-family:inherit;font-size:12px;line-height:1.5";
+    var h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+    h+='<div style="font-weight:700;color:#c9a96e;font-size:12px">✨ Aggiornato a v'+esc(toVer)+'</div>';
+    h+='<button id="_changelogBannerClose" style="background:none;border:none;color:#a09a92;font-size:15px;cursor:pointer;line-height:1;padding:0 0 0 8px" title="Chiudi">&#10005;</button>';
+    h+='</div>';
+    h+='<ul style="margin:0;padding-left:16px">';
+    items.forEach(function(it){h+='<li style="margin-bottom:3px">'+esc(it)+'</li>';});
+    h+='</ul>';
+    d.innerHTML=h;
+    document.body.appendChild(d);
+    var closeBtn=document.getElementById("_changelogBannerClose");
+    if(closeBtn)closeBtn.onclick=function(){if(d.parentNode)d.parentNode.removeChild(d);};
+    setTimeout(function(){if(d.parentNode)d.parentNode.removeChild(d);},20000);
+  }catch(ex){}
+}
 
 function autoSave(){
   try{

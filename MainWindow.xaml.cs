@@ -231,12 +231,10 @@ namespace BoggiIncentivi
 
                 if (!silent && File.Exists(LocalHtml))
                 {
-                    var changelog = ExtractChangelog(remote);
-                    var changelogText = changelog.Count > 0
-                        ? "\n\nNovità:\n" + string.Join("\n", changelog.Take(6).Select(c => "• " + c))
-                        : "";
+                    // Il changelog è mostrato in-app (banner in app.html al primo avvio con la
+                    // nuova versione), non qui: non richiede rebuild/reinstall del wrapper.
                     var ans = System.Windows.MessageBox.Show(
-                        $"Disponibile v{remVer} (attuale: v{locVer}).{changelogText}\n\nAggiornare ora?\n(La nuova versione sarà attiva dalla prossima apertura)",
+                        $"Disponibile v{remVer} (attuale: v{locVer}).\n\nAggiornare ora?\n(La nuova versione sarà attiva dalla prossima apertura)",
                         "Boggi Incentivi — Aggiornamento", MessageBoxButton.YesNo, MessageBoxImage.Information);
                     if (ans != MessageBoxResult.Yes) { SetStatus($"v{remVer} disponibile (saltato)"); return; }
                 }
@@ -260,22 +258,6 @@ namespace BoggiIncentivi
             var q1 = html.IndexOfAny(new[] { '\'', '"' }, idx); if (q1 < 0) return "0.0";
             var q2 = html.IndexOf(html[q1], q1 + 1);            if (q2 < 0) return "0.0";
             return html.Substring(q1 + 1, q2 - q1 - 1);
-        }
-
-        // Estrae le righe di changelog da `var APP_CHANGELOG=["9.27: ...", "9.26: ...", ...];`
-        // nell'app.html appena scaricato — nessuna richiesta di rete aggiuntiva.
-        private static List<string> ExtractChangelog(string html)
-        {
-            var list = new List<string>();
-            var idx = html.IndexOf("APP_CHANGELOG", StringComparison.Ordinal);
-            if (idx < 0) return list;
-            var start = html.IndexOf('[', idx);
-            var end   = html.IndexOf(']', start < 0 ? idx : start);
-            if (start < 0 || end < 0) return list;
-            var body = html.Substring(start + 1, end - start - 1);
-            foreach (Match mt in Regex.Matches(body, "\"([^\"]*)\""))
-                list.Add(mt.Groups[1].Value);
-            return list;
         }
 
         // Confronto versione semver-like (major.minor[.build[.rev]]). Restituisce true SOLO se remote > local.
