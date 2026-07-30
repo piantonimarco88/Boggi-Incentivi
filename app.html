@@ -673,7 +673,18 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.27'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.28'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+// Changelog breve mostrato dal wrapper .exe nel popup di aggiornamento (vedi MainWindow.xaml.cs → ExtractChangelog).
+// Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
+// Niente doppi apici dentro le stringhe (usati come delimitatore dal parser C#).
+var APP_CHANGELOG=[
+  "9.28: Changelog nel popup di aggiornamento app",
+  "9.27: Nomi file più descrittivi per export JSON (sessione/config/SAS)",
+  "9.26: Tab Calcolo Premi FC+VM — colonne esplicite per il contributo SAS",
+  "9.25: SAS FC+VM — testo area (non negozio), badge su tab Calcolo Premi",
+  "9.24: Lettera FC+VM — box SAS identico al mensile (matrice, acc/vel/valore)",
+  "9.23: Lettera FC+VM — riga Riserva mese precedente (coerente col mensile)"
+];
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
   IT:["","GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO","LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"],
