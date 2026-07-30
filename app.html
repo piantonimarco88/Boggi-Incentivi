@@ -673,20 +673,20 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.32'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.33'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.33: Fix riassegnazione negozio — email Field Coach ora si aggiorna col negozio",
   "9.32: Tab Calcolo Premi — bottone per riassegnare manualmente il negozio",
   "9.31: Fix banner novità — non compariva al primo aggiornamento su PC con dati già salvati",
   "9.30: Il changelog ora è un banner nell'app (non più nel popup dell'exe)",
   "9.29: Fix import DCC — riconosce anche intestazione Converted BC Value",
   "9.28: Changelog nel popup di aggiornamento app",
   "9.27: Nomi file più descrittivi per export JSON (sessione/config/SAS)",
-  "9.26: Tab Calcolo Premi FC+VM — colonne esplicite per il contributo SAS",
-  "9.25: SAS FC+VM — testo area (non negozio), badge su tab Calcolo Premi"
+  "9.26: Tab Calcolo Premi FC+VM — colonne esplicite per il contributo SAS"
 ];
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
@@ -1361,6 +1361,13 @@ function changeEmployeeStore(matr,newSi){
   for(var j=0;j<stores.length;j++){if(String(stores[j].si)===String(newSi)){target=stores[j];break;}}
   if(!target)return;
   emp.si=target.si;emp.s=target.s;
+  if(!D.s[String(target.si)])D.s[String(target.si)]={l:"",f:0,s:0,e:0,r:0};
+  // Riallinea l'email del Field Coach (usata per distribuzione/invio PDF raggruppato per FC):
+  // altrimenti resterebbe quella del negozio precedente, perché _distMf() preferisce
+  // e.mf se già valorizzata e non la ricalcola da sola.
+  var _mp=FC_MAP[String(target.si)],_newMf="";
+  if(_mp){var _fa=Array.isArray(_mp.fc)?_mp.fc[0]:_mp.fc;if(_fa&&FC_EMP[_fa]){var _fe=FC_EMP[_fa];_newMf=(_fe.n+" "+_fe.c).toLowerCase().replace(/ /g,".")+"@boggi.com";}}
+  emp.mf=_newMf;
   _storeEditMatr=null;
   rebuildFilters();autoSave();rC();rA();rSources();
 }
