@@ -673,20 +673,20 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.34'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.35'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.35: Fix export SAS Negozi (JSON) — ora converte davvero in EUR i negozi non-EUR",
   "9.34: Fix ricerca FC+VM — il cursore ripartiva dall'inizio ad ogni carattere",
   "9.33: Fix riassegnazione negozio — email Field Coach ora si aggiorna col negozio",
   "9.32: Tab Calcolo Premi — bottone per riassegnare manualmente il negozio",
   "9.31: Fix banner novità — non compariva al primo aggiornamento su PC con dati già salvati",
   "9.30: Il changelog ora è un banner nell'app (non più nel popup dell'exe)",
   "9.29: Fix import DCC — riconosce anche intestazione Converted BC Value",
-  "9.28: Changelog nel popup di aggiornamento app",
-  "9.27: Nomi file più descrittivi per export JSON (sessione/config/SAS)"
+  "9.28: Changelog nel popup di aggiornamento app"
 ];
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
@@ -1923,8 +1923,8 @@ function _downloadJson(payload,filename){
 
 // Export SAS → Fatturato per negozio (mensile, consuntivo, da luglio 2026)
 function exportSasJsonStores(){
-  var storeNames={};
-  E.forEach(function(e){if(e.si&&!storeNames[e.si])storeNames[e.si]=e.s||String(e.si);});
+  var storeNames={},storeEx={};
+  E.forEach(function(e){if(e.si){if(!storeNames[e.si])storeNames[e.si]=e.s||String(e.si);if(storeEx[e.si]===undefined)storeEx[e.si]=e.ex||1;}});
   var sids=Object.keys(storeNames).filter(function(sid){
     if(isUSA(sid,{si:sid,cu:''}))return false; // USA non usa la matrice SAS
     var info=storeSasInfo(sid);
@@ -1934,15 +1934,16 @@ function exportSasJsonStores(){
   var rows=sids.map(function(sid){
     var info=storeSasInfo(sid);
     var tg=D.t[sid]||{},cn=D.c[sid]||{};
+    var ex=storeEx[sid]||1; // conversione in EUR: i dati grezzi (D.t/D.c) sono nella valuta del negozio
     var pctBase=info.to>0?info.base/info.to:0;
     var pctFinal=info.pct;
     var determinante=pctBase<PARAMS.bdg100&&pctFinal>=PARAMS.bdg100;
     var esito=pctFinal>=PARAMS.bdg100?"full":(isRidottoStore(sid)?"ridotto":"none");
     var esitoLabel=esito==="full"?"Pieno":(esito==="ridotto"?"Ridotto 60%":"Nessuno");
-    return{sid:sid,name:storeNames[sid],target:Math.round(info.to),actual:Math.round(info.base),pctBase:pctBase,
-      esubero:Math.round(cn.es||0),targetSY:tg.sy!=null?tg.sy:null,resultSY:cn.sy!=null?cn.sy:null,
-      sasValue:Math.round(info.sasv||0),recPct:info.pctMatrix!=null?Math.round(info.pctMatrix*100):null,
-      recValue:Math.round(info.recognized||0),applied:Math.round(info.used||0),pctFinal:pctFinal,
+    return{sid:sid,name:storeNames[sid],target:Math.round(info.to*ex),actual:Math.round(info.base*ex),pctBase:pctBase,
+      esubero:Math.round((cn.es||0)*ex),targetSY:tg.sy!=null?tg.sy:null,resultSY:cn.sy!=null?cn.sy:null,
+      sasValue:Math.round((info.sasv||0)*ex),recPct:info.pctMatrix!=null?Math.round(info.pctMatrix*100):null,
+      recValue:Math.round((info.recognized||0)*ex),applied:Math.round((info.used||0)*ex),pctFinal:pctFinal,
       esito:esito,esitoLabel:esitoLabel,determinante:determinante};
   });
   var columns=[
