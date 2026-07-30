@@ -5016,15 +5016,18 @@ function sasMatchFcVmRows(fullName){
 function sasBdgHist(rows,fromKey,toKey){
   const sub=rows.filter(r=>!isSemRow(r)&&(r.monthKey||0)>=fromKey&&(r.monthKey||0)<=toKey);
   if(!sub.length)return null;
-  const n=sub.filter(r=>(r.cBdg||0)>0).length;
-  // Progressione mese per mese (per il pop-up/pallini): se nello stesso mese ci sono più righe
-  // (es. più dipendenti dello stesso negozio), si aggrega cBdg/mBdg del mese per il tier.
+  // Aggrega per mese (nella vista Negozi più dipendenti dello stesso negozio contribuiscono più
+  // righe allo stesso mese: il conteggio "n/N mesi" deve contare MESI DISTINTI, non righe, altrimenti
+  // un negozio con 10 dipendenti su un range di 4 mesi mostrerebbe "…/40" invece di "…/4").
   const byMonth={};
   sub.forEach(r=>{
     const mk=r.monthKey||0;
     const b=byMonth[mk]||(byMonth[mk]={cBdg:0,mBdg:0});
     b.cBdg+=r.cBdg||0; b.mBdg+=r.mBdg||0;
   });
+  const monthKeysWithData=Object.keys(byMonth).map(Number);
+  const N=monthKeysWithData.length;
+  const n=monthKeysWithData.filter(mk=>byMonth[mk].cBdg>0).length;
   // Griglia completa Da→A: un pallino per OGNI mese del range (grigio "missing" se non c'è
   // dato caricato per quel mese) — così i pallini hanno sempre la stessa lunghezza/dimensione
   // per tutte le righe, indipendentemente da quanti mesi mancano nello storico.
@@ -5040,7 +5043,7 @@ function sasBdgHist(rows,fromKey,toKey){
     }
     m++; if(m>12){m=1;y++;}
   }
-  return {n,N:sub.length,pct:Math.round(n/sub.length*100),months};
+  return {n,N,pct:N?Math.round(n/N*100):0,months};
 }
 // Opzioni "Nome/Cognome" ricostruite ad ogni render sui nomi del file/vista correnti
 // (negozi → nome negozio, FC+VM → nome persona) — stesso pattern di sasPopulateMonths.
@@ -5096,7 +5099,9 @@ function renderSas(){
   const eu=v=>'€ '+fmt(Math.round(v||0));
   const eud=v=>v>0?eu(v):'<span class="dash">—</span>';
   const bar=(p,cls)=>'<span class="sas-bar '+cls+'"><span style="width:'+Math.max(0,Math.min(100,p))+'%"></span></span>';
-  const pctCls=p=>p>=1?'good':(p>=0.95?'warn':'bad');
+  // Arrotonda come il testo mostrato (toFixed(1)) prima di classificare: senza questo, un valore
+  // come 0.9996 si vede scritto "100.0%" ma restava colorato arancio perché il raw <1.
+  const pctCls=p=>{const r=+(p*100).toFixed(1);return r>=100?'good':(r>=95?'warn':'bad');};
   const esitoChip=r=>'<span class="sas-esito '+r.esito+'">'+agEsc(r.esitoLabel||r.esito)+'</span>';
   const syCell=r=>{const rs=r.resultSY||0,d=rs-(r.targetSY||0);return rs.toFixed(1)+' <small style="color:'+(d>=0?'#16a34a':'#dc2626')+'">('+(d>=0?'+':'')+d.toFixed(1)+')</small>';};
   const bdgCell=r=>{
