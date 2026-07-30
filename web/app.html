@@ -673,11 +673,12 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.28'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.29'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato dal wrapper .exe nel popup di aggiornamento (vedi MainWindow.xaml.cs → ExtractChangelog).
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 // Niente doppi apici dentro le stringhe (usati come delimitatore dal parser C#).
 var APP_CHANGELOG=[
+  "9.29: Fix import DCC — riconosce anche intestazione Converted BC Value",
   "9.28: Changelog nel popup di aggiornamento app",
   "9.27: Nomi file più descrittivi per export JSON (sessione/config/SAS)",
   "9.26: Tab Calcolo Premi FC+VM — colonne esplicite per il contributo SAS",
@@ -6489,7 +6490,7 @@ function loadResultsExcel(file){
         var cSid=fH("store id","store_id");
         var cEtich=fH("etichette di riga","row label");
 
-        var cConv=fH("converted sales amt","converted amount","converted sales");
+        var cConv=fH("converted sales amt","converted amount","converted sales","converted bc value");
         if(cConv>=0&&(cSid>=0||cEtich>=0)){
           if(isDCC||type==="unknown"){type="dcc";bestSheet=sn;bestJson=json;bestHeaders=headers;bestDataStart=dStart;if(isDCC)break;continue}
         }
@@ -6547,7 +6548,7 @@ function loadResultsExcel(file){
 
       if(type==="dcc"){
         var cSid=fH("store id","store_id");var cEtich=fH("etichette di riga","row label");
-        var cConv=fH("converted sales amt","converted amount","converted sales");
+        var cConv=fH("converted sales amt","converted amount","converted sales","converted bc value");
         var sidCol=cSid>=0?cSid:cEtich;
         for(var ri=dataStart;ri<json.length;ri++){
           var row=json[ri];if(!row)continue;
