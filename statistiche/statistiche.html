@@ -140,6 +140,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 .sas-bdg-dots:hover::after{opacity:1}
 .sas-bdg-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0}
 .sas-bdg-dot.full{background:#16a34a}.sas-bdg-dot.partial{background:#f59e0b}.sas-bdg-dot.none{background:#ef4444}
+.sas-bdg-dot.missing{background:#d1d5db}
 .sas-badge{display:inline-flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;color:#b45309;background:#fffbeb;border:1px solid #fcd34d;padding:1px 6px;border-radius:6px;margin-right:5px}
 .sas-chip-file{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;background:#eff6ff;border:1px solid #93c5fd;color:#1d4ed8;border-radius:8px;padding:5px 10px}
 .sas-chip-file .x{cursor:pointer;color:#93c5fd;font-weight:800;margin-left:2px}
@@ -924,7 +925,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
                 <label class="wp-f" data-comp="digital"><span>Digital % (su BDG)</span><input type="number" id="wi-dig" value="30" min="0" step="5" oninput="onWhatifInput()"></label>
                 <label class="wp-f" data-comp="sy"><span>Shopper Yield % (su RML)</span><input type="number" id="wi-sy" value="3" min="0" step="0.5" oninput="onWhatifInput()"></label>
                 <label class="wp-f" data-comp="sub"><span>Subscription % (su RML)</span><input type="number" id="wi-sub" value="2" min="0" step="0.5" oninput="onWhatifInput()"></label>
-                <label class="wp-f" data-comp="sas"><span>SAS €/unità (max 200€)</span><input type="number" id="wi-sas" value="2" min="0" step="0.5" oninput="onWhatifInput()"></label>
+                <label class="wp-f" data-comp="sas"><span>SAS €/unità (max 200€) <span class="info-tip" data-tip="Da luglio 2026 il SAS non è più un premio a €/unità: il valore riconosciuto è cumulato verso il target di fatturato (vedi tab SAS → Fatturato). Questa leva resta valida solo per simulazioni sui mesi precedenti a luglio 2026 — da quel mese in poi non ha più alcun effetto.">i</span></span><input type="number" id="wi-sas" value="2" min="0" step="0.5" oninput="onWhatifInput()"></label>
                 <label class="wp-f" data-comp="dcc"><span>DCC % transazioni (max 100€)</span><input type="number" id="wi-dcc" value="0.2" min="0" step="0.05" oninput="onWhatifInput()"></label>
               </div>
             </div>
@@ -3761,6 +3762,11 @@ function hashApply(){
 // ricostruiti dalle regole (mBdg per BDG/Digital, RML per SY/Subscription).
 // ═══════════════════════════════════════════════════════════════
 const WHATIF_DEF={base:{SM:300,VSM:250,SSAP:250,SSA:200,SA:150,JSA:100,SCS:150},sy:0.03,sub:0.02,dig:0.30,sas:2,dcc:0.002};
+// Da luglio 2026 il SAS non è più un premio a €/unità: il valore riconosciuto è cumulato verso
+// il target di fatturato (vedi tab SAS → Fatturato), quindi non è più simulabile come leva sui
+// mesi da questa data in poi (né nel tab What-if né in Lament1, che riusa whatifAgg). Sui mesi
+// precedenti resta invariato e simulabile normalmente (storico reale sotto la vecchia policy).
+const SAS_LEVER_CUTOFF=202607;
 const CASHIER_ROLES=['SCS','ISO']; // ruoli cassa (SAS/DCC); gli altri = vendita (Digital/SY)
 let whatifCharts={}, _whatifSig=null;
 let whatifFuture=false, whatifNewHire=false, _whatifFreqSig=null, _whatifSemFreqSig=null, _wiDefaults={};
@@ -3912,6 +3918,8 @@ function whatifAgg(rows,p,kRml,selRole,fromKey){
     const defB=dB[role]||0, newB=(p.base[role]!=null)?p.base[role]:defB;
     const rB=defB>0?newB/defB:1;
     const rDig=(p.dig/dDig)*rB, rSy=(p.sy/dSy)*kRml, rSub=(p.sub/dSub)*kRml, rSas=p.sas/dSas, rDcc=p.dcc/dDcc;
+    // dal SAS_LEVER_CUTOFF in poi la leva SAS non ha più effetto su questa riga (vedi nota su SAS_LEVER_CUTOFF)
+    const rSasEff=(r.monthKey||0)<SAS_LEVER_CUTOFF?rSas:1;
     const mBdg=r.mBdg||0, rml=r.rml_period||0;
     const capBdg=mBdg, capSub=dSub*rml;
     const capDig=cashier?0:dDig*mBdg, capSy=cashier?0:dSy*rml;
@@ -3921,9 +3929,9 @@ function whatifAgg(rows,p,kRml,selRole,fromKey){
       // BDG e Subscription a tutti; Digital/SY solo vendita; SAS/DCC solo cassa
       dErog=(r.cBdg||0)*(rB-1)+(r.cPrivilege||0)*(rSub-1)
             +(cashier?0:((r.cDigital||0)*(rDig-1)+(r.cShopper||0)*(rSy-1)))
-            +(cashier?((r.cSas||0)*(rSas-1)+(r.cDcc||0)*(rDcc-1)):0);
+            +(cashier?((r.cSas||0)*(rSasEff-1)+(r.cDcc||0)*(rDcc-1)):0);
       dMass=capBdg*(rB-1)+capDig*(rDig-1)+capSy*(rSy-1)+capSub*(rSub-1)
-            +capSas*(rSas-1)+capDcc*(rDcc-1);
+            +capSas*(rSasEff-1)+capDcc*(rDcc-1);
       kr=kRml;
     }
     const y=r.year||'?';
@@ -5010,11 +5018,21 @@ function sasBdgHist(rows,fromKey,toKey){
     const b=byMonth[mk]||(byMonth[mk]={cBdg:0,mBdg:0});
     b.cBdg+=r.cBdg||0; b.mBdg+=r.mBdg||0;
   });
-  const months=Object.keys(byMonth).map(Number).sort((a,b)=>a-b).map(mk=>{
-    const b=byMonth[mk], pctM=b.mBdg>0?(b.cBdg/b.mBdg*100):0;
-    const tier=b.cBdg<=0?'none':pctM>=99?'full':'partial';
-    return {monthKey:mk,label:mkLabel(mk),pct:Math.round(pctM),tier};
-  });
+  // Griglia completa Da→A: un pallino per OGNI mese del range (grigio "missing" se non c'è
+  // dato caricato per quel mese) — così i pallini hanno sempre la stessa lunghezza/dimensione
+  // per tutte le righe, indipendentemente da quanti mesi mancano nello storico.
+  const months=[];
+  let y=Math.floor(fromKey/100), m=fromKey%100;
+  while(y*100+m<=toKey){
+    const mk=y*100+m, b=byMonth[mk];
+    if(!b){ months.push({monthKey:mk,label:mkLabel(mk),pct:0,tier:'missing'}); }
+    else{
+      const pctM=b.mBdg>0?(b.cBdg/b.mBdg*100):0;
+      const tier=b.cBdg<=0?'none':pctM>=99?'full':'partial';
+      months.push({monthKey:mk,label:mkLabel(mk),pct:Math.round(pctM),tier});
+    }
+    m++; if(m>12){m=1;y++;}
+  }
   return {n,N:sub.length,pct:Math.round(n/sub.length*100),months};
 }
 // Opzioni "Nome/Cognome" ricostruite ad ogni render sui nomi del file/vista correnti
@@ -5078,7 +5096,7 @@ function renderSas(){
     if(!r._bdg)return{disp:'<span class="dash">—</span>',val:-1};
     const h=r._bdg,cls=h.pct>=70?'hi':h.pct>=45?'mid':'lo';
     const dots=(h.months||[]).map(m=>'<span class="sas-bdg-dot '+m.tier+'"></span>').join('');
-    const tip=(h.months||[]).map(m=>m.label+': '+(m.tier==='full'?'pieno':m.tier==='partial'?'parziale ('+m.pct+'%)':'non raggiunto')).join('&#10;');
+    const tip=(h.months||[]).map(m=>m.label+': '+(m.tier==='full'?'pieno':m.tier==='partial'?'parziale ('+m.pct+'%)':m.tier==='missing'?'dato non caricato':'non raggiunto')).join('&#10;');
     return{disp:'<span class="sas-bdg-wrap"><span class="sas-bdg '+cls+'"><b>'+h.pct+'%</b><small>'+h.n+'/'+h.N+' mesi</small></span>'
       +'<span class="sas-bdg-dots" data-tip="'+tip.replace(/"/g,'&quot;')+'">'+dots+'</span></span>',val:h.pct};
   };
@@ -5089,7 +5107,7 @@ function renderSas(){
   const cols=identCols.concat([
     {label:'Target',align:'right',filter:'none'},{label:'Consuntivo',align:'right',filter:'none'},{label:'Esub. prec.',align:'right',filter:'none'},
     {label:'SY (vs LY)',align:'right',filter:'none'},{label:'% senza SAS',align:'right',filter:'none'},{label:'Valore SAS',align:'right',filter:'none'},
-    {label:'Ricon.',align:'right',filter:'none'},{label:'Applicato',align:'right',filter:'none'},{label:'% finale',align:'right',filter:'none'},
+    {label:'Ricon.',align:'right',filter:'none'},{label:'Esub. SAS prec.',align:'right',filter:'none'},{label:'Applicato',align:'right',filter:'none'},{label:'% finale',align:'right',filter:'none'},
     {label:'Esito',filter:'select'},{label:'BDG storico',align:'right',filter:'none'},
   ]);
   const trows=rows.map(r=>{
@@ -5100,12 +5118,13 @@ function renderSas(){
       {disp:eu(r.target),val:r.target},{disp:eu(r.actual),val:r.actual},{disp:eud(r.esubero),val:r.esubero},
       {disp:syCell(r),val:r.resultSY},
       {disp:bar(r.pctBase*100,pctCls(r.pctBase))+(r.pctBase*100).toFixed(1)+'%',val:r.pctBase},
-      {disp:eu(r.sasValue),val:r.sasValue},{disp:Math.round(r.recPct)+'%',val:r.recPct},{disp:eud(r.applied),val:r.applied},
+      {disp:eu(r.sasValue),val:r.sasValue},{disp:Math.round(r.recPct)+'%',val:r.recPct},{disp:eud(r.esuberoSasPrec),val:r.esuberoSasPrec},{disp:eud(r.applied),val:r.applied},
       {disp:(r.determinante?'<span class="sas-badge">⚡SAS</span>':'')+bar(r.pctFinal*100,pctCls(r.pctFinal))+'<b>'+(r.pctFinal*100).toFixed(1)+'%</b>',val:r.pctFinal},
       {disp:esitoChip(r),val:r.esito},bdgCell(r),
     ])};
   });
-  makeSortTable('sasTbl','sas'+sasView,cols,trows,{i:cols.length-2,dir:1}); // default: % finale ascendente (i piu' deboli prima)
+  // default: % finale ascendente (i più deboli prima) — sempre terzultima colonna (…, % finale, Esito, BDG storico)
+  makeSortTable('sasTbl','sas'+sasView,cols,trows,{i:cols.length-3,dir:1});
 }
 function sasExport(){
   const file=sasCurrentFile();if(!file){alert('Nessun dato da esportare per questo mese/vista.');return;}
@@ -5114,7 +5133,7 @@ function sasExport(){
     if(sasView==='negozi'){o['Store ID']=r.sid;o['Negozio']=r.name;}else{o['Nome']=r.name;o['Ruolo']=r.role;o['N. Negozi']=r.nStores;}
     return Object.assign(o,{'Target':Math.round(r.target),'Consuntivo':Math.round(r.actual),'Esub. prec.':Math.round(r.esubero||0),
       'Target SY':r.targetSY,'Risultato SY':r.resultSY,'% senza SAS':+((r.pctBase||0)*100).toFixed(1),'Valore SAS':Math.round(r.sasValue),
-      'Riconosciuto %':r.recPct,'Valore riconosciuto':Math.round(r.recValue),'Applicato':Math.round(r.applied),
+      'Riconosciuto %':r.recPct,'Esub. SAS prec.':Math.round(r.esuberoSasPrec||0),'Valore riconosciuto':Math.round(r.recValue),'Applicato':Math.round(r.applied),
       '% finale':+((r.pctFinal||0)*100).toFixed(1),'Esito':r.esitoLabel,'Determinante':r.determinante?'Sì':'No'});
   });
   _writeXlsx(rows,'SAS Fatturato','BoggiPremi_SasFatturato_');
