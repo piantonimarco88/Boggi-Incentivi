@@ -673,20 +673,20 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.35'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.36'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.36: Fix export SAS Negozi (JSON) — anche SY ora convertito in EUR per i negozi non-EUR",
   "9.35: Fix export SAS Negozi (JSON) — ora converte davvero in EUR i negozi non-EUR",
   "9.34: Fix ricerca FC+VM — il cursore ripartiva dall'inizio ad ogni carattere",
   "9.33: Fix riassegnazione negozio — email Field Coach ora si aggiorna col negozio",
   "9.32: Tab Calcolo Premi — bottone per riassegnare manualmente il negozio",
   "9.31: Fix banner novità — non compariva al primo aggiornamento su PC con dati già salvati",
   "9.30: Il changelog ora è un banner nell'app (non più nel popup dell'exe)",
-  "9.29: Fix import DCC — riconosce anche intestazione Converted BC Value",
-  "9.28: Changelog nel popup di aggiornamento app"
+  "9.29: Fix import DCC — riconosce anche intestazione Converted BC Value"
 ];
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
@@ -1941,7 +1941,7 @@ function exportSasJsonStores(){
     var esito=pctFinal>=PARAMS.bdg100?"full":(isRidottoStore(sid)?"ridotto":"none");
     var esitoLabel=esito==="full"?"Pieno":(esito==="ridotto"?"Ridotto 60%":"Nessuno");
     return{sid:sid,name:storeNames[sid],target:Math.round(info.to*ex),actual:Math.round(info.base*ex),pctBase:pctBase,
-      esubero:Math.round((cn.es||0)*ex),targetSY:tg.sy!=null?tg.sy:null,resultSY:cn.sy!=null?cn.sy:null,
+      esubero:Math.round((cn.es||0)*ex),targetSY:tg.sy!=null?Math.round(tg.sy*ex*100)/100:null,resultSY:cn.sy!=null?Math.round(cn.sy*ex*100)/100:null,
       sasValue:Math.round((info.sasv||0)*ex),recPct:info.pctMatrix!=null?Math.round(info.pctMatrix*100):null,
       recValue:Math.round((info.recognized||0)*ex),applied:Math.round((info.used||0)*ex),pctFinal:pctFinal,
       esito:esito,esitoLabel:esitoLabel,determinante:determinante};
