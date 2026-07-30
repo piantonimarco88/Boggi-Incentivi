@@ -673,20 +673,20 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.33'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.34'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.34: Fix ricerca FC+VM — il cursore ripartiva dall'inizio ad ogni carattere",
   "9.33: Fix riassegnazione negozio — email Field Coach ora si aggiorna col negozio",
   "9.32: Tab Calcolo Premi — bottone per riassegnare manualmente il negozio",
   "9.31: Fix banner novità — non compariva al primo aggiornamento su PC con dati già salvati",
   "9.30: Il changelog ora è un banner nell'app (non più nel popup dell'exe)",
   "9.29: Fix import DCC — riconosce anche intestazione Converted BC Value",
   "9.28: Changelog nel popup di aggiornamento app",
-  "9.27: Nomi file più descrittivi per export JSON (sessione/config/SAS)",
-  "9.26: Tab Calcolo Premi FC+VM — colonne esplicite per il contributo SAS"
+  "9.27: Nomi file più descrittivi per export JSON (sessione/config/SAS)"
 ];
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
@@ -8809,7 +8809,7 @@ function rCFcvm(){
   if(tbl){tbl.onclick=function(ev){var tr=ev.target.closest('tr.ck');if(tr){var m=tr.getAttribute('data-m');if(m)sLFcvm(m);}};}
 
   var qEl=document.getElementById('fcvmQ');
-  if(qEl){qEl.oninput=function(){_fcvmF.q=this.value;rCFcvm();var el2=document.getElementById('fcvmQ');if(el2){el2.focus();}};}
+  if(qEl){qEl.oninput=function(){_fcvmF.q=this.value;var pos=this.selectionStart;rCFcvm();var el2=document.getElementById('fcvmQ');if(el2){el2.focus();el2.selectionStart=el2.selectionEnd=pos;}};}
   var jEl=document.getElementById('fcvmJ');
   if(jEl){jEl.onchange=function(){_fcvmF.j=this.value;rCFcvm();};}
   document.querySelectorAll("button[data-fcvm-ps]").forEach(function(btn){btn.onclick=function(ev){
