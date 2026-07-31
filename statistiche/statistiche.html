@@ -1608,7 +1608,14 @@ async function tryRestoreSession(){
 async function tryRestoreSasSession(){
   try{
     const s=await idbLoadSession();
-    if(s&&s.sasFiles&&Object.keys(s.sasFiles).length){sasFiles=s.sasFiles;sasRenderChips();sasPopulateMonths();}
+    if(s&&s.sasFiles&&Object.keys(s.sasFiles).length){
+      sasFiles=s.sasFiles;sasRenderChips();sasPopulateMonths();
+      // Race condition all'avvio: questo ripristino è async e gira in parallelo a hashApply()
+      // (che può già aver attivato il tab SAS da un link #t=sas prima che sasFiles sia pronto,
+      // lasciando la tabella bloccata sullo stato "nessun dato" iniziale). Se il tab è già visibile,
+      // ridisegna ora che i dati ci sono davvero — altrimenti ci pensa il normale switchTab().
+      try{if(document.getElementById('tabSas').style.display!=='none')renderSas();}catch(e){}
+    }
   }catch(e){console.warn('Ripristino SAS fallito',e);}
 }
 window.addEventListener('load',()=>{try{tryRestoreSession();}catch(e){console.warn(e);}try{tryRestoreSasSession();}catch(e){console.warn(e);}});
