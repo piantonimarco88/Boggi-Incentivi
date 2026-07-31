@@ -5000,25 +5000,42 @@ function _sasLev(a,b){a=(a||'').toUpperCase();b=(b||'').toUpperCase();const m=a.
 // Stessa euristica di resolveEmp in Lament1: cognome (ultima parola) come chiave primaria; se non c'è
 // match esatto, fuzzy (distanza<=1, candidato unico); se restano omonimi, disambigua con le parole del
 // nome. Se resta ambiguo, NON indoviniamo: nessun match (meglio "—" che un numero sbagliato).
+// Cognomi doppi (es. "Tobia Gonzales"): i file storici li scrivono in modo incoerente tra loro —
+// i vecchi export "PER LAURA" spesso troncano al solo ultimo cognome ("GONZALES"), i nuovi export
+// "programma incentivi" lo scrivono per intero ("TOBIA GONZALES"). Senza gestirlo esplicitamente,
+// lo storico di chi ha un cognome doppio risultava spezzato: una convenzione trovava un gruppo di
+// mesi, l'altra un gruppo diverso, e la funzione ne restituiva SOLO uno (grigio/mancante per gli
+// altri mesi anche se i dati esistevano, solo sotto l'altro spelling). Fix: prova sia "ultima
+// parola" che "ultime due parole" come cognome, e unisce i risultati SOLO quando ciascuna
+// interpretazione risolve a un'unica persona univoca (stessa logica anti-ambiguità di sempre,
+// applicata due volte con candidati diversi — mai un indovinato).
 function sasMatchFcVmRows(fullName){
   const parts=String(fullName||'').trim().split(/\s+/);
   if(!parts.length)return[];
-  const cognome=parts[parts.length-1].toUpperCase();
-  const nome=parts.slice(0,-1).join(' ').toUpperCase();
   const byKey={};
   allData.forEach(r=>{if(r._tipo!=='fc vm')return;const k=_empKey(r);(byKey[k]||(byKey[k]=[])).push(r);});
-  let keys=Object.keys(byKey).filter(k=>(k.split('|')[0]||'').toUpperCase()===cognome);
-  if(!keys.length){
-    let best=null,bd=99,ties=0;
-    Object.keys(byKey).forEach(k=>{const c=(k.split('|')[0]||'').toUpperCase();if(c.length>=3){const d=_sasLev(c,cognome);if(d<bd){bd=d;best=k;ties=1;}else if(d===bd&&k!==best)ties++;}});
-    if(best&&bd<=1&&ties===1)keys=[best];
+  function matchCognome(cognome,nome){
+    let keys=Object.keys(byKey).filter(k=>(k.split('|')[0]||'').toUpperCase()===cognome);
+    if(!keys.length){
+      let best=null,bd=99,ties=0;
+      Object.keys(byKey).forEach(k=>{const c=(k.split('|')[0]||'').toUpperCase();if(c.length>=3){const d=_sasLev(c,cognome);if(d<bd){bd=d;best=k;ties=1;}else if(d===bd&&k!==best)ties++;}});
+      if(best&&bd<=1&&ties===1)keys=[best];
+    }
+    if(keys.length>1&&nome){
+      const nomeWords=nome.split(' ').filter(Boolean);
+      const filtered=keys.filter(k=>{const n=(k.split('|')[1]||'').toUpperCase();return nomeWords.some(w=>n.includes(w));});
+      if(filtered.length===1)keys=filtered;
+    }
+    return keys.length===1?keys[0]:null;
   }
-  if(keys.length>1&&nome){
-    const nomeWords=nome.split(' ').filter(Boolean);
-    const filtered=keys.filter(k=>{const n=(k.split('|')[1]||'').toUpperCase();return nomeWords.some(w=>n.includes(w));});
-    if(filtered.length===1)keys=filtered;
+  const foundKeys=new Set();
+  const k1=matchCognome(parts[parts.length-1].toUpperCase(),parts.slice(0,-1).join(' ').toUpperCase());
+  if(k1)foundKeys.add(k1);
+  if(parts.length>=3){
+    const k2=matchCognome(parts.slice(-2).join(' ').toUpperCase(),parts.slice(0,-2).join(' ').toUpperCase());
+    if(k2)foundKeys.add(k2);
   }
-  return keys.length===1?byKey[keys[0]]:[];
+  return foundKeys.size?[...foundKeys].flatMap(k=>byKey[k]):[];
 }
 // Quante volte il BDG è stato raggiunto (erogato>0) nell'intervallo Da→A, sulle righe storiche già
 // individuate (stesso negozio o stessa persona). Stessa definizione di "raggiunto" usata in Anno su
