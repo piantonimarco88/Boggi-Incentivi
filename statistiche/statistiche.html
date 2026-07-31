@@ -538,6 +538,8 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
       <input type="text" id="sasQ" placeholder="Negozio, store ID, nome…" oninput="renderSas()"></div>
     <div class="fg"><label>Nome / Cognome</label>
       <div class="ms-wrap" id="sas-name"><button class="ms-btn" id="sas-name-btn" onclick="toggleMs(event,'sas-name')">Tutti</button><div class="ms-panel" id="sas-name-panel" style="display:none"></div></div></div>
+    <div class="fg"><label>Nazione</label>
+      <div class="ms-wrap" id="sas-naz"><button class="ms-btn" id="sas-naz-btn" onclick="toggleMs(event,'sas-naz')">Tutti</button><div class="ms-panel" id="sas-naz-panel" style="display:none"></div></div></div>
     <div class="fg"><label>Esito</label>
       <div class="ms-wrap" id="sas-esito"><button class="ms-btn" id="sas-esito-btn" onclick="toggleMs(event,'sas-esito')">Tutti</button><div class="ms-panel" id="sas-esito-panel" style="display:none"></div></div></div>
     <div class="fg" id="sasRoleWrap" style="display:none"><label>Ruolo</label>
@@ -5085,6 +5087,12 @@ function sasPopulateNameFilter(file){
   const names=[...new Set(file.rows.map(r=>r.name).filter(Boolean))].sort();
   setMsOpts('sas-name',names.map(n=>({v:n,l:n})),renderSas);
 }
+// Nazione: ricostruita dallo storico incrociato (r._nazione, vedi renderSas), non dal JSON SAS —
+// opzioni ricalcolate ad ogni render sulle righe correnti (stesso pattern di sasPopulateNameFilter).
+function sasPopulateNazFilter(rows){
+  const naz=[...new Set(rows.map(r=>r._nazione).filter(Boolean))].sort();
+  setMsOpts('sas-naz',naz.map(n=>({v:n,l:n})),renderSas);
+}
 function renderSas(){
   sasPopulateMonths();sasPopulateBdgPeriod();sasPopulateFilters();
   const file=sasCurrentFile();
@@ -5106,14 +5114,20 @@ function renderSas(){
       ?allData.filter(h=>!isSemRow(h)&&_storeId(h.store)===String(r.sid))
       :sasMatchFcVmRows(r.name);
     r._bdg=hrows.length?sasBdgHist(hrows,fromKey,toKey):null;
+    // Nazione: il JSON SAS non la porta — la ricaviamo dallo storico xlsx già incrociato per il
+    // BDG (stesso match store/persona), prendendo il dato più recente disponibile.
+    const withNaz=hrows.filter(h=>h._nazione).sort((a,b)=>(b.monthKey||0)-(a.monthKey||0))[0];
+    r._nazione=withNaz?withNaz._nazione:null;
   });
+  sasPopulateNazFilter(rows);
 
   const q=(document.getElementById('sasQ').value||'').toLowerCase();
-  const fEsito=getMsVals('sas-esito'), fRole=getMsVals('sas-role'), fName=getMsVals('sas-name');
+  const fEsito=getMsVals('sas-esito'), fRole=getMsVals('sas-role'), fName=getMsVals('sas-name'), fNaz=getMsVals('sas-naz');
   const onlyDet=(document.getElementById('sasFDet-si')||{}).classList.contains('active');
   rows=rows.filter(r=>{
     if(q&&!((r.name||'')+' '+(r.sid||'')).toLowerCase().includes(q))return false;
     if(fName.length&&!fName.includes(r.name))return false;
+    if(fNaz.length&&!fNaz.includes(r._nazione))return false;
     if(fEsito.length&&!fEsito.includes(r.esito))return false;
     if(fRole.length&&!fRole.includes(r.role))return false;
     if(onlyDet&&!r.determinante)return false;
@@ -5156,9 +5170,13 @@ function renderSas(){
     {label:'Ricon.',align:'right',filter:'none'},{label:'Esub. SAS prec.',align:'right',filter:'none'},{label:'Applicato',align:'right',filter:'none'},{label:'% finale',align:'right',filter:'none'},
     {label:'Esito',filter:'select'},{label:'BDG storico',align:'right',filter:'none'},
   ]);
+  // Ordine di default: Negozi → Store ID crescente; FC+VM → Ruolo (FC poi VM) con Nome alfabetico
+  // dentro ciascun ruolo — il pre-ordinamento per nome qui sotto fa da tie-break stabile quando
+  // makeSortTable ordina per Ruolo (sort stabile: a parità di ruolo resta l'ordine già alfabetico).
+  if(sasView!=='negozi') rows=rows.slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
   const trows=rows.map(r=>{
     const identCells=sasView==='negozi'
-      ?[{disp:r.sid,val:r.sid},{disp:agEsc(r.name),val:r.name}]
+      ?[{disp:r.sid,val:+r.sid||0},{disp:agEsc(r.name),val:r.name}]
       :[{disp:agEsc(r.name),val:r.name},{disp:'<span class="bjob">'+r.role+'</span>',val:r.role},{disp:r.nStores,val:r.nStores}];
     return {cells:identCells.concat([
       {disp:eu(r.target),val:r.target},{disp:eu(r.actual),val:r.actual},{disp:eud(r.esubero),val:r.esubero},
@@ -5169,8 +5187,9 @@ function renderSas(){
       {disp:esitoChip(r),val:r.esito},bdgCell(r),
     ])};
   });
-  // default: % finale ascendente (i più deboli prima) — sempre terzultima colonna (…, % finale, Esito, BDG storico)
-  makeSortTable('sasTbl','sas'+sasView,cols,trows,{i:cols.length-3,dir:1});
+  // default: Negozi → Store ID crescente (col.0); FC+VM → Ruolo crescente (col.1, "FC" prima di
+  // "VM"), con Nome alfabetico dentro ciascun ruolo grazie al pre-ordinamento sopra.
+  makeSortTable('sasTbl','sas'+sasView,cols,trows,sasView==='negozi'?{i:0,dir:1}:{i:1,dir:1});
 }
 function sasExport(){
   const file=sasCurrentFile();if(!file){alert('Nessun dato da esportare per questo mese/vista.');return;}
