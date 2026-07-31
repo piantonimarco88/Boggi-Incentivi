@@ -673,20 +673,20 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.36'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.37'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.37: Cambio EUR reale dal fatturato — se il file Risultati BDG ha \"Gross Sales EUR\"",
   "9.36: Fix export SAS Negozi (JSON) — anche SY ora convertito in EUR per i negozi non-EUR",
   "9.35: Fix export SAS Negozi (JSON) — ora converte davvero in EUR i negozi non-EUR",
   "9.34: Fix ricerca FC+VM — il cursore ripartiva dall'inizio ad ogni carattere",
   "9.33: Fix riassegnazione negozio — email Field Coach ora si aggiorna col negozio",
   "9.32: Tab Calcolo Premi — bottone per riassegnare manualmente il negozio",
   "9.31: Fix banner novità — non compariva al primo aggiornamento su PC con dati già salvati",
-  "9.30: Il changelog ora è un banner nell'app (non più nel popup dell'exe)",
-  "9.29: Fix import DCC — riconosce anche intestazione Converted BC Value"
+  "9.30: Il changelog ora è un banner nell'app (non più nel popup dell'exe)"
 ];
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
@@ -6664,6 +6664,11 @@ function loadResultsExcel(file){
         var cDigital=fH("% digital","digital");var cCR=fH("cr 20","cr_20","cr ");
         var cSY=fH("sy gross","sy_gross","sy ");var cSub=fH("subscription","fidelity");
         var cQty=fH("qty sales","qty_sales","qty ");
+        // Cambio reale del mese (opzionale): se il file ha anche il fatturato in EUR accanto a
+        // quello in valuta locale, ricaviamo il cambio effettivo negozio per negozio invece di
+        // usare quello statico/anagrafica (ENTE_CU o e.ex) — vedi applicazione a E più sotto.
+        var cSalesEur=fH("gross sales eur","sales eur","tot sales eur","fatturato eur","gross_sales_eur");
+        var withFx=0;
         for(var ri=dataStart;ri<json.length;ri++){
           var row=json[ri];if(!row)continue;var sid=row[cSid];if(!sid)continue;
           sid=String(parseInt(sid));if(sid==="NaN")continue;
@@ -6677,9 +6682,20 @@ function loadResultsExcel(file){
           if(cSub>=0){D.c[sid].nf=parseNum(row[cSub])}
           if(cQty>=0){D.c[sid].qc=Math.round(parseNum(row[cQty]))}
           if(cFcst>=0){var vf=parseNum(row[cFcst]);if(vf>0){if(!D.t[sid])D.t[sid]={to:0,sy:0,pr:0,cr:0,di:0,cs:0,qt:0,fc:"",fl:"",mo:""};D.t[sid].to=Math.round(vf)}}
+          if(cSalesEur>=0&&totSales>0){
+            var salesEur=parseNum(row[cSalesEur]);
+            if(!isNaN(salesEur)&&salesEur>0){D.c[sid].fx=salesEur/totSales;withFx++;}
+          }
           imported++;
         }
-        report="BDG caricati: "+imported+" negozi.";
+        // Applica il cambio derivato ai dipendenti del negozio (sovrascrive e.ex): da qui in poi
+        // Premio EUR, lettere, export ecc. usano il cambio reale di questo mese invece di quello
+        // statico. Se un negozio non ha il dato (colonna assente o fatturato LC a zero), e.ex
+        // resta quello attuale (anagrafica/ENTE_CU) senza alcun avviso.
+        if(withFx>0){
+          E.forEach(function(e){var fx=(D.c[String(e.si)]||{}).fx;if(fx)e.ex=Math.round(fx*100000)/100000;});
+        }
+        report="BDG caricati: "+imported+" negozi."+(withFx>0?(" Cambio reale derivato per "+withFx+" negozi."):"");
       }
 
       else if(type==="sas_results"){
