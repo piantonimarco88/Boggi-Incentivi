@@ -673,20 +673,20 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.38'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.39'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.39: Seasonal — import Mid-Season già erogato: dedotto dal saldo fine stagione in tab, export e lettere (tutte le lingue)",
   "9.38: Simulatore mensile — tolti gli slider SAS rate/max da luglio 2026 (policy cambiata)",
   "9.37: Cambio EUR reale dal fatturato — se il file Risultati BDG ha Gross Sales EUR",
   "9.36: Fix export SAS Negozi (JSON) — anche SY ora convertito in EUR per i negozi non-EUR",
   "9.35: Fix export SAS Negozi (JSON) — ora converte davvero in EUR i negozi non-EUR",
   "9.34: Fix ricerca FC+VM — il cursore ripartiva dall'inizio ad ogni carattere",
   "9.33: Fix riassegnazione negozio — email Field Coach ora si aggiorna col negozio",
-  "9.32: Tab Calcolo Premi — bottone per riassegnare manualmente il negozio",
-  "9.31: Fix banner novità — non compariva al primo aggiornamento su PC con dati già salvati"
+  "9.32: Tab Calcolo Premi — bottone per riassegnare manualmente il negozio"
 ];
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
@@ -2702,6 +2702,8 @@ var SEAS_TR={
     incentive_paid:"INCENTIVO EROGATO",
     incentive_max:"INCENTIVO MAX",
     forecast_intro:"Di seguito il bonus massimo potenziale per ",
+    mid_deducted:"MID-SEASON GIÀ EROGATO",
+    seas_net:"SALDO DA EROGARE A FINE STAGIONE",
     greeting:{"ITALIANO":"Ciao","INGLESE":"Hi","FRANCESE":"Bonjour","TEDESCO":"Hallo","SPAGNOLO":"Hola"}
   },
   "INGLESE":{
@@ -2753,6 +2755,8 @@ var SEAS_TR={
     incentive_paid:"INCENTIVE PAID",
     incentive_max:"INCENTIVE MAX",
     forecast_intro:"Below is the maximum potential bonus for ",
+    mid_deducted:"MID-SEASON ALREADY PAID",
+    seas_net:"BALANCE DUE AT SEASON END",
     greeting:{"ITALIANO":"Ciao","INGLESE":"Hi","FRANCESE":"Bonjour","TEDESCO":"Hallo","SPAGNOLO":"Hola"}
   },
   "FRANCESE":{
@@ -2804,6 +2808,8 @@ var SEAS_TR={
     incentive_paid:"INCITATION ACCORDÉE",
     incentive_max:"INCITATION MAX",
     forecast_intro:"Ci-dessous le bonus potentiel maximum pour ",
+    mid_deducted:"MID-SEASON DÉJÀ VERSÉ",
+    seas_net:"SOLDE À VERSER EN FIN DE SAISON",
     greeting:{"ITALIANO":"Ciao","INGLESE":"Hi","FRANCESE":"Bonjour","TEDESCO":"Hallo","SPAGNOLO":"Hola"}
   },
   "TEDESCO":{
@@ -2855,6 +2861,8 @@ var SEAS_TR={
     incentive_paid:"BEZAHLTER ANREIZ",
     incentive_max:"MAX ANREIZ",
     forecast_intro:"Nachfolgend der maximale potenzielle Bonus für ",
+    mid_deducted:"MID-SEASON BEREITS AUSGEZAHLT",
+    seas_net:"RESTBETRAG ZUM SAISONENDE",
     greeting:{"ITALIANO":"Ciao","INGLESE":"Hi","FRANCESE":"Bonjour","TEDESCO":"Hallo","SPAGNOLO":"Hola"}
   },
   "SPAGNOLO":{
@@ -2906,6 +2914,8 @@ var SEAS_TR={
     incentive_paid:"INCENTIVO PAGADO",
     incentive_max:"INCENTIVO MÁX",
     forecast_intro:"A continuación el bono potencial máximo para ",
+    mid_deducted:"MID-SEASON YA PAGADO",
+    seas_net:"SALDO A PAGAR AL FINAL DE TEMPORADA",
     greeting:{"ITALIANO":"Ciao","INGLESE":"Hi","FRANCESE":"Bonjour","TEDESCO":"Hallo","SPAGNOLO":"Hola"}
   }
 };
@@ -2955,6 +2965,11 @@ function buildSeasonalLetter(e){
   // MID SEASON values: 30% of max
   var midPct=0.30;
   var midMax=Math.round(kpiIncentiveMax*midPct*100)/100;
+  // Importo realmente erogato a mid-season (importato da loadMidSeasonPaidExcel), da detrarre a saldo.
+  // seasonalNet usa calcSeasonal() come unica fonte di verità (stessa cifra di tab/export:
+  // evita un possibile scarto di arrotondamento tra il calcolo locale qui sopra e quello centralizzato).
+  var midPaid=(!isP&&SEAS[e.m]&&SEAS[e.m].midPaid>0)?SEAS[e.m].midPaid:0;
+  var seasonalNet=calcSeasonal(e);
 
   var stagione=CFG_SEASON+String(CFG_YEAR).slice(-2); // e.g. FW26 or SS26
   var h='<div class="lt">';
@@ -3159,12 +3174,20 @@ function buildSeasonalLetter(e){
   h+='<div class="lt-total-val">'+fc(seasonal,cu)+'</div>';
   h+='</div>';
 
-  // MID SEASON bar
+  // MID SEASON bar \u2014 preventivo: potenziale al checkpoint; consuntivo: importo gi\u00e0 erogato (dedotto dal saldo)
   h+='<div style="background:#3d3a36;padding:12px 32px;display:flex;justify-content:space-between;align-items:center">';
-  h+='<div><div style="font-size:9px;text-transform:uppercase;letter-spacing:2px;color:#a09a92">'+T.mid_max+'</div>';
-  h+='<div style="font-size:10px;color:#a09a92;margin-top:2px">'+fc(kpiIncentive,cu)+' \u00d7 30%</div></div>';
-  h+='<div style="font-size:18px;font-weight:800;color:#a09a92">'+fc(isP?midMax:0,cu)+'</div>';
+  h+='<div><div style="font-size:9px;text-transform:uppercase;letter-spacing:2px;color:#a09a92">'+(isP?T.mid_max:(T.mid_deducted||T.mid_max))+'</div>';
+  h+='<div style="font-size:10px;color:#a09a92;margin-top:2px">'+(isP?fc(kpiIncentive,cu)+' \u00d7 30%':'')+'</div></div>';
+  h+='<div style="font-size:18px;font-weight:800;color:#a09a92">'+(isP?fc(midMax,cu):(midPaid>0?'\u2212'+fc(midPaid,cu):fc(0,cu)))+'</div>';
   h+='</div>';
+
+  // SALDO (netto da erogare) \u2014 solo in consuntivo, dopo la detrazione del mid-season
+  if(!isP){
+    h+='<div style="background:#2d7a3a;padding:14px 32px;display:flex;justify-content:space-between;align-items:center">';
+    h+='<div style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#eafaf0;font-weight:700">'+(T.seas_net||T.seas_earned)+'</div>';
+    h+='<div style="font-size:20px;font-weight:800;color:#fff">'+fc(seasonalNet,cu)+'</div>';
+    h+='</div>';
+  }
 
   // Footer
   h+='<div class="lt-footer">'+esc(getDiscl(e))+'</div>';
@@ -4855,11 +4878,12 @@ function rCSeasonal(){
   });
 
   function calcSeasonalRow(e){
-    // Dept stores internazionali: BDG×6 + QTY (50% di BDG×6)
+    // Dept stores internazionali: BDG×6 + QTY (50% di BDG×6) — no mid-season per i dept
     if(isD(e.si)){
       var bdg6=Math.round((e.ib||0)*6*100)/100;
       var qty6=Math.round(bdg6*0.5*100)/100;
-      return {isDept:true,bdg6:bdg6,qty6:qty6,val:Math.round((bdg6+qty6)*100)/100,kpiScore:1,m1:1,m2:1,auto:null};
+      var grossD=Math.round((bdg6+qty6)*100)/100;
+      return {isDept:true,bdg6:bdg6,qty6:qty6,gross:grossD,midPaid:0,val:calcSeasonal(e),kpiScore:1,m1:1,m2:1,auto:null};
     }
     var rlSem=(e.rl||0)*6;
     var base=rlSem*SEAS_CFG.basePct;
@@ -4870,7 +4894,10 @@ function rCSeasonal(){
     else{kpiSet.forEach(function(kdef){if(!seasKpiActive(kdef.k,e))return;if(seasIsKpiAchieved(kdef,auto))kpiScore+=kdef.weight;});}
     var m1=isP?seasMoltTurnover(3.01):seasMoltTurnover(auto?auto.scost:0);
     var m2=isP?seasMoltInventarioV(0):seasMoltInventarioV(auto?auto.inv:0);
-    return {isDept:false,kpiScore:kpiScore,m1:m1,m2:m2,auto:auto,val:Math.round(base*kpiScore*m1*m2*100)/100};
+    var gross=Math.round(base*kpiScore*m1*m2*100)/100;
+    var midPaid=(!isP&&SEAS[e.m]&&SEAS[e.m].midPaid>0)?SEAS[e.m].midPaid:0;
+    // val (netto) usa calcSeasonal come unica fonte di verità: stessa cifra di lettere/export
+    return {isDept:false,kpiScore:kpiScore,m1:m1,m2:m2,auto:auto,gross:gross,midPaid:midPaid,val:calcSeasonal(e)};
   }
 
   var grandTotal=0;
@@ -4931,7 +4958,9 @@ function rCSeasonal(){
     h+='<th style="text-align:center;white-space:nowrap">M.Inv.</th>';
   }
   h+='<th style="text-align:center;white-space:nowrap">BOOST<br><span style="font-weight:400;font-size:9px">T&times;I</span></th>';
-  h+='<th class="r">TOTALE</th>';
+  h+='<th class="r" style="color:#8a8680">LORDO</th>';
+  if(!isP)h+='<th class="r" style="color:#cf8b4e">MID-SEASON<br><span style="font-weight:400;font-size:9px">gi&agrave; erogato</span></th>';
+  h+='<th class="r">TOTALE'+(!isP?' NETTO':'')+'</th>';
   h+='<th class="r" style="color:#5b6abf">TOT &euro;</th>';
   h+='<th style="cursor:default">Escl.</th>';
   h+='</tr></thead><tbody>';
@@ -5011,6 +5040,8 @@ function rCSeasonal(){
       }
       h+='<td class="r mn b" style="color:'+(boostTot>=1.3?'#2d7a3a':boostTot===0?'#c0392b':'#cf8b4e')+'">'+boostTot.toFixed(2)+'</td>';
     } // end else (non-dept)
+    h+='<td class="r mn gy">'+fc(row.gross,cu)+'</td>';
+    if(!isP)h+='<td class="r mn" style="color:'+(row.midPaid>0?'#cf8b4e':'#b0a99f')+'">'+(row.midPaid>0?'&minus;'+fc(row.midPaid,cu):'&mdash;')+'</td>';
     h+='<td class="r mn b seas-tot-'+esc(e.m)+'" style="color:'+(tot>0?'#2c2925':'#b0a99f')+'">'+fc(tot,cu)+'</td>';
     h+='<td class="r mn" style="color:#5b6abf">'+fc(Math.round(tot*(e.ex||1)*100)/100,'EUR')+'</td>';
     h+='<td style="text-align:center"><button class="tb '+(excl?'x':'o')+' seas-excl" data-sm="'+esc(e.m)+'" style="width:28px;height:16px" onclick="event.stopPropagation()"><span class="tk" style="width:10px;height:10px;top:3px"></span></button></td>';
@@ -5137,7 +5168,7 @@ function exportSeasonalExcel(){
 
     // Results
     var gross=isDept?Math.round((e.ib||0)*6*1.5*100)/100:Math.round(base*kpiScore*m1*m2*100)/100;
-    var net=Math.max(0,Math.round((gross-midPaid)*100)/100);
+    var net=calcSeasonal(e); // unica fonte di verità: stessa cifra di tab e lettere
     var totLC=excl?0:net;
     var totEUR=Math.round(totLC*ex*100)/100;
     r.push(excl?0:gross, midPaid, totLC, totEUR, excl?'SI':'NO');
@@ -5153,6 +5184,65 @@ function exportSeasonalExcel(){
   var wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Seasonal");
   XLSX.writeFile(wb,"Incentivi_Seasonal_"+stagione+".xlsx");
+}
+
+// === IMPORT: Mid-Season già erogato ===
+// Importa gli importi realmente erogati a metà stagione (per matricola) e li
+// scrive in SEAS[matricola].midPaid, in valuta locale (LC). calcSeasonal()
+// li detrae automaticamente dal premio di fine stagione (già floor a 0).
+// Accetta lo stesso file esportato da exportMidSeasonExcel (colonna "MID-SEASON LC"),
+// o qualunque file con colonne MATRICOLA + importo.
+function _normMatr(s){
+  s=String(s||'').trim().toUpperCase();
+  return /^[0-9]+$/.test(s)?String(parseInt(s,10)):s;
+}
+function loadMidSeasonPaidExcel(input){
+  var f=input.files[0];if(!f)return;input.value="";
+  var reader=new FileReader();reader.onload=function(ev){try{
+    var data=new Uint8Array(ev.target.result);
+    var wb=XLSX.read(data,{type:"array"});
+    var ws=wb.Sheets[wb.SheetNames[0]];
+    var json=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
+    if(json.length<2){alert("File Mid-Season vuoto.");return;}
+    // Trova header row
+    var hdrRow=0;
+    for(var ri=0;ri<Math.min(5,json.length);ri++){
+      var rs=(json[ri]||[]).map(function(c){return String(c||'').toLowerCase()}).join('|');
+      if(rs.indexOf('matr')>=0){hdrRow=ri;break;}
+    }
+    // Rileva colonne MATRICOLA e importo. Preferisce una colonna "MID-SEASON ... LC"
+    // (valuta locale, coerente col resto del calcolo); in mancanza, la prima colonna
+    // "mid-season"/"erogat"/"pagat" trovata, escludendo esplicitamente le colonne EUR.
+    var hdr={matr:-1,amt:-1,amtIsLC:false};
+    (json[hdrRow]||[]).forEach(function(cell,ci){
+      var s=String(cell||'').toLowerCase().trim();
+      if(hdr.matr<0&&(s.indexOf('matr')>=0||s==='id'))hdr.matr=ci;
+      var isMidCol=s.indexOf('mid')>=0||s.indexOf('erogat')>=0||s.indexOf('pagat')>=0||s.indexOf('paid')>=0;
+      if(!isMidCol)return;
+      var isLC=s.indexOf('lc')>=0&&s.indexOf('eur')<0;
+      if(hdr.amt<0||(isLC&&!hdr.amtIsLC)){hdr.amt=ci;hdr.amtIsLC=isLC;}
+    });
+    if(hdr.matr<0||hdr.amt<0){alert('Colonne MATRICOLA o importo Mid-Season non trovate.\n\nColonne rilevate:\n'+(json[hdrRow]||[]).join(', '));return;}
+    if(!hdr.amtIsLC&&!confirm('Attenzione: non ho trovato una colonna esplicitamente "LC" (valuta locale) — userò la colonna "'+(json[hdrRow]||[])[hdr.amt]+'".\nSe è un importo in EUR e non in valuta locale, il calcolo sarà errato.\n\nContinuare?'))return;
+    // Lookup matricole esistenti (SM/VSM), normalizzate per tollerare padding/zeri diversi
+    var matrLookup={};
+    E.forEach(function(e){if(isSMVSM(e))matrLookup[_normMatr(e.m)]=e.m;});
+    var matched=0,unmatched=[];
+    for(var ri2=hdrRow+1;ri2<json.length;ri2++){
+      var row=json[ri2];if(!row)continue;
+      var rawMatr=row[hdr.matr];if(rawMatr===null||rawMatr===undefined||String(rawMatr).trim()==='')continue;
+      var amt=parseFloat(String(row[hdr.amt]||'0').replace(',','.').replace(/[^0-9.\-]/g,''))||0;
+      var key=matrLookup[_normMatr(rawMatr)];
+      if(!key){unmatched.push(String(rawMatr));continue;}
+      if(!SEAS[key])SEAS[key]={};
+      SEAS[key].midPaid=amt;
+      matched++;
+    }
+    var msg='Mid-Season erogato importato!\n\n'+matched+' dipendenti aggiornati.';
+    if(unmatched.length)msg+='\n\n'+unmatched.length+' matricole non trovate in anagrafica (ignorate):\n'+unmatched.slice(0,15).join(', ')+(unmatched.length>15?'\n...':'');
+    alert(msg);
+    autoSave();rSources();rC();
+  }catch(ex){alert('Errore lettura Mid-Season: '+ex.message);}};reader.readAsArrayBuffer(f);
 }
 
 function seasLiveUpdate(m){
@@ -7130,6 +7220,18 @@ function rSources(){try{
   sh+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px">';
   checks.forEach(function(ck){sh+='<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:'+(ck.ok?"#f0faf2":"#fef6f0")+';border-radius:5px;border:1px solid '+(ck.ok?"#d4edda":"#f8d7da")+'"><span style="font-size:12px">'+(ck.ok?"\u2705":"\u274c")+'</span><span style="font-size:10px;font-weight:600">'+ck.l+"</span></div>"});
   sh+="</div></div>";
+
+  // === SEASONAL: import Mid-Season gi\u00e0 erogato (solo semestrale, consuntivo) ===
+  if(isSeasonal&&!isMid&&!isP){
+    var midCount=0;E.forEach(function(e){if(isSMVSM(e)&&SEAS[e.m]&&SEAS[e.m].midPaid>0)midCount++;});
+    sh+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">\ud83e\uddfe Mid-Season gi\u00e0 erogato</div>';
+    sh+='<div style="font-size:10px;color:#8a8680;margin-bottom:10px">Importa gli importi realmente erogati a met\u00e0 stagione, per matricola (es. lo stesso file esportato dal tab Mid-Season, colonna <b>MID-SEASON LC</b>). Vengono detratti automaticamente dal premio di fine stagione, in tab calcoli, export e lettere.</div>';
+    sh+='<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">';
+    sh+='<label class="exp-btn btn-amber" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">\ud83d\udcc2 Carica Mid-Season Erogato (.xlsx)<input type="file" accept=".xlsx,.xls,.csv" onchange="loadMidSeasonPaidExcel(this)" style="display:none"></label>';
+    if(midCount>0)sh+='<span style="font-size:10px;color:#2d7a3a;font-weight:600">\u2705 '+midCount+' dipendenti con acconto registrato</span>';
+    else sh+='<span style="font-size:10px;color:#a09a92">Nessun acconto registrato</span>';
+    sh+='</div></div>';
+  }
 
   // === VISUAL IN STORE: import diretto (solo mensile, P+C) ===
   if(!isSeasonal){

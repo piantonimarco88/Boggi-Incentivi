@@ -157,6 +157,18 @@ function rSources(){try{
   checks.forEach(function(ck){sh+='<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:'+(ck.ok?"#f0faf2":"#fef6f0")+';border-radius:5px;border:1px solid '+(ck.ok?"#d4edda":"#f8d7da")+'"><span style="font-size:12px">'+(ck.ok?"\u2705":"\u274c")+'</span><span style="font-size:10px;font-weight:600">'+ck.l+"</span></div>"});
   sh+="</div></div>";
 
+  // === SEASONAL: import Mid-Season gi\u00e0 erogato (solo semestrale, consuntivo) ===
+  if(isSeasonal&&!isMid&&!isP){
+    var midCount=0;E.forEach(function(e){if(isSMVSM(e)&&SEAS[e.m]&&SEAS[e.m].midPaid>0)midCount++;});
+    sh+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">\ud83e\uddfe Mid-Season gi\u00e0 erogato</div>';
+    sh+='<div style="font-size:10px;color:#8a8680;margin-bottom:10px">Importa gli importi realmente erogati a met\u00e0 stagione, per matricola (es. lo stesso file esportato dal tab Mid-Season, colonna <b>MID-SEASON LC</b>). Vengono detratti automaticamente dal premio di fine stagione, in tab calcoli, export e lettere.</div>';
+    sh+='<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">';
+    sh+='<label class="exp-btn btn-amber" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">\ud83d\udcc2 Carica Mid-Season Erogato (.xlsx)<input type="file" accept=".xlsx,.xls,.csv" onchange="loadMidSeasonPaidExcel(this)" style="display:none"></label>';
+    if(midCount>0)sh+='<span style="font-size:10px;color:#2d7a3a;font-weight:600">\u2705 '+midCount+' dipendenti con acconto registrato</span>';
+    else sh+='<span style="font-size:10px;color:#a09a92">Nessun acconto registrato</span>';
+    sh+='</div></div>';
+  }
+
   // === VISUAL IN STORE: import diretto (solo mensile, P+C) ===
   if(!isSeasonal){
     var vlCount=Object.keys(VL).length;

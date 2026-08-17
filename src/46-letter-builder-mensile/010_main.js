@@ -303,6 +303,8 @@ var SEAS_TR={
     incentive_paid:"INCENTIVO EROGATO",
     incentive_max:"INCENTIVO MAX",
     forecast_intro:"Di seguito il bonus massimo potenziale per ",
+    mid_deducted:"MID-SEASON GIÀ EROGATO",
+    seas_net:"SALDO DA EROGARE A FINE STAGIONE",
     greeting:{"ITALIANO":"Ciao","INGLESE":"Hi","FRANCESE":"Bonjour","TEDESCO":"Hallo","SPAGNOLO":"Hola"}
   },
   "INGLESE":{
@@ -354,6 +356,8 @@ var SEAS_TR={
     incentive_paid:"INCENTIVE PAID",
     incentive_max:"INCENTIVE MAX",
     forecast_intro:"Below is the maximum potential bonus for ",
+    mid_deducted:"MID-SEASON ALREADY PAID",
+    seas_net:"BALANCE DUE AT SEASON END",
     greeting:{"ITALIANO":"Ciao","INGLESE":"Hi","FRANCESE":"Bonjour","TEDESCO":"Hallo","SPAGNOLO":"Hola"}
   },
   "FRANCESE":{
@@ -405,6 +409,8 @@ var SEAS_TR={
     incentive_paid:"INCITATION ACCORDÉE",
     incentive_max:"INCITATION MAX",
     forecast_intro:"Ci-dessous le bonus potentiel maximum pour ",
+    mid_deducted:"MID-SEASON DÉJÀ VERSÉ",
+    seas_net:"SOLDE À VERSER EN FIN DE SAISON",
     greeting:{"ITALIANO":"Ciao","INGLESE":"Hi","FRANCESE":"Bonjour","TEDESCO":"Hallo","SPAGNOLO":"Hola"}
   },
   "TEDESCO":{
@@ -456,6 +462,8 @@ var SEAS_TR={
     incentive_paid:"BEZAHLTER ANREIZ",
     incentive_max:"MAX ANREIZ",
     forecast_intro:"Nachfolgend der maximale potenzielle Bonus für ",
+    mid_deducted:"MID-SEASON BEREITS AUSGEZAHLT",
+    seas_net:"RESTBETRAG ZUM SAISONENDE",
     greeting:{"ITALIANO":"Ciao","INGLESE":"Hi","FRANCESE":"Bonjour","TEDESCO":"Hallo","SPAGNOLO":"Hola"}
   },
   "SPAGNOLO":{
@@ -507,6 +515,8 @@ var SEAS_TR={
     incentive_paid:"INCENTIVO PAGADO",
     incentive_max:"INCENTIVO MÁX",
     forecast_intro:"A continuación el bono potencial máximo para ",
+    mid_deducted:"MID-SEASON YA PAGADO",
+    seas_net:"SALDO A PAGAR AL FINAL DE TEMPORADA",
     greeting:{"ITALIANO":"Ciao","INGLESE":"Hi","FRANCESE":"Bonjour","TEDESCO":"Hallo","SPAGNOLO":"Hola"}
   }
 };
@@ -556,6 +566,11 @@ function buildSeasonalLetter(e){
   // MID SEASON values: 30% of max
   var midPct=0.30;
   var midMax=Math.round(kpiIncentiveMax*midPct*100)/100;
+  // Importo realmente erogato a mid-season (importato da loadMidSeasonPaidExcel), da detrarre a saldo.
+  // seasonalNet usa calcSeasonal() come unica fonte di verità (stessa cifra di tab/export:
+  // evita un possibile scarto di arrotondamento tra il calcolo locale qui sopra e quello centralizzato).
+  var midPaid=(!isP&&SEAS[e.m]&&SEAS[e.m].midPaid>0)?SEAS[e.m].midPaid:0;
+  var seasonalNet=calcSeasonal(e);
 
   var stagione=CFG_SEASON+String(CFG_YEAR).slice(-2); // e.g. FW26 or SS26
   var h='<div class="lt">';
@@ -760,12 +775,20 @@ function buildSeasonalLetter(e){
   h+='<div class="lt-total-val">'+fc(seasonal,cu)+'</div>';
   h+='</div>';
 
-  // MID SEASON bar
+  // MID SEASON bar \u2014 preventivo: potenziale al checkpoint; consuntivo: importo gi\u00e0 erogato (dedotto dal saldo)
   h+='<div style="background:#3d3a36;padding:12px 32px;display:flex;justify-content:space-between;align-items:center">';
-  h+='<div><div style="font-size:9px;text-transform:uppercase;letter-spacing:2px;color:#a09a92">'+T.mid_max+'</div>';
-  h+='<div style="font-size:10px;color:#a09a92;margin-top:2px">'+fc(kpiIncentive,cu)+' \u00d7 30%</div></div>';
-  h+='<div style="font-size:18px;font-weight:800;color:#a09a92">'+fc(isP?midMax:0,cu)+'</div>';
+  h+='<div><div style="font-size:9px;text-transform:uppercase;letter-spacing:2px;color:#a09a92">'+(isP?T.mid_max:(T.mid_deducted||T.mid_max))+'</div>';
+  h+='<div style="font-size:10px;color:#a09a92;margin-top:2px">'+(isP?fc(kpiIncentive,cu)+' \u00d7 30%':'')+'</div></div>';
+  h+='<div style="font-size:18px;font-weight:800;color:#a09a92">'+(isP?fc(midMax,cu):(midPaid>0?'\u2212'+fc(midPaid,cu):fc(0,cu)))+'</div>';
   h+='</div>';
+
+  // SALDO (netto da erogare) \u2014 solo in consuntivo, dopo la detrazione del mid-season
+  if(!isP){
+    h+='<div style="background:#2d7a3a;padding:14px 32px;display:flex;justify-content:space-between;align-items:center">';
+    h+='<div style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#eafaf0;font-weight:700">'+(T.seas_net||T.seas_earned)+'</div>';
+    h+='<div style="font-size:20px;font-weight:800;color:#fff">'+fc(seasonalNet,cu)+'</div>';
+    h+='</div>';
+  }
 
   // Footer
   h+='<div class="lt-footer">'+esc(getDiscl(e))+'</div>';

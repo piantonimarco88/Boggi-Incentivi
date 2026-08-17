@@ -225,6 +225,65 @@ function exportMidSeasonExcel(){
   XLSX.writeFile(wb,"Incentivi_MidSeason_"+stagione+".xlsx");
 }
 
+// === IMPORT: Mid-Season gi\u00e0 erogato ===
+// Importa gli importi realmente erogati a met\u00e0 stagione (per matricola) e li
+// scrive in SEAS[matricola].midPaid, in valuta locale (LC). calcSeasonal()
+// li detrae automaticamente dal premio di fine stagione (gi\u00e0 floor a 0).
+// Accetta lo stesso file esportato da exportMidSeasonExcel (colonna "MID-SEASON LC"),
+// o qualunque file con colonne MATRICOLA + importo.
+function _normMatr(s){
+  s=String(s||'').trim().toUpperCase();
+  return /^[0-9]+$/.test(s)?String(parseInt(s,10)):s;
+}
+function loadMidSeasonPaidExcel(input){
+  var f=input.files[0];if(!f)return;input.value="";
+  var reader=new FileReader();reader.onload=function(ev){try{
+    var data=new Uint8Array(ev.target.result);
+    var wb=XLSX.read(data,{type:"array"});
+    var ws=wb.Sheets[wb.SheetNames[0]];
+    var json=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
+    if(json.length<2){alert("File Mid-Season vuoto.");return;}
+    // Trova header row
+    var hdrRow=0;
+    for(var ri=0;ri<Math.min(5,json.length);ri++){
+      var rs=(json[ri]||[]).map(function(c){return String(c||'').toLowerCase()}).join('|');
+      if(rs.indexOf('matr')>=0){hdrRow=ri;break;}
+    }
+    // Rileva colonne MATRICOLA e importo. Preferisce una colonna "MID-SEASON ... LC"
+    // (valuta locale, coerente col resto del calcolo); in mancanza, la prima colonna
+    // "mid-season"/"erogat"/"pagat" trovata, escludendo esplicitamente le colonne EUR.
+    var hdr={matr:-1,amt:-1,amtIsLC:false};
+    (json[hdrRow]||[]).forEach(function(cell,ci){
+      var s=String(cell||'').toLowerCase().trim();
+      if(hdr.matr<0&&(s.indexOf('matr')>=0||s==='id'))hdr.matr=ci;
+      var isMidCol=s.indexOf('mid')>=0||s.indexOf('erogat')>=0||s.indexOf('pagat')>=0||s.indexOf('paid')>=0;
+      if(!isMidCol)return;
+      var isLC=s.indexOf('lc')>=0&&s.indexOf('eur')<0;
+      if(hdr.amt<0||(isLC&&!hdr.amtIsLC)){hdr.amt=ci;hdr.amtIsLC=isLC;}
+    });
+    if(hdr.matr<0||hdr.amt<0){alert('Colonne MATRICOLA o importo Mid-Season non trovate.\n\nColonne rilevate:\n'+(json[hdrRow]||[]).join(', '));return;}
+    if(!hdr.amtIsLC&&!confirm('Attenzione: non ho trovato una colonna esplicitamente "LC" (valuta locale) \u2014 user\u00f2 la colonna "'+(json[hdrRow]||[])[hdr.amt]+'".\nSe \u00e8 un importo in EUR e non in valuta locale, il calcolo sar\u00e0 errato.\n\nContinuare?'))return;
+    // Lookup matricole esistenti (SM/VSM), normalizzate per tollerare padding/zeri diversi
+    var matrLookup={};
+    E.forEach(function(e){if(isSMVSM(e))matrLookup[_normMatr(e.m)]=e.m;});
+    var matched=0,unmatched=[];
+    for(var ri2=hdrRow+1;ri2<json.length;ri2++){
+      var row=json[ri2];if(!row)continue;
+      var rawMatr=row[hdr.matr];if(rawMatr===null||rawMatr===undefined||String(rawMatr).trim()==='')continue;
+      var amt=parseFloat(String(row[hdr.amt]||'0').replace(',','.').replace(/[^0-9.\-]/g,''))||0;
+      var key=matrLookup[_normMatr(rawMatr)];
+      if(!key){unmatched.push(String(rawMatr));continue;}
+      if(!SEAS[key])SEAS[key]={};
+      SEAS[key].midPaid=amt;
+      matched++;
+    }
+    var msg='Mid-Season erogato importato!\n\n'+matched+' dipendenti aggiornati.';
+    if(unmatched.length)msg+='\n\n'+unmatched.length+' matricole non trovate in anagrafica (ignorate):\n'+unmatched.slice(0,15).join(', ')+(unmatched.length>15?'\n...':'');
+    alert(msg);
+    autoSave();rSources();rC();
+  }catch(ex){alert('Errore lettura Mid-Season: '+ex.message);}};reader.readAsArrayBuffer(f);
+}
+
 // === rCSeasonal: Calcolo Premi in modalit\u00e0 Seasonal ===
 var _seasF={q:'',s:'ALL',j:'ALL'};
 function rCSeasonal(){
@@ -238,11 +297,12 @@ function rCSeasonal(){
   });
 
   function calcSeasonalRow(e){
-    // Dept stores internazionali: BDG×6 + QTY (50% di BDG×6)
+    // Dept stores internazionali: BDG×6 + QTY (50% di BDG×6) — no mid-season per i dept
     if(isD(e.si)){
       var bdg6=Math.round((e.ib||0)*6*100)/100;
       var qty6=Math.round(bdg6*0.5*100)/100;
-      return {isDept:true,bdg6:bdg6,qty6:qty6,val:Math.round((bdg6+qty6)*100)/100,kpiScore:1,m1:1,m2:1,auto:null};
+      var grossD=Math.round((bdg6+qty6)*100)/100;
+      return {isDept:true,bdg6:bdg6,qty6:qty6,gross:grossD,midPaid:0,val:calcSeasonal(e),kpiScore:1,m1:1,m2:1,auto:null};
     }
     var rlSem=(e.rl||0)*6;
     var base=rlSem*SEAS_CFG.basePct;
@@ -253,7 +313,10 @@ function rCSeasonal(){
     else{kpiSet.forEach(function(kdef){if(!seasKpiActive(kdef.k,e))return;if(seasIsKpiAchieved(kdef,auto))kpiScore+=kdef.weight;});}
     var m1=isP?seasMoltTurnover(3.01):seasMoltTurnover(auto?auto.scost:0);
     var m2=isP?seasMoltInventarioV(0):seasMoltInventarioV(auto?auto.inv:0);
-    return {isDept:false,kpiScore:kpiScore,m1:m1,m2:m2,auto:auto,val:Math.round(base*kpiScore*m1*m2*100)/100};
+    var gross=Math.round(base*kpiScore*m1*m2*100)/100;
+    var midPaid=(!isP&&SEAS[e.m]&&SEAS[e.m].midPaid>0)?SEAS[e.m].midPaid:0;
+    // val (netto) usa calcSeasonal come unica fonte di verità: stessa cifra di lettere/export
+    return {isDept:false,kpiScore:kpiScore,m1:m1,m2:m2,auto:auto,gross:gross,midPaid:midPaid,val:calcSeasonal(e)};
   }
 
   var grandTotal=0;
@@ -314,7 +377,9 @@ function rCSeasonal(){
     h+='<th style="text-align:center;white-space:nowrap">M.Inv.</th>';
   }
   h+='<th style="text-align:center;white-space:nowrap">BOOST<br><span style="font-weight:400;font-size:9px">T&times;I</span></th>';
-  h+='<th class="r">TOTALE</th>';
+  h+='<th class="r" style="color:#8a8680">LORDO</th>';
+  if(!isP)h+='<th class="r" style="color:#cf8b4e">MID-SEASON<br><span style="font-weight:400;font-size:9px">gi&agrave; erogato</span></th>';
+  h+='<th class="r">TOTALE'+(!isP?' NETTO':'')+'</th>';
   h+='<th class="r" style="color:#5b6abf">TOT &euro;</th>';
   h+='<th style="cursor:default">Escl.</th>';
   h+='</tr></thead><tbody>';
@@ -394,6 +459,8 @@ function rCSeasonal(){
       }
       h+='<td class="r mn b" style="color:'+(boostTot>=1.3?'#2d7a3a':boostTot===0?'#c0392b':'#cf8b4e')+'">'+boostTot.toFixed(2)+'</td>';
     } // end else (non-dept)
+    h+='<td class="r mn gy">'+fc(row.gross,cu)+'</td>';
+    if(!isP)h+='<td class="r mn" style="color:'+(row.midPaid>0?'#cf8b4e':'#b0a99f')+'">'+(row.midPaid>0?'&minus;'+fc(row.midPaid,cu):'&mdash;')+'</td>';
     h+='<td class="r mn b seas-tot-'+esc(e.m)+'" style="color:'+(tot>0?'#2c2925':'#b0a99f')+'">'+fc(tot,cu)+'</td>';
     h+='<td class="r mn" style="color:#5b6abf">'+fc(Math.round(tot*(e.ex||1)*100)/100,'EUR')+'</td>';
     h+='<td style="text-align:center"><button class="tb '+(excl?'x':'o')+' seas-excl" data-sm="'+esc(e.m)+'" style="width:28px;height:16px" onclick="event.stopPropagation()"><span class="tk" style="width:10px;height:10px;top:3px"></span></button></td>';
@@ -520,7 +587,7 @@ function exportSeasonalExcel(){
 
     // Results
     var gross=isDept?Math.round((e.ib||0)*6*1.5*100)/100:Math.round(base*kpiScore*m1*m2*100)/100;
-    var net=Math.max(0,Math.round((gross-midPaid)*100)/100);
+    var net=calcSeasonal(e); // unica fonte di verità: stessa cifra di tab e lettere
     var totLC=excl?0:net;
     var totEUR=Math.round(totLC*ex*100)/100;
     r.push(excl?0:gross, midPaid, totLC, totEUR, excl?'SI':'NO');
