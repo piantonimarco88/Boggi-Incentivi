@@ -52,6 +52,36 @@ function rebuildFilters(){
 var uJ=["ALL"],uS=["ALL"];
 rebuildFilters();
 
+// ── Riassegnazione manuale negozio (tab Calcolo Premi, mensile) ──────────────
+// Elenco unico {si,s} derivato dagli stessi dipendenti (nessuna anagrafica negozi
+// separata in questo formato): un negozio "esiste" se almeno un dipendente ci è assegnato.
+var _storeEditMatr=null;
+function _allStoresList(){
+  var seen={},list=[];
+  E.forEach(function(e){var sid=String(e.si);if(e.si!=null&&!seen[sid]){seen[sid]=1;list.push({si:e.si,s:e.s||sid});}});
+  list.sort(function(a,b){return(Number(a.si)||0)-(Number(b.si)||0);});
+  return list;
+}
+function startEditStore(matr){_storeEditMatr=matr;rC();}
+function cancelEditStore(){_storeEditMatr=null;rC();}
+function changeEmployeeStore(matr,newSi){
+  var emp=null;for(var i=0;i<E.length;i++){if(E[i].m===matr){emp=E[i];break;}}
+  if(!emp)return;
+  var target=null,stores=_allStoresList();
+  for(var j=0;j<stores.length;j++){if(String(stores[j].si)===String(newSi)){target=stores[j];break;}}
+  if(!target)return;
+  emp.si=target.si;emp.s=target.s;
+  if(!D.s[String(target.si)])D.s[String(target.si)]={l:"",f:0,s:0,e:0,r:0};
+  // Riallinea l'email del Field Coach (usata per distribuzione/invio PDF raggruppato per FC):
+  // altrimenti resterebbe quella del negozio precedente, perché _distMf() preferisce
+  // e.mf se già valorizzata e non la ricalcola da sola.
+  var _mp=FC_MAP[String(target.si)],_newMf="";
+  if(_mp){var _fa=Array.isArray(_mp.fc)?_mp.fc[0]:_mp.fc;if(_fa&&FC_EMP[_fa]){var _fe=FC_EMP[_fa];_newMf=(_fe.n+" "+_fe.c).toLowerCase().replace(/ /g,".")+"@boggi.com";}}
+  emp.mf=_newMf;
+  _storeEditMatr=null;
+  rebuildFilters();autoSave();rC();rA();rSources();
+}
+
 // Store flags: modifiers applied to all employees in a store
 var STORE_FLAGS={}; // {storeId: {dept:bool, noSas:bool, noDig:bool, digType:"classic"|"mobility"}}
 initStoreFlags(); // seed from DEPT list

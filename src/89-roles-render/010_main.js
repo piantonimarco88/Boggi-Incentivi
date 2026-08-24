@@ -7,19 +7,20 @@ function gR(e){
     var rp=USA_P[job]||{noTargetMult:0.4,targetMult:1.0,useStore:false};
     var usaDept=ud.isDept||(STORE_FLAGS[String(e.si)]&&STORE_FLAGS[String(e.si)].usaDept);
     var useStoreSales=rp.useStore||usaDept;
-    var storePct=tg.to>0?cn.sc/tg.to:0,storeHit=MODE==="preventivo"||storePct>=PARAMS.bdg100||(MODE==="consuntivo"&&e.ov_b100==="SI");
+    var esP=sasNewActive()?(cn.esP||0):0;
+    var storePct=tg.to>0?(cn.sc+esP)/tg.to:0,storeHit=MODE==="preventivo"||storePct>=PARAMS.bdg100||(MODE==="consuntivo"&&e.ov_b100==="SI");
     var base,baseLabel;
     if(useStoreSales){base=MODE==="preventivo"?(tg.to||0):(cn.sc||0);baseLabel="fatturato negozio"}
     else{base=ud.ps||0;baseLabel="vendite personali"}
     var mult=storeHit?rp.targetMult:rp.noTargetMult;var prize=Math.round(base*cm*mult*100)/100;
     var tPct=(rp.targetMult*100).toFixed(0),ntPct=(rp.noTargetMult*100).toFixed(0);
     if(MODE==="preventivo"){
-      // USA preventivo: mostra solo la logica del premio, non il massimale (non calcolabile)
       var baseDesc=useStoreSales?("Fatturato negozio \u00d7 "+(cm*100).toFixed(2)+"%"): ("Vendite personali \u00d7 "+(cm*100).toFixed(2)+"%");
       R.push({t:"info",x:"Premio: "+baseDesc+". Erogazione: "+tPct+"% se store a target, "+ntPct+"% se non a target. Importo calcolato a consuntivo."});
     }else{
-      if(storeHit)R.push({t:"success",x:fc(prize,cu)+" \u2014 Commission "+(cm*100).toFixed(2)+"% \u00d7 "+fc(base,cu)+" ("+baseLabel+") \u00d7 "+tPct+"%. Store "+(storePct*100).toFixed(1)+"% \u2265 target."});
-      else R.push({t:"partial",x:fc(prize,cu)+" \u2014 Commission "+(cm*100).toFixed(2)+"% \u00d7 "+fc(base,cu)+" ("+baseLabel+") \u00d7 "+ntPct+"%. Store "+(storePct*100).toFixed(1)+"% < target."});
+      var esPNote=esP>0?" (incl. esubero prec. "+fc(esP,cu)+")":"";
+      if(storeHit)R.push({t:"success",x:fc(prize,cu)+" \u2014 Commission "+(cm*100).toFixed(2)+"% \u00d7 "+fc(base,cu)+" ("+baseLabel+") \u00d7 "+tPct+"%. Store "+(storePct*100).toFixed(1)+"%"+esPNote+" \u2265 target."});
+      else R.push({t:"partial",x:fc(prize,cu)+" \u2014 Commission "+(cm*100).toFixed(2)+"% \u00d7 "+fc(base,cu)+" ("+baseLabel+") \u00d7 "+ntPct+"%. Store "+(storePct*100).toFixed(1)+"%"+esPNote+" < target."});
     }
     var at=aggTotal(e.m);if(at>0)R.push({t:"success",x:fc(at,cu)+" \u2014 Aggiunte."});
     return R;

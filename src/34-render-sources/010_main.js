@@ -20,10 +20,11 @@ function rSources(){try{
   if(REGION==="international"&&(PRIZE_MODE==="mensile"||PRIZE_MODE==="seasonal"))sh+='<label class="exp-btn btn-blue" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="Stessa anagrafica FC+VM — estrae solo il mapping Store→FC per popolare le email FC dei dipendenti">&#128101; Mapping FC (xlsx)<input type="file" accept=".xlsx,.xlsm,.xls" id="loadFcMapping" style="display:none"></label>';
   sh+='<label class="exp-btn primary" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128194; Carica Excel Target<input type="file" accept=".xlsx,.xlsm,.xls,.csv" id="loadTarget" style="display:none"></label>';
   sh+='<label class="exp-btn btn-purple" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128202; Carica Excel Results<input type="file" accept=".xlsx,.xlsm,.xls,.csv" id="loadCons" style="display:none"></label>';
+  if(REGION==="international"&&!isP&&sasNewActive())sh+='<label class="exp-btn btn-amber" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="Stesso formato BDG Results del mese precedente — estrae solo esubero per negozi USA">&#127482;&#127480; Esubero Prec. USA<input type="file" accept=".xlsx,.xlsm,.xls,.csv" onchange="loadUSAPrevResults(this.files[0]);this.value=\'\';" style="display:none"></label>';
   sh+='<button class="exp-btn btn-green" onclick="runValidationsAndReport(\'Verifica dati caricati\')" title="Esegue controlli di coerenza su anagrafica e configurazione: matricole duplicate, currency mancanti, store sconosciuti, ruoli non validi, ecc.">&#128269; Verifica Dati</button>';
   sh+='<button class="exp-btn btn-red" onclick="resetAllData()">&#128465; Reset Dati</button>';
   sh+='</div>';
-  sh+='<div style="font-size:9px;color:#a09a92;margin-top:6px">Anagrafica: carica il file con matricola, cognome, nome, negozio, ruolo, stipendio. Auto-scan: cerca i dati necessari in tutti i fogli.<br>🇺🇸 Anagrafica USA: formato Estrazione_Piantoni — col. A=StoreID, B=Store, C=Nome, D=Cognome, E=Job, G=Commission%, I=Tipo negozio. Righe con 0% escluse automaticamente.</div>';
+  sh+='<div style="font-size:9px;color:#a09a92;margin-top:6px">Anagrafica: carica il file con matricola, cognome, nome, negozio, ruolo, stipendio. Auto-scan: cerca i dati necessari in tutti i fogli.<br>🇺🇸 Anagrafica USA: formato Estrazione_Piantoni — col. A=StoreID, B=Store, C=Nome, D=Cognome, E=Job, G=Commission%, I=Tipo negozio. Righe con 0% escluse automaticamente. Colonna "Email" (se presente, rilevata per header) popola la mail diretta del dipendente per il tab Distribuzione.</div>';
   sh+='<div id="scanResults"></div></div>';
 
   // Shared checks used in both seasonal and mensile blocks
@@ -150,6 +151,7 @@ function rSources(){try{
       if(!isIT){
         var hasUSAps=Object.keys(D.usa||{}).length>0&&Object.keys(D.usa).some(function(k){return(D.usa[k].ps||0)>0});
         checks.push({l:"Fatt. Personale USA",ok:hasUSAps,v:hasUSAps?"OK":"Da caricare"});
+        if(sasNewActive()){var hasUSAesP=Object.keys(D.c||{}).some(function(k){return USA_STORES.indexOf(Number(k))>=0&&(D.c[k].esP||0)>0;});checks.push({l:"🇺🇸 Esubero Prec. USA",ok:hasUSAesP,v:hasUSAesP?"OK":"Opzionale"});}
       }
     }
   }
@@ -341,6 +343,7 @@ var storeFilter="";
   }
   var totEur=0,nFull=0,nPartial=0,nPartialNosy=0,nNone=0,nPrev=0,nSospesi=0;
   var totTargetEur=0,totConsEur=0,totEsuberoEur=0;
+  var totSasRecEur=0,totSasUsedEur=0,totSasReserveEur=0,nSasFC=0;
   var fcData=[],vmData=[];
   pool.forEach(function(emp){
     var r=calcFcVmPremio(emp.m);
@@ -349,6 +352,7 @@ var storeFilter="";
     totTargetEur+=r.totTarget;
     totConsEur+=(!isP?r.totCons:r.totTarget);
     totEsuberoEur+=(!isP?r.totEsubero:0);
+    if(!isP){totSasRecEur+=r.totSasRec||0;totSasUsedEur+=r.totSasUsed||0;totSasReserveEur+=r.totSasReserveOut||0;if((r.totSasRec||0)>0||(r.totSasUsed||0)>0)nSasFC++;}
     if(r.esito==='sospeso')nSospesi++;
     else if(r.esito==='full')nFull++;
     else if(r.esito==='partial')nPartial++;
@@ -372,24 +376,15 @@ var storeFilter="";
   });
   h+='</div>';
 
-  // Riepilogo SAS → fatturato (da Luglio 2026, consuntivo). Aggregato per negozio.
-  if(typeof sasNewActive==='function'&&sasNewActive()&&!isP){
-    var _fV=0,_fR=0,_fA=0,_fRes=0,_fN=0;
-    Object.keys(FC_RESULTS||{}).forEach(function(sid){
-      var cn=FC_RESULTS[sid]||{},tg=FC_TARGETS[sid]||{};
-      var rec=sasRecognizedValue(cn.acc,cn.vel,cn.sasv_eur||0);
-      if(rec<=0&&!((cn.sasr_eur||0)>0))return;
-      var sr=sasReserveCalc(cn.sc_eur||0,tg.to_eur||0,rec,cn.sasr_eur||0);
-      _fV+=cn.sasv_eur||0;_fR+=rec;_fA+=sr.used;_fRes+=sr.reserveOut;_fN++;
+  // Riepilogo SAS → fatturato (da Luglio 2026, consuntivo). Aggregato per area Field Coach/VM
+  // (dato QWRT per field_coach, non più per negozio — vedi FC_AREA_SAS).
+  if(typeof sasNewActive==='function'&&sasNewActive()&&!isP&&nSasFC>0){
+    h+='<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:700;color:#a07d2c;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Valore SAS → Fatturato (EUR) — '+nSasFC+' aree</div>';
+    h+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">';
+    [{l:'Riconosciuto',v:totSasRecEur,c:'#c9a96e'},{l:'Applicato al fatturato',v:totSasUsedEur,c:'#2d7a3a'},{l:'Riserva riportata',v:totSasReserveEur,c:'#5ba4cf'}].forEach(function(s){
+      h+='<div style="background:#faf9f7;border:1px solid #e5e1db;border-radius:8px;padding:12px;text-align:center"><div style="font-size:18px;font-weight:800;color:'+s.c+'">'+fc(s.v,"EUR")+'</div><div style="font-size:10px;color:#8a8680;margin-top:3px">'+s.l+'</div></div>';
     });
-    if(_fN>0){
-      h+='<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:700;color:#a07d2c;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">Valore SAS → Fatturato (EUR) — '+_fN+' negozi</div>';
-      h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">';
-      [{l:'Valore SAS negozi',v:_fV,c:'#a07d2c'},{l:'Riconosciuto',v:_fR,c:'#c9a96e'},{l:'Applicato al fatturato',v:_fA,c:'#2d7a3a'},{l:'Riserva riportata',v:_fRes,c:'#5ba4cf'}].forEach(function(s){
-        h+='<div style="background:#faf9f7;border:1px solid #e5e1db;border-radius:8px;padding:12px;text-align:center"><div style="font-size:18px;font-weight:800;color:'+s.c+'">'+fc(s.v,"EUR")+'</div><div style="font-size:10px;color:#8a8680;margin-top:3px">'+s.l+'</div></div>';
-      });
-      h+='</div></div>';
-    }
+    h+='</div></div>';
   }
 
   // Totali fatturato + premi

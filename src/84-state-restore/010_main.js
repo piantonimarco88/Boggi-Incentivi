@@ -33,6 +33,7 @@ if(window._autoState){try{
   if(as.vl)VL=as.vl;
   if(as.monthly_syly)MONTHLY_SYLY=as.monthly_syly;
   if(as.monitor_snaps)MONITOR_SNAPS=as.monitor_snaps;
+  if(as.mail_log)MAIL_LOG=as.mail_log;
   // FC+VM: ripristina prima di setPrizeMode (che chiama rAFcvm con lang già popolato)
   if(as.fc_emp)FC_EMP=as.fc_emp;
   if(as.fc_map)FC_MAP=as.fc_map;
@@ -43,6 +44,7 @@ if(window._autoState){try{
   if(as.agg_fcvm)AGG_FCVM=as.agg_fcvm;
   if(as.fc_overrides)FC_OVERRIDES=as.fc_overrides;
   if(as.fc_prev_results)FC_PREV_RESULTS=as.fc_prev_results;
+  if(as.fc_area_sas)FC_AREA_SAS=as.fc_area_sas;
   delete window._autoState;
 }catch(ex){/* autoState restore failed, use defaults */}}
 // Ensure all RL roles exist in TC (runs ALWAYS, even if autoState restore failed)
@@ -58,6 +60,47 @@ RL.forEach(function(r){if(!TC[r]){TC[r]={};KP.forEach(function(k){
 // Aggiorna badge versione con APP_VERSION
 (function(){var b=document.getElementById("appVerBadge");if(b&&typeof APP_VERSION!=="undefined")b.textContent="v"+APP_VERSION;})();
 
+// Banner "novità" in-app: mostrato quando APP_VERSION cambia rispetto all'ultima volta
+// che l'app è stata aperta su questo PC (localStorage, sopravvive alla sostituzione di
+// app.html fatta dall'auto-update). Non richiede rebuild/reinstall del wrapper .exe.
+// Non mostrato se non c'è mai stato uso precedente dell'app su questo PC (installazione
+// pulita) — ma un'installazione con dati già salvati (stato autoSave/wrapper) conta come
+// "uso precedente" anche se questa è la prima esecuzione del codice che traccia la versione
+// vista (altrimenti il primo aggiornamento dopo l'introduzione di questa funzionalità
+// verrebbe scambiato per un'installazione nuova e il banner non comparirebbe mai).
+(function(){
+  try{
+    if(typeof APP_VERSION==="undefined")return;
+    var _lastSeen=localStorage.getItem("boggi_last_seen_version");
+    var _hasPriorUsage=!!_lastSeen||!!window.__BOGGI_HAS_STATE__||!!localStorage.getItem("boggi_state");
+    if(_hasPriorUsage&&_lastSeen!==APP_VERSION){
+      setTimeout(function(){_showChangelogBanner(APP_VERSION);},400);
+    }
+    localStorage.setItem("boggi_last_seen_version",APP_VERSION);
+  }catch(ex){}
+})();
+function _showChangelogBanner(toVer){
+  try{
+    var items=(typeof APP_CHANGELOG!=="undefined"?APP_CHANGELOG:[]).slice(0,6);
+    if(!items.length)return;
+    var d=document.createElement("div");
+    d.id="_changelogBanner";
+    d.style.cssText="position:fixed;bottom:18px;right:18px;max-width:340px;background:#2c2925;color:#f5f4f1;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.35);padding:14px 16px;z-index:99999;font-family:inherit;font-size:12px;line-height:1.5";
+    var h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+    h+='<div style="font-weight:700;color:#c9a96e;font-size:12px">✨ Aggiornato a v'+esc(toVer)+'</div>';
+    h+='<button id="_changelogBannerClose" style="background:none;border:none;color:#a09a92;font-size:15px;cursor:pointer;line-height:1;padding:0 0 0 8px" title="Chiudi">&#10005;</button>';
+    h+='</div>';
+    h+='<ul style="margin:0;padding-left:16px">';
+    items.forEach(function(it){h+='<li style="margin-bottom:3px">'+esc(it)+'</li>';});
+    h+='</ul>';
+    d.innerHTML=h;
+    document.body.appendChild(d);
+    var closeBtn=document.getElementById("_changelogBannerClose");
+    if(closeBtn)closeBtn.onclick=function(){if(d.parentNode)d.parentNode.removeChild(d);};
+    setTimeout(function(){if(d.parentNode)d.parentNode.removeChild(d);},20000);
+  }catch(ex){}
+}
+
 function autoSave(){
   try{
     var state={
@@ -70,8 +113,8 @@ function autoSave(){
       monthly_syly:MONTHLY_SYLY,
       fc_emp:FC_EMP,fc_map:FC_MAP,fc_targets:FC_TARGETS,fc_results:FC_RESULTS,
       fc_syly:FC_SYLY,fc_store_flags:FC_STORE_FLAGS,agg_fcvm:AGG_FCVM,
-      fc_overrides:FC_OVERRIDES,fc_prev_results:FC_PREV_RESULTS,
-      monitor_snaps:MONITOR_SNAPS,
+      fc_overrides:FC_OVERRIDES,fc_prev_results:FC_PREV_RESULTS,fc_area_sas:FC_AREA_SAS,
+      monitor_snaps:MONITOR_SNAPS,mail_log:MAIL_LOG,
       ts:new Date().toISOString()
     };
     var payload=JSON.stringify(state);

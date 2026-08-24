@@ -24,16 +24,7 @@ function calcFcVmPremio(matr){
     var flg=FC_STORE_FLAGS[sid]||{};
     var to=(!flg.excl_fatt)?(tg.to_eur||0):0;
     var sc=(!flg.excl_fatt)?(isCons?(cn.sc_eur||0):to):0;
-    // SAS riconosciuto del negozio (da Luglio 2026, EUR): colma il gap al target, cap 100%, avanzo→riserva
-    var sasUsed=0,sasRec=0,sasResIn=0,sasResOut=0;
-    if(isCons&&sasNewActive()&&!flg.excl_fatt){
-      sasRec=sasRecognizedValue(cn.acc,cn.vel,cn.sasv_eur||0);
-      sasResIn=cn.sasr_eur||0;
-      var _sr=sasReserveCalc(sc,to,sasRec,sasResIn);
-      sasUsed=_sr.used;sasResOut=_sr.reserveOut;
-      totSasUsed+=sasUsed;totSasReserveOut+=sasResOut;
-    }
-    totTarget+=to; totCons+=sc+sasUsed;
+    totTarget+=to; totCons+=sc;
     // SY LY aggregata (esclusa se excl_sy)
     if(!flg.excl_sy&&ly.sales_ly!=null&&ly.footfall_ly!=null&&ly.footfall_ly>0){
       totSalesLy+=ly.sales_ly; totFootfallLy+=ly.footfall_ly; hasSyLy=true;
@@ -42,8 +33,23 @@ function calcFcVmPremio(matr){
     if(!flg.excl_sy&&isCons&&cn.sc_eur!=null&&cn.footfall_cy!=null&&cn.footfall_cy>0){
       totSalesCy+=cn.sc_eur; totFootfallCy+=cn.footfall_cy; hasSyCy=true;
     }
-    detail.push({sid:sid,to:to,sc:sc,exclFatt:!!flg.excl_fatt,exclSy:!!flg.excl_sy,sasRec:sasRec,sasUsed:sasUsed,sasResIn:sasResIn,sasResOut:sasResOut,acc:cn.acc,vel:cn.vel,sasv:cn.sasv_eur||0});
+    detail.push({sid:sid,to:to,sc:sc,exclFatt:!!flg.excl_fatt,exclSy:!!flg.excl_sy});
   });
+  // SAS riconosciuto (da Luglio 2026): UN solo valore per l'intera area del Field Coach/VM
+  // (dato aggregato QWRT per field_coach, non più per negozio). Colma il gap al target
+  // dell'area, cap 100%, avanzo→riserva. I negozi BDG extra (bdg_stores) restano invece
+  // a SAS per-negozio, vedi loop più sotto.
+  var totConsPreSas=totCons;
+  var totSasRec=0,totSasReserveIn=0,sasAreaAcc=null,sasAreaVel=null,sasAreaValRaw=0,sasAreaPctMatrix=null;
+  if(isCons&&sasNewActive()){
+    var areaSas=FC_AREA_SAS[matr]||{};
+    sasAreaAcc=areaSas.acc!=null?areaSas.acc:null;sasAreaVel=areaSas.vel!=null?areaSas.vel:null;sasAreaValRaw=areaSas.sasv_eur||0;sasAreaPctMatrix=sasMatrixPct(areaSas.acc,areaSas.vel);
+    totSasRec=sasRecognizedValue(areaSas.acc,areaSas.vel,areaSas.sasv_eur||0);
+    totSasReserveIn=areaSas.sasr_eur||0;
+    var _srArea=sasReserveCalc(totCons,totTarget,totSasRec,totSasReserveIn);
+    totSasUsed=_srArea.used;totSasReserveOut=_srArea.reserveOut;
+    totCons+=totSasUsed;
+  }
   // ── Esubero mese precedente (area netta) ─────────────────────────────────
   // I negozi in deficit compensano quelli in surplus: max(0, Σ(cons-target) area)
   var totEsubero=0;
@@ -113,7 +119,7 @@ function calcFcVmPremio(matr){
   var premioEur=Math.round(premioLC*exRate*100)/100;
   var totalPremioLC=premioLC+bdgPrize;
   var totalPremioEur=Math.round(totalPremioLC*exRate*100)/100;
-  return{premio:premioLC,premio_eur:premioEur,esito:esito,pct:pct,totTarget:totTarget,totCons:totCons,totEsubero:totEsubero,totConsWithEsub:totConsWithEsub,syOk:syOk,syLyArea:syLyArea,syAreaCy:syAreaCy,hasSyLy:hasSyLy,hasSyCy:hasSyCy,syAreaAvg:syAreaAvg,stores:detail,bdgPrize:bdgPrize,bdgPrizeEur:bdgPrizeEur,bdgDetail:bdgDetail,totalPremioLC:totalPremioLC,totalPremioEur:totalPremioEur,hasBdg:bdgDetail.length>0,totSasUsed:totSasUsed,totSasReserveOut:totSasReserveOut,ml:emp.ml||0,sm:smFcvm};
+  return{premio:premioLC,premio_eur:premioEur,esito:esito,pct:pct,totTarget:totTarget,totCons:totCons,totEsubero:totEsubero,totConsWithEsub:totConsWithEsub,syOk:syOk,syLyArea:syLyArea,syAreaCy:syAreaCy,hasSyLy:hasSyLy,hasSyCy:hasSyCy,syAreaAvg:syAreaAvg,stores:detail,bdgPrize:bdgPrize,bdgPrizeEur:bdgPrizeEur,bdgDetail:bdgDetail,totalPremioLC:totalPremioLC,totalPremioEur:totalPremioEur,hasBdg:bdgDetail.length>0,totSasRec:totSasRec,totSasUsed:totSasUsed,totSasReserveIn:totSasReserveIn,totSasReserveOut:totSasReserveOut,totConsPreSas:totConsPreSas,sasAreaAcc:sasAreaAcc,sasAreaVel:sasAreaVel,sasAreaValRaw:sasAreaValRaw,sasAreaPctMatrix:sasAreaPctMatrix,ml:emp.ml||0,sm:smFcvm};
 }
 function getFcVmPool(){return Object.values(FC_EMP);}
 

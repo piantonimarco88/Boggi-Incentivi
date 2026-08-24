@@ -6,6 +6,8 @@ function rCFcvm(){
   var mL=isP?'<span style="background:#fff3cd;color:#856404;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700">\u26a0 PREVENTIVO</span>':'';
   mL+=' <button class="exp-btn" onclick="exportFcVmExcel()" style="font-size:10px;padding:4px 12px">&#128196; Export Excel</button>';
   if(MODE==="consuntivo")mL+=' <button class="exp-btn btn-lgreen" onclick="saveMonitorSnap()" style="font-size:10px;padding:4px 12px">&#128229; Salva per Monitor</button>';
+  if(MODE==="consuntivo"&&typeof sasNewActive==='function'&&sasNewActive())mL+=' <button class="exp-btn btn-violet" onclick="exportSasJsonFcvm()" style="font-size:10px;padding:4px 12px" title="JSON con target/consuntivo/SAS per area FC/VM, per import in statistiche">&#128202; Esporta SAS Field Coach (JSON)</button>';
+  if(MODE==="consuntivo"&&typeof sasNewActive==='function'&&sasNewActive())mL+=' <button class="exp-btn" onclick="exportSasReserveFcvm()" style="font-size:10px;padding:4px 12px" title="Excel con la riserva SAS non utilizzata questo mese, da ricaricare il mese prossimo (SAS Area Field Coach)">&#128230; Esporta Riserva SAS Field Coach</button>';
 
   if(!pool.length){
     var h=mL+'<div class="wg" style="text-align:center;padding:40px;color:#a09a92">';
@@ -40,7 +42,8 @@ function rCFcvm(){
   function thS(label){return'<th>'+label+'</th>';}
   h+='<div class="scroll-wrap"><table id="ctbl"><thead><tr>';
   h+=thS('Matr.')+thS('Cognome')+thS('Nome')+thS('Ruolo')+thS('Val.')+thS('N.Store');
-  h+=thS('Target EUR')+thS('Max Premio')+(!isP?thS('Consuntivo EUR'):'')+(!isP?thS('Esubero'):'')+(!isP?thS('Cons. Tot.'):'')+thS('% Area')+thS('SY LY')+thS('SY CY')+thS('Premio LC')+thS('Premio EUR')+thS('BDG')+thS('Esito')+(!isP?'<th style="text-align:center;background:#e8f5e9;color:#2d7a3a;cursor:default">100%</th>':'')+(!isP?'<th style="text-align:center;background:#fff3e0;color:#cf8b4e;cursor:default">60%</th>':'')+thS('Lingua')+(!isP?'<th style="text-align:center;cursor:default;min-width:40px">Mal.</th>':'')+'<th style="text-align:center;cursor:default;min-width:36px">Sosp.</th>';
+  var _fcSasCols=!isP&&typeof sasNewActive==='function'&&sasNewActive();
+  h+=thS('Target EUR')+thS('Max Premio')+(!isP?thS('Consuntivo EUR'):'')+(!isP?thS('Esubero'):'')+(_fcSasCols?thS('Valore SAS')+thS('% Ricon.')+thS('Valore Ricon.'):'')+(!isP?thS('Cons. Tot.'):'')+thS('% Area')+thS('SY LY')+thS('SY CY')+thS('Premio LC')+thS('Premio EUR')+thS('BDG')+thS('Esito')+(!isP?'<th style="text-align:center;background:#e8f5e9;color:#2d7a3a;cursor:default;padding:4px 3px">100%</th>':'')+(!isP?'<th style="text-align:center;background:#fff3e0;color:#cf8b4e;cursor:default;padding:4px 3px">60%</th>':'')+'<th style="padding:4px 3px">Lingua</th>'+(!isP?'<th style="text-align:center;cursor:default;min-width:40px">Mal.</th>':'')+'<th style="text-align:center;cursor:default;min-width:36px">Sosp.</th>';
   h+='</tr></thead><tbody>';
 
   fl.forEach(function(emp,i){
@@ -68,9 +71,20 @@ function rCFcvm(){
     var maxTot=emp.ib+maxBdg;
     var aggFcvm=AGG_FCVM[emp.m]||0;
     h+='<td style="text-align:right;font-weight:700;color:#c9a96e">'+fc(maxTot,emp.cu||'EUR')+(aggFcvm>0?'<span style="font-size:8px;color:#c9a96e;margin-left:2px">+'+fc(aggFcvm,emp.cu||'EUR')+'</span>':'')+'</td>';
-    if(!isP)h+='<td style="text-align:right">'+fc(r.totCons,'EUR')+'</td>';
+    if(!isP)h+='<td style="text-align:right">'+fc(Math.round(r.totConsPreSas!=null?r.totConsPreSas:r.totCons),'EUR')+'</td>';
     if(!isP){
       h+='<td style="text-align:right;color:#5b6abf;font-size:10px">'+(r.totEsubero>0?'+'+fc(Math.round(r.totEsubero),'EUR'):'\u2014')+'</td>';
+    }
+    // Colonne SAS (da luglio 2026): valore grezzo, % riconosciuta da matrice, valore
+    // applicato al fatturato (quello che compone il Cons. Tot. insieme a Consuntivo+Esubero)
+    if(_fcSasCols){
+      var _sasRawV=r.sasAreaValRaw||0;
+      h+='<td style="text-align:right;color:#8a8680">'+(_sasRawV>0?fc(Math.round(_sasRawV),'EUR'):'\u2014')+'</td>';
+      h+='<td style="text-align:center;color:#8a8680">'+(r.sasAreaPctMatrix!=null?Math.round(r.sasAreaPctMatrix*100)+'%':'\u2014')+'</td>';
+      var _tipFcSas='Riconosciuto da matrice: '+fc(Math.round(r.totSasRec||0),'EUR')+' \u2014 Applicato al fatturato: '+fc(Math.round(r.totSasUsed||0),'EUR')+((r.totSasReserveIn||0)>0?(' \u2014 Riserva mese prec. usata: '+fc(Math.round(r.totSasReserveIn),'EUR')):'')+((r.totSasReserveOut||0)>0?(' \u2014 Riserva riportata: '+fc(Math.round(r.totSasReserveOut),'EUR')):'');
+      h+='<td style="text-align:right;font-weight:700;color:#a07d2c" title="'+esc(_tipFcSas)+'">'+((r.totSasUsed||0)>0?fc(Math.round(r.totSasUsed),'EUR'):'\u2014')+'</td>';
+    }
+    if(!isP){
       var consCol=r.totConsWithEsub>0?'#2c2925':'#b0a99f';
       h+='<td style="text-align:right;font-weight:700;color:'+consCol+'">'+fc(Math.round(r.totConsWithEsub),'EUR')+'</td>';
     }
@@ -100,15 +114,15 @@ function rCFcvm(){
     // Toggle override manuale 100% / 60% (solo consuntivo)
     if(!isP){
       var ov100=FC_OVERRIDES[emp.m]==='100',ov60=FC_OVERRIDES[emp.m]==='60';
-      h+='<td style="text-align:center" onclick="event.stopPropagation()"><button onclick="setFcVmOverride(\''+esc(emp.m)+'\',\'100\')" style="padding:2px 8px;font-size:9px;font-weight:700;border-radius:4px;border:2px solid '+(ov100?'#2d7a3a':'#d5d0c8')+';background:'+(ov100?'#2d7a3a':'#fff')+';color:'+(ov100?'#fff':'#8a8680')+';cursor:pointer">✓ 100%</button></td>';
-      h+='<td style="text-align:center" onclick="event.stopPropagation()"><button onclick="setFcVmOverride(\''+esc(emp.m)+'\',\'60\')" style="padding:2px 8px;font-size:9px;font-weight:700;border-radius:4px;border:2px solid '+(ov60?'#cf8b4e':'#d5d0c8')+';background:'+(ov60?'#cf8b4e':'#fff')+';color:'+(ov60?'#fff':'#8a8680')+';cursor:pointer">✓ 60%</button></td>';
+      h+='<td style="text-align:center;padding:4px 3px" onclick="event.stopPropagation()"><button onclick="setFcVmOverride(\''+esc(emp.m)+'\',\'100\')" style="padding:1px 4px;font-size:8px;font-weight:700;border-radius:4px;border:2px solid '+(ov100?'#2d7a3a':'#d5d0c8')+';background:'+(ov100?'#2d7a3a':'#fff')+';color:'+(ov100?'#fff':'#8a8680')+';cursor:pointer">100%</button></td>';
+      h+='<td style="text-align:center;padding:4px 3px" onclick="event.stopPropagation()"><button onclick="setFcVmOverride(\''+esc(emp.m)+'\',\'60\')" style="padding:1px 4px;font-size:8px;font-weight:700;border-radius:4px;border:2px solid '+(ov60?'#cf8b4e':'#d5d0c8')+';background:'+(ov60?'#cf8b4e':'#fff')+';color:'+(ov60?'#fff':'#8a8680')+';cursor:pointer">60%</button></td>';
     }
     // Selezione lingua
     if(REGION==="italia"){
       if(!emp.lang||emp.lang!=="ITALIANO"){emp.lang="ITALIANO";}
-      h+='<td style="text-align:center;font-size:9px;font-weight:700;color:#4e4b48">ITA</td>';
+      h+='<td style="text-align:center;font-size:9px;font-weight:700;color:#4e4b48;padding:4px 3px">ITA</td>';
     }else{
-      h+='<td onclick="event.stopPropagation()"><select style="font-size:9px;padding:2px 4px;border:1px solid #d5d0c8;border-radius:3px;font-family:inherit" data-fcmatr="'+esc(emp.m)+'" onchange="setFcVmLang(this);event.stopPropagation()">';
+      h+='<td style="padding:4px 3px" onclick="event.stopPropagation()"><select style="font-size:8px;padding:1px 2px;border:1px solid #d5d0c8;border-radius:3px;font-family:inherit" data-fcmatr="'+esc(emp.m)+'" onchange="setFcVmLang(this);event.stopPropagation()">';
       ['ITALIANO','INGLESE','FRANCESE','TEDESCO','SPAGNOLO'].forEach(function(l){
         h+='<option value="'+l+'"'+(emp.lang===l?' selected':'')+'>'+l.substring(0,3)+'</option>';
       });
@@ -135,7 +149,7 @@ function rCFcvm(){
   if(tbl){tbl.onclick=function(ev){var tr=ev.target.closest('tr.ck');if(tr){var m=tr.getAttribute('data-m');if(m)sLFcvm(m);}};}
 
   var qEl=document.getElementById('fcvmQ');
-  if(qEl){qEl.oninput=function(){_fcvmF.q=this.value;rCFcvm();var el2=document.getElementById('fcvmQ');if(el2){el2.focus();}};}
+  if(qEl){qEl.oninput=function(){_fcvmF.q=this.value;var pos=this.selectionStart;rCFcvm();var el2=document.getElementById('fcvmQ');if(el2){el2.focus();el2.selectionStart=el2.selectionEnd=pos;}};}
   var jEl=document.getElementById('fcvmJ');
   if(jEl){jEl.onchange=function(){_fcvmF.j=this.value;rCFcvm();};}
   document.querySelectorAll("button[data-fcvm-ps]").forEach(function(btn){btn.onclick=function(ev){

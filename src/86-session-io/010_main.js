@@ -24,8 +24,8 @@ function saveSession(){
       monthly_syly:MONTHLY_SYLY,
       fc_emp:FC_EMP,fc_map:FC_MAP,fc_targets:FC_TARGETS,fc_results:FC_RESULTS,
       fc_syly:FC_SYLY,fc_store_flags:FC_STORE_FLAGS,agg_fcvm:AGG_FCVM,
-      fc_overrides:FC_OVERRIDES,fc_prev_results:FC_PREV_RESULTS,
-      monitor_snaps:MONITOR_SNAPS,
+      fc_overrides:FC_OVERRIDES,fc_prev_results:FC_PREV_RESULTS,fc_area_sas:FC_AREA_SAS,
+      monitor_snaps:MONITOR_SNAPS,mail_log:MAIL_LOG,
       ts:new Date().toISOString()
     };
     var json=JSON.stringify(state);
@@ -33,7 +33,7 @@ function saveSession(){
     var a=document.createElement("a");
     a.href=URL.createObjectURL(blob);
     var d=new Date(),pad=function(n){return n<10?"0"+n:String(n)};
-    a.download="Boggi_Sessione_"+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+"_"+pad(d.getHours())+pad(d.getMinutes())+".json";
+    a.download="Boggi_Sessione_"+_sessionFileTag()+"_"+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+"_"+pad(d.getHours())+pad(d.getMinutes())+".json";
     document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(a.href);
   }catch(ex){alert("Errore nel salvataggio: "+ex.message)}
 }
@@ -102,6 +102,8 @@ function loadSession(input){
     if(state.agg_fcvm)AGG_FCVM=state.agg_fcvm;
     if(state.fc_overrides)FC_OVERRIDES=state.fc_overrides;
     if(state.fc_prev_results)FC_PREV_RESULTS=state.fc_prev_results;
+    if(state.fc_area_sas)FC_AREA_SAS=state.fc_area_sas;
+    if(state.mail_log)MAIL_LOG=state.mail_log;
     if(state.mode)MODE=state.mode;if(state.region)REGION=state.region;if(state.prize_mode){PRIZE_MODE=state.prize_mode;setPrizeMode(PRIZE_MODE);}if(state.season_period){SEASON_PERIOD=state.season_period;setSeasonPeriod(SEASON_PERIOD);}
     document.getElementById("modeP").className="gbtn"+(MODE==="preventivo"?" on":"");document.getElementById("modeC").className="gbtn"+(MODE==="consuntivo"?" on":"");
     document.getElementById("regInt").className="gbtn"+(REGION==="international"?" on":"");document.getElementById("regIt").className="gbtn"+(REGION==="italia"?" on":"");
@@ -127,7 +129,7 @@ function markDirty(){var dirty=JSON.stringify(TC)!==_origTC||SICK_50!==_origS50|
 function saveConfig(){
   _flushDigMobInputs();
   var cfg={tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,seas_cfg:SEAS_CFG,sas_matrix:SAS_MATRIX,agg:AGG,vl:VL,usa_p:USA_P,store_flags:STORE_FLAGS,cfg_month:CFG_MONTH,cfg_year:CFG_YEAR,cfg_pdf_path:CFG_PDF_PATH,cfg_season:CFG_SEASON,saved:new Date().toISOString()};
-  var blob=new Blob([JSON.stringify(cfg,null,2)],{type:"application/json"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="boggi_config_"+getPdfSubfolder().fileBase+".json";a.click();
+  var blob=new Blob([JSON.stringify(cfg,null,2)],{type:"application/json"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="boggi_config_"+_sessionFileTag()+".json";a.click();
   _origTC=JSON.stringify(TC);_origS50=SICK_50;_origS0=SICK_0;_origP=JSON.stringify(PARAMS);_origUSA=JSON.stringify(USA_P);_origMonth=CFG_MONTH;_origYear=CFG_YEAR;_origPdfPath=CFG_PDF_PATH;_origSeason=CFG_SEASON;_origSF=JSON.stringify(STORE_FLAGS);_origSeasCfg=JSON.stringify(SEAS_CFG);_origPrizeMode=PRIZE_MODE;_origSeasonPeriod=SEASON_PERIOD;_origSasMatrix=JSON.stringify(SAS_MATRIX);document.getElementById("saveBar").className="save-bar";autoSave()}
 function discardChanges(){TC=JSON.parse(_origTC);SICK_50=_origS50;SICK_0=_origS0;PARAMS=JSON.parse(_origP);USA_P=JSON.parse(_origUSA);CFG_MONTH=_origMonth;CFG_YEAR=_origYear;CFG_PDF_PATH=_origPdfPath;CFG_SEASON=_origSeason;STORE_FLAGS=JSON.parse(_origSF);SEAS_CFG=JSON.parse(_origSeasCfg);SAS_MATRIX=JSON.parse(_origSasMatrix);PRIZE_MODE=_origPrizeMode;SEASON_PERIOD=_origSeasonPeriod;document.getElementById("saveBar").className="save-bar";setPrizeMode(PRIZE_MODE);setSeasonPeriod(SEASON_PERIOD);rT();rC()}
 function loadConfig(evt){var f=evt.target.files[0];if(!f)return;var reader=new FileReader();

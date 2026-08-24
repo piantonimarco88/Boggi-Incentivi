@@ -38,6 +38,7 @@ function _downloadEmlWithPdf(e, pdfBlob, pdfName){
         pdfBase64:b64,
         pdfName:pdfName
       });
+      logMailSent(e.m,e.mp,'prepared');
       return;
     }
     // Fallback browser: scarica .eml
@@ -50,6 +51,7 @@ function _downloadEmlWithPdf(e, pdfBlob, pdfName){
     var a=document.createElement("a");a.href=URL.createObjectURL(emlBlob);a.download=pdfName.replace(".pdf",".eml");
     document.body.appendChild(a);a.click();document.body.removeChild(a);
     setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
+    logMailSent(e.m,e.mp,'prepared');
   };
   reader.readAsDataURL(pdfBlob);
 }
@@ -117,8 +119,9 @@ function sendMailEmployees(){
   if(!(window.chrome&&window.chrome.webview)){_empMailBrowser(targets,isSeasonal,isFcvm);return;}
   // Priorità: 1) CFG_PDF_PATH configurato, 2) path memorizzato da "Salva Tutti i PDF", 3) picker
   var baseF=CFG_PDF_PATH?CFG_PDF_PATH.replace(/[\/\\]$/,""):(_pdfSaveBaseFolder||null);
+  var pdfSub=MODE==="preventivo"?getPdfSubfolder().prev:getPdfSubfolder().cons;
   if(baseF){
-    _empPreflight(baseF+"\\"+getPdfSubfolder().cons.replace(/\//g,"\\"),targets,noEmail);
+    _empPreflight(baseF+"\\"+pdfSub.replace(/\//g,"\\"),targets,noEmail);
   }else{
     var h=null;
     h=function(ev){
@@ -126,7 +129,7 @@ function sendMailEmployees(){
         if(ev.data.startsWith('folderSelected:')){
           window.chrome.webview.removeEventListener('message',h);
           var sel=ev.data.slice('folderSelected:'.length);
-          var sub=getPdfSubfolder().cons.replace(/\//g,"\\");
+          var sub=pdfSub.replace(/\//g,"\\");
           _pdfSaveBaseFolder=sel.endsWith("\\"+sub)?sel.slice(0,sel.length-sub.length-1):sel;
           _empPreflight(sel,targets,noEmail);
         } else if(ev.data==='folderCancelled'){
@@ -219,7 +222,7 @@ function _empSendLoop(folder,queue,preResults){
       else{lastOk=false;lastErr=r.indexOf('err:')===0?r.slice(4):r;}
     } else if(ev.data==='mailDone'){
       var e=queue[done];
-      if(e)results.push({e:e,ok:lastOk,skipped:false,reason:lastOk?'Inviata':lastErr,retryable:!lastOk});
+      if(e){results.push({e:e,ok:lastOk,skipped:false,reason:lastOk?'Inviata':lastErr,retryable:!lastOk});logMailSent(e.m,e.mp,lastOk?'sent':'error');}
       done++;
       var bar=document.getElementById('empBar'),cnt=document.getElementById('empCount');
       if(bar)bar.style.width=Math.round(done/total*100)+'%';
