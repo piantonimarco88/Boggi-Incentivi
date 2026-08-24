@@ -157,7 +157,11 @@ function buildMidSeasonLetter(e){
 
   // Riga Fatturato
   var storeTgt=stg2.to||0;
-  var storeCons=(cn2.sc||0);
+  // Contributo SAS→fatturato (da SS26) già esposto da seasAutoData: stessa base
+  // usata per il gate fatOk (auto.scost, calcolato su cn.sc+es+sasAddon) — prima
+  // qui si mostrava solo cn2.sc, disallineato dal check dello sbarramento sotto.
+  var sasAddonLetter=(!isP&&auto&&auto.sasAddon!==undefined)?auto.sasAddon:0;
+  var storeCons=(cn2.sc||0)+(cn2.es||0)+sasAddonLetter;
   var storeVarPct=storeTgt>0?((storeCons/storeTgt-1)*100):0;
   h+='<div class="lt-kpi-row" style="grid-template-columns:'+sbarCols+'">';
   h+='<span style="font-weight:600">'+esc(M.storeBudget)+'</span>';
@@ -168,6 +172,20 @@ function buildMidSeasonLetter(e){
   }
   h+='<span style="text-align:right;font-size:16px;font-weight:800;color:'+(isP?'#a09a92':fatOk?'#2d7a3a':'#cf5b5b')+'">'+(isP?'—':fatOk?'\u2713':'\u2717')+'</span>';
   h+='</div>';
+
+  // SAS → fatturato (da SS26): riga separata solo dove pertinente — stesso
+  // pattern della lettera di fine stagione (buildSeasonalLetter).
+  if(!isP&&sasAddonLetter>0){
+    h+='<div class="lt-kpi-row" style="grid-template-columns:'+sbarCols+';background:#fdf8ee">';
+    h+='<span style="font-weight:600;color:#a07d2c">'+T.sas_turnover_label+'</span>';
+    h+='<span style="text-align:right;font-size:10px;color:#6b6560">—</span>';
+    h+='<span style="text-align:right;font-size:10px;color:#2c2925">'+fc(sasAddonLetter,cu)+'</span>';
+    h+='<span></span>';
+    h+='<span></span>';
+    h+='</div>';
+  } else if(isP&&seasSasEligible(sid)){
+    h+='<div style="padding:6px 14px;font-size:9px;color:#a07d2c;font-style:italic;background:#fdf8ee">'+T.sas_turnover_note+'</div>';
+  }
 
   // Riga CR
   var crTgt=crTarget!==null?crTarget:(stg2.cr||null);
