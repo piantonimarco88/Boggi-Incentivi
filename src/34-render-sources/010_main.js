@@ -100,6 +100,8 @@ function rSources(){try{
         checks.push({l:"Consuntivo Accuracy",ok:hasAV,v:hasAV?"OK":"Da caricare"});
         checks.push({l:"Risultato Inventariale",ok:hasIV||hasES,v:(hasIV||hasES)?"OK":"Da caricare"});
         checks.push({l:"SAS",ok:hasSAS,v:hasSAS?"OK":"Da caricare"});
+        var hasSeasSasTurn=hasCons&&cKeys.some(function(k){return seasSasFullFileActive()?((D.cs[k].sasSeasFull||0)>0):(((D.cs[k].sasSeasJulRec||0)>0)||((D.cs[k].sasSeasAugRec||0)>0));});
+        checks.push({l:"SAS → Fatturato",ok:hasSeasSasTurn,v:hasSeasSasTurn?"OK":"Da caricare (se nessun negozio gestisce SAS, opzionale)"});
         if(hasDeptInt) checks.push({l:"Consuntivo QTY Dept",ok:hasQC,v:hasQC?cKeys.filter(function(k){return(D.cs[k].qc||0)>0}).length+" neg.":"Da caricare"});
       }
     }
@@ -166,6 +168,27 @@ function rSources(){try{
     sh+='<label class="exp-btn btn-amber" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">\ud83d\udcc2 Carica Mid-Season Erogato (.xlsx)<input type="file" accept=".xlsx,.xls,.csv" onchange="loadMidSeasonPaidExcel(this)" style="display:none"></label>';
     if(midCount>0)sh+='<span style="font-size:10px;color:#2d7a3a;font-weight:600">\u2705 '+midCount+' dipendenti con acconto registrato</span>';
     else sh+='<span style="font-size:10px;color:#a09a92">Nessun acconto registrato</span>';
+    sh+='</div></div>';
+  }
+
+  // === SEASONAL: import SAS \u2192 Fatturato (solo semestrale, consuntivo, da SS26) ===
+  if(isSeasonal&&!isMid&&!isP&&seasSasPeriodActive()){
+    var sasSeasCount=Object.keys(D.cs||{}).filter(function(k){
+      return seasSasFullFileActive()?((D.cs[k].sasSeasFull||0)>0):(((D.cs[k].sasSeasJulRec||0)>0)||((D.cs[k].sasSeasAugRec||0)>0));
+    }).length;
+    sh+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">\ud83d\udcb0 SAS \u2192 Fatturato (stagionale)</div>';
+    if(seasSasFullFileActive()){
+      sh+='<div style="font-size:10px;color:#8a8680;margin-bottom:10px">Importa il file con il valore SAS <b>gi\u00e0 calcolato</b> dal tool esterno per l\'intero periodo. Si somma direttamente al fatturato verso il target, senza cap n\u00e9 riserva. Vale solo per SM/VSM nei negozi dove il KPI SAS \u00e8 attivo (Dept Store esclusi).</div>';
+      sh+='<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">';
+      sh+='<label class="exp-btn btn-amber" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">\ud83d\udcc2 Carica SAS Stagione (.xlsx)<input type="file" accept=".xlsx,.xls,.csv" onchange="loadSeasonalSasFullExcel(this)" style="display:none"></label>';
+    } else {
+      sh+='<div style="font-size:10px;color:#8a8680;margin-bottom:10px">Importa i due file mensili di coda stagione (stesso formato dell\'import SAS mensile: store id, % accettati, % gestiti entro 4h, valore SAS). L\'app applica la matrice di riconoscimento e somma i due valori riconosciuti al fatturato verso il target, senza cap n\u00e9 riserva. Vale solo per SM/VSM nei negozi dove il KPI SAS \u00e8 attivo (Dept Store esclusi).</div>';
+      sh+='<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">';
+      sh+='<label class="exp-btn btn-amber" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">\ud83d\udcc2 Carica SAS Luglio (.xlsx)<input type="file" accept=".xlsx,.xls,.csv" onchange="loadSeasonalSasJulExcel(this)" style="display:none"></label>';
+      sh+='<label class="exp-btn btn-amber" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">\ud83d\udcc2 Carica SAS Agosto (.xlsx)<input type="file" accept=".xlsx,.xls,.csv" onchange="loadSeasonalSasAugExcel(this)" style="display:none"></label>';
+    }
+    if(sasSeasCount>0)sh+='<span style="font-size:10px;color:#2d7a3a;font-weight:600">\u2705 '+sasSeasCount+' negozi con valore SAS caricato</span>';
+    else sh+='<span style="font-size:10px;color:#a09a92">Nessun dato caricato</span>';
     sh+='</div></div>';
   }
 

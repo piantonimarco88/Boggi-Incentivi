@@ -420,6 +420,39 @@ function sasReserveCalc(base,target,recognized,reserveIn){
   return {avail:avail,gap:gap,used:used,reserveOut:avail-used,num:base+used};
 }
 
+// === SAS → fatturato (SEASONAL, da SS26) ===================================
+// Estende la stessa logica di riconoscimento del mensile al Seasonal Bonus:
+// il valore SAS gestito dal negozio si somma al fatturato verso il target
+// stagionale. A differenza del mensile qui NON c'è cap/riserva (il seasonal
+// non ha il concetto di "esubero"): il contributo si somma per intero.
+// SS26 (transizione): due file mensili (luglio+agosto), matrice applicata qui
+// (sasRecognizedValue, già esistente sopra) al momento dell'import.
+// Da FW26: un unico file con il valore già calcolato dal tool esterno.
+// Si applica solo a SM/VSM in negozi dove il KPI seasonal "SAS" è attivo
+// (flag STORE_FLAGS[sid].noSas assente) — i Dept Store non usano lo
+// scostamento fatturato/target nella loro formula, quindi restano esclusi
+// a monte (nessun chiamante invoca seasSasAddon per i Dept Store).
+var SEAS_SAS_START_YEAR=2026, SEAS_SAS_START_SEASON="SS";
+var SEAS_SAS_FULLFILE_START_YEAR=2026, SEAS_SAS_FULLFILE_START_SEASON="FW";
+function _seasOrd(season,year){return year*10+(season==="FW"?1:0);} // SS < FW nello stesso anno
+function seasSasPeriodActive(){
+  return _seasOrd(CFG_SEASON,CFG_YEAR)>=_seasOrd(SEAS_SAS_START_SEASON,SEAS_SAS_START_YEAR);
+}
+function seasSasFullFileActive(){
+  return _seasOrd(CFG_SEASON,CFG_YEAR)>=_seasOrd(SEAS_SAS_FULLFILE_START_SEASON,SEAS_SAS_FULLFILE_START_YEAR);
+}
+function seasSasEligible(sid){
+  var sf=STORE_FLAGS[String(sid)];
+  return !(sf&&sf.noSas);
+}
+// Contributo SAS da aggiungere al fatturato stagionale verso il target. In LC.
+function seasSasAddon(sid){
+  if(!seasSasPeriodActive()||!seasSasEligible(sid))return 0;
+  var cs=(D.cs&&D.cs[sid])||{};
+  if(seasSasFullFileActive())return cs.sasSeasFull||0;
+  return (cs.sasSeasJulRec||0)+(cs.sasSeasAugRec||0);
+}
+
 // === SEASONAL BONUS CONFIG ===
 function _seasRangeLabel(r){
   var lo=r.from<=-9999?"-inf":r.from.toString();
@@ -673,20 +706,20 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.39'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.40'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.40: Seasonal — SAS→fatturato esteso al Seasonal Bonus (SS26: import Luglio+Agosto; da FW26: file unico) in tab, export e lettere (tutte le lingue)",
   "9.39: Seasonal — import Mid-Season già erogato: dedotto dal saldo fine stagione in tab, export e lettere (tutte le lingue)",
   "9.38: Simulatore mensile — tolti gli slider SAS rate/max da luglio 2026 (policy cambiata)",
   "9.37: Cambio EUR reale dal fatturato — se il file Risultati BDG ha Gross Sales EUR",
   "9.36: Fix export SAS Negozi (JSON) — anche SY ora convertito in EUR per i negozi non-EUR",
   "9.35: Fix export SAS Negozi (JSON) — ora converte davvero in EUR i negozi non-EUR",
   "9.34: Fix ricerca FC+VM — il cursore ripartiva dall'inizio ad ogni carattere",
-  "9.33: Fix riassegnazione negozio — email Field Coach ora si aggiorna col negozio",
-  "9.32: Tab Calcolo Premi — bottone per riassegnare manualmente il negozio"
+  "9.33: Fix riassegnazione negozio — email Field Coach ora si aggiorna col negozio"
 ];
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
@@ -1520,9 +1553,10 @@ function seasAutoData(e){
   var seas_sas = stg.sas !== undefined ? stg.sas : (SEAS_CFG.sasMaxHours || 4);
   var seas_acc = stg.acc !== undefined ? stg.acc : 0.99;
 
-  // Scostamento fatturato %: usa target seasonal
+  // Scostamento fatturato %: usa target seasonal (+ eventuale contributo SAS→fatturato, da SS26)
+  var sasAddon=seasSasAddon(sid);
   var scost=0;
-  if(seas_to>0&&cn.sc!==undefined){scost=((cn.sc+(cn.es||0))/seas_to-1)*100;}
+  if(seas_to>0&&cn.sc!==undefined){scost=((cn.sc+(cn.es||0)+sasAddon)/seas_to-1)*100;}
   // Incidenza inventariale: usa cn.iv (% diretta da file inventory) se disponibile,
   // altrimenti calcola da esubero assoluto cn.es / fatturato cn.sc
   // inv = valore con segno originale di Difference on Cogs in %
@@ -1563,7 +1597,9 @@ function seasAutoData(e){
     cr_actual: cn.cr!==undefined&&cn.cr!==null ? cn.cr : null,
     cr_target: stg.cr!==undefined&&stg.cr!==null ? stg.cr : null,
     // Esponi anche i target usati per il rendering della lettera
-    seas_to:seas_to, seas_sy:seas_sy, seas_pr:seas_pr, seas_sas:seas_sas, seas_acc:seas_acc
+    seas_to:seas_to, seas_sy:seas_sy, seas_pr:seas_pr, seas_sas:seas_sas, seas_acc:seas_acc,
+    // Contributo SAS→fatturato già incluso in scost sopra — esposto per tab/lettere (unica fonte di verità)
+    sasAddon:sasAddon
   };
 }
 
@@ -2704,6 +2740,8 @@ var SEAS_TR={
     forecast_intro:"Di seguito il bonus massimo potenziale per ",
     mid_deducted:"MID-SEASON GIÀ EROGATO",
     seas_net:"SALDO DA EROGARE A FINE STAGIONE",
+    sas_turnover_label:"SAS APPLICATO AL FATTURATO",
+    sas_turnover_note:"Il valore SAS gestito dal negozio confluirà nel fatturato verso il target a consuntivo.",
     greeting:{"ITALIANO":"Ciao","INGLESE":"Hi","FRANCESE":"Bonjour","TEDESCO":"Hallo","SPAGNOLO":"Hola"}
   },
   "INGLESE":{
@@ -2757,6 +2795,8 @@ var SEAS_TR={
     forecast_intro:"Below is the maximum potential bonus for ",
     mid_deducted:"MID-SEASON ALREADY PAID",
     seas_net:"BALANCE DUE AT SEASON END",
+    sas_turnover_label:"SAS APPLIED TO TURNOVER",
+    sas_turnover_note:"The store's managed SAS value will be added to turnover toward the target at year-end.",
     greeting:{"ITALIANO":"Ciao","INGLESE":"Hi","FRANCESE":"Bonjour","TEDESCO":"Hallo","SPAGNOLO":"Hola"}
   },
   "FRANCESE":{
@@ -2810,6 +2850,8 @@ var SEAS_TR={
     forecast_intro:"Ci-dessous le bonus potentiel maximum pour ",
     mid_deducted:"MID-SEASON DÉJÀ VERSÉ",
     seas_net:"SOLDE À VERSER EN FIN DE SAISON",
+    sas_turnover_label:"SAS APPLIQUÉ AU CHIFFRE D'AFFAIRES",
+    sas_turnover_note:"La valeur SAS gérée par le magasin sera ajoutée au chiffre d'affaires vers l'objectif au bilan final.",
     greeting:{"ITALIANO":"Ciao","INGLESE":"Hi","FRANCESE":"Bonjour","TEDESCO":"Hallo","SPAGNOLO":"Hola"}
   },
   "TEDESCO":{
@@ -2863,6 +2905,8 @@ var SEAS_TR={
     forecast_intro:"Nachfolgend der maximale potenzielle Bonus für ",
     mid_deducted:"MID-SEASON BEREITS AUSGEZAHLT",
     seas_net:"RESTBETRAG ZUM SAISONENDE",
+    sas_turnover_label:"SAS AUF DEN UMSATZ ANGERECHNET",
+    sas_turnover_note:"Der vom Store verwaltete SAS-Wert wird bei der Endabrechnung dem Umsatz in Richtung Zielvorgabe hinzugerechnet.",
     greeting:{"ITALIANO":"Ciao","INGLESE":"Hi","FRANCESE":"Bonjour","TEDESCO":"Hallo","SPAGNOLO":"Hola"}
   },
   "SPAGNOLO":{
@@ -2916,6 +2960,8 @@ var SEAS_TR={
     forecast_intro:"A continuación el bono potencial máximo para ",
     mid_deducted:"MID-SEASON YA PAGADO",
     seas_net:"SALDO A PAGAR AL FINAL DE TEMPORADA",
+    sas_turnover_label:"SAS APLICADO A LA FACTURACIÓN",
+    sas_turnover_note:"El valor SAS gestionado por la tienda se sumará a la facturación hacia el objetivo en el balance final.",
     greeting:{"ITALIANO":"Ciao","INGLESE":"Hi","FRANCESE":"Bonjour","TEDESCO":"Hallo","SPAGNOLO":"Hola"}
   }
 };
@@ -3068,7 +3114,10 @@ function buildSeasonalLetter(e){
   var stg2=SEAS_TARGETS&&SEAS_TARGETS[sid2]?SEAS_TARGETS[sid2]:{};
   var cn2=D.cs&&D.cs[sid2]?D.cs[sid2]:{};
   var storeTgt=stg2.to||tg2.to||0;
-  var storeCons=(cn2.sc||0)+(cn2.es||0);
+  // Contributo SAS→fatturato (da SS26) già esposto da seasAutoData: unica fonte di verità,
+  // nessun ricalcolo locale (coerente con storeCons usato per storeVarPct/m1 qui sotto).
+  var sasAddonLetter=(!isP&&auto&&auto.sasAddon!==undefined)?auto.sasAddon:0;
+  var storeCons=(cn2.sc||0)+(cn2.es||0)+sasAddonLetter;
   var storeVarPct=storeTgt>0?((storeCons/storeTgt-1)*100):0;
   // In preventivo mostra il target fatturato importato (se disponibile)
   var storeTgtDisplay=isP?(storeTgt>0?fc(storeTgt,cu):T.target):(fc(storeTgt,cu));
@@ -3081,6 +3130,22 @@ function buildSeasonalLetter(e){
   }
   h+='<span style="text-align:right;font-weight:800;color:'+(m1>=1?'#2d7a3a':'#c0392b')+'">'+fDec(m1,2)+'</span>';
   h+='</div>';
+
+  // SAS → fatturato (da SS26): riga separata solo dove pertinente — in consuntivo
+  // mostra l'importo solo se effettivamente presente, in preventivo mostra una nota
+  // informativa (nessun importo, il dato reale non esiste ancora) solo per i negozi
+  // dove il KPI seasonal SAS è attivo (Dept Store esclusi a monte).
+  if(!isP&&sasAddonLetter>0){
+    h+='<div class="lt-kpi-row" style="grid-template-columns:'+boostCols+';background:#fdf8ee">';
+    h+='<span style="font-weight:600;color:#a07d2c">'+T.sas_turnover_label+'</span>';
+    h+='<span style="text-align:right;font-size:10px;color:#6b6560">—</span>';
+    h+='<span style="text-align:right;font-size:10px;color:#2c2925">'+fc(sasAddonLetter,cu)+'</span>';
+    h+='<span></span>';
+    h+='<span></span>';
+    h+='</div>';
+  } else if(isP&&seasSasEligible(sid2)){
+    h+='<div style="padding:6px 14px;font-size:9px;color:#a07d2c;font-style:italic;background:#fdf8ee">'+T.sas_turnover_note+'</div>';
+  }
 
   // Inventory row
   var invPctRaw;
@@ -4957,6 +5022,7 @@ function rCSeasonal(){
     h+='<th style="text-align:center;white-space:nowrap">M.Turn.</th>';
     h+='<th style="text-align:center;white-space:nowrap">M.Inv.</th>';
   }
+  h+='<th class="r" style="white-space:nowrap;color:#cf8b4e">SAS&rarr;Fatt.<br><span style="font-weight:400;font-size:9px">al fatturato</span></th>';
   h+='<th style="text-align:center;white-space:nowrap">BOOST<br><span style="font-weight:400;font-size:9px">T&times;I</span></th>';
   h+='<th class="r" style="color:#8a8680">LORDO</th>';
   if(!isP)h+='<th class="r" style="color:#cf8b4e">MID-SEASON<br><span style="font-weight:400;font-size:9px">gi&agrave; erogato</span></th>';
@@ -4998,6 +5064,7 @@ function rCSeasonal(){
       } else {
         h+='<td class="r mn gy">&mdash;</td><td class="r mn gy">&mdash;</td><td class="r mn gy">&mdash;</td>';
       }
+      h+='<td class="r mn gy">&mdash;</td>'; // SAS→Fatt.: Dept Store esclusi (formula fissa, no gap fatturato/target)
       h+='<td class="r mn gy">&mdash;</td>';
     } else {
       var kpiSet=seasGetKpiSet(e);
@@ -5038,6 +5105,8 @@ function rCSeasonal(){
         h+='<td class="r mn b" style="color:'+(row.m1===0?'#c0392b':row.m1>=1.3?'#2d7a3a':'#2c2925')+'">'+row.m1.toFixed(2)+'</td>';
         h+='<td class="r mn b" style="color:'+(row.m2===0?'#c0392b':row.m2>=1?'#2d7a3a':'#2c2925')+'">'+row.m2.toFixed(2)+'</td>';
       }
+      var sasAddonVal=(!isP&&row.auto&&row.auto.sasAddon!==undefined)?row.auto.sasAddon:0;
+      h+='<td class="r mn" style="color:'+(sasAddonVal>0?'#2d7a3a':'#b0a99f')+'">'+(sasAddonVal>0?fc(sasAddonVal,cu):'&mdash;')+'</td>';
       h+='<td class="r mn b" style="color:'+(boostTot>=1.3?'#2d7a3a':boostTot===0?'#c0392b':'#cf8b4e')+'">'+boostTot.toFixed(2)+'</td>';
     } // end else (non-dept)
     h+='<td class="r mn gy">'+fc(row.gross,cu)+'</td>';
@@ -5098,7 +5167,7 @@ function exportSeasonalExcel(){
   if(!isP)headers.push("SCOSTAMENTO FATTURATO %");
   headers.push("MOLTIPLICATORE TURNOVER");
   if(!isP)headers.push("INC. INVENTARIALE (cogs)");
-  headers.push("MOLTIPLICATORE INVENTARIO","BOOST (M.Turn×M.Inv)","KPI SCORE");
+  headers.push("MOLTIPLICATORE INVENTARIO","BOOST (M.Turn×M.Inv)","KPI SCORE","SAS → FATTURATO LC");
   // Result columns
   headers.push("TOTALE LORDO LC","MID-SEASON GIÀ EROGATO LC","TOTALE NETTO LC",
                "TOTALE NETTO EUR","ESCLUSO");
@@ -5165,6 +5234,7 @@ function exportSeasonalExcel(){
       r.push(Math.round(m1*m2*100)/100);
       r.push(Math.round(kpiScore*100)/100);
     }
+    r.push(isDept?'':(auto&&auto.sasAddon!==undefined?auto.sasAddon:0));
 
     // Results
     var gross=isDept?Math.round((e.ib||0)*6*1.5*100)/100:Math.round(base*kpiScore*m1*m2*100)/100;
@@ -5243,6 +5313,108 @@ function loadMidSeasonPaidExcel(input){
     alert(msg);
     autoSave();rSources();rC();
   }catch(ex){alert('Errore lettura Mid-Season: '+ex.message);}};reader.readAsArrayBuffer(f);
+}
+
+// === IMPORT: SAS → fatturato (SEASONAL, da SS26) ===========================
+// SS26 (transizione): due import mensili separati (Luglio/Agosto), stesso
+// formato colonne del mensile "sas_results" (store id, % accettati, %
+// gestiti entro 4h, valore SAS) — la matrice di riconoscimento
+// (sasRecognizedValue, già esistente per il mensile) viene applicata qui,
+// al momento dell'import, e il risultato salvato per negozio in
+// D.cs[sid].sasSeasJulRec / sasSeasAugRec. seasSasAddon() li somma senza
+// cap né riserva (il seasonal non ha il concetto di "esubero").
+// Da FW26: un unico file con il valore già calcolato dal tool esterno →
+// D.cs[sid].sasSeasFull (loadSeasonalSasFullExcel).
+// Bottoni dedicati (non auto-scan generico) perché il file mensile non porta
+// il mese al suo interno — lo tagga il bottone premuto dall'operatore.
+function _seasSasFindCols(headers){
+  function fH(){for(var ci=0;ci<headers.length;ci++){if(!headers[ci])continue;for(var i=0;i<arguments.length;i++){if(headers[ci].indexOf(arguments[i])>=0)return ci;}}return-1;}
+  var valE=fH("valore eur","value eur","valore sas eur","sas value eur","valore euro");
+  var valL=fH("valore lc","value lc","valore sas lc","sas value lc");
+  var valP=fH("valore sas","sas value");
+  return {
+    sid: fH("store id","store_id"),
+    acc: fH("% sas accepted","sas accepted","% accepted","% accettati","accepted %","accepted","% accettazione","accettati %","% acceptance"),
+    vel: fH("% processed within","processed within 4","% within 4","within 4h","% gestiti entro","% sas gestiti","gestiti entro","velocit","velocity","% handled"),
+    valLc: valL>=0?valL:((valP>=0&&valP!==valE)?valP:-1)
+  };
+}
+function _seasSasFindHeaderRow(json){
+  for(var ri=0;ri<Math.min(5,json.length);ri++){
+    var r=json[ri];if(!r)continue;
+    var hdr=r.map(function(c){return String(c==null?"":c).toLowerCase().trim();});
+    if(hdr.some(function(h){return h&&h.indexOf("store")>=0;}))return {idx:ri,headers:hdr};
+  }
+  return null;
+}
+function loadSeasonalSasPeriodExcel(input,period){
+  var f=input.files[0];if(!f)return;input.value="";
+  var label=period==="jul"?"Luglio":"Agosto";
+  var reader=new FileReader();reader.onload=function(ev){try{
+    var data=new Uint8Array(ev.target.result);
+    var wb=XLSX.read(data,{type:"array",raw:true});
+    var ws=wb.Sheets[wb.SheetNames[0]];
+    var json=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
+    if(json.length<2){alert("File SAS "+label+" vuoto.");return;}
+    var hr=_seasSasFindHeaderRow(json);
+    if(!hr){alert("Formato file non riconosciuto: nessuna colonna Store ID trovata nelle prime 5 righe.");return;}
+    var headers=hr.headers;
+    var c=_seasSasFindCols(headers);
+    if(c.sid<0){alert("Colonna Store ID non trovata.\n\nColonne rilevate:\n"+headers.join(", "));return;}
+    var recField=period==="jul"?"sasSeasJulRec":"sasSeasAugRec";
+    var accField=period==="jul"?"sasSeasJulAcc":"sasSeasAugAcc";
+    var velField=period==="jul"?"sasSeasJulVel":"sasSeasAugVel";
+    var valField=period==="jul"?"sasSeasJulVal":"sasSeasAugVal";
+    var imported=0;
+    for(var ri2=hr.idx+1;ri2<json.length;ri2++){
+      var row=json[ri2];if(!row)continue;
+      var sid=row[c.sid];if(!sid)continue;
+      sid=String(parseInt(sid));if(sid==="NaN")continue;
+      if(!D.cs[sid])D.cs[sid]={sc:0,es:0,sy:0,nf:0,s4:0,iv:null,av:null,qc:0,cr:null};
+      var acc=null,vel=null,val=null;
+      if(c.acc>=0){var av=parseNum(row[c.acc]);if(!isNaN(av)){if(av>1)av=av/100;if(av<0)av=0;if(av>1)av=1;acc=av;}}
+      if(c.vel>=0){var vv=parseNum(row[c.vel]);if(!isNaN(vv)){if(vv>1)vv=vv/100;if(vv<0)vv=0;if(vv>1)vv=1;vel=vv;}}
+      if(c.valLc>=0){var sv=parseNum(row[c.valLc]);if(!isNaN(sv))val=sv;}
+      D.cs[sid][accField]=acc;D.cs[sid][velField]=vel;D.cs[sid][valField]=val;
+      D.cs[sid][recField]=sasRecognizedValue(acc,vel,val);
+      imported++;
+    }
+    alert("SAS "+label+" importato: "+imported+" negozi.");
+    autoSave();rSources();rC();
+  }catch(ex){alert("Errore lettura SAS "+label+": "+ex.message);}};reader.readAsArrayBuffer(f);
+}
+function loadSeasonalSasJulExcel(input){loadSeasonalSasPeriodExcel(input,"jul");}
+function loadSeasonalSasAugExcel(input){loadSeasonalSasPeriodExcel(input,"aug");}
+
+function loadSeasonalSasFullExcel(input){
+  var f=input.files[0];if(!f)return;input.value="";
+  var reader=new FileReader();reader.onload=function(ev){try{
+    var data=new Uint8Array(ev.target.result);
+    var wb=XLSX.read(data,{type:"array",raw:true});
+    var ws=wb.Sheets[wb.SheetNames[0]];
+    var json=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
+    if(json.length<2){alert("File SAS Stagione vuoto.");return;}
+    var hr=_seasSasFindHeaderRow(json);
+    if(!hr){alert("Formato file non riconosciuto: nessuna colonna Store ID trovata nelle prime 5 righe.");return;}
+    var headers=hr.headers;
+    function fH(){for(var ci=0;ci<headers.length;ci++){if(!headers[ci])continue;for(var i=0;i<arguments.length;i++){if(headers[ci].indexOf(arguments[i])>=0)return ci;}}return-1;}
+    var cSid=fH("store id","store_id");
+    var cValE=fH("valore eur","value eur","valore sas eur","sas value eur","valore euro");
+    var cValL=fH("valore lc","value lc","valore sas lc","sas value lc");
+    var cValP=fH("valore sas","sas value","valore","value");
+    var cVal=cValL>=0?cValL:((cValP>=0&&cValP!==cValE)?cValP:-1);
+    if(cSid<0||cVal<0){alert("Colonne Store ID o Valore SAS non trovate.\n\nColonne rilevate:\n"+headers.join(", "));return;}
+    var imported=0;
+    for(var ri2=hr.idx+1;ri2<json.length;ri2++){
+      var row=json[ri2];if(!row)continue;
+      var sid=row[cSid];if(!sid)continue;
+      sid=String(parseInt(sid));if(sid==="NaN")continue;
+      if(!D.cs[sid])D.cs[sid]={sc:0,es:0,sy:0,nf:0,s4:0,iv:null,av:null,qc:0,cr:null};
+      var v=parseNum(row[cVal]);if(!isNaN(v)){D.cs[sid].sasSeasFull=v;imported++;}
+    }
+    alert("SAS Stagione importato: "+imported+" negozi.");
+    autoSave();rSources();rC();
+  }catch(ex){alert("Errore lettura SAS Stagione: "+ex.message);}};reader.readAsArrayBuffer(f);
 }
 
 function seasLiveUpdate(m){
@@ -7163,6 +7335,8 @@ function rSources(){try{
         checks.push({l:"Consuntivo Accuracy",ok:hasAV,v:hasAV?"OK":"Da caricare"});
         checks.push({l:"Risultato Inventariale",ok:hasIV||hasES,v:(hasIV||hasES)?"OK":"Da caricare"});
         checks.push({l:"SAS",ok:hasSAS,v:hasSAS?"OK":"Da caricare"});
+        var hasSeasSasTurn=hasCons&&cKeys.some(function(k){return seasSasFullFileActive()?((D.cs[k].sasSeasFull||0)>0):(((D.cs[k].sasSeasJulRec||0)>0)||((D.cs[k].sasSeasAugRec||0)>0));});
+        checks.push({l:"SAS → Fatturato",ok:hasSeasSasTurn,v:hasSeasSasTurn?"OK":"Da caricare (se nessun negozio gestisce SAS, opzionale)"});
         if(hasDeptInt) checks.push({l:"Consuntivo QTY Dept",ok:hasQC,v:hasQC?cKeys.filter(function(k){return(D.cs[k].qc||0)>0}).length+" neg.":"Da caricare"});
       }
     }
@@ -7230,6 +7404,27 @@ function rSources(){try{
     sh+='<label class="exp-btn btn-amber" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">\ud83d\udcc2 Carica Mid-Season Erogato (.xlsx)<input type="file" accept=".xlsx,.xls,.csv" onchange="loadMidSeasonPaidExcel(this)" style="display:none"></label>';
     if(midCount>0)sh+='<span style="font-size:10px;color:#2d7a3a;font-weight:600">\u2705 '+midCount+' dipendenti con acconto registrato</span>';
     else sh+='<span style="font-size:10px;color:#a09a92">Nessun acconto registrato</span>';
+    sh+='</div></div>';
+  }
+
+  // === SEASONAL: import SAS \u2192 Fatturato (solo semestrale, consuntivo, da SS26) ===
+  if(isSeasonal&&!isMid&&!isP&&seasSasPeriodActive()){
+    var sasSeasCount=Object.keys(D.cs||{}).filter(function(k){
+      return seasSasFullFileActive()?((D.cs[k].sasSeasFull||0)>0):(((D.cs[k].sasSeasJulRec||0)>0)||((D.cs[k].sasSeasAugRec||0)>0));
+    }).length;
+    sh+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">\ud83d\udcb0 SAS \u2192 Fatturato (stagionale)</div>';
+    if(seasSasFullFileActive()){
+      sh+='<div style="font-size:10px;color:#8a8680;margin-bottom:10px">Importa il file con il valore SAS <b>gi\u00e0 calcolato</b> dal tool esterno per l\'intero periodo. Si somma direttamente al fatturato verso il target, senza cap n\u00e9 riserva. Vale solo per SM/VSM nei negozi dove il KPI SAS \u00e8 attivo (Dept Store esclusi).</div>';
+      sh+='<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">';
+      sh+='<label class="exp-btn btn-amber" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">\ud83d\udcc2 Carica SAS Stagione (.xlsx)<input type="file" accept=".xlsx,.xls,.csv" onchange="loadSeasonalSasFullExcel(this)" style="display:none"></label>';
+    } else {
+      sh+='<div style="font-size:10px;color:#8a8680;margin-bottom:10px">Importa i due file mensili di coda stagione (stesso formato dell\'import SAS mensile: store id, % accettati, % gestiti entro 4h, valore SAS). L\'app applica la matrice di riconoscimento e somma i due valori riconosciuti al fatturato verso il target, senza cap n\u00e9 riserva. Vale solo per SM/VSM nei negozi dove il KPI SAS \u00e8 attivo (Dept Store esclusi).</div>';
+      sh+='<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">';
+      sh+='<label class="exp-btn btn-amber" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">\ud83d\udcc2 Carica SAS Luglio (.xlsx)<input type="file" accept=".xlsx,.xls,.csv" onchange="loadSeasonalSasJulExcel(this)" style="display:none"></label>';
+      sh+='<label class="exp-btn btn-amber" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">\ud83d\udcc2 Carica SAS Agosto (.xlsx)<input type="file" accept=".xlsx,.xls,.csv" onchange="loadSeasonalSasAugExcel(this)" style="display:none"></label>';
+    }
+    if(sasSeasCount>0)sh+='<span style="font-size:10px;color:#2d7a3a;font-weight:600">\u2705 '+sasSeasCount+' negozi con valore SAS caricato</span>';
+    else sh+='<span style="font-size:10px;color:#a09a92">Nessun dato caricato</span>';
     sh+='</div></div>';
   }
 

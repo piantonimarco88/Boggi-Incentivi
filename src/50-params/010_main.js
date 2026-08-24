@@ -73,6 +73,39 @@ function sasReserveCalc(base,target,recognized,reserveIn){
   return {avail:avail,gap:gap,used:used,reserveOut:avail-used,num:base+used};
 }
 
+// === SAS → fatturato (SEASONAL, da SS26) ===================================
+// Estende la stessa logica di riconoscimento del mensile al Seasonal Bonus:
+// il valore SAS gestito dal negozio si somma al fatturato verso il target
+// stagionale. A differenza del mensile qui NON c'è cap/riserva (il seasonal
+// non ha il concetto di "esubero"): il contributo si somma per intero.
+// SS26 (transizione): due file mensili (luglio+agosto), matrice applicata qui
+// (sasRecognizedValue, già esistente sopra) al momento dell'import.
+// Da FW26: un unico file con il valore già calcolato dal tool esterno.
+// Si applica solo a SM/VSM in negozi dove il KPI seasonal "SAS" è attivo
+// (flag STORE_FLAGS[sid].noSas assente) — i Dept Store non usano lo
+// scostamento fatturato/target nella loro formula, quindi restano esclusi
+// a monte (nessun chiamante invoca seasSasAddon per i Dept Store).
+var SEAS_SAS_START_YEAR=2026, SEAS_SAS_START_SEASON="SS";
+var SEAS_SAS_FULLFILE_START_YEAR=2026, SEAS_SAS_FULLFILE_START_SEASON="FW";
+function _seasOrd(season,year){return year*10+(season==="FW"?1:0);} // SS < FW nello stesso anno
+function seasSasPeriodActive(){
+  return _seasOrd(CFG_SEASON,CFG_YEAR)>=_seasOrd(SEAS_SAS_START_SEASON,SEAS_SAS_START_YEAR);
+}
+function seasSasFullFileActive(){
+  return _seasOrd(CFG_SEASON,CFG_YEAR)>=_seasOrd(SEAS_SAS_FULLFILE_START_SEASON,SEAS_SAS_FULLFILE_START_YEAR);
+}
+function seasSasEligible(sid){
+  var sf=STORE_FLAGS[String(sid)];
+  return !(sf&&sf.noSas);
+}
+// Contributo SAS da aggiungere al fatturato stagionale verso il target. In LC.
+function seasSasAddon(sid){
+  if(!seasSasPeriodActive()||!seasSasEligible(sid))return 0;
+  var cs=(D.cs&&D.cs[sid])||{};
+  if(seasSasFullFileActive())return cs.sasSeasFull||0;
+  return (cs.sasSeasJulRec||0)+(cs.sasSeasAugRec||0);
+}
+
 // === SEASONAL BONUS CONFIG ===
 function _seasRangeLabel(r){
   var lo=r.from<=-9999?"-inf":r.from.toString();

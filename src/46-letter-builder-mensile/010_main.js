@@ -305,6 +305,8 @@ var SEAS_TR={
     forecast_intro:"Di seguito il bonus massimo potenziale per ",
     mid_deducted:"MID-SEASON GIÀ EROGATO",
     seas_net:"SALDO DA EROGARE A FINE STAGIONE",
+    sas_turnover_label:"SAS APPLICATO AL FATTURATO",
+    sas_turnover_note:"Il valore SAS gestito dal negozio confluirà nel fatturato verso il target a consuntivo.",
     greeting:{"ITALIANO":"Ciao","INGLESE":"Hi","FRANCESE":"Bonjour","TEDESCO":"Hallo","SPAGNOLO":"Hola"}
   },
   "INGLESE":{
@@ -358,6 +360,8 @@ var SEAS_TR={
     forecast_intro:"Below is the maximum potential bonus for ",
     mid_deducted:"MID-SEASON ALREADY PAID",
     seas_net:"BALANCE DUE AT SEASON END",
+    sas_turnover_label:"SAS APPLIED TO TURNOVER",
+    sas_turnover_note:"The store's managed SAS value will be added to turnover toward the target at year-end.",
     greeting:{"ITALIANO":"Ciao","INGLESE":"Hi","FRANCESE":"Bonjour","TEDESCO":"Hallo","SPAGNOLO":"Hola"}
   },
   "FRANCESE":{
@@ -411,6 +415,8 @@ var SEAS_TR={
     forecast_intro:"Ci-dessous le bonus potentiel maximum pour ",
     mid_deducted:"MID-SEASON DÉJÀ VERSÉ",
     seas_net:"SOLDE À VERSER EN FIN DE SAISON",
+    sas_turnover_label:"SAS APPLIQUÉ AU CHIFFRE D'AFFAIRES",
+    sas_turnover_note:"La valeur SAS gérée par le magasin sera ajoutée au chiffre d'affaires vers l'objectif au bilan final.",
     greeting:{"ITALIANO":"Ciao","INGLESE":"Hi","FRANCESE":"Bonjour","TEDESCO":"Hallo","SPAGNOLO":"Hola"}
   },
   "TEDESCO":{
@@ -464,6 +470,8 @@ var SEAS_TR={
     forecast_intro:"Nachfolgend der maximale potenzielle Bonus für ",
     mid_deducted:"MID-SEASON BEREITS AUSGEZAHLT",
     seas_net:"RESTBETRAG ZUM SAISONENDE",
+    sas_turnover_label:"SAS AUF DEN UMSATZ ANGERECHNET",
+    sas_turnover_note:"Der vom Store verwaltete SAS-Wert wird bei der Endabrechnung dem Umsatz in Richtung Zielvorgabe hinzugerechnet.",
     greeting:{"ITALIANO":"Ciao","INGLESE":"Hi","FRANCESE":"Bonjour","TEDESCO":"Hallo","SPAGNOLO":"Hola"}
   },
   "SPAGNOLO":{
@@ -517,6 +525,8 @@ var SEAS_TR={
     forecast_intro:"A continuación el bono potencial máximo para ",
     mid_deducted:"MID-SEASON YA PAGADO",
     seas_net:"SALDO A PAGAR AL FINAL DE TEMPORADA",
+    sas_turnover_label:"SAS APLICADO A LA FACTURACIÓN",
+    sas_turnover_note:"El valor SAS gestionado por la tienda se sumará a la facturación hacia el objetivo en el balance final.",
     greeting:{"ITALIANO":"Ciao","INGLESE":"Hi","FRANCESE":"Bonjour","TEDESCO":"Hallo","SPAGNOLO":"Hola"}
   }
 };
@@ -669,7 +679,10 @@ function buildSeasonalLetter(e){
   var stg2=SEAS_TARGETS&&SEAS_TARGETS[sid2]?SEAS_TARGETS[sid2]:{};
   var cn2=D.cs&&D.cs[sid2]?D.cs[sid2]:{};
   var storeTgt=stg2.to||tg2.to||0;
-  var storeCons=(cn2.sc||0)+(cn2.es||0);
+  // Contributo SAS→fatturato (da SS26) già esposto da seasAutoData: unica fonte di verità,
+  // nessun ricalcolo locale (coerente con storeCons usato per storeVarPct/m1 qui sotto).
+  var sasAddonLetter=(!isP&&auto&&auto.sasAddon!==undefined)?auto.sasAddon:0;
+  var storeCons=(cn2.sc||0)+(cn2.es||0)+sasAddonLetter;
   var storeVarPct=storeTgt>0?((storeCons/storeTgt-1)*100):0;
   // In preventivo mostra il target fatturato importato (se disponibile)
   var storeTgtDisplay=isP?(storeTgt>0?fc(storeTgt,cu):T.target):(fc(storeTgt,cu));
@@ -682,6 +695,22 @@ function buildSeasonalLetter(e){
   }
   h+='<span style="text-align:right;font-weight:800;color:'+(m1>=1?'#2d7a3a':'#c0392b')+'">'+fDec(m1,2)+'</span>';
   h+='</div>';
+
+  // SAS → fatturato (da SS26): riga separata solo dove pertinente — in consuntivo
+  // mostra l'importo solo se effettivamente presente, in preventivo mostra una nota
+  // informativa (nessun importo, il dato reale non esiste ancora) solo per i negozi
+  // dove il KPI seasonal SAS è attivo (Dept Store esclusi a monte).
+  if(!isP&&sasAddonLetter>0){
+    h+='<div class="lt-kpi-row" style="grid-template-columns:'+boostCols+';background:#fdf8ee">';
+    h+='<span style="font-weight:600;color:#a07d2c">'+T.sas_turnover_label+'</span>';
+    h+='<span style="text-align:right;font-size:10px;color:#6b6560">—</span>';
+    h+='<span style="text-align:right;font-size:10px;color:#2c2925">'+fc(sasAddonLetter,cu)+'</span>';
+    h+='<span></span>';
+    h+='<span></span>';
+    h+='</div>';
+  } else if(isP&&seasSasEligible(sid2)){
+    h+='<div style="padding:6px 14px;font-size:9px;color:#a07d2c;font-style:italic;background:#fdf8ee">'+T.sas_turnover_note+'</div>';
+  }
 
   // Inventory row
   var invPctRaw;

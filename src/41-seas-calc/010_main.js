@@ -102,9 +102,10 @@ function seasAutoData(e){
   var seas_sas = stg.sas !== undefined ? stg.sas : (SEAS_CFG.sasMaxHours || 4);
   var seas_acc = stg.acc !== undefined ? stg.acc : 0.99;
 
-  // Scostamento fatturato %: usa target seasonal
+  // Scostamento fatturato %: usa target seasonal (+ eventuale contributo SAS→fatturato, da SS26)
+  var sasAddon=seasSasAddon(sid);
   var scost=0;
-  if(seas_to>0&&cn.sc!==undefined){scost=((cn.sc+(cn.es||0))/seas_to-1)*100;}
+  if(seas_to>0&&cn.sc!==undefined){scost=((cn.sc+(cn.es||0)+sasAddon)/seas_to-1)*100;}
   // Incidenza inventariale: usa cn.iv (% diretta da file inventory) se disponibile,
   // altrimenti calcola da esubero assoluto cn.es / fatturato cn.sc
   // inv = valore con segno originale di Difference on Cogs in %
@@ -145,7 +146,9 @@ function seasAutoData(e){
     cr_actual: cn.cr!==undefined&&cn.cr!==null ? cn.cr : null,
     cr_target: stg.cr!==undefined&&stg.cr!==null ? stg.cr : null,
     // Esponi anche i target usati per il rendering della lettera
-    seas_to:seas_to, seas_sy:seas_sy, seas_pr:seas_pr, seas_sas:seas_sas, seas_acc:seas_acc
+    seas_to:seas_to, seas_sy:seas_sy, seas_pr:seas_pr, seas_sas:seas_sas, seas_acc:seas_acc,
+    // Contributo SAS→fatturato già incluso in scost sopra — esposto per tab/lettere (unica fonte di verità)
+    sasAddon:sasAddon
   };
 }
 
