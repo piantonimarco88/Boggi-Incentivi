@@ -83,7 +83,8 @@ function exportFcVmExcel(){
   var mm=String(CFG_MONTH).padStart(2,'0');
   var rows=[['MATRICOLA','COGNOME','NOME','RUOLO','VALUTA','CAMBIO','PREMIO MAX LC',
              'N.STORE','TARGET EUR','CONS EUR','ESUBERO PREV','CONS TOT EUR','% AREA','SY CY','SY LY','SY OK',
-             'PREMIO LC','PREMIO EUR','ESITO','OVERRIDE']];
+             'PREMIO AREA LC','PREMIO AREA EUR','PREMIO BDG NEGOZI LC','PREMIO BDG NEGOZI EUR',
+             'PREMIO TOTALE LC','PREMIO TOTALE EUR','ESITO','OVERRIDE']];
   pool.forEach(function(emp){
     var r=calcFcVmPremio(emp.m);
     var nS=Object.keys(FC_MAP).filter(function(sid){
@@ -96,7 +97,8 @@ function exportFcVmExcel(){
                Math.round((r.totEsubero||0)*100)/100,Math.round((r.totConsWithEsub||r.totCons)*100)/100,
                r.totTarget>0?Math.round(r.pct*10000)/100:0,
                r.totSyCy||0,r.totSyLy||0,r.syOk?'SI':'NO',
-               r.premio,r.premio_eur,r.esito,FC_OVERRIDES[emp.m]||'']);
+               r.premio,r.premio_eur,r.bdgPrize||0,r.bdgPrizeEur||0,
+               r.totalPremioLC,r.totalPremioEur,r.esito,FC_OVERRIDES[emp.m]||'']);
   });
   var wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'FC VM');

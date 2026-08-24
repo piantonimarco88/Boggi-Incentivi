@@ -20,7 +20,7 @@ function fcCtx(globals) {
   const c = vm.createContext(Object.assign({
     PRIZE_MODE: "fcvm", CFG_YEAR: 2026, CFG_MONTH: 7, MODE: "consuntivo",
     FC_EMP: {}, FC_MAP: {}, FC_TARGETS: {}, FC_RESULTS: {}, FC_SYLY: {},
-    FC_STORE_FLAGS: {}, FC_PREV_RESULTS: {}, FC_OVERRIDES: {}, ENTE_CU: {}, VL: {}, D: {},
+    FC_STORE_FLAGS: {}, FC_PREV_RESULTS: {}, FC_OVERRIDES: {}, FC_AREA_SAS: {}, ENTE_CU: {}, VL: {}, D: {},
     FCVM_PARAMS: { soglia100: 0.995, soglia60: 0.95, pct60: 0.60 },
     sickMult: function () { return 1; },
     Math: Math, Object: Object, Array: Array, String: String, isNaN: isNaN,

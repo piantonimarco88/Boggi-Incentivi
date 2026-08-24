@@ -19,7 +19,7 @@ function calcUSA(e){
 
   var storeHit=false;
   if(MODE==="preventivo"){storeHit=true}
-  else if(tg&&cn){var pct=tg.to>0?cn.sc/tg.to:0;storeHit=pct>=PARAMS.bdg100}
+  else if(tg&&cn){var _esP=sasNewActive()?(cn.esP||0):0;var pct=tg.to>0?(cn.sc+_esP)/tg.to:0;storeHit=pct>=PARAMS.bdg100}
   else{storeHit=ud.sb===1}
   if(MODE==="consuntivo"&&e.ov_b100==="SI")storeHit=true;
 
@@ -99,20 +99,48 @@ function getVal(e,kpiKey){
     case "rsa":if(sasZeroByAcc(e))return 0;return Math.min((cn.s4||0)*PARAMS.sasRate,PARAMS.sasMax);
     case "rdc":return Math.round(Math.min((cn.dv||0)*PARAMS.dccRate,PARAMS.dccMax)*100)/100;
     case "rcs":return e.rcs||0;case "ra":if(!PARAMS.artEnabled||isUSA(e.si,e))return 0;if((e.ra||0)>0)return e.ra;var ac=cn.ac||0;return ac>0?Math.round(e.ib*PARAMS.artPct*ac*100)/100:0;
-    case "vi":{var _vle2=VL[e.m];if(!_vle2)return 0;if(!Array.isArray(_vle2)){var _vla=Number(_vle2)||0;return(_vla>0&&storePct>=PARAMS.bdg100)?_vla:0;}var _vtot=0;var _nEmpty=_vle2.filter(function(x){return !String(x.sid||'').trim();}).length;_vle2.forEach(function(entry){var _esid=String(entry.sid||'').trim();if(_esid){var _pi=parseInt(_esid);if(!isNaN(_pi))_esid=String(_pi);}var _spct;if(!_esid){_spct=(_nEmpty===1)?storePct:0;}else{_spct=storePctOf(_esid);}if(_spct>=PARAMS.bdg100)_vtot+=entry.amt||0;});return _vtot;}
+    case "vi":{var _vle2=VL[e.m];if(!_vle2)return 0;
+      if(!Array.isArray(_vle2)){
+        var _vla=Number(_vle2)||0;if(_vla<=0)return 0;
+        if(e.ov_b100==="SI")return _vla;
+        if(e.ov_rid==="SI")return Math.round(_vla*PARAMS.bdg60mult*100)/100;
+        if(storePct>=PARAMS.bdg100)return _vla;
+        if(isRidottoStore(sid))return Math.round(_vla*PARAMS.bdg60mult*100)/100;
+        return 0;
+      }
+      var _vtot=0;var _nEmpty=_vle2.filter(function(x){return !String(x.sid||'').trim();}).length;
+      _vle2.forEach(function(entry){
+        var _esid=String(entry.sid||'').trim();if(_esid){var _pi=parseInt(_esid);if(!isNaN(_pi))_esid=String(_pi);}
+        var _amt=entry.amt||0;if(_amt<=0)return;
+        if(e.ov_b100==="SI"){_vtot+=_amt;return;}
+        if(e.ov_rid==="SI"){_vtot+=Math.round(_amt*PARAMS.bdg60mult*100)/100;return;}
+        if(!_esid&&_nEmpty!==1)return; // store ambiguo, non determinabile → 0 (comportamento invariato)
+        var _ridSid=_esid||sid;
+        var _spct=storePctOf(_ridSid);
+        if(_spct>=PARAMS.bdg100){_vtot+=_amt;}
+        else if(isRidottoStore(_ridSid)){_vtot+=Math.round(_amt*PARAMS.bdg60mult*100)/100;}
+      });
+      return _vtot;}
     case "pq":if((tg.qt||0)>0&&(cn.qc||0)>=(tg.qt||0)*PARAMS.kpi100)return Math.round(e.ib*PARAMS.qtyPct*100)/100;return 0;
     default:return 0}
 }
-// isRidotto: true se l'employee riceve il premio BDG moltiplicato ridotto (60%)
-function isRidotto(e){
-  if(isUSA(e.si,e)||MODE!=="consuntivo")return false;
-  var sid=String(e.si),tg=D.t[sid]||{},cn=D.c[sid]||{},dp=isD(e.si);
+// isRidottoStore: come isRidotto(e) ma per un negozio specifico (sid) invece che per il negozio
+// "di casa" del dipendente — serve per premi multi-negozio come Visual In Store, dove ogni riga
+// (entry) può appartenere a un negozio diverso e va valutata con i propri dati di target/consuntivo.
+function isRidottoStore(sid){
+  if(MODE!=="consuntivo")return false;
+  var tg=D.t[sid]||{},cn=D.c[sid]||{},dp=isD(sid);
   if(!tg.to)return false;
   var storePct=storePctOf(sid);
   if(storePct>=PARAMS.bdg100||storePct<PARAMS.bdg60)return false;
   if(dp)return (tg.qt||0)>0&&(cn.qc||0)>=(tg.qt||0);
   var syLy=MONTHLY_SYLY[sid]||0;
   return (cn.sy||0)>syLy&&syLy>0;
+}
+// isRidotto: true se l'employee riceve il premio BDG moltiplicato ridotto (60%)
+function isRidotto(e){
+  if(isUSA(e.si,e))return false;
+  return isRidottoStore(String(e.si));
 }
 // calcE: normal calc + aggiunte. Returns 0 if premio sospeso in consuntivo
 function calcE(e){if(MODE==="consuntivo"&&e.ps==="SI")return 0;if(isUSA(e.si,e)){if(MODE==="preventivo")return 0;return calcUSA(e)+aggTotal(e.m);}var t=0,sm=sickMult(e.ml);IT.forEach(function(it){if(it.k==="vi")return;if(it.k==="ra"&&!PARAMS.artEnabled)return;if(isOn(e.j,it.k))t+=getVal(e,it.k)});t+=getVal(e,"vi");var result=Math.round(t*sm*100)/100+aggTotal(e.m);if(MODE==="consuntivo"&&e.ov_wg==="SI"&&isOn(e.j,"rb"))result+=Math.round(e.ib*(PARAMS.workgamePct||0)*100)/100;return result}

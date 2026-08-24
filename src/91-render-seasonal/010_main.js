@@ -225,167 +225,6 @@ function exportMidSeasonExcel(){
   XLSX.writeFile(wb,"Incentivi_MidSeason_"+stagione+".xlsx");
 }
 
-// === IMPORT: Mid-Season gi\u00e0 erogato ===
-// Importa gli importi realmente erogati a met\u00e0 stagione (per matricola) e li
-// scrive in SEAS[matricola].midPaid, in valuta locale (LC). calcSeasonal()
-// li detrae automaticamente dal premio di fine stagione (gi\u00e0 floor a 0).
-// Accetta lo stesso file esportato da exportMidSeasonExcel (colonna "MID-SEASON LC"),
-// o qualunque file con colonne MATRICOLA + importo.
-function _normMatr(s){
-  s=String(s||'').trim().toUpperCase();
-  return /^[0-9]+$/.test(s)?String(parseInt(s,10)):s;
-}
-function loadMidSeasonPaidExcel(input){
-  var f=input.files[0];if(!f)return;input.value="";
-  var reader=new FileReader();reader.onload=function(ev){try{
-    var data=new Uint8Array(ev.target.result);
-    var wb=XLSX.read(data,{type:"array"});
-    var ws=wb.Sheets[wb.SheetNames[0]];
-    var json=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
-    if(json.length<2){alert("File Mid-Season vuoto.");return;}
-    // Trova header row
-    var hdrRow=0;
-    for(var ri=0;ri<Math.min(5,json.length);ri++){
-      var rs=(json[ri]||[]).map(function(c){return String(c||'').toLowerCase()}).join('|');
-      if(rs.indexOf('matr')>=0){hdrRow=ri;break;}
-    }
-    // Rileva colonne MATRICOLA e importo. Preferisce una colonna "MID-SEASON ... LC"
-    // (valuta locale, coerente col resto del calcolo); in mancanza, la prima colonna
-    // "mid-season"/"erogat"/"pagat" trovata, escludendo esplicitamente le colonne EUR.
-    var hdr={matr:-1,amt:-1,amtIsLC:false};
-    (json[hdrRow]||[]).forEach(function(cell,ci){
-      var s=String(cell||'').toLowerCase().trim();
-      if(hdr.matr<0&&(s.indexOf('matr')>=0||s==='id'))hdr.matr=ci;
-      var isMidCol=s.indexOf('mid')>=0||s.indexOf('erogat')>=0||s.indexOf('pagat')>=0||s.indexOf('paid')>=0;
-      if(!isMidCol)return;
-      var isLC=s.indexOf('lc')>=0&&s.indexOf('eur')<0;
-      if(hdr.amt<0||(isLC&&!hdr.amtIsLC)){hdr.amt=ci;hdr.amtIsLC=isLC;}
-    });
-    if(hdr.matr<0||hdr.amt<0){alert('Colonne MATRICOLA o importo Mid-Season non trovate.\n\nColonne rilevate:\n'+(json[hdrRow]||[]).join(', '));return;}
-    if(!hdr.amtIsLC&&!confirm('Attenzione: non ho trovato una colonna esplicitamente "LC" (valuta locale) \u2014 user\u00f2 la colonna "'+(json[hdrRow]||[])[hdr.amt]+'".\nSe \u00e8 un importo in EUR e non in valuta locale, il calcolo sar\u00e0 errato.\n\nContinuare?'))return;
-    // Lookup matricole esistenti (SM/VSM), normalizzate per tollerare padding/zeri diversi
-    var matrLookup={};
-    E.forEach(function(e){if(isSMVSM(e))matrLookup[_normMatr(e.m)]=e.m;});
-    var matched=0,unmatched=[];
-    for(var ri2=hdrRow+1;ri2<json.length;ri2++){
-      var row=json[ri2];if(!row)continue;
-      var rawMatr=row[hdr.matr];if(rawMatr===null||rawMatr===undefined||String(rawMatr).trim()==='')continue;
-      var amt=parseFloat(String(row[hdr.amt]||'0').replace(',','.').replace(/[^0-9.\-]/g,''))||0;
-      var key=matrLookup[_normMatr(rawMatr)];
-      if(!key){unmatched.push(String(rawMatr));continue;}
-      if(!SEAS[key])SEAS[key]={};
-      SEAS[key].midPaid=amt;
-      matched++;
-    }
-    var msg='Mid-Season erogato importato!\n\n'+matched+' dipendenti aggiornati.';
-    if(unmatched.length)msg+='\n\n'+unmatched.length+' matricole non trovate in anagrafica (ignorate):\n'+unmatched.slice(0,15).join(', ')+(unmatched.length>15?'\n...':'');
-    alert(msg);
-    autoSave();rSources();rC();
-  }catch(ex){alert('Errore lettura Mid-Season: '+ex.message);}};reader.readAsArrayBuffer(f);
-}
-
-// === IMPORT: SAS \u2192 fatturato (SEASONAL, da SS26) ===========================
-// SS26 (transizione): due import mensili separati (Luglio/Agosto), stesso
-// formato colonne del mensile "sas_results" (store id, % accettati, %
-// gestiti entro 4h, valore SAS) \u2014 la matrice di riconoscimento
-// (sasRecognizedValue, gi\u00e0 esistente per il mensile) viene applicata qui,
-// al momento dell'import, e il risultato salvato per negozio in
-// D.cs[sid].sasSeasJulRec / sasSeasAugRec. seasSasAddon() li somma senza
-// cap n\u00e9 riserva (il seasonal non ha il concetto di "esubero").
-// Da FW26: un unico file con il valore gi\u00e0 calcolato dal tool esterno \u2192
-// D.cs[sid].sasSeasFull (loadSeasonalSasFullExcel).
-// Bottoni dedicati (non auto-scan generico) perch\u00e9 il file mensile non porta
-// il mese al suo interno \u2014 lo tagga il bottone premuto dall'operatore.
-function _seasSasFindCols(headers){
-  function fH(){for(var ci=0;ci<headers.length;ci++){if(!headers[ci])continue;for(var i=0;i<arguments.length;i++){if(headers[ci].indexOf(arguments[i])>=0)return ci;}}return-1;}
-  var valE=fH("valore eur","value eur","valore sas eur","sas value eur","valore euro");
-  var valL=fH("valore lc","value lc","valore sas lc","sas value lc");
-  var valP=fH("valore sas","sas value");
-  return {
-    sid: fH("store id","store_id"),
-    acc: fH("% sas accepted","sas accepted","% accepted","% accettati","accepted %","accepted","% accettazione","accettati %","% acceptance"),
-    vel: fH("% processed within","processed within 4","% within 4","within 4h","% gestiti entro","% sas gestiti","gestiti entro","velocit","velocity","% handled"),
-    valLc: valL>=0?valL:((valP>=0&&valP!==valE)?valP:-1)
-  };
-}
-function _seasSasFindHeaderRow(json){
-  for(var ri=0;ri<Math.min(5,json.length);ri++){
-    var r=json[ri];if(!r)continue;
-    var hdr=r.map(function(c){return String(c==null?"":c).toLowerCase().trim();});
-    if(hdr.some(function(h){return h&&h.indexOf("store")>=0;}))return {idx:ri,headers:hdr};
-  }
-  return null;
-}
-function loadSeasonalSasPeriodExcel(input,period){
-  var f=input.files[0];if(!f)return;input.value="";
-  var label=period==="jul"?"Luglio":"Agosto";
-  var reader=new FileReader();reader.onload=function(ev){try{
-    var data=new Uint8Array(ev.target.result);
-    var wb=XLSX.read(data,{type:"array",raw:true});
-    var ws=wb.Sheets[wb.SheetNames[0]];
-    var json=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
-    if(json.length<2){alert("File SAS "+label+" vuoto.");return;}
-    var hr=_seasSasFindHeaderRow(json);
-    if(!hr){alert("Formato file non riconosciuto: nessuna colonna Store ID trovata nelle prime 5 righe.");return;}
-    var headers=hr.headers;
-    var c=_seasSasFindCols(headers);
-    if(c.sid<0){alert("Colonna Store ID non trovata.\n\nColonne rilevate:\n"+headers.join(", "));return;}
-    var recField=period==="jul"?"sasSeasJulRec":"sasSeasAugRec";
-    var accField=period==="jul"?"sasSeasJulAcc":"sasSeasAugAcc";
-    var velField=period==="jul"?"sasSeasJulVel":"sasSeasAugVel";
-    var valField=period==="jul"?"sasSeasJulVal":"sasSeasAugVal";
-    var imported=0;
-    for(var ri2=hr.idx+1;ri2<json.length;ri2++){
-      var row=json[ri2];if(!row)continue;
-      var sid=row[c.sid];if(!sid)continue;
-      sid=String(parseInt(sid));if(sid==="NaN")continue;
-      if(!D.cs[sid])D.cs[sid]={sc:0,es:0,sy:0,nf:0,s4:0,iv:null,av:null,qc:0,cr:null};
-      var acc=null,vel=null,val=null;
-      if(c.acc>=0){var av=parseNum(row[c.acc]);if(!isNaN(av)){if(av>1)av=av/100;if(av<0)av=0;if(av>1)av=1;acc=av;}}
-      if(c.vel>=0){var vv=parseNum(row[c.vel]);if(!isNaN(vv)){if(vv>1)vv=vv/100;if(vv<0)vv=0;if(vv>1)vv=1;vel=vv;}}
-      if(c.valLc>=0){var sv=parseNum(row[c.valLc]);if(!isNaN(sv))val=sv;}
-      D.cs[sid][accField]=acc;D.cs[sid][velField]=vel;D.cs[sid][valField]=val;
-      D.cs[sid][recField]=sasRecognizedValue(acc,vel,val);
-      imported++;
-    }
-    alert("SAS "+label+" importato: "+imported+" negozi.");
-    autoSave();rSources();rC();
-  }catch(ex){alert("Errore lettura SAS "+label+": "+ex.message);}};reader.readAsArrayBuffer(f);
-}
-function loadSeasonalSasJulExcel(input){loadSeasonalSasPeriodExcel(input,"jul");}
-function loadSeasonalSasAugExcel(input){loadSeasonalSasPeriodExcel(input,"aug");}
-
-function loadSeasonalSasFullExcel(input){
-  var f=input.files[0];if(!f)return;input.value="";
-  var reader=new FileReader();reader.onload=function(ev){try{
-    var data=new Uint8Array(ev.target.result);
-    var wb=XLSX.read(data,{type:"array",raw:true});
-    var ws=wb.Sheets[wb.SheetNames[0]];
-    var json=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
-    if(json.length<2){alert("File SAS Stagione vuoto.");return;}
-    var hr=_seasSasFindHeaderRow(json);
-    if(!hr){alert("Formato file non riconosciuto: nessuna colonna Store ID trovata nelle prime 5 righe.");return;}
-    var headers=hr.headers;
-    function fH(){for(var ci=0;ci<headers.length;ci++){if(!headers[ci])continue;for(var i=0;i<arguments.length;i++){if(headers[ci].indexOf(arguments[i])>=0)return ci;}}return-1;}
-    var cSid=fH("store id","store_id");
-    var cValE=fH("valore eur","value eur","valore sas eur","sas value eur","valore euro");
-    var cValL=fH("valore lc","value lc","valore sas lc","sas value lc");
-    var cValP=fH("valore sas","sas value","valore","value");
-    var cVal=cValL>=0?cValL:((cValP>=0&&cValP!==cValE)?cValP:-1);
-    if(cSid<0||cVal<0){alert("Colonne Store ID o Valore SAS non trovate.\n\nColonne rilevate:\n"+headers.join(", "));return;}
-    var imported=0;
-    for(var ri2=hr.idx+1;ri2<json.length;ri2++){
-      var row=json[ri2];if(!row)continue;
-      var sid=row[cSid];if(!sid)continue;
-      sid=String(parseInt(sid));if(sid==="NaN")continue;
-      if(!D.cs[sid])D.cs[sid]={sc:0,es:0,sy:0,nf:0,s4:0,iv:null,av:null,qc:0,cr:null};
-      var v=parseNum(row[cVal]);if(!isNaN(v)){D.cs[sid].sasSeasFull=v;imported++;}
-    }
-    alert("SAS Stagione importato: "+imported+" negozi.");
-    autoSave();rSources();rC();
-  }catch(ex){alert("Errore lettura SAS Stagione: "+ex.message);}};reader.readAsArrayBuffer(f);
-}
-
 // === rCSeasonal: Calcolo Premi in modalit\u00e0 Seasonal ===
 var _seasF={q:'',s:'ALL',j:'ALL'};
 function rCSeasonal(){
@@ -710,4 +549,165 @@ function exportSeasonalExcel(){
   var wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Seasonal");
   XLSX.writeFile(wb,"Incentivi_Seasonal_"+stagione+".xlsx");
+}
+
+// === IMPORT: Mid-Season già erogato ===
+// Importa gli importi realmente erogati a metà stagione (per matricola) e li
+// scrive in SEAS[matricola].midPaid, in valuta locale (LC). calcSeasonal()
+// li detrae automaticamente dal premio di fine stagione (già floor a 0).
+// Accetta lo stesso file esportato da exportMidSeasonExcel (colonna "MID-SEASON LC"),
+// o qualunque file con colonne MATRICOLA + importo.
+function _normMatr(s){
+  s=String(s||'').trim().toUpperCase();
+  return /^[0-9]+$/.test(s)?String(parseInt(s,10)):s;
+}
+function loadMidSeasonPaidExcel(input){
+  var f=input.files[0];if(!f)return;input.value="";
+  var reader=new FileReader();reader.onload=function(ev){try{
+    var data=new Uint8Array(ev.target.result);
+    var wb=XLSX.read(data,{type:"array"});
+    var ws=wb.Sheets[wb.SheetNames[0]];
+    var json=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
+    if(json.length<2){alert("File Mid-Season vuoto.");return;}
+    // Trova header row
+    var hdrRow=0;
+    for(var ri=0;ri<Math.min(5,json.length);ri++){
+      var rs=(json[ri]||[]).map(function(c){return String(c||'').toLowerCase()}).join('|');
+      if(rs.indexOf('matr')>=0){hdrRow=ri;break;}
+    }
+    // Rileva colonne MATRICOLA e importo. Preferisce una colonna "MID-SEASON ... LC"
+    // (valuta locale, coerente col resto del calcolo); in mancanza, la prima colonna
+    // "mid-season"/"erogat"/"pagat" trovata, escludendo esplicitamente le colonne EUR.
+    var hdr={matr:-1,amt:-1,amtIsLC:false};
+    (json[hdrRow]||[]).forEach(function(cell,ci){
+      var s=String(cell||'').toLowerCase().trim();
+      if(hdr.matr<0&&(s.indexOf('matr')>=0||s==='id'))hdr.matr=ci;
+      var isMidCol=s.indexOf('mid')>=0||s.indexOf('erogat')>=0||s.indexOf('pagat')>=0||s.indexOf('paid')>=0;
+      if(!isMidCol)return;
+      var isLC=s.indexOf('lc')>=0&&s.indexOf('eur')<0;
+      if(hdr.amt<0||(isLC&&!hdr.amtIsLC)){hdr.amt=ci;hdr.amtIsLC=isLC;}
+    });
+    if(hdr.matr<0||hdr.amt<0){alert('Colonne MATRICOLA o importo Mid-Season non trovate.\n\nColonne rilevate:\n'+(json[hdrRow]||[]).join(', '));return;}
+    if(!hdr.amtIsLC&&!confirm('Attenzione: non ho trovato una colonna esplicitamente "LC" (valuta locale) — userò la colonna "'+(json[hdrRow]||[])[hdr.amt]+'".\nSe è un importo in EUR e non in valuta locale, il calcolo sarà errato.\n\nContinuare?'))return;
+    // Lookup matricole esistenti (SM/VSM), normalizzate per tollerare padding/zeri diversi
+    var matrLookup={};
+    E.forEach(function(e){if(isSMVSM(e))matrLookup[_normMatr(e.m)]=e.m;});
+    var matched=0,unmatched=[];
+    for(var ri2=hdrRow+1;ri2<json.length;ri2++){
+      var row=json[ri2];if(!row)continue;
+      var rawMatr=row[hdr.matr];if(rawMatr===null||rawMatr===undefined||String(rawMatr).trim()==='')continue;
+      var amt=parseFloat(String(row[hdr.amt]||'0').replace(',','.').replace(/[^0-9.\-]/g,''))||0;
+      var key=matrLookup[_normMatr(rawMatr)];
+      if(!key){unmatched.push(String(rawMatr));continue;}
+      if(!SEAS[key])SEAS[key]={};
+      SEAS[key].midPaid=amt;
+      matched++;
+    }
+    var msg='Mid-Season erogato importato!\n\n'+matched+' dipendenti aggiornati.';
+    if(unmatched.length)msg+='\n\n'+unmatched.length+' matricole non trovate in anagrafica (ignorate):\n'+unmatched.slice(0,15).join(', ')+(unmatched.length>15?'\n...':'');
+    alert(msg);
+    autoSave();rSources();rC();
+  }catch(ex){alert('Errore lettura Mid-Season: '+ex.message);}};reader.readAsArrayBuffer(f);
+}
+
+// === IMPORT: SAS → fatturato (SEASONAL, da SS26) ===========================
+// SS26 (transizione): due import mensili separati (Luglio/Agosto), stesso
+// formato colonne del mensile "sas_results" (store id, % accettati, %
+// gestiti entro 4h, valore SAS) — la matrice di riconoscimento
+// (sasRecognizedValue, già esistente per il mensile) viene applicata qui,
+// al momento dell'import, e il risultato salvato per negozio in
+// D.cs[sid].sasSeasJulRec / sasSeasAugRec. seasSasAddon() li somma senza
+// cap né riserva (il seasonal non ha il concetto di "esubero").
+// Da FW26: un unico file con il valore già calcolato dal tool esterno →
+// D.cs[sid].sasSeasFull (loadSeasonalSasFullExcel).
+// Bottoni dedicati (non auto-scan generico) perché il file mensile non porta
+// il mese al suo interno — lo tagga il bottone premuto dall'operatore.
+function _seasSasFindCols(headers){
+  function fH(){for(var ci=0;ci<headers.length;ci++){if(!headers[ci])continue;for(var i=0;i<arguments.length;i++){if(headers[ci].indexOf(arguments[i])>=0)return ci;}}return-1;}
+  var valE=fH("valore eur","value eur","valore sas eur","sas value eur","valore euro");
+  var valL=fH("valore lc","value lc","valore sas lc","sas value lc");
+  var valP=fH("valore sas","sas value");
+  return {
+    sid: fH("store id","store_id"),
+    acc: fH("% sas accepted","sas accepted","% accepted","% accettati","accepted %","accepted","% accettazione","accettati %","% acceptance"),
+    vel: fH("% processed within","processed within 4","% within 4","within 4h","% gestiti entro","% sas gestiti","gestiti entro","velocit","velocity","% handled"),
+    valLc: valL>=0?valL:((valP>=0&&valP!==valE)?valP:-1)
+  };
+}
+function _seasSasFindHeaderRow(json){
+  for(var ri=0;ri<Math.min(5,json.length);ri++){
+    var r=json[ri];if(!r)continue;
+    var hdr=r.map(function(c){return String(c==null?"":c).toLowerCase().trim();});
+    if(hdr.some(function(h){return h&&h.indexOf("store")>=0;}))return {idx:ri,headers:hdr};
+  }
+  return null;
+}
+function loadSeasonalSasPeriodExcel(input,period){
+  var f=input.files[0];if(!f)return;input.value="";
+  var label=period==="jul"?"Luglio":"Agosto";
+  var reader=new FileReader();reader.onload=function(ev){try{
+    var data=new Uint8Array(ev.target.result);
+    var wb=XLSX.read(data,{type:"array",raw:true});
+    var ws=wb.Sheets[wb.SheetNames[0]];
+    var json=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
+    if(json.length<2){alert("File SAS "+label+" vuoto.");return;}
+    var hr=_seasSasFindHeaderRow(json);
+    if(!hr){alert("Formato file non riconosciuto: nessuna colonna Store ID trovata nelle prime 5 righe.");return;}
+    var headers=hr.headers;
+    var c=_seasSasFindCols(headers);
+    if(c.sid<0){alert("Colonna Store ID non trovata.\n\nColonne rilevate:\n"+headers.join(", "));return;}
+    var recField=period==="jul"?"sasSeasJulRec":"sasSeasAugRec";
+    var accField=period==="jul"?"sasSeasJulAcc":"sasSeasAugAcc";
+    var velField=period==="jul"?"sasSeasJulVel":"sasSeasAugVel";
+    var valField=period==="jul"?"sasSeasJulVal":"sasSeasAugVal";
+    var imported=0;
+    for(var ri2=hr.idx+1;ri2<json.length;ri2++){
+      var row=json[ri2];if(!row)continue;
+      var sid=row[c.sid];if(!sid)continue;
+      sid=String(parseInt(sid));if(sid==="NaN")continue;
+      if(!D.cs[sid])D.cs[sid]={sc:0,es:0,sy:0,nf:0,s4:0,iv:null,av:null,qc:0,cr:null};
+      var acc=null,vel=null,val=null;
+      if(c.acc>=0){var av=parseNum(row[c.acc]);if(!isNaN(av)){if(av>1)av=av/100;if(av<0)av=0;if(av>1)av=1;acc=av;}}
+      if(c.vel>=0){var vv=parseNum(row[c.vel]);if(!isNaN(vv)){if(vv>1)vv=vv/100;if(vv<0)vv=0;if(vv>1)vv=1;vel=vv;}}
+      if(c.valLc>=0){var sv=parseNum(row[c.valLc]);if(!isNaN(sv))val=sv;}
+      D.cs[sid][accField]=acc;D.cs[sid][velField]=vel;D.cs[sid][valField]=val;
+      D.cs[sid][recField]=sasRecognizedValue(acc,vel,val);
+      imported++;
+    }
+    alert("SAS "+label+" importato: "+imported+" negozi.");
+    autoSave();rSources();rC();
+  }catch(ex){alert("Errore lettura SAS "+label+": "+ex.message);}};reader.readAsArrayBuffer(f);
+}
+function loadSeasonalSasJulExcel(input){loadSeasonalSasPeriodExcel(input,"jul");}
+function loadSeasonalSasAugExcel(input){loadSeasonalSasPeriodExcel(input,"aug");}
+
+function loadSeasonalSasFullExcel(input){
+  var f=input.files[0];if(!f)return;input.value="";
+  var reader=new FileReader();reader.onload=function(ev){try{
+    var data=new Uint8Array(ev.target.result);
+    var wb=XLSX.read(data,{type:"array",raw:true});
+    var ws=wb.Sheets[wb.SheetNames[0]];
+    var json=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
+    if(json.length<2){alert("File SAS Stagione vuoto.");return;}
+    var hr=_seasSasFindHeaderRow(json);
+    if(!hr){alert("Formato file non riconosciuto: nessuna colonna Store ID trovata nelle prime 5 righe.");return;}
+    var headers=hr.headers;
+    function fH(){for(var ci=0;ci<headers.length;ci++){if(!headers[ci])continue;for(var i=0;i<arguments.length;i++){if(headers[ci].indexOf(arguments[i])>=0)return ci;}}return-1;}
+    var cSid=fH("store id","store_id");
+    var cValE=fH("valore eur","value eur","valore sas eur","sas value eur","valore euro");
+    var cValL=fH("valore lc","value lc","valore sas lc","sas value lc");
+    var cValP=fH("valore sas","sas value","valore","value");
+    var cVal=cValL>=0?cValL:((cValP>=0&&cValP!==cValE)?cValP:-1);
+    if(cSid<0||cVal<0){alert("Colonne Store ID o Valore SAS non trovate.\n\nColonne rilevate:\n"+headers.join(", "));return;}
+    var imported=0;
+    for(var ri2=hr.idx+1;ri2<json.length;ri2++){
+      var row=json[ri2];if(!row)continue;
+      var sid=row[cSid];if(!sid)continue;
+      sid=String(parseInt(sid));if(sid==="NaN")continue;
+      if(!D.cs[sid])D.cs[sid]={sc:0,es:0,sy:0,nf:0,s4:0,iv:null,av:null,qc:0,cr:null};
+      var v=parseNum(row[cVal]);if(!isNaN(v)){D.cs[sid].sasSeasFull=v;imported++;}
+    }
+    alert("SAS Stagione importato: "+imported+" negozi.");
+    autoSave();rSources();rC();
+  }catch(ex){alert("Errore lettura SAS Stagione: "+ex.message);}};reader.readAsArrayBuffer(f);
 }

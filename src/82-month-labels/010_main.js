@@ -27,6 +27,18 @@ function sanitizeCF(cf){
   return cf;
 }
 function getPdfSubfolder(){var r;if(PRIZE_MODE==="fcvm"){var mensileBase=MONTH_NAMES.IT[CFG_MONTH]+"_"+CFG_YEAR;var base=mensileBase+"/FCVM";r={prev:base+"/Preventivo",cons:base+"/Consuntivo",base:base};}else if(PRIZE_MODE==="seasonal"){var yr2=String(CFG_YEAR).slice(-2);var base=CFG_SEASON+yr2+"_"+CFG_YEAR;if(SEASON_PERIOD==="mid")r={prev:base+"/Mid-Season/Preventivo",cons:base+"/Mid-Season/Consuntivo",base:base+"/Mid-Season"};else r={prev:base+"/Preventivo",cons:base+"/Consuntivo",base:base};}else{r={prev:MONTH_NAMES.IT[CFG_MONTH]+"_"+CFG_YEAR+"/Preventivo",cons:MONTH_NAMES.IT[CFG_MONTH]+"_"+CFG_YEAR+"/Consuntivo",base:MONTH_NAMES.IT[CFG_MONTH]+"_"+CFG_YEAR};}r.fileBase=r.base.replace(/\//g,'_');return r;}
+// Etichetta descrittiva per i nomi file di export (sessione/config/JSON SAS):
+// riflette modalità premio + preventivo/consuntivo + regione + periodo attivi,
+// così i file salvati sono riconoscibili senza doverli aprire.
+function _sessionFileTag(){
+  var pmLabel={mensile:'Mensile',fcvm:'FCVM',seasonal:'Seasonal'}[PRIZE_MODE]||PRIZE_MODE;
+  var modeLabel=MODE==='preventivo'?'Preventivo':'Consuntivo';
+  var regionLabel=REGION==='italia'?'ITA':'Intl';
+  var periodLabel=PRIZE_MODE==='seasonal'
+    ?(CFG_SEASON+String(CFG_YEAR).slice(-2)+(SEASON_PERIOD==='mid'?'_Mid':'_Semestrale'))
+    :(MONTH_NAMES.IT[CFG_MONTH]+'_'+CFG_YEAR);
+  return pmLabel+'_'+modeLabel+'_'+regionLabel+'_'+periodLabel;
+}
 function updateHeader(){var el=document.getElementById("hdrPeriod");if(el)el.textContent=getMonthYearLabel();}
 function updateHeaderCount(){
   var hs=document.getElementById("hs");

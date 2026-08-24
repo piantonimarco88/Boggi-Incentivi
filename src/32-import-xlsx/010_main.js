@@ -388,7 +388,8 @@ function loadAnagraficaExcel(file){
 
         // Salary — handle thousand separators
         var salStr=String(row[C_SAL]||"0").trim();
-        if(salStr.toUpperCase()==="NO"){errors.push({row:ri+1,name:fullName,reason:"Codice interno = \"NO\" — dipendente senza stipendio definito, escluso dal piano incentivi"});continue}
+        // "NO" testuale = escluso, anche se la cella ha altro testo/numeri residui (es. "NO 556,00")
+        if(/^no(\s|$)/i.test(salStr)){errors.push({row:ri+1,name:fullName,reason:"Codice interno = \""+salStr+"\" — dipendente senza stipendio definito, escluso dal piano incentivi"});continue}
         var salary=parseNum(salStr);
         if(salary<=0){errors.push({row:ri+1,name:fullName,reason:"Stipendio zero o mancante"});continue}
 
@@ -705,8 +706,19 @@ function loadAnagraficaUSA(file){
   reader.onload=function(ev){
     try{
       var wb=XLSX.read(ev.target.result,{type:"array"});
-      var ws=wb.Sheets[wb.SheetNames[0]];
-      var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+      // Il file può avere più fogli (es. mesi diversi accumulati, tipo "APRIL"/"JUNE COMMISSION").
+      // Sceglie il foglio anagrafica valido (col. A = Store ID) con più colonne, così se un mese
+      // più recente aggiunge campi (es. Email) viene preferito rispetto a un foglio più vecchio/incompleto.
+      var ws=null,rows=null,wsBestScore=-1;
+      wb.SheetNames.forEach(function(sn){
+        var wsC=wb.Sheets[sn];
+        var rowsC=XLSX.utils.sheet_to_json(wsC,{header:1,defval:null});
+        if(!rowsC||rowsC.length<2||!rowsC[0])return;
+        if(String(rowsC[0][0]||"").toLowerCase().indexOf("store")<0)return;
+        var score=rowsC[0].length;
+        if(score>wsBestScore){wsBestScore=score;ws=wsC;rows=rowsC;}
+      });
+      if(!ws){ws=wb.Sheets[wb.SheetNames[0]];rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});}
       if(!rows||rows.length<2){alert("File USA vuoto o non leggibile.");return;}
 
       var imported=[],skipped=0,added=0;
@@ -715,6 +727,9 @@ function loadAnagraficaUSA(file){
       // Rileva colonna Field Coach dall'header (riga 0)
       var fcColUSA=-1;
       (rows[0]||[]).forEach(function(cell,ci){var s=String(cell||'').toLowerCase().replace(/[\s\n\r]+/g,'');if(s==='fc'||s.indexOf('fieldcoach')>=0||s.indexOf('field coach')>=0||s.indexOf('coach')>=0)fcColUSA=ci;});
+      // Rileva colonna Email dipendente dall'header (riga 0)
+      var emailColUSA=-1;
+      (rows[0]||[]).forEach(function(cell,ci){var s=String(cell||'').toLowerCase().replace(/[\s\n\r]+/g,'');if(s==='email'||s==='e-mail'||s.indexOf('email')>=0)emailColUSA=ci;});
 
       for(var i=1;i<rows.length;i++){
         var r=rows[i];
@@ -770,7 +785,7 @@ function loadAnagraficaUSA(file){
           ps:"NO",       // USA employees: premio attivo di default
           fc:(fcColUSA>=0&&r[fcColUSA])?String(r[fcColUSA]).trim():"",
           en:241,        // ente USA
-          mp:"",
+          mp:(emailColUSA>=0&&r[emailColUSA])?String(r[emailColUSA]).trim():"",
           mf:(function(){var _fn=(fcColUSA>=0&&r[fcColUSA])?String(r[fcColUSA]).trim():"";return _fn?_fn.toLowerCase().replace(/ /g,'.')+'@boggi.com':'';}()),
           rb:0,rbn:0,rd:0,rs:0,rp:0,rsa:0,rdc:0,rcs:0,ra:0,sc:0,il:0,dv:0,md:0,pq:0
         };
@@ -911,7 +926,7 @@ function resetEverything(){
   });
   SEAS={};
   // FC+VM
-  FC_EMP={};FC_MAP={};FC_TARGETS={};FC_RESULTS={};FC_SYLY={};FC_STORE_FLAGS={};AGG_FCVM={};FC_OVERRIDES={};FC_PREV_RESULTS={};
+  FC_EMP={};FC_MAP={};FC_TARGETS={};FC_RESULTS={};FC_SYLY={};FC_STORE_FLAGS={};AGG_FCVM={};FC_OVERRIDES={};FC_PREV_RESULTS={};FC_AREA_SAS={};
   MONTHLY_SYLY={};
   // Svuota DOM di tutti i pannelli immediatamente (evita dati residui visibili)
   ["p0","p1","p2","p3","p4","p5","p6","p7"].forEach(function(id){
@@ -1329,12 +1344,12 @@ function loadResultsExcel(file){
         var cSid=fH("store id","store_id");
         var cEtich=fH("etichette di riga","row label");
 
-        var cConv=fH("converted sales amt","converted amount","converted sales");
+        var cConv=fH("converted sales amt","converted amount","converted sales","converted bc value");
         if(cConv>=0&&(cSid>=0||cEtich>=0)){
           if(isDCC||type==="unknown"){type="dcc";bestSheet=sn;bestJson=json;bestHeaders=headers;bestDataStart=dStart;if(isDCC)break;continue}
         }
 
-        var cInc=fH("incentivo merce","riceve l'incentivo","riceve l\u2019incentivo","somma di riceve","incentivo da attribuire","somma di incentivo");
+        var cInc=fH("incentivo merce","riceve l'incentivo","riceve l\u2019incentivo","somma di riceve","incentivo da attribuire","somma di incentivo","da distribuire");
         if(cInc>=0&&(cSid>=0||cEtich>=0)){
           if(isArt||type==="unknown"){type="articoli";bestSheet=sn;bestJson=json;bestHeaders=headers;bestDataStart=dStart;if(isArt)break;continue}
         }
@@ -1343,7 +1358,12 @@ function loadResultsExcel(file){
         if(cTotSales>=0&&cSid>=0&&type==="unknown"){type="bdg_results";bestSheet=sn;bestJson=json;bestHeaders=headers;bestDataStart=dStart;continue}
 
         var cS4=fH("processed within 4","within 4h");
-        if(cS4>=0&&cSid>=0&&type==="unknown"){type="sas_results";bestSheet=sn;bestJson=json;bestHeaders=headers;bestDataStart=dStart;continue}
+        // Formato QWRT (da luglio 2026): pct_accepted, pct_speed, store_sas_value_lc/eur
+        var cSasQwrt=fH("pct_accepted","pct_speed","store_sas_value","recognised_pct");
+        // Riserva SAS mese precedente: file di solo round-trip (Store ID + Riserva SAS LC/EUR),
+        // esportato da "Esporta Riserva SAS Negozi" e re-importato qui il mese dopo.
+        var cSasResCarry=fH("riserva sas");
+        if((cS4>=0||cSasQwrt>=0||cSasResCarry>=0)&&cSid>=0&&type==="unknown"){type="sas_results";bestSheet=sn;bestJson=json;bestHeaders=headers;bestDataStart=dStart;continue}
 
         var cIll=fH("illnesses","illness");var cInj=fH("injuries","injury");var cMat=fH("maternity","paternity");
         var cMatr=fH("serial no","matricola");if(cMatr<0)cMatr=headers.indexOf("a");
@@ -1382,7 +1402,7 @@ function loadResultsExcel(file){
 
       if(type==="dcc"){
         var cSid=fH("store id","store_id");var cEtich=fH("etichette di riga","row label");
-        var cConv=fH("converted sales amt","converted amount","converted sales");
+        var cConv=fH("converted sales amt","converted amount","converted sales","converted bc value");
         var sidCol=cSid>=0?cSid:cEtich;
         for(var ri=dataStart;ri<json.length;ri++){
           var row=json[ri];if(!row)continue;
@@ -1397,7 +1417,7 @@ function loadResultsExcel(file){
 
       else if(type==="articoli"){
         var cSid=fH("store id","store_id");var cEtich=fH("etichette di riga","row label");
-        var cInc=fH("incentivo merce","riceve l'incentivo","riceve l\u2019incentivo","somma di riceve","incentivo da attribuire","somma di incentivo");
+        var cInc=fH("incentivo merce","riceve l'incentivo","riceve l\u2019incentivo","somma di riceve","incentivo da attribuire","somma di incentivo","da distribuire");
         var sidCol=cSid>=0?cSid:cEtich;
         for(var ri=dataStart;ri<json.length;ri++){
           var row=json[ri];if(!row)continue;
@@ -1417,6 +1437,11 @@ function loadResultsExcel(file){
         var cDigital=fH("% digital","digital");var cCR=fH("cr 20","cr_20","cr ");
         var cSY=fH("sy gross","sy_gross","sy ");var cSub=fH("subscription","fidelity");
         var cQty=fH("qty sales","qty_sales","qty ");
+        // Cambio reale del mese (opzionale): se il file ha anche il fatturato in EUR accanto a
+        // quello in valuta locale, ricaviamo il cambio effettivo negozio per negozio invece di
+        // usare quello statico/anagrafica (ENTE_CU o e.ex) — vedi applicazione a E più sotto.
+        var cSalesEur=fH("gross sales eur","sales eur","tot sales eur","fatturato eur","gross_sales_eur");
+        var withFx=0;
         for(var ri=dataStart;ri<json.length;ri++){
           var row=json[ri];if(!row)continue;var sid=row[cSid];if(!sid)continue;
           sid=String(parseInt(sid));if(sid==="NaN")continue;
@@ -1430,27 +1455,58 @@ function loadResultsExcel(file){
           if(cSub>=0){D.c[sid].nf=parseNum(row[cSub])}
           if(cQty>=0){D.c[sid].qc=Math.round(parseNum(row[cQty]))}
           if(cFcst>=0){var vf=parseNum(row[cFcst]);if(vf>0){if(!D.t[sid])D.t[sid]={to:0,sy:0,pr:0,cr:0,di:0,cs:0,qt:0,fc:"",fl:"",mo:""};D.t[sid].to=Math.round(vf)}}
+          if(cSalesEur>=0&&totSales>0){
+            var salesEur=parseNum(row[cSalesEur]);
+            if(!isNaN(salesEur)&&salesEur>0){D.c[sid].fx=salesEur/totSales;withFx++;}
+          }
           imported++;
         }
-        report="BDG caricati: "+imported+" negozi.";
+        // Applica il cambio derivato ai dipendenti del negozio (sovrascrive e.ex): da qui in poi
+        // Premio EUR, lettere, export ecc. usano il cambio reale di questo mese invece di quello
+        // statico. Se un negozio non ha il dato (colonna assente o fatturato LC a zero), e.ex
+        // resta quello attuale (anagrafica/ENTE_CU) senza alcun avviso.
+        if(withFx>0){
+          E.forEach(function(e){var fx=(D.c[String(e.si)]||{}).fx;if(fx)e.ex=Math.round(fx*100000)/100000;});
+        }
+        report="BDG caricati: "+imported+" negozi."+(withFx>0?(" Cambio reale derivato per "+withFx+" negozi."):"");
       }
 
       else if(type==="sas_results"){
         var cSid=fH("store id","store_id");
-        var cSa=fH("% sas accepted","sas accepted","% accepted","% accettati","accepted %","accepted","% accettazione","accettati %","% acceptance");
-        // NUOVA logica SAS (da luglio 2026): velocità %, valore SAS (LC/EUR), riserva riportata
-        var cVel=fH("% processed within","processed within 4","% within 4","within 4h","% gestiti entro","% sas gestiti","gestiti entro","velocit","velocity","% handled");
-        // Vecchio conteggio "SAS on target" (giugno): solo se NON è la colonna velocità %
+        // fHns: come fH ma ignora le colonne "recognised_*" — il valore riconosciuto/matrice lo
+        // calcoliamo noi (sasMatrixPct/sasRecognizedValue), non lo importiamo dal file.
+        function fHns(){for(var ci=0;ci<headers.length;ci++){if(!headers[ci]||headers[ci].indexOf('recognised')>=0)continue;for(var i=0;i<arguments.length;i++){if(headers[ci].indexOf(arguments[i])>=0)return ci}}return-1}
+        var cSa=fHns("% sas accepted","sas accepted","% accepted","% accettati","accepted %","accepted","% accettazione","accettati %","% acceptance","pct_accepted","pct accepted");
+        // NUOVA logica SAS (da luglio 2026): velocità %, valore SAS (LC/EUR), riserva riportata.
+        // Richiede il simbolo "%" nell'header (fasi "processed within"/"gestiti"/"handled") per non
+        // confondersi con la vecchia colonna "Processed within 4h" (conteggio, non percentuale, fino
+        // a giugno 2026). "pct_speed"/"velocit(y)" sono nomi inequivocabilmente percentuali: nessun "%" richiesto.
+        var cVel=-1;
+        headers.forEach(function(hh,ci){if(!hh||hh.indexOf('recognised')>=0)return;
+          var isUnambiguousPct=hh.indexOf('pct_speed')>=0||hh.indexOf('pct speed')>=0||hh.indexOf('velocit')>=0||hh.indexOf('velocity')>=0;
+          var isPctPhraseWithSymbol=hh.indexOf('%')>=0&&(hh.indexOf('processed within')>=0||hh.indexOf('within 4h')>=0||hh.indexOf('gestiti entro')>=0||hh.indexOf('sas gestiti')>=0||hh.indexOf('handled')>=0);
+          if(isUnambiguousPct||isPctPhraseWithSymbol)cVel=ci;
+        });
+        // Vecchio conteggio "SAS on target" (fino a giugno 2026): stesso testo ma senza "%"
         var cS4=fH("processed within 4","within 4h");if(cS4>=0&&cS4===cVel)cS4=-1;
-        var cValE=fH("valore eur","value eur","valore sas eur","sas value eur","valore euro");
-        var cValL=fH("valore lc","value lc","valore sas lc","sas value lc");
-        var cValP=fH("valore sas","sas value"); // senza suffisso → assunto LC
+        var cValE=fHns("valore eur","value eur","valore sas eur","sas value eur","valore euro","value_eur","sas_value_eur","store_sas_value_eur");
+        var cValL=fHns("valore lc","value lc","valore sas lc","sas value lc","value_lc","sas_value_lc","store_sas_value_lc");
+        var cValP=fHns("valore sas","sas value"); // senza suffisso → assunto LC
         var cValLc=cValL>=0?cValL:((cValP>=0&&cValP!==cValE)?cValP:-1);
         var cRes=fH("riserva sas","sas reserve","riserva carry","riserva");
-        var withAcc=0,withVel=0,withVal=0;
+        // Da luglio 2026: colonne retail year / retail month per filtrare per periodo
+        var cRetYear=fH("retail year","retail_year");
+        var cRetMonth=fH("retail month","retail_month");
+        var withAcc=0,withVel=0,withVal=0,withRes=0;
         for(var ri=dataStart;ri<json.length;ri++){
-          var row=json[ri];if(!row)continue;var sid=row[cSid];if(!sid)continue;
-          sid=String(parseInt(sid));if(sid==="NaN")continue;
+          var row=json[ri];if(!row)continue;var rawSid=row[cSid];if(rawSid==null||String(rawSid).trim()==="")continue;
+          // Scarta righe non numeriche (es. riga di firma/report "28 lug 2026, 09:46" in fondo al file):
+          // parseInt tronca al primo numero valido e creerebbe un negozio fantasma inesistente.
+          if(!/^\d+$/.test(String(rawSid).trim()))continue;
+          var sid=String(parseInt(rawSid));if(sid==="NaN")continue;
+          // Filtra per anno/mese retail se le colonne sono presenti e valorizzate
+          if(cRetYear>=0){var ry=parseInt(row[cRetYear]);if(!isNaN(ry)&&ry!==CFG_YEAR)continue;}
+          if(cRetMonth>=0){var rm=parseInt(row[cRetMonth]);if(!isNaN(rm)&&rm!==CFG_MONTH)continue;}
           if(!D.c[sid])D.c[sid]={sc:0,es:0,pd:0,cr:0,sy:0,nf:0,qc:0,s4:0,dv:0};
           if(cS4>=0){var s4v=parseNum(row[cS4]);if(!isNaN(s4v))D.c[sid].s4=Math.round(s4v);}
           if(cSa>=0){
@@ -1468,10 +1524,10 @@ function loadResultsExcel(file){
           }
           if(cValLc>=0){var sv=parseNum(row[cValLc]);if(!isNaN(sv)){D.c[sid].sasv=sv;withVal++;}}
           if(cValE>=0){var sve=parseNum(row[cValE]);if(!isNaN(sve))D.c[sid].sasv_eur=sve;}
-          if(cRes>=0){var rv=parseNum(row[cRes]);if(!isNaN(rv))D.c[sid].sasr=rv;}
+          if(cRes>=0){var rv=parseNum(row[cRes]);if(!isNaN(rv)){D.c[sid].sasr=rv;withRes++;}}
           imported++;
         }
-        report="SAS caricati: "+imported+" negozi"+(cSa>=0?(" · acc:"+withAcc):"")+(cVel>=0?(" · vel:"+withVel):"")+((cValLc>=0||cValE>=0)?(" · valore:"+withVal):"")+".";
+        report="SAS caricati: "+imported+" negozi"+(cSa>=0?(" · acc:"+withAcc):"")+(cVel>=0?(" · vel:"+withVel):"")+((cValLc>=0||cValE>=0)?(" · valore:"+withVal):"")+(cRes>=0?(" · riserva:"+withRes):"")+".";
       }
 
       else if(type==="malattie"){
@@ -1641,4 +1697,49 @@ function loadResultsExcel(file){
   reader.readAsArrayBuffer(file);
 }
 
+
+// Carica esubero mese precedente per negozi USA dallo stesso formato BDG Results
+function loadUSAPrevResults(file){
+  if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(ev){setTimeout(function(){try{
+    var data=new Uint8Array(ev.target.result);
+    var wb=XLSX.read(data,{type:"array",raw:true});
+    var updated=0,skipped=0;
+    for(var si=0;si<wb.SheetNames.length;si++){
+      var sn=wb.SheetNames[si];
+      var ws=wb.Sheets[sn];
+      var json=XLSX.utils.sheet_to_json(ws,{header:1,raw:true});
+      if(json.length<2)continue;
+      // Trova header row
+      var headerRow=-1,headers=[];
+      for(var hr=0;hr<Math.min(6,json.length);hr++){
+        var r=json[hr];if(!r||!Array.isArray(r))continue;
+        var hdr=[];for(var hc=0;hc<r.length;hc++){hdr.push(String(r[hc]==null?"":r[hc]).toLowerCase().trim())}
+        if(hdr.some(function(h){return h&&h.indexOf("store")>=0})){headerRow=hr;headers=hdr;break;}
+      }
+      if(headerRow<0)continue;
+      function fH2(){for(var ci=0;ci<headers.length;ci++){if(!headers[ci])continue;for(var i=0;i<arguments.length;i++){if(headers[ci].indexOf(arguments[i])>=0)return ci}}return-1}
+      var cSid=fH2("store id","store_id");var cTotSales=fH2("tot sales");var cEsubero=fH2("esubero");
+      if(cSid<0||cTotSales<0)continue;
+      for(var ri=headerRow+1;ri<json.length;ri++){
+        var row=json[ri];if(!row)continue;
+        var sid=row[cSid];if(!sid)continue;
+        sid=String(parseInt(sid));if(sid==="NaN")continue;
+        // Solo negozi USA
+        if(USA_STORES.indexOf(Number(sid))<0){skipped++;continue;}
+        var totSales=parseNum(row[cTotSales]);
+        var esub=cEsubero>=0?parseNum(row[cEsubero]):0;
+        var es=Math.round(esub);
+        if(!D.c[sid])D.c[sid]={sc:0,es:0,pd:0,cr:0,sy:0,nf:0,qc:0,s4:0,dv:0};
+        D.c[sid].esP=es;
+        updated++;
+      }
+      break; // primo foglio con store trovato è sufficiente
+    }
+    autoSave();rC();rA();rSources();
+    alert('Esubero precedente USA: '+updated+' negozi aggiornati'+(skipped>0?' ('+skipped+' negozi non-USA ignorati)':'')+'.');
+  }catch(ex){alert('Errore lettura esubero precedente USA:\n'+ex.message);}},50);};
+  reader.readAsArrayBuffer(file);
+}
 

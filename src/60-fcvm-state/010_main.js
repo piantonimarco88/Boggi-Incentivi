@@ -11,4 +11,5 @@ var _fcZipBlobs={};   // {fcKey: Blob} — ZIP blobs in memoria dopo generazione
 var _fcZipMetas={};   // {fcKey: {email,fileName,period,typeLabel}} — metadati per EML
 var FC_OVERRIDES={};   // {matr: '100'|'60'} — override manuale esito premio area
 var FC_PREV_RESULTS={}; // {store_id:{to_eur,sc_eur}} — risultati mese precedente
+var FC_AREA_SAS={}; // {matricola:{acc,vel,sasv_eur,sasr_eur}} — SAS aggregato per l'intera area del Field Coach (da luglio 2026, formato QWRT per field_coach)
 var FCVM_PARAMS={soglia100:0.995,soglia60:0.95,pct60:0.60};

@@ -6,7 +6,10 @@ function rC(){
   var mL=MODE==="preventivo"?'<span style="background:#fff3cd;color:#856404;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700">\u26a0 PREVENTIVO</span>':'';
   mL+=' <button class="exp-btn" onclick="exportExcel()" style="font-size:10px;padding:4px 12px">&#128202; Export Excel</button>';
   if(MODE==="consuntivo")mL+=' <button class="exp-btn btn-lgreen" onclick="saveMonitorSnap()" style="font-size:10px;padding:4px 12px">&#128229; Salva per Monitor</button>';
+  if(REGION==="italia"&&MODE==="consuntivo")mL+=' <button class="exp-btn btn-blue" onclick="exportExcelConsuntivoIT()" style="font-size:10px;padding:4px 12px">&#128202; Export Consuntivo IT</button>';
   if(REGION==="international"&&MODE==="consuntivo")mL+=' <button class="exp-btn btn-amber" onclick="exportExcelUSA()" style="font-size:10px;padding:4px 12px">&#127482;&#127480; Export Excel USA</button>';
+  if(MODE==="consuntivo"&&typeof sasNewActive==='function'&&sasNewActive())mL+=' <button class="exp-btn btn-violet" onclick="exportSasJsonStores()" style="font-size:10px;padding:4px 12px" title="JSON con target/consuntivo/SAS per negozio, per import in statistiche">&#128202; Esporta SAS Negozi (JSON)</button>';
+  if(MODE==="consuntivo"&&typeof sasNewActive==='function'&&sasNewActive())mL+=' <button class="exp-btn" onclick="exportSasReserveStores()" style="font-size:10px;padding:4px 12px" title="Excel con la riserva SAS non utilizzata questo mese, da ricaricare il mese prossimo (Carica Excel Results)">&#128230; Esporta Riserva SAS Negozi</button>';
   var fl=E.filter(function(e){if(cF.j!=="ALL"&&e.j!==cF.j)return false;if(cF.s!=="ALL"&&e.s!==cF.s)return false;
     if(cF.q){var q=cF.q.toLowerCase();return(e.c&&e.c.toLowerCase().indexOf(q)>=0)||(e.n&&e.n.toLowerCase().indexOf(q)>=0)||(e.m&&e.m.toLowerCase().indexOf(q)>=0)||(e.s&&e.s.toLowerCase().indexOf(q)>=0)}return true});
   fl.sort(function(a,b){var va,vb,col=cSort.col;
@@ -26,7 +29,14 @@ function rC(){
     var psOn=e.ps==="SI";
     var sf=STORE_FLAGS[String(e.si)]||{};
     var uUp=e.cu==="USD";
-    h+='<tr class="ck" data-m="'+esc(e.m)+'"><td class="mn">'+esc(e.m)+"</td><td>"+(uUp?esc(e.c).toUpperCase():esc(e.c))+"</td><td>"+(uUp?esc(e.n).toUpperCase():esc(e.n))+'</td><td style="font-size:10px;color:#8a8680">'+(uUp?esc(e.s).toUpperCase():esc(e.s))+'</td><td><span class="bg '+(sf.dept?"bg-d":"bg-n")+'" title="'+esc(e.j)+'">'+esc(e.f||e.j)+"</span></td>";
+    var _negCell;
+    if(_storeEditMatr===e.m){
+      var _stOpts='';_allStoresList().forEach(function(st){_stOpts+='<option value="'+esc(String(st.si))+'"'+(String(st.si)===String(e.si)?' selected':'')+'>'+esc(st.s)+'</option>'});
+      _negCell='<select onclick="event.stopPropagation()" onchange="event.stopPropagation();changeEmployeeStore(\''+esc(e.m)+'\',this.value)" style="font-size:9px;padding:2px 4px;border:1px solid #d5d0c8;border-radius:3px;max-width:150px;font-family:inherit">'+_stOpts+'</select><button onclick="event.stopPropagation();cancelEditStore()" style="background:none;border:none;color:#a09a92;cursor:pointer;font-size:11px;margin-left:2px;padding:0" title="Annulla">&#10005;</button>';
+    }else{
+      _negCell=(uUp?esc(e.s).toUpperCase():esc(e.s))+'<button onclick="event.stopPropagation();startEditStore(\''+esc(e.m)+'\')" style="background:none;border:none;color:#a09a92;cursor:pointer;font-size:10px;margin-left:4px;padding:0" title="Cambia negozio">&#9998;</button>';
+    }
+    h+='<tr class="ck" data-m="'+esc(e.m)+'"><td class="mn">'+esc(e.m)+"</td><td>"+(uUp?esc(e.c).toUpperCase():esc(e.c))+"</td><td>"+(uUp?esc(e.n).toUpperCase():esc(e.n))+'</td><td style="font-size:10px;color:#8a8680;white-space:nowrap">'+_negCell+'</td><td><span class="bg '+(sf.dept?"bg-d":"bg-n")+'" title="'+esc(e.j)+'">'+esc(e.f||e.j)+"</span></td>";
     h+='<td style="font-size:9px;color:#a09a92">'+cu+'</td><td style="text-align:center"><span class="ml-dot '+mlc+'"></span>'+ml+"</td>";
     var ridotto=!psOn&&t>0&&isRidotto(e)&&isOn(e.j,"rb");
     h+='<td style="text-align:center;font-size:13px" title="'+(ridotto?"Premio BDG ridotto ("+Math.round(PARAMS.bdg60mult*100)+"%)":"—")+'">'+(ridotto?'<span style="color:#c9a96e">&#11044;</span>':'—')+"</td>";
@@ -203,6 +213,189 @@ function exportExcel(){
   XLSX.writeFile(wb,"Incentivi_"+MODE+"_"+getPdfSubfolder().fileBase+".xlsx");
 }
 
+function exportExcelConsuntivoIT(){
+  var headers=["MONTH","STORE ID","DESCR FILIALE","MATRICOLA DIPENDENTE","COGNOME","NOME","JOB","RML","IMPORTO BDG","IMPORTO BDG1","BDG","RISULTATO PREMIO BDG (LORDO)","RISULTATO PREMIO BDG (NETTO)","RISULTATO PREMIO DIGITAL","RISULTATO SHOPPER YIELD","RISULTATO NUOVE PRIVILEGE","RISULTATO SAS","RISULTATO DCC","RISULTATO CUSTOMER SERVICE","RISULTATO ARTICOLI INCENTIVATI","MALATTIE","VISUAL IN STORE"];
+  var rows=[headers];
+  E.forEach(function(e){
+    if(e.ps==="SI")return;
+    var sm=sickMult(e.ml);
+    var rbCalc=isOn(e.j,"rb")?getVal(e,"rb")*sm:0;
+    var rb=e.ibFromAY?0:rbCalc;
+    var rbn=e.ibFromAY?rbCalc:0;
+    // Workgame: nessun codice payroll dedicato — confluisce nel cod. 225 (PREMIO DI RISULTATO),
+    // stessa logica di exportTracciatoPagamenti(). Qui non c'è colonna TOTALE che lo raccolga.
+    if(!e.ibFromAY&&MODE==="consuntivo"&&e.ov_wg==="SI"&&isOn(e.j,"rb"))rb+=Math.round(e.ib*(PARAMS.workgamePct||0)*100)/100;
+    var rd=isOn(e.j,"rd")?getVal(e,"rd")*sm:0;
+    var rs=isOn(e.j,"rs")?getVal(e,"rs")*sm:0;
+    var rp=isOn(e.j,"rp")?getVal(e,"rp")*sm:0;
+    var rsa=isOn(e.j,"rsa")?getVal(e,"rsa")*sm:0;
+    var rdc=isOn(e.j,"rdc")?getVal(e,"rdc")*sm:0;
+    var rcs=isOn(e.j,"rcs")?(getVal(e,"rcs")||0)*sm:0;
+    var ra=PARAMS.artEnabled&&isOn(e.j,"ra")?getVal(e,"ra")*sm:0;
+    var vi=(getVal(e,"vi")||0)*sm;
+    var ag=AGG[e.m]||{};
+    rb+=(ag.rb||0);rbn+=(ag.rbn||0);rd+=(ag.rd||0);rs+=(ag.rs||0);rp+=(ag.rp||0);rsa+=(ag.rsa||0);rdc+=(ag.rdc||0);rcs+=(ag.rcs||0);ra+=(ag.ra||0);
+    rows.push([CFG_MONTH,e.si,e.s,e.m,e.c,e.n,e.f||e.j,e.rl,e.ib,e.ib,e.ib,rb,rbn,rd,rs,rp,rsa,rdc,rcs,ra,e.ml||0,vi]);
+  });
+  var ws=XLSX.utils.aoa_to_sheet(rows);
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Consuntivo");
+  XLSX.writeFile(wb,"Incentivi_consuntivo_"+getPdfSubfolder().fileBase+".xlsx");
+}
+
+// ── Dashboard SAS → Fatturato (HTML scaricabile, standalone) ────────────────
+// Template generico condiviso tra la versione Negozi e la versione FC+VM:
+// riceve colonne/righe già pronte e produce un file .html autosufficiente,
+// filtrabile e ordinabile, senza dipendenze esterne (apribile offline).
+// ── Export SAS → Fatturato (JSON, per import nel progetto statistiche) ────
+// La dashboard filtrabile vive ora in statistiche; qui produciamo solo il
+// JSON con lo schema concordato (meta + columns + rows).
+function _downloadJson(payload,filename){
+  var blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json;charset=utf-8"});
+  var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=filename;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
+}
+
+// Export SAS → Fatturato per negozio (mensile, consuntivo, da luglio 2026)
+function exportSasJsonStores(){
+  var storeNames={},storeEx={};
+  E.forEach(function(e){if(e.si){if(!storeNames[e.si])storeNames[e.si]=e.s||String(e.si);if(storeEx[e.si]===undefined)storeEx[e.si]=e.ex||1;}});
+  var sids=Object.keys(storeNames).filter(function(sid){
+    if(isUSA(sid,{si:sid,cu:''}))return false; // USA non usa la matrice SAS
+    var info=storeSasInfo(sid);
+    return info.active&&(info.to>0||info.base>0);
+  });
+  if(!sids.length){alert("Nessun negozio con dati SAS+fatturato disponibili.\nCarica Target, Risultati BDG e SAS dal tab Fonti Dati.");return;}
+  var rows=sids.map(function(sid){
+    var info=storeSasInfo(sid);
+    var tg=D.t[sid]||{},cn=D.c[sid]||{};
+    var ex=storeEx[sid]||1; // conversione in EUR: i dati grezzi (D.t/D.c) sono nella valuta del negozio
+    var pctBase=info.to>0?info.base/info.to:0;
+    var pctFinal=info.pct;
+    var determinante=pctBase<PARAMS.bdg100&&pctFinal>=PARAMS.bdg100;
+    var esito=pctFinal>=PARAMS.bdg100?"full":(isRidottoStore(sid)?"ridotto":"none");
+    var esitoLabel=esito==="full"?"Pieno":(esito==="ridotto"?"Ridotto 60%":"Nessuno");
+    return{sid:sid,name:storeNames[sid],target:Math.round(info.to*ex),actual:Math.round(info.base*ex),pctBase:pctBase,
+      esubero:Math.round((cn.es||0)*ex),targetSY:tg.sy!=null?Math.round(tg.sy*ex*100)/100:null,resultSY:cn.sy!=null?Math.round(cn.sy*ex*100)/100:null,
+      sasValue:Math.round((info.sasv||0)*ex),recPct:info.pctMatrix!=null?Math.round(info.pctMatrix*100):null,
+      recValue:Math.round((info.recognized||0)*ex),applied:Math.round((info.used||0)*ex),pctFinal:pctFinal,
+      esito:esito,esitoLabel:esitoLabel,determinante:determinante};
+  });
+  var columns=[
+    {key:"sid",label:"Store ID",type:"mono"},
+    {key:"name",label:"Negozio",type:"text"},
+    {key:"target",label:"Target",type:"eur"},
+    {key:"actual",label:"Consuntivo",type:"eur"},
+    {key:"esubero",label:"Esub. prec.",type:"eur-dash0"},
+    {key:"targetSY",label:"Target SY",type:"dec1"},
+    {key:"resultSY",label:"Risultato SY",type:"dec1"},
+    {key:"pctBase",label:"% senza SAS",type:"pctbar"},
+    {key:"sasValue",label:"Valore SAS",type:"eur-muted"},
+    {key:"recPct",label:"Riconosciuto",type:"pct0"},
+    {key:"recValue",label:"Valore ricon.",type:"eur-muted-dash0"},
+    {key:"applied",label:"Applicato",type:"eur-dash0"},
+    {key:"pctFinal",label:"% finale",type:"pctbar-badge"},
+    {key:"esito",label:"Esito",type:"esitochip"}
+  ];
+  var payload={
+    meta:{kind:"negozi",title:"SAS → Fatturato",
+      subtitle:"Negozi "+(REGION==="italia"?"Italia":"International")+" — Consuntivo "+getMonthYearLabel(),
+      generatedAt:new Date().toISOString(),source:"BoggiIncentivi",schemaVersion:1},
+    columns:columns,
+    rows:rows
+  };
+  _downloadJson(payload,"sas_negozi_"+_sessionFileTag()+".json");
+}
+
+// Export SAS → Fatturato per area Field Coach/VM (FC+VM, consuntivo, da luglio 2026)
+function exportSasJsonFcvm(){
+  var pool=getFcVmPool();
+  if(!pool.length){alert("Nessun dato FC+VM caricato.");return;}
+  var rows=pool.map(function(emp){
+    var r=calcFcVmPremio(emp.m);
+    var pureCons=(r.totCons||0)-(r.totSasUsed||0);
+    var pctBase=r.totTarget>0?(pureCons+(r.totEsubero||0))/r.totTarget:0;
+    var pctFinal=r.pct||0;
+    var determinante=pctBase<FCVM_PARAMS.soglia100&&pctFinal>=FCVM_PARAMS.soglia100;
+    var esitoMap={full:["full","Pieno"],partial:["ridotto","Ridotto 60%"],partial_nosy:["none","Soglia/no SY"],none:["none","Nessuno"],sospeso:["none","Sospeso"],preventivo:["none","—"]};
+    var em=esitoMap[r.esito]||["none",r.esito];
+    return{name:emp.n+" "+emp.c,role:emp.j,nStores:(r.stores||[]).length,target:Math.round(r.totTarget||0),
+      actual:Math.round(pureCons),esubero:Math.round(r.totEsubero||0),targetSY:r.syLyArea!=null?r.syLyArea:null,resultSY:r.syAreaCy!=null?r.syAreaCy:null,
+      pctBase:pctBase,sasValue:Math.round((FC_AREA_SAS[emp.m]||{}).sasv_eur||0),
+      recPct:sasMatrixPct((FC_AREA_SAS[emp.m]||{}).acc,(FC_AREA_SAS[emp.m]||{}).vel)!=null?Math.round(sasMatrixPct((FC_AREA_SAS[emp.m]||{}).acc,(FC_AREA_SAS[emp.m]||{}).vel)*100):null,
+      recValue:Math.round(r.totSasRec||0),applied:Math.round(r.totSasUsed||0),pctFinal:pctFinal,
+      esito:em[0],esitoLabel:em[1],determinante:determinante};
+  });
+  var columns=[
+    {key:"name",label:"Nome",type:"text"},
+    {key:"role",label:"Ruolo",type:"mono"},
+    {key:"nStores",label:"N. Negozi",type:"int"},
+    {key:"target",label:"Target Area",type:"eur"},
+    {key:"actual",label:"Consuntivo Area",type:"eur"},
+    {key:"esubero",label:"Esub. prec.",type:"eur-dash0"},
+    {key:"targetSY",label:"SY LY (rif.)",type:"dec1"},
+    {key:"resultSY",label:"SY CY",type:"dec1"},
+    {key:"pctBase",label:"% senza SAS",type:"pctbar"},
+    {key:"sasValue",label:"Valore SAS",type:"eur-muted"},
+    {key:"recPct",label:"Riconosciuto",type:"pct0"},
+    {key:"recValue",label:"Valore ricon.",type:"eur-muted-dash0"},
+    {key:"applied",label:"Applicato",type:"eur-dash0"},
+    {key:"pctFinal",label:"% finale",type:"pctbar-badge"},
+    {key:"esito",label:"Esito",type:"esitochip"}
+  ];
+  var payload={
+    meta:{kind:"fcvm",title:"SAS → Fatturato",
+      subtitle:"Field Coach + VM — Consuntivo "+getMonthYearLabel(),
+      generatedAt:new Date().toISOString(),source:"BoggiIncentivi",schemaVersion:1},
+    columns:columns,
+    rows:rows
+  };
+  _downloadJson(payload,"sas_fcvm_"+_sessionFileTag()+".json");
+}
+
+// Esporta la riserva SAS non utilizzata questo mese (round-trip): il file va ricaricato
+// il mese successivo tramite "Carica Excel Results" (mensile) — stesso file, stesso import,
+// riconosciuto in automatico grazie alla colonna "RISERVA SAS LC" (vedi cSasResCarry).
+function exportSasReserveStores(){
+  var storeNames={},storeCu={},storeEx={};
+  E.forEach(function(e){if(e.si){if(!storeNames[e.si])storeNames[e.si]=e.s||String(e.si);if(storeCu[e.si]===undefined){storeCu[e.si]=e.cu||"EUR";storeEx[e.si]=e.ex||1;}}});
+  var rows=[["STORE ID","NEGOZIO","RISERVA SAS LC","VALUTA","CAMBIO","RISERVA SAS EUR"]];
+  Object.keys(storeNames).forEach(function(sid){
+    var info=storeSasInfo(sid);
+    if(!info.active)return;
+    var res=info.reserveOut||0;
+    if(res<=0)return;
+    var ex=storeEx[sid]||1;
+    rows.push([sid,storeNames[sid],Math.round(res*100)/100,storeCu[sid]||"EUR",ex,Math.round(res*ex*100)/100]);
+  });
+  if(rows.length<=1){alert("Nessuna riserva SAS da riportare: tutti i negozi hanno riserva 0 (o dati SAS non caricati).");return;}
+  var ws=XLSX.utils.aoa_to_sheet(rows);
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Riserva SAS");
+  XLSX.writeFile(wb,"riserva_sas_negozi_"+getPdfSubfolder().fileBase+".xlsx");
+}
+
+// Esporta la riserva SAS Area non utilizzata questo mese (round-trip): il file va ricaricato
+// il mese successivo tramite il bottone "SAS Area (Field Coach)" — stesso import, riconosciuto
+// in automatico grazie alla colonna "RISERVA SAS EUR" anche senza colonne acc/vel/valore.
+function exportSasReserveFcvm(){
+  var pool=getFcVmPool();
+  if(!pool.length){alert("Nessun dato FC+VM caricato.");return;}
+  var rows=[["NOME","RUOLO","RISERVA SAS EUR"]];
+  pool.forEach(function(emp){
+    var r=calcFcVmPremio(emp.m);
+    var res=r.totSasReserveOut||0;
+    if(res<=0)return;
+    rows.push([emp.n+" "+emp.c,emp.j,Math.round(res*100)/100]);
+  });
+  if(rows.length<=1){alert("Nessuna riserva SAS da riportare: tutte le aree hanno riserva 0 (o dati SAS non caricati).");return;}
+  var ws=XLSX.utils.aoa_to_sheet(rows);
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Riserva SAS");
+  XLSX.writeFile(wb,"riserva_sas_fcvm_"+getPdfSubfolder().fileBase+".xlsx");
+}
+
 function exportExcelUSA(){
   // Solo dipendenti USD (USA)
   var usaEmps=E.filter(function(e){return e.cu==="USD";});
@@ -233,8 +426,8 @@ function exportExcelUSA(){
     var usaDept=ud.isDept||(STORE_FLAGS[sid]&&STORE_FLAGS[sid].usaDept);
     var useStoreSales=rp.useStore||usaDept;
 
-    // Store hit logic
-    var storePct=tg.to>0?(cn.sc||0)/tg.to:0;
+    // Store hit logic (incl. esubero mese precedente USA da luglio 2026)
+    var storePct=tg.to>0?((cn.sc||0)+(sasNewActive()?cn.esP||0:0))/tg.to:0;
     var storeHit=(tg.to>0&&cn.sc)?storePct>=PARAMS.bdg100:(ud.sb===1);
     var mult=storeHit?rp.targetMult:rp.noTargetMult;
 

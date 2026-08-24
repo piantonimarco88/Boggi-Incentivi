@@ -203,8 +203,13 @@ function rSimulatore(){
   h+='<input type="checkbox" id="sim_artEnabled" '+(PARAMS.artEnabled?'checked':'')+'>';
   h+='<label for="sim_artEnabled" style="font-size:12px;color:#4e4b48;cursor:pointer">Articoli incentivati abilitati</label>';
   h+='</div>';
+  // Da luglio 2026 il vecchio premio SAS (rate/max) è sostituito dalla policy SAS→Fatturato:
+  // gli slider non hanno più alcun effetto sul payout (isOn disattiva quel KPI), quindi li
+  // togliamo dal simulatore invece di lasciarli come controlli morti.
+  var simDefs=SIM_PARAM_DEFS.filter(function(p){return !(sasNewActive()&&(p.k==="sasRate"||p.k==="sasMax"));})
+    .map(function(p){return(sasNewActive()&&p.group==="SAS/DCC")?Object.assign({},p,{group:"DCC"}):p;});
   var groups={};
-  SIM_PARAM_DEFS.forEach(function(p){if(!groups[p.group])groups[p.group]=[];groups[p.group].push(p);});
+  simDefs.forEach(function(p){if(!groups[p.group])groups[p.group]=[];groups[p.group].push(p);});
   Object.keys(groups).forEach(function(g){
     h+='<div style="margin-bottom:14px"><div style="font-size:10px;color:#8a8680;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:6px">'+esc(g)+'</div>';
     h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px">';
@@ -220,7 +225,7 @@ function rSimulatore(){
   h+='</div><div id="simRoleBreakdown"></div></div>';
   p10.innerHTML=h;
 
-  SIM_PARAM_DEFS.forEach(function(p){
+  simDefs.forEach(function(p){
     var el=document.getElementById("simRng_"+p.k);if(!el)return;
     el.oninput=function(){var v=parseFloat(this.value);_SIM_CURRENT[p.k]=v;var lab=document.getElementById("simVal_"+p.k);if(lab)lab.textContent=_simFmt(v,p);_simScheduleRecalc();};
   });
@@ -228,7 +233,7 @@ function rSimulatore(){
   if(cb)cb.onchange=function(){_SIM_CURRENT.artEnabled=this.checked;_simScheduleRecalc();};
   document.getElementById("simResetBtn").onclick=function(){
     _SIM_CURRENT=JSON.parse(JSON.stringify(_SIM_ORIG_PARAMS));
-    SIM_PARAM_DEFS.forEach(function(p){var el=document.getElementById("simRng_"+p.k);var lab=document.getElementById("simVal_"+p.k);var v=_SIM_CURRENT[p.k];if(el)el.value=v;if(lab)lab.textContent=_simFmt(v,p);});
+    simDefs.forEach(function(p){var el=document.getElementById("simRng_"+p.k);var lab=document.getElementById("simVal_"+p.k);var v=_SIM_CURRENT[p.k];if(el)el.value=v;if(lab)lab.textContent=_simFmt(v,p);});
     var cb2=document.getElementById("sim_artEnabled");if(cb2)cb2.checked=!!_SIM_CURRENT.artEnabled;
     _simRecalc();
   };

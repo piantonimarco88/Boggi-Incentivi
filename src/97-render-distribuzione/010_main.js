@@ -67,7 +67,7 @@ function rDist(){
 
   h+='<input placeholder="Cerca matricola, nome..." id="distQ" style="width:100%;padding:6px 10px;border:1px solid #d5d0c8;border-radius:4px;font-size:11px;margin-bottom:8px">';
   h+='<div class="scroll-wrap" style="max-height:50vh"><table style="font-size:10px"><thead><tr style="background:#eae7e1">';
-  h+='<th style="padding:5px;cursor:default">Matr.</th><th style="padding:5px;cursor:default">Cognome</th><th style="padding:5px;cursor:default">Nome</th><th style="padding:5px;cursor:default">Ruolo</th><th style="padding:5px;cursor:default;min-width:160px">Email Personale</th>'+(PRIZE_MODE!=='fcvm'?'<th style="padding:5px;cursor:default;min-width:160px">Email FC</th>':'')+'<th style="padding:5px;cursor:default">PDF</th><th style="padding:5px;cursor:default;text-align:right">Totale</th>';
+  h+='<th style="padding:5px;cursor:default">Matr.</th><th style="padding:5px;cursor:default">Cognome</th><th style="padding:5px;cursor:default">Nome</th><th style="padding:5px;cursor:default">Ruolo</th><th style="padding:5px;cursor:default;min-width:160px">Email Personale</th>'+(PRIZE_MODE!=='fcvm'?'<th style="padding:5px;cursor:default;min-width:160px">Email FC</th>':'')+'<th style="padding:5px;cursor:default">PDF</th><th style="padding:5px;cursor:default;text-align:right">Totale</th><th style="padding:5px;cursor:default;min-width:120px">Ultimo invio</th>';
   h+="</tr></thead><tbody id=\"distBody\">";
   distPool.forEach(function(e,i){
     var tc=PRIZE_MODE==='fcvm'?calcFcVmPremio(e.m).totalPremioLC:calcE(e);
@@ -82,7 +82,19 @@ function rDist(){
     h+='<td style="padding:2px"><input type="email" data-em="'+esc(e.m)+'" data-ek="mp" value="'+esc(e.mp||"")+'" style="width:100%;padding:2px 4px;border:1px solid '+(hasEmail?"#d4edda":"#f8d7da")+';border-radius:3px;font-size:9px;font-family:inherit;background:'+(hasEmail?"#f0faf2":"#fef6f0")+'"></td>';
     if(PRIZE_MODE!=='fcvm')h+='<td style="padding:2px"><input type="email" data-em="'+esc(e.m)+'" data-ek="mf" value="'+esc(e.mf||"")+'" style="width:100%;padding:2px 4px;border:1px solid #e5e1db;border-radius:3px;font-size:9px;font-family:inherit"></td>';
     h+='<td style="padding:3px 5px;font-size:8px;color:#a09a92">'+folder+"/"+pdfName+"</td>";
-    h+='<td style="padding:3px 5px;text-align:right;font-weight:600;color:'+(tc>0?"#2c2925":"#b0a99f")+'">'+fc(tc,cu)+"</td></tr>"});
+    h+='<td style="padding:3px 5px;text-align:right;font-weight:600;color:'+(tc>0?"#2c2925":"#b0a99f")+'">'+fc(tc,cu)+"</td>";
+    var _lastLog=getLastMailLog(e.m);
+    if(_lastLog){
+      var _lts=new Date(_lastLog.ts);
+      var _ld=String(_lts.getDate()).padStart(2,"0")+"/"+String(_lts.getMonth()+1).padStart(2,"0")+" "+String(_lts.getHours()).padStart(2,"0")+":"+String(_lts.getMinutes()).padStart(2,"0");
+      var _lCol=_lastLog.status==='sent'?'#2d7a3a':(_lastLog.status==='error'?'#cf5b5b':'#c9a96e');
+      var _lIcon=_lastLog.status==='sent'?'✓':(_lastLog.status==='error'?'✗':'✉');
+      var _lLbl=_lastLog.status==='sent'?'Inviata':(_lastLog.status==='error'?'Errore':'Preparata');
+      h+='<td style="padding:3px 5px;font-size:9px;color:'+_lCol+'" title="'+esc(_lLbl+' il '+_lts.toLocaleString("it-IT"))+'">'+_lIcon+' '+_ld+'</td>';
+    } else {
+      h+='<td style="padding:3px 5px;font-size:9px;color:#b0a99f">—</td>';
+    }
+    h+="</tr>"});
   h+="</tbody></table></div></div>";
 
   document.getElementById("p6").innerHTML=h;
@@ -431,11 +443,12 @@ function exportTracciatoPagamenti(){
 
   if(isSeasItalia){
     // Seasonal Italia: una sola riga per dipendente — PREMIO SEMESTRALE cod 695
+    var isMidExp=SEASON_PERIOD==="mid";
     E.forEach(function(e){
       // Escludi dipendenti con premio sospeso
       if(SEAS&&SEAS[e.m]&&SEAS[e.m].excluded)return;
       var matrNum=e.m.replace(/^[A-Za-z]+/,"");
-      var val=calcSeasonal(e);
+      var val=isMidExp?calcMidSeason(e):calcSeasonal(e);
       var rounded=Math.round(val);
       if(rounded<=0)return;
       var importo=String(rounded*100);
