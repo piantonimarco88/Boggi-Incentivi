@@ -277,15 +277,23 @@ function exportSasJsonStores(){
     var info=storeSasInfo(sid);
     var tg=D.t[sid]||{},cn=D.c[sid]||{};
     var ex=storeEx[sid]||1; // conversione in EUR: i dati grezzi (D.t/D.c) sono nella valuta del negozio
-    var pctBase=info.to>0?info.base/info.to:0;
+    var pctBase=info.to>0?info.base/info.to:0; // include l'esubero fatturato (solo il SAS resta escluso), NON tocca actual
     var pctFinal=info.pct;
     var determinante=pctBase<PARAMS.bdg100&&pctFinal>=PARAMS.bdg100;
     var esito=pctFinal>=PARAMS.bdg100?"full":(isRidottoStore(sid)?"ridotto":"none");
     var esitoLabel=esito==="full"?"Pieno":(esito==="ridotto"?"Ridotto 60%":"Nessuno");
-    return{sid:sid,name:storeNames[sid],target:Math.round(info.to*ex),actual:Math.round(info.base*ex),pctBase:pctBase,
+    // Riserva SAS mese prec. consumata PRIMA per colmare il gap (vedi sasReserveCalc):
+    // quanto ne è stato usato si ricava così, stessa formula delle lettere (v9.45+).
+    var resInUsed=Math.min(info.reserveIn||0,info.used||0);
+    return{sid:sid,name:storeNames[sid],target:Math.round(info.to*ex),
+      // actual = consuntivo PURO (esubero escluso, coerente con l'export fcvm): invariante
+      // pctFinal*target = actual+esubero+applied (arrotondamenti a parte).
+      actual:Math.round((cn.sc||0)*ex),pctBase:pctBase,
       esubero:Math.round((cn.es||0)*ex),targetSY:tg.sy!=null?Math.round(tg.sy*ex*100)/100:null,resultSY:cn.sy!=null?Math.round(cn.sy*ex*100)/100:null,
       sasValue:Math.round((info.sasv||0)*ex),recPct:info.pctMatrix!=null?Math.round(info.pctMatrix*100):null,
-      recValue:Math.round((info.recognized||0)*ex),applied:Math.round((info.used||0)*ex),pctFinal:pctFinal,
+      recValue:Math.round((info.recognized||0)*ex),applied:Math.round((info.used||0)*ex),
+      esuberoSasPrec:Math.round((info.reserveIn||0)*ex),esuberoSasPrecUsed:Math.round(resInUsed*ex),
+      sasReserveNext:Math.round((info.reserveOut||0)*ex),pctFinal:pctFinal,
       esito:esito,esitoLabel:esitoLabel,determinante:determinante};
   });
   var columns=[
@@ -301,13 +309,16 @@ function exportSasJsonStores(){
     {key:"recPct",label:"Riconosciuto",type:"pct0"},
     {key:"recValue",label:"Valore ricon.",type:"eur-muted-dash0"},
     {key:"applied",label:"Applicato",type:"eur-dash0"},
+    {key:"esuberoSasPrec",label:"Riserva SAS prec.",type:"eur-dash0"},
+    {key:"esuberoSasPrecUsed",label:"Riserva SAS prec. usata",type:"eur-dash0"},
+    {key:"sasReserveNext",label:"Riserva SAS riportata",type:"eur-dash0"},
     {key:"pctFinal",label:"% finale",type:"pctbar-badge"},
     {key:"esito",label:"Esito",type:"esitochip"}
   ];
   var payload={
     meta:{kind:"negozi",title:"SAS → Fatturato",
       subtitle:"Negozi "+(REGION==="italia"?"Italia":"International")+" — Consuntivo "+getMonthYearLabel(),
-      generatedAt:new Date().toISOString(),source:"BoggiIncentivi",schemaVersion:1},
+      generatedAt:new Date().toISOString(),source:"BoggiIncentivi",schemaVersion:2},
     columns:columns,
     rows:rows
   };
@@ -326,11 +337,18 @@ function exportSasJsonFcvm(){
     var determinante=pctBase<FCVM_PARAMS.soglia100&&pctFinal>=FCVM_PARAMS.soglia100;
     var esitoMap={full:["full","Pieno"],partial:["ridotto","Ridotto 60%"],partial_nosy:["none","Soglia/no SY"],none:["none","Nessuno"],sospeso:["none","Sospeso"],preventivo:["none","—"]};
     var em=esitoMap[r.esito]||["none",r.esito];
+    // Riserva SAS mese prec. consumata PRIMA per colmare il gap (vedi sasReserveCalc):
+    // quanto ne è stato usato si ricava così, stessa formula delle lettere (v9.45+).
+    var resInUsed=Math.min(r.totSasReserveIn||0,r.totSasUsed||0);
     return{name:emp.n+" "+emp.c,role:emp.j,nStores:(r.stores||[]).length,target:Math.round(r.totTarget||0),
+      // actual = consuntivo PURO (esubero e SAS esclusi): invariante
+      // pctFinal*target = actual+esubero+applied (arrotondamenti a parte).
       actual:Math.round(pureCons),esubero:Math.round(r.totEsubero||0),targetSY:r.syLyArea!=null?r.syLyArea:null,resultSY:r.syAreaCy!=null?r.syAreaCy:null,
       pctBase:pctBase,sasValue:Math.round((FC_AREA_SAS[emp.m]||{}).sasv_eur||0),
       recPct:sasMatrixPct((FC_AREA_SAS[emp.m]||{}).acc,(FC_AREA_SAS[emp.m]||{}).vel)!=null?Math.round(sasMatrixPct((FC_AREA_SAS[emp.m]||{}).acc,(FC_AREA_SAS[emp.m]||{}).vel)*100):null,
-      recValue:Math.round(r.totSasRec||0),applied:Math.round(r.totSasUsed||0),pctFinal:pctFinal,
+      recValue:Math.round(r.totSasRec||0),applied:Math.round(r.totSasUsed||0),
+      esuberoSasPrec:Math.round(r.totSasReserveIn||0),esuberoSasPrecUsed:Math.round(resInUsed),
+      sasReserveNext:Math.round(r.totSasReserveOut||0),pctFinal:pctFinal,
       esito:em[0],esitoLabel:em[1],determinante:determinante};
   });
   var columns=[
@@ -347,13 +365,16 @@ function exportSasJsonFcvm(){
     {key:"recPct",label:"Riconosciuto",type:"pct0"},
     {key:"recValue",label:"Valore ricon.",type:"eur-muted-dash0"},
     {key:"applied",label:"Applicato",type:"eur-dash0"},
+    {key:"esuberoSasPrec",label:"Riserva SAS prec.",type:"eur-dash0"},
+    {key:"esuberoSasPrecUsed",label:"Riserva SAS prec. usata",type:"eur-dash0"},
+    {key:"sasReserveNext",label:"Riserva SAS riportata",type:"eur-dash0"},
     {key:"pctFinal",label:"% finale",type:"pctbar-badge"},
     {key:"esito",label:"Esito",type:"esitochip"}
   ];
   var payload={
     meta:{kind:"fcvm",title:"SAS → Fatturato",
       subtitle:"Field Coach + VM — Consuntivo "+getMonthYearLabel(),
-      generatedAt:new Date().toISOString(),source:"BoggiIncentivi",schemaVersion:1},
+      generatedAt:new Date().toISOString(),source:"BoggiIncentivi",schemaVersion:2},
     columns:columns,
     rows:rows
   };

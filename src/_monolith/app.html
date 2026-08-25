@@ -215,20 +215,20 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 /*BUNDLE_INSERT:60-fcvm-state*/
 /*BUNDLE_INSERT:70-fcvm-calc*//*BUNDLE_INSERT:80-roles-config*/var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.51'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.52'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.52: Export SAS→Fatturato (JSON) v2 — actual ora consuntivo puro in entrambi i kind (negozi era consuntivo+esubero), aggiunti esuberoSasPrec/esuberoSasPrecUsed/sasReserveNext",
   "9.51: Lettera mensile — tradotta anche l'etichetta \"Esubero fatturato\" (prima restava in inglese in tutte le lingue), stesso trattamento del box SAS",
   "9.50: Lettere — etichette esubero fatturato vs riserva SAS ora distinte per nome (\"Esubero fatturato mese prec.\" vs \"Riserva SAS mese prec.\"), non più ambigue",
   "9.49: Fonti Dati — check diagnostico \"Riserva SAS prec.\" (mensile+FCVM), per capire subito se il file riserva del mese scorso è stato ricaricato",
   "9.48: Lettera mensile — carry-over fatturato+SAS (usata/scaduta) visibile insieme, come nella FC+VM",
   "9.47: Lettera FC+VM — box Carry-over mese precedente mostra anche la riserva SAS (e se usata/scaduta), non solo l'esubero fatturato",
   "9.46: Fix esito partial_nosy (FC+VM) mostrato come non raggiunto; tooltip SAS mensile+FCVM mostrano riserva usata/scaduta; fix doppio simbolo nel motivo esito lettera",
-  "9.45: Lettera SAS — mostra quanto della riserva mese prec. è stata usata e quanto è scaduta",
-  "9.44: FC+VM — bottone Screenshot Tabella (cattura l'intera tabella Calcolo Premi come PNG, righe/colonne fuori scroll comprese)"
+  "9.45: Lettera SAS — mostra quanto della riserva mese prec. è stata usata e quanto è scaduta"
 ];
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 /*BUNDLE_INSERT:82-month-labels*/
