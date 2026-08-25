@@ -543,7 +543,10 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
     <div class="fg"><label>Esito</label>
       <div class="ms-wrap" id="sas-esito"><button class="ms-btn" id="sas-esito-btn" onclick="toggleMs(event,'sas-esito')">Tutti</button><div class="ms-panel" id="sas-esito-panel" style="display:none"></div></div></div>
     <div class="fg" id="sasRoleWrap" style="display:none"><label>Ruolo</label>
-      <div class="ms-wrap" id="sas-role"><button class="ms-btn" id="sas-role-btn" onclick="toggleMs(event,'sas-role')">Tutti</button><div class="ms-panel" id="sas-role-panel" style="display:none"></div></div></div>
+      <div class="l4l-toggle" id="sasRoleToggle">
+        <button class="l4l-btn" data-role="FC" onclick="sasToggleRole('FC')">FC</button>
+        <button class="l4l-btn" data-role="VM" onclick="sasToggleRole('VM')">VM</button>
+      </div></div>
     <div class="fg"><label>Solo SAS determinante</label>
       <div class="l4l-toggle" style="display:flex">
         <button class="l4l-btn active" id="sasFDet-no" style="flex:1" onclick="sasSetDet(false)">No</button>
@@ -4971,12 +4974,19 @@ function sasCurrentFile(){
   return Object.values(sasFiles).find(f=>f.kind===sasView&&f.period.monthKey===mk)||null;
 }
 let _sasFiltersInit=false;
-// Popola i due menu a tendina "veri" (stesso componente ms-wrap/checkbox usato in tutti gli altri tab
-// per Tipo Premio/Ruolo/Nazione/ecc.), invece di <select> nativi — coerenza grafica col resto dell'app.
+// Popola il menu a tendina "vero" (stesso componente ms-wrap/checkbox usato in tutti gli altri tab
+// per Tipo Premio/Nazione/ecc.), invece di <select> nativi — coerenza grafica col resto dell'app.
 function sasPopulateFilters(){
   if(_sasFiltersInit)return;_sasFiltersInit=true;
   setMsOpts('sas-esito',[{v:'full',l:'Pieno'},{v:'ridotto',l:'Ridotto'},{v:'none',l:'Nessuno'}],renderSas);
-  setMsOpts('sas-role',[{v:'FC',l:'Field Coach'},{v:'VM',l:'Visual Merchandiser'}],renderSas);
+}
+// Ruolo: solo 2 valori possibili → due pulsanti diretti (stile l4l-toggle, come "Vista"/"Solo SAS
+// determinante") invece di un menu a tendina da aprire. Ciascuno si accende/spegne indipendentemente
+// (entrambi spenti o entrambi accesi = nessun filtro, coerente col resto dell'app).
+let sasRoleSel=new Set();
+function sasToggleRole(role){
+  if(sasRoleSel.has(role)) sasRoleSel.delete(role); else sasRoleSel.add(role);
+  renderSas();
 }
 function sasSetView(v){
   sasView=v;
@@ -5122,14 +5132,17 @@ function renderSas(){
   sasPopulateNazFilter(rows);
 
   const q=(document.getElementById('sasQ').value||'').toLowerCase();
-  const fEsito=getMsVals('sas-esito'), fRole=getMsVals('sas-role'), fName=getMsVals('sas-name'), fNaz=getMsVals('sas-naz');
+  const fEsito=getMsVals('sas-esito'), fRole=[...sasRoleSel], fName=getMsVals('sas-name'), fNaz=getMsVals('sas-naz');
   const onlyDet=(document.getElementById('sasFDet-si')||{}).classList.contains('active');
+  document.querySelectorAll('#sasRoleToggle .l4l-btn').forEach(b=>b.classList.toggle('active',sasRoleSel.has(b.dataset.role)));
   rows=rows.filter(r=>{
     if(q&&!((r.name||'')+' '+(r.sid||'')).toLowerCase().includes(q))return false;
     if(fName.length&&!fName.includes(r.name))return false;
     if(fNaz.length&&!fNaz.includes(r._nazione))return false;
     if(fEsito.length&&!fEsito.includes(r.esito))return false;
-    if(fRole.length&&!fRole.includes(r.role))return false;
+    // guard sulla vista: le righe Negozi non hanno "role" — senza questo, un filtro Ruolo lasciato
+    // attivo passando da FC+VM a Negozi azzererebbe la tabella (r.role sempre undefined lì)
+    if(sasView==='fcvm'&&fRole.length&&!fRole.includes(r.role))return false;
     if(onlyDet&&!r.determinante)return false;
     return true;
   });
