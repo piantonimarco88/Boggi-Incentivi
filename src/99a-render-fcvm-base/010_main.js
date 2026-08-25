@@ -8,6 +8,7 @@ function rCFcvm(){
   if(MODE==="consuntivo")mL+=' <button class="exp-btn btn-lgreen" onclick="saveMonitorSnap()" style="font-size:10px;padding:4px 12px">&#128229; Salva per Monitor</button>';
   if(MODE==="consuntivo"&&typeof sasNewActive==='function'&&sasNewActive())mL+=' <button class="exp-btn btn-violet" onclick="exportSasJsonFcvm()" style="font-size:10px;padding:4px 12px" title="JSON con target/consuntivo/SAS per area FC/VM, per import in statistiche">&#128202; Esporta SAS Field Coach (JSON)</button>';
   if(MODE==="consuntivo"&&typeof sasNewActive==='function'&&sasNewActive())mL+=' <button class="exp-btn" onclick="exportSasReserveFcvm()" style="font-size:10px;padding:4px 12px" title="Excel con la riserva SAS non utilizzata questo mese, da ricaricare il mese prossimo (SAS Area Field Coach)">&#128230; Esporta Riserva SAS Field Coach</button>';
+  mL+=' <button class="exp-btn" onclick="screenshotFcvmTable(this)" style="font-size:10px;padding:4px 12px" title="Cattura l\'intera tabella Calcolo Premi come immagine, comprese le righe/colonne fuori dallo scroll">&#128247; Screenshot Tabella</button>';
 
   if(!pool.length){
     var h=mL+'<div class="wg" style="text-align:center;padding:40px;color:#a09a92">';
@@ -160,6 +161,41 @@ function rCFcvm(){
     autoSave();rCFcvm();if(typeof rAFcvm==='function')rAFcvm();
     var sw2=document.querySelector(".scroll-wrap");if(sw2)sw2.scrollTop=scrollTop;
   };});
+}
+
+// Cattura l'intera tabella #ctbl come PNG, righe e colonne comprese anche
+// quelle fuori dallo scroll di .scroll-wrap (che clippa solo a video, non
+// il contenuto reale della tabella). Clona il nodo fuori schermo perché
+// l'header sticky (position:sticky nel CSS globale di thead tr) darebbe
+// artefatti se catturato dentro il suo scroll container originale.
+function screenshotFcvmTable(btn){
+  var tbl=document.getElementById('ctbl');
+  if(!tbl){alert('Tabella non trovata.');return;}
+  if(typeof html2canvas!=='function'){alert('Libreria screenshot (html2canvas) non disponibile.');return;}
+  var oldTxt=btn?btn.innerHTML:null;
+  if(btn){btn.disabled=true;btn.innerHTML='⏳ Cattura...';}
+  var clone=tbl.cloneNode(true);
+  var stickyRow=clone.querySelector('thead tr');
+  if(stickyRow)stickyRow.style.position='static';
+  var wrap=document.createElement('div');
+  wrap.style.cssText='position:fixed;top:0;left:-99999px;background:#fff;padding:12px;';
+  wrap.appendChild(clone);
+  document.body.appendChild(wrap);
+  function cleanup(){document.body.removeChild(wrap);if(btn){btn.disabled=false;btn.innerHTML=oldTxt;}}
+  html2canvas(wrap,{scale:2,backgroundColor:'#ffffff',useCORS:true}).then(function(canvas){
+    canvas.toBlob(function(blob){
+      if(!blob){cleanup();alert('Screenshot fallito: immagine vuota.');return;}
+      var a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download='calcolo_premi_'+(typeof getPdfSubfolder==='function'?getPdfSubfolder().fileBase:('fcvm_'+CFG_MONTH+'_'+CFG_YEAR))+'.png';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      cleanup();
+    },'image/png');
+  }).catch(function(err){
+    cleanup();
+    alert('Errore durante lo screenshot: '+(err&&err.message?err.message:err));
+  });
 }
 
 function setFcVmLang(sel){
