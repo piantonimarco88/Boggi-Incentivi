@@ -5135,13 +5135,22 @@ function renderSas(){
   });
 
   const totApplied=rows.reduce((s,r)=>s+(r.applied||0),0), totRec=rows.reduce((s,r)=>s+(r.recValue||0),0);
+  // Riserva SAS riportata al mese prossimo: NON è totRec-totApplied (approssimazione pre-schemaVersion2,
+  // sballata dal pool condiviso — "applied" può attingere dalla riserva del mese precedente invece che
+  // dal recValue di questo mese, facendo sottrarre due volte lo stesso importo). Ora sommiamo il campo
+  // autorevole sasReserveNext fornito dal tool esterno. "—" se il JSON è ancora schemaVersion 1 (assente
+  // su ogni riga: distinto da "0 su tutte le righe", che invece è un valore legittimo).
+  const hasReserveNext=rows.some(r=>r.sasReserveNext!=null);
+  const totReserveNext=rows.reduce((s,r)=>s+(r.sasReserveNext||0),0);
+  const totEsubero=rows.reduce((s,r)=>s+(r.esubero||0),0);
   const det=rows.filter(r=>r.determinante).length;
   if(kpiEl)kpiEl.innerHTML=
     '<div class="kpi"><div class="kpi-lbl">'+(sasView==='negozi'?'Negozi':'Field Coach + VM')+'</div><div class="kpi-val">'+rows.length+'</div></div>'
     +'<div class="kpi a"><div class="kpi-lbl">SAS determinante</div><div class="kpi-val">'+det+'</div><div class="kpi-sub">portati a target dal SAS</div></div>'
     +'<div class="kpi p"><div class="kpi-lbl">Valore SAS riconosciuto</div><div class="kpi-val">€ '+fmt(totRec)+'</div></div>'
     +'<div class="kpi g"><div class="kpi-lbl">Applicato al fatturato</div><div class="kpi-val">€ '+fmt(totApplied)+'</div></div>'
-    +'<div class="kpi"><div class="kpi-lbl">Riserva riportata</div><div class="kpi-val">€ '+fmt(totRec-totApplied)+'</div><div class="kpi-sub">ricon. non necessario</div></div>';
+    +'<div class="kpi"><div class="kpi-lbl">Riserva SAS riportata</div><div class="kpi-val">'+(hasReserveNext?'€ '+fmt(totReserveNext):'—')+'</div><div class="kpi-sub">per il mese prossimo</div></div>'
+    +'<div class="kpi"><div class="kpi-lbl">Esubero fatturato</div><div class="kpi-val">€ '+fmt(totEsubero)+'</div><div class="kpi-sub">disponibile questo mese</div></div>';
   if(cnEl)cnEl.textContent='('+rows.length+' di '+file.rows.length+')';
 
   const eu=v=>'€ '+fmt(Math.round(v||0));
