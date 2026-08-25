@@ -1302,9 +1302,11 @@ function loadResultsExcel(file){
             // (es. "Qty Sales Merch After Returns 2026") — non solo il formato dedicato
             // seas_qty_dept, altrimenti resta sempre a 0 anche quando il dato c'è.
             if(cQtySales>=0){var v=parseInt(row[cQtySales]);if(!isNaN(v)&&v>0)D.cs[sid].qc=v;}
-            // CR: usa colonna trovata per intestazione, altrimenti fallback col H (index 7)
-            var crIdx=(cCR>=0)?cCR:7;
-            if(row[crIdx]!=null){var cv=parseNum(row[crIdx]);if(!isNaN(cv)&&cv>0)D.cs[sid].cr=cv;}
+            // CR: solo per intestazione riconosciuta — mai per posizione fissa (bug 25/08/2026:
+            // il fallback "colonna H" prendeva Gross Sales in file senza una vera colonna CR,
+            // es. CONSUNTIVO SS26.xlsx). Se non c'è una colonna CR nel file, resta assente:
+            // meglio "dato mancante" che un numero sbagliato usato per lo sbarramento Mid-Season.
+            if(cCR>=0&&row[cCR]!=null){var cv=parseNum(row[cCR]);if(!isNaN(cv)&&cv>0)D.cs[sid].cr=cv;}
           } else if(seasConsType==="seas_inv_acc"){
             if(cInvPct>=0){var v=parseNum(row[cInvPct]);if(!isNaN(v))D.cs[sid].iv=v;}
             if(cAccVal>=0){var v=parseNum(row[cAccVal]);if(!isNaN(v)&&v>0)D.cs[sid].av=v;}
