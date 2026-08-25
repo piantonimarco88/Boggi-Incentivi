@@ -12,7 +12,10 @@ function buildFcVmLetter(emp){
   };
   var T=TR[lang]||TR.INGLESE;
   var ec={full:'#2d7a3a',partial:'#cf8b4e',none:'#cf5b5b',preventivo:'#c9a96e'}[r.esito]||'#6b6560';
-  var el=isP?T.prev:({full:T.full,partial:T.partial,none:T.none}[r.esito]||'\u2014');
+  // partial_nosy (soglia raggiunta ma SY LY assente, premio 0) deve leggersi come
+  // non raggiunto: riusa T.none \u2014 il box esito sotto resta comunque ambra (non rosso
+  // pieno) e mostra il motivo specifico (whyStr), quindi il "perch\u00e9" non si perde.
+  var el=isP?T.prev:({full:T.full,partial:T.partial,partial_nosy:T.none,none:T.none}[r.esito]||'\u2014');
 
   var h='<div class="lt">';
 
@@ -138,16 +141,18 @@ function buildFcVmLetter(emp){
     var esitoColor={full:'#2d7a3a',partial:'#cf8b4e',partial_nosy:'#856404',none:'#cf5b5b'}[r.esito]||'#6b6560';
     var pctStr=r.totTarget>0?fPct(r.pct):'—';
     var whyStr='';
+    // Le stringhe why_* finiscono già con il simbolo (≥/<) — niente da riaggiungere
+    // qui, altrimenti si duplica (bug visto in test: "area < < 95,00%").
     if(r.esito==='full'){
-      whyStr=esc((T.why_full||'Full target')+' ≥'+fPct(FCVM_PARAMS.soglia100)+' ('+pctStr+')');
+      whyStr=esc((T.why_full||'Full target ≥')+fPct(FCVM_PARAMS.soglia100)+' ('+pctStr+')');
     } else if(r.esito==='partial'){
       var syLyStr=r.syLyArea!=null?fDec(r.syLyArea,2):'—';
       var syCyStr=r.syAreaCy!=null?fDec(r.syAreaCy,2):'—';
-      whyStr=esc((T.why_partial||'Partial target')+' ≥'+fPct(FCVM_PARAMS.soglia60)+' ('+pctStr+') — SY CY ('+syCyStr+') > SY LY ('+syLyStr+')');
+      whyStr=esc((T.why_partial||'Partial target ≥')+fPct(FCVM_PARAMS.soglia60)+' ('+pctStr+') — SY CY ('+syCyStr+') > SY LY ('+syLyStr+')');
     } else if(r.esito==='partial_nosy'){
       whyStr=esc((T.why_partial_nosy||'Threshold reached, SY LY unavailable')+' ('+pctStr+')');
     } else if(r.esito==='none'){
-      whyStr=esc((T.why_none||'Target not achieved')+' < '+fPct(FCVM_PARAMS.soglia60)+' ('+pctStr+')');
+      whyStr=esc((T.why_none||'Target not achieved <')+fPct(FCVM_PARAMS.soglia60)+' ('+pctStr+')');
     }
     var pctPremio=r.esito==='full'?'100%':r.esito==='partial'?fPct(FCVM_PARAMS.pct60):r.esito==='partial_nosy'?'0%':'0%';
     h+='<div style="margin-top:14px;border:1px solid '+esitoColor+';border-radius:6px;overflow:hidden">';

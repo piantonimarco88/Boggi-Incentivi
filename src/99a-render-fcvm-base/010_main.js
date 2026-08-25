@@ -53,8 +53,11 @@ function rCFcvm(){
     var psOn=emp.ps==="SI";
     var ml=emp.ml||0;
     var mlc=ml===0?"ml-0":ml<SICK_50?"ml-0":ml<SICK_0?"ml-low":"ml-high";
-    var ec={full:'#2d7a3a',partial:'#cf8b4e',none:'#cf5b5b',preventivo:'#c9a96e',no_data:'#a09a92',no_stores:'#cf5b5b',sospeso:'#b0a99f'}[r.esito]||'#a09a92';
-    var el={full:'\u2713 Pieno',partial:fPct(FCVM_PARAMS.pct60),none:'\u2717',preventivo:'\u2014',no_data:'\u2014',no_stores:'Nessun negozio',sospeso:'Sosp.'}[r.esito]||r.esito;
+    // partial_nosy = soglia 60% raggiunta ma SY LY non disponibile -> premio 0,
+    // stesso esito economico di "none": deve leggersi come non raggiunto (rosso),
+    // con etichetta distinta solo per motivare il perch\u00e9 a chi legge la tabella.
+    var ec={full:'#2d7a3a',partial:'#cf8b4e',partial_nosy:'#cf5b5b',none:'#cf5b5b',preventivo:'#c9a96e',no_data:'#a09a92',no_stores:'#cf5b5b',sospeso:'#b0a99f'}[r.esito]||'#a09a92';
+    var el={full:'\u2713 Pieno',partial:fPct(FCVM_PARAMS.pct60),partial_nosy:'\u2717 (no SY)',none:'\u2717',preventivo:'\u2014',no_data:'\u2014',no_stores:'Nessun negozio',sospeso:'Sosp.'}[r.esito]||r.esito;
     var nStores=Object.keys(FC_MAP).filter(function(sid){
       var mp=FC_MAP[sid];if(mp.tipo==='BDG')return false;
       var arr=Array.isArray(emp.j==='FC'?mp.fc:mp.vm)?(emp.j==='FC'?mp.fc:mp.vm):[(emp.j==='FC'?mp.fc:mp.vm)];
@@ -83,7 +86,11 @@ function rCFcvm(){
       var _sasRawV=r.sasAreaValRaw||0;
       h+='<td style="text-align:right;color:#8a8680">'+(_sasRawV>0?fc(Math.round(_sasRawV),'EUR'):'\u2014')+'</td>';
       h+='<td style="text-align:center;color:#8a8680">'+(r.sasAreaPctMatrix!=null?Math.round(r.sasAreaPctMatrix*100)+'%':'\u2014')+'</td>';
-      var _tipFcSas='Riconosciuto da matrice: '+fc(Math.round(r.totSasRec||0),'EUR')+' \u2014 Applicato al fatturato: '+fc(Math.round(r.totSasUsed||0),'EUR')+((r.totSasReserveIn||0)>0?(' \u2014 Riserva mese prec. usata: '+fc(Math.round(r.totSasReserveIn),'EUR')):'')+((r.totSasReserveOut||0)>0?(' \u2014 Riserva riportata: '+fc(Math.round(r.totSasReserveOut),'EUR')):'');
+      // Riserva mese prec. consumata PRIMA per colmare il gap (vedi sasReserveCalc):
+      // quanto ne \u00e8 stato usato si ricava cos\u00ec, coerente col box SAS in lettera.
+      var _resInUsedFc=Math.min(r.totSasReserveIn||0,r.totSasUsed||0);
+      var _resInExpFc=(r.totSasReserveIn||0)-_resInUsedFc;
+      var _tipFcSas='Riconosciuto da matrice: '+fc(Math.round(r.totSasRec||0),'EUR')+' \u2014 Applicato al fatturato: '+fc(Math.round(r.totSasUsed||0),'EUR')+((r.totSasReserveIn||0)>0?(' \u2014 Riserva mese prec.: '+fc(Math.round(r.totSasReserveIn),'EUR')+' (usata '+fc(Math.round(_resInUsedFc),'EUR')+(_resInExpFc>0?(', scaduta '+fc(Math.round(_resInExpFc),'EUR')):'')+')'):'')+((r.totSasReserveOut||0)>0?(' \u2014 Riserva riportata: '+fc(Math.round(r.totSasReserveOut),'EUR')):'');
       h+='<td style="text-align:right;font-weight:700;color:#a07d2c" title="'+esc(_tipFcSas)+'">'+((r.totSasUsed||0)>0?fc(Math.round(r.totSasUsed),'EUR'):'\u2014')+'</td>';
     }
     if(!isP){

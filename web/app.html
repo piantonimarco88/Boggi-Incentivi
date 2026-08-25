@@ -719,20 +719,20 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.45'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.46'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.46: Fix esito partial_nosy (FC+VM) mostrato come non raggiunto; tooltip SAS mensile+FCVM mostrano riserva usata/scaduta; fix doppio simbolo nel motivo esito lettera",
   "9.45: Lettera SAS — mostra quanto della riserva mese prec. è stata usata e quanto è scaduta",
   "9.44: FC+VM — bottone Screenshot Tabella (cattura l'intera tabella Calcolo Premi come PNG, righe/colonne fuori scroll comprese)",
   "9.43: Tabella Calcolo Premi FC+VM — intestazioni compresse e padding ridotto per ridurre lo scroll orizzontale",
   "9.42: Fix riserva SAS — non si accumula più mese su mese (scade se non usata a coprire il gap)",
   "9.41: Seasonal — SAS→fatturato incluso anche nella lettera Mid-Season (riga Store Budget + riga dedicata, allineata al gate)",
   "9.40: Seasonal — SAS→fatturato esteso al Seasonal Bonus (SS26: import Luglio+Agosto; da FW26: file unico) in tab, export e lettere (tutte le lingue)",
-  "9.39: Seasonal — import Mid-Season già erogato: dedotto dal saldo fine stagione in tab, export e lettere (tutte le lingue)",
-  "9.38: Simulatore mensile — tolti gli slider SAS rate/max da luglio 2026 (policy cambiata)"
+  "9.39: Seasonal — import Mid-Season già erogato: dedotto dal saldo fine stagione in tab, export e lettere (tutte le lingue)"
 ];
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
@@ -1767,8 +1767,14 @@ function rC(){
       // Indicatore SAS sul BDG (da luglio 2026): SAS applicato al fatturato verso il target
       if(it.k==="rb"&&!psOn&&typeof storeSasInfo==='function'&&sasNewActive()){
         var _siC=storeSasInfo(String(e.si));
-        if(_siC&&_siC.active&&_siC.used>0){
-          var _tipS="SAS applicato al fatturato: "+fc(_siC.used,cu)+(_siC.pctMatrix!=null?(" \u2014 "+Math.round(_siC.pctMatrix*100)+"% di "+fc(_siC.sasv,cu)+(_siC.reserveOut>0?(", riserva "+fc(_siC.reserveOut,cu)):"")):"");
+        if(_siC&&_siC.active&&(_siC.used>0||(_siC.reserveIn||0)>0)){
+          // Riserva mese prec. consumata PRIMA per colmare il gap (vedi sasReserveCalc):
+          // quanto ne \u00e8 stato usato si ricava cos\u00ec, coerente col box SAS in lettera.
+          var _resInUsedC=Math.min(_siC.reserveIn||0,_siC.used||0);
+          var _resInExpC=(_siC.reserveIn||0)-_resInUsedC;
+          var _tipS="SAS applicato al fatturato: "+fc(_siC.used,cu)+(_siC.pctMatrix!=null?(" \u2014 "+Math.round(_siC.pctMatrix*100)+"% di "+fc(_siC.sasv,cu)):"");
+          if((_siC.reserveIn||0)>0)_tipS+=" \u2014 Riserva mese prec.: "+fc(_siC.reserveIn,cu)+" (usata "+fc(_resInUsedC,cu)+(_resInExpC>0?(", scaduta "+fc(_resInExpC,cu)):"")+")";
+          if(_siC.reserveOut>0)_tipS+=" \u2014 Riserva riportata: "+fc(_siC.reserveOut,cu);
           _cellVal+='<sup style="font-size:7px;color:#a07d2c;font-weight:700;margin-left:2px" title="'+esc(_tipS)+'">S</sup>';
         }
       }
@@ -9067,8 +9073,11 @@ function rCFcvm(){
     var psOn=emp.ps==="SI";
     var ml=emp.ml||0;
     var mlc=ml===0?"ml-0":ml<SICK_50?"ml-0":ml<SICK_0?"ml-low":"ml-high";
-    var ec={full:'#2d7a3a',partial:'#cf8b4e',none:'#cf5b5b',preventivo:'#c9a96e',no_data:'#a09a92',no_stores:'#cf5b5b',sospeso:'#b0a99f'}[r.esito]||'#a09a92';
-    var el={full:'\u2713 Pieno',partial:fPct(FCVM_PARAMS.pct60),none:'\u2717',preventivo:'\u2014',no_data:'\u2014',no_stores:'Nessun negozio',sospeso:'Sosp.'}[r.esito]||r.esito;
+    // partial_nosy = soglia 60% raggiunta ma SY LY non disponibile -> premio 0,
+    // stesso esito economico di "none": deve leggersi come non raggiunto (rosso),
+    // con etichetta distinta solo per motivare il perch\u00e9 a chi legge la tabella.
+    var ec={full:'#2d7a3a',partial:'#cf8b4e',partial_nosy:'#cf5b5b',none:'#cf5b5b',preventivo:'#c9a96e',no_data:'#a09a92',no_stores:'#cf5b5b',sospeso:'#b0a99f'}[r.esito]||'#a09a92';
+    var el={full:'\u2713 Pieno',partial:fPct(FCVM_PARAMS.pct60),partial_nosy:'\u2717 (no SY)',none:'\u2717',preventivo:'\u2014',no_data:'\u2014',no_stores:'Nessun negozio',sospeso:'Sosp.'}[r.esito]||r.esito;
     var nStores=Object.keys(FC_MAP).filter(function(sid){
       var mp=FC_MAP[sid];if(mp.tipo==='BDG')return false;
       var arr=Array.isArray(emp.j==='FC'?mp.fc:mp.vm)?(emp.j==='FC'?mp.fc:mp.vm):[(emp.j==='FC'?mp.fc:mp.vm)];
@@ -9097,7 +9106,11 @@ function rCFcvm(){
       var _sasRawV=r.sasAreaValRaw||0;
       h+='<td style="text-align:right;color:#8a8680">'+(_sasRawV>0?fc(Math.round(_sasRawV),'EUR'):'\u2014')+'</td>';
       h+='<td style="text-align:center;color:#8a8680">'+(r.sasAreaPctMatrix!=null?Math.round(r.sasAreaPctMatrix*100)+'%':'\u2014')+'</td>';
-      var _tipFcSas='Riconosciuto da matrice: '+fc(Math.round(r.totSasRec||0),'EUR')+' \u2014 Applicato al fatturato: '+fc(Math.round(r.totSasUsed||0),'EUR')+((r.totSasReserveIn||0)>0?(' \u2014 Riserva mese prec. usata: '+fc(Math.round(r.totSasReserveIn),'EUR')):'')+((r.totSasReserveOut||0)>0?(' \u2014 Riserva riportata: '+fc(Math.round(r.totSasReserveOut),'EUR')):'');
+      // Riserva mese prec. consumata PRIMA per colmare il gap (vedi sasReserveCalc):
+      // quanto ne \u00e8 stato usato si ricava cos\u00ec, coerente col box SAS in lettera.
+      var _resInUsedFc=Math.min(r.totSasReserveIn||0,r.totSasUsed||0);
+      var _resInExpFc=(r.totSasReserveIn||0)-_resInUsedFc;
+      var _tipFcSas='Riconosciuto da matrice: '+fc(Math.round(r.totSasRec||0),'EUR')+' \u2014 Applicato al fatturato: '+fc(Math.round(r.totSasUsed||0),'EUR')+((r.totSasReserveIn||0)>0?(' \u2014 Riserva mese prec.: '+fc(Math.round(r.totSasReserveIn),'EUR')+' (usata '+fc(Math.round(_resInUsedFc),'EUR')+(_resInExpFc>0?(', scaduta '+fc(Math.round(_resInExpFc),'EUR')):'')+')'):'')+((r.totSasReserveOut||0)>0?(' \u2014 Riserva riportata: '+fc(Math.round(r.totSasReserveOut),'EUR')):'');
       h+='<td style="text-align:right;font-weight:700;color:#a07d2c" title="'+esc(_tipFcSas)+'">'+((r.totSasUsed||0)>0?fc(Math.round(r.totSasUsed),'EUR'):'\u2014')+'</td>';
     }
     if(!isP){
@@ -9304,7 +9317,10 @@ function buildFcVmLetter(emp){
   };
   var T=TR[lang]||TR.INGLESE;
   var ec={full:'#2d7a3a',partial:'#cf8b4e',none:'#cf5b5b',preventivo:'#c9a96e'}[r.esito]||'#6b6560';
-  var el=isP?T.prev:({full:T.full,partial:T.partial,none:T.none}[r.esito]||'\u2014');
+  // partial_nosy (soglia raggiunta ma SY LY assente, premio 0) deve leggersi come
+  // non raggiunto: riusa T.none \u2014 il box esito sotto resta comunque ambra (non rosso
+  // pieno) e mostra il motivo specifico (whyStr), quindi il "perch\u00e9" non si perde.
+  var el=isP?T.prev:({full:T.full,partial:T.partial,partial_nosy:T.none,none:T.none}[r.esito]||'\u2014');
 
   var h='<div class="lt">';
 
@@ -9430,16 +9446,18 @@ function buildFcVmLetter(emp){
     var esitoColor={full:'#2d7a3a',partial:'#cf8b4e',partial_nosy:'#856404',none:'#cf5b5b'}[r.esito]||'#6b6560';
     var pctStr=r.totTarget>0?fPct(r.pct):'—';
     var whyStr='';
+    // Le stringhe why_* finiscono già con il simbolo (≥/<) — niente da riaggiungere
+    // qui, altrimenti si duplica (bug visto in test: "area < < 95,00%").
     if(r.esito==='full'){
-      whyStr=esc((T.why_full||'Full target')+' ≥'+fPct(FCVM_PARAMS.soglia100)+' ('+pctStr+')');
+      whyStr=esc((T.why_full||'Full target ≥')+fPct(FCVM_PARAMS.soglia100)+' ('+pctStr+')');
     } else if(r.esito==='partial'){
       var syLyStr=r.syLyArea!=null?fDec(r.syLyArea,2):'—';
       var syCyStr=r.syAreaCy!=null?fDec(r.syAreaCy,2):'—';
-      whyStr=esc((T.why_partial||'Partial target')+' ≥'+fPct(FCVM_PARAMS.soglia60)+' ('+pctStr+') — SY CY ('+syCyStr+') > SY LY ('+syLyStr+')');
+      whyStr=esc((T.why_partial||'Partial target ≥')+fPct(FCVM_PARAMS.soglia60)+' ('+pctStr+') — SY CY ('+syCyStr+') > SY LY ('+syLyStr+')');
     } else if(r.esito==='partial_nosy'){
       whyStr=esc((T.why_partial_nosy||'Threshold reached, SY LY unavailable')+' ('+pctStr+')');
     } else if(r.esito==='none'){
-      whyStr=esc((T.why_none||'Target not achieved')+' < '+fPct(FCVM_PARAMS.soglia60)+' ('+pctStr+')');
+      whyStr=esc((T.why_none||'Target not achieved <')+fPct(FCVM_PARAMS.soglia60)+' ('+pctStr+')');
     }
     var pctPremio=r.esito==='full'?'100%':r.esito==='partial'?fPct(FCVM_PARAMS.pct60):r.esito==='partial_nosy'?'0%':'0%';
     h+='<div style="margin-top:14px;border:1px solid '+esitoColor+';border-radius:6px;overflow:hidden">';

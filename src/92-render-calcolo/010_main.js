@@ -54,8 +54,14 @@ function rC(){
       // Indicatore SAS sul BDG (da luglio 2026): SAS applicato al fatturato verso il target
       if(it.k==="rb"&&!psOn&&typeof storeSasInfo==='function'&&sasNewActive()){
         var _siC=storeSasInfo(String(e.si));
-        if(_siC&&_siC.active&&_siC.used>0){
-          var _tipS="SAS applicato al fatturato: "+fc(_siC.used,cu)+(_siC.pctMatrix!=null?(" \u2014 "+Math.round(_siC.pctMatrix*100)+"% di "+fc(_siC.sasv,cu)+(_siC.reserveOut>0?(", riserva "+fc(_siC.reserveOut,cu)):"")):"");
+        if(_siC&&_siC.active&&(_siC.used>0||(_siC.reserveIn||0)>0)){
+          // Riserva mese prec. consumata PRIMA per colmare il gap (vedi sasReserveCalc):
+          // quanto ne \u00e8 stato usato si ricava cos\u00ec, coerente col box SAS in lettera.
+          var _resInUsedC=Math.min(_siC.reserveIn||0,_siC.used||0);
+          var _resInExpC=(_siC.reserveIn||0)-_resInUsedC;
+          var _tipS="SAS applicato al fatturato: "+fc(_siC.used,cu)+(_siC.pctMatrix!=null?(" \u2014 "+Math.round(_siC.pctMatrix*100)+"% di "+fc(_siC.sasv,cu)):"");
+          if((_siC.reserveIn||0)>0)_tipS+=" \u2014 Riserva mese prec.: "+fc(_siC.reserveIn,cu)+" (usata "+fc(_resInUsedC,cu)+(_resInExpC>0?(", scaduta "+fc(_resInExpC,cu)):"")+")";
+          if(_siC.reserveOut>0)_tipS+=" \u2014 Riserva riportata: "+fc(_siC.reserveOut,cu);
           _cellVal+='<sup style="font-size:7px;color:#a07d2c;font-weight:700;margin-left:2px" title="'+esc(_tipS)+'">S</sup>';
         }
       }
