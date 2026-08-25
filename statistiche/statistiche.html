@@ -5167,7 +5167,8 @@ function renderSas(){
   const cols=identCols.concat([
     {label:'Target',align:'right',filter:'none'},{label:'Consuntivo',align:'right',filter:'none'},{label:'Esub. prec.',align:'right',filter:'none'},
     {label:'SY (vs LY)',align:'right',filter:'none'},{label:'% senza SAS',align:'right',filter:'none'},{label:'Valore SAS',align:'right',filter:'none'},
-    {label:'Ricon.',align:'right',filter:'none'},{label:'Esub. SAS prec.',align:'right',filter:'none'},{label:'Applicato',align:'right',filter:'none'},{label:'% finale',align:'right',filter:'none'},
+    {label:'Ricon.',align:'right',filter:'none'},{label:'Esub. SAS prec.',align:'right',filter:'none'},{label:'Esub. SAS prec. usata',align:'right',filter:'none'},
+    {label:'Applicato',align:'right',filter:'none'},{label:'Riserva SAS succ.',align:'right',filter:'none'},{label:'% finale',align:'right',filter:'none'},
     {label:'Esito',filter:'select'},{label:'BDG storico',align:'right',filter:'none'},
   ]);
   // Ordine di default: Negozi → Store ID crescente; FC+VM → Ruolo (FC poi VM) con Nome alfabetico
@@ -5182,7 +5183,8 @@ function renderSas(){
       {disp:eu(r.target),val:r.target},{disp:eu(r.actual),val:r.actual},{disp:eud(r.esubero),val:r.esubero},
       {disp:syCell(r),val:r.resultSY},
       {disp:bar(r.pctBase*100,pctCls(r.pctBase))+(r.pctBase*100).toFixed(1)+'%',val:r.pctBase},
-      {disp:eu(r.sasValue),val:r.sasValue},{disp:Math.round(r.recPct)+'%',val:r.recPct},{disp:eud(r.esuberoSasPrec),val:r.esuberoSasPrec},{disp:eud(r.applied),val:r.applied},
+      {disp:eu(r.sasValue),val:r.sasValue},{disp:Math.round(r.recPct)+'%',val:r.recPct},{disp:eud(r.esuberoSasPrec),val:r.esuberoSasPrec},{disp:eud(r.esuberoSasPrecUsed),val:r.esuberoSasPrecUsed},
+      {disp:eud(r.applied),val:r.applied},{disp:eud(r.sasReserveNext),val:r.sasReserveNext},
       {disp:(r.determinante?'<span class="sas-badge">⚡SAS</span>':'')+bar(r.pctFinal*100,pctCls(r.pctFinal))+'<b>'+(r.pctFinal*100).toFixed(1)+'%</b>',val:r.pctFinal},
       {disp:esitoChip(r),val:r.esito},bdgCell(r),
     ])};
@@ -5198,7 +5200,8 @@ function sasExport(){
     if(sasView==='negozi'){o['Store ID']=r.sid;o['Negozio']=r.name;}else{o['Nome']=r.name;o['Ruolo']=r.role;o['N. Negozi']=r.nStores;}
     return Object.assign(o,{'Target':Math.round(r.target),'Consuntivo':Math.round(r.actual),'Esub. prec.':Math.round(r.esubero||0),
       'Target SY':r.targetSY,'Risultato SY':r.resultSY,'% senza SAS':+((r.pctBase||0)*100).toFixed(1),'Valore SAS':Math.round(r.sasValue),
-      'Riconosciuto %':r.recPct,'Esub. SAS prec.':Math.round(r.esuberoSasPrec||0),'Valore riconosciuto':Math.round(r.recValue),'Applicato':Math.round(r.applied),
+      'Riconosciuto %':r.recPct,'Esub. SAS prec.':Math.round(r.esuberoSasPrec||0),'Esub. SAS prec. usata':Math.round(r.esuberoSasPrecUsed||0),
+      'Valore riconosciuto':Math.round(r.recValue),'Applicato':Math.round(r.applied),'Riserva SAS succ.':Math.round(r.sasReserveNext||0),
       '% finale':+((r.pctFinal||0)*100).toFixed(1),'Esito':r.esitoLabel,'Determinante':r.determinante?'Sì':'No'});
   });
   _writeXlsx(rows,'SAS Fatturato','BoggiPremi_SasFatturato_');
