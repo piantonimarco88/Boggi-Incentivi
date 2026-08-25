@@ -95,6 +95,40 @@ test("area: la riserva del mese precedente copre il gap e scade, non si accumula
   assert.strictEqual(r.totSasReserveOut, 3000);
 });
 
+test("area: l'esubero fatturato colma il gap PRIMA del SAS — se basta da solo, il SAS non si tocca", () => {
+  const c = fcCtx({});
+  c.FC_EMP = { F1: { m: "F1", j: "FC", ib: 1000, cu: "EUR", ex: 1, ps: "NO", ml: 0, bdg_stores: [] } };
+  c.FC_MAP = { "500": { fc: ["F1"], vm: [] } };
+  c.FC_TARGETS = { "500": { to_eur: 100000 } };
+  c.FC_RESULTS = { "500": { sc_eur: 90000 } };
+  // esubero mese prec. dell'area: 15000 (surplus del negozio 500 sul mese prima) — da solo
+  // già colma il gap di 10000 verso il target di questo mese, il SAS non dovrebbe servire.
+  c.FC_PREV_RESULTS = { "500": { to_eur: 80000, sc_eur: 95000 } }; // surplus = 95000-80000 = 15000
+  c.FC_AREA_SAS = { F1: { acc: 0.95, vel: 0.95, sasv_eur: 8000 } }; // recognized 8000, tutto disponibile
+  const r = c.calcFcVmPremio("F1");
+  assert.strictEqual(r.totEsubero, 15000);
+  assert.strictEqual(r.totSasUsed, 0); // SAS NON consumato: l'esubero da solo bastava
+  assert.strictEqual(r.totSasReserveOut, 8000); // tutto il riconosciuto preservato per il mese dopo
+  assert.strictEqual(r.totConsWithEsub, 105000); // 90000 (invariato, +0 SAS) + 15000 esubero
+  assert.strictEqual(Math.round(r.pct * 1000) / 1000, 1.05);
+});
+
+test("area: se l'esubero non basta, il SAS colma solo il gap residuo", () => {
+  const c = fcCtx({});
+  c.FC_EMP = { F1: { m: "F1", j: "FC", ib: 1000, cu: "EUR", ex: 1, ps: "NO", ml: 0, bdg_stores: [] } };
+  c.FC_MAP = { "500": { fc: ["F1"], vm: [] } };
+  c.FC_TARGETS = { "500": { to_eur: 100000 } };
+  c.FC_RESULTS = { "500": { sc_eur: 90000 } };
+  // esubero 4000: non basta da solo (gap 10000) — il SAS deve colmare il resto (6000)
+  c.FC_PREV_RESULTS = { "500": { to_eur: 80000, sc_eur: 84000 } }; // surplus = 4000
+  c.FC_AREA_SAS = { F1: { acc: 0.95, vel: 0.95, sasv_eur: 8000 } }; // recognized 8000
+  const r = c.calcFcVmPremio("F1");
+  assert.strictEqual(r.totEsubero, 4000);
+  assert.strictEqual(r.totSasUsed, 6000); // gap residuo dopo l'esubero (10000-4000)
+  assert.strictEqual(r.totSasReserveOut, 2000); // 8000 riconosciuto - 6000 usato
+  assert.strictEqual(r.totConsWithEsub, 100000); // target raggiunto esatto
+});
+
 // === BDG singolo negozio ====================================
 
 test("bdg negozio: SAS porta a 100% → premio BDG erogato (≥ da luglio)", () => {

@@ -35,23 +35,14 @@ function calcFcVmPremio(matr){
     }
     detail.push({sid:sid,to:to,sc:sc,exclFatt:!!flg.excl_fatt,exclSy:!!flg.excl_sy});
   });
-  // SAS riconosciuto (da Luglio 2026): UN solo valore per l'intera area del Field Coach/VM
-  // (dato aggregato QWRT per field_coach, non più per negozio). Colma il gap al target
-  // dell'area, cap 100%, avanzo→riserva. I negozi BDG extra (bdg_stores) restano invece
-  // a SAS per-negozio, vedi loop più sotto.
   var totConsPreSas=totCons;
-  var totSasRec=0,totSasReserveIn=0,sasAreaAcc=null,sasAreaVel=null,sasAreaValRaw=0,sasAreaPctMatrix=null;
-  if(isCons&&sasNewActive()){
-    var areaSas=FC_AREA_SAS[matr]||{};
-    sasAreaAcc=areaSas.acc!=null?areaSas.acc:null;sasAreaVel=areaSas.vel!=null?areaSas.vel:null;sasAreaValRaw=areaSas.sasv_eur||0;sasAreaPctMatrix=sasMatrixPct(areaSas.acc,areaSas.vel);
-    totSasRec=sasRecognizedValue(areaSas.acc,areaSas.vel,areaSas.sasv_eur||0);
-    totSasReserveIn=areaSas.sasr_eur||0;
-    var _srArea=sasReserveCalc(totCons,totTarget,totSasRec,totSasReserveIn);
-    totSasUsed=_srArea.used;totSasReserveOut=_srArea.reserveOut;
-    totCons+=totSasUsed;
-  }
   // ── Esubero mese precedente (area netta) ─────────────────────────────────
-  // I negozi in deficit compensano quelli in surplus: max(0, Σ(cons-target) area)
+  // I negozi in deficit compensano quelli in surplus: max(0, Σ(cons-target) area).
+  // Calcolato PRIMA del blocco SAS: l'esubero fatturato va usato per primo per
+  // colmare il gap verso il target, il SAS solo per l'eventuale resto — stessa
+  // priorità già applicata ai negozi BDG extra (sc+esubBdg) e ai negozi singoli
+  // (storeSasInfo: base=sc+es). Altrimenti un'area può "bruciare" riserva/valore
+  // SAS anche quando l'esubero da solo basterebbe.
   var totEsubero=0;
   if(isCons&&Object.keys(FC_PREV_RESULTS).length){
     var _areaSurplus=0;
@@ -60,6 +51,20 @@ function calcFcVmPremio(matr){
       if((prev.to_eur||0)>0)_areaSurplus+=(prev.sc_eur||0)-(prev.to_eur||0);
     });
     totEsubero=Math.max(0,_areaSurplus);
+  }
+  // SAS riconosciuto (da Luglio 2026): UN solo valore per l'intera area del Field Coach/VM
+  // (dato aggregato QWRT per field_coach, non più per negozio). Colma il gap residuo dopo
+  // l'esubero, cap 100%, avanzo→riserva. I negozi BDG extra (bdg_stores) restano invece
+  // a SAS per-negozio, vedi loop più sotto.
+  var totSasRec=0,totSasReserveIn=0,sasAreaAcc=null,sasAreaVel=null,sasAreaValRaw=0,sasAreaPctMatrix=null;
+  if(isCons&&sasNewActive()){
+    var areaSas=FC_AREA_SAS[matr]||{};
+    sasAreaAcc=areaSas.acc!=null?areaSas.acc:null;sasAreaVel=areaSas.vel!=null?areaSas.vel:null;sasAreaValRaw=areaSas.sasv_eur||0;sasAreaPctMatrix=sasMatrixPct(areaSas.acc,areaSas.vel);
+    totSasRec=sasRecognizedValue(areaSas.acc,areaSas.vel,areaSas.sasv_eur||0);
+    totSasReserveIn=areaSas.sasr_eur||0;
+    var _srArea=sasReserveCalc(totCons+totEsubero,totTarget,totSasRec,totSasReserveIn);
+    totSasUsed=_srArea.used;totSasReserveOut=_srArea.reserveOut;
+    totCons+=totSasUsed;
   }
   var totConsWithEsub=totCons+totEsubero;
   var pct=totTarget>0?totConsWithEsub/totTarget:0;
