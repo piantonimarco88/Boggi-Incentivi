@@ -49,6 +49,11 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 .mb{height:5px;background:#e5e1db;border-radius:3px;overflow:hidden;width:70px;display:inline-block}
 .mf{height:100%;border-radius:3px}
 .scroll-wrap{max-height:75vh;overflow:auto;border:1px solid #e5e1db;border-radius:8px}
+/* Calcolo Premi FC+VM: fino a 26 colonne con SAS attivo — padding/font ridotti
+   solo qui (non tocca le altre tabelle) per stare il più vicino possibile a
+   1920px senza scroll orizzontale. Header abbreviati, title=label estesa. */
+#ctbl th{padding:6px 3px;font-size:10px}
+#ctbl td{padding:4px 3px;font-size:10.5px}
 .ml-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:2px}
 .ml-0{background:#d4edda}.ml-low{background:#fff3cd}.ml-high{background:#f8d7da}
 /* Letter */
@@ -714,12 +719,13 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.42'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.43'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.43: Tabella Calcolo Premi FC+VM — intestazioni compresse e padding ridotto per ridurre lo scroll orizzontale",
   "9.42: Fix riserva SAS — non si accumula più mese su mese (scade se non usata a coprire il gap)",
   "9.41: Seasonal — SAS→fatturato incluso anche nella lettera Mid-Season (riga Store Budget + riga dedicata, allineata al gate)",
   "9.40: Seasonal — SAS→fatturato esteso al Seasonal Bonus (SS26: import Luglio+Agosto; da FW26: file unico) in tab, export e lettere (tutte le lingue)",
@@ -9038,12 +9044,13 @@ function rCFcvm(){
   h+='</select>';
   h+='<span style="margin-left:auto;font-size:10px;color:#8a8680">'+fl.length+' dip. \u00b7 Tot: '+fc(Math.round(totEur),'EUR')+'</span></div>';
 
-  // Tabella
-  function thS(label){return'<th>'+label+'</th>';}
+  // Tabella — intestazioni abbreviate + title col nome esteso per risparmiare
+  // larghezza (26 colonne con SAS attivo: senza compressione supera 1920px).
+  function thS(label,full){return'<th'+(full?' title="'+esc(full)+'"':'')+'>'+label+'</th>';}
   h+='<div class="scroll-wrap"><table id="ctbl"><thead><tr>';
-  h+=thS('Matr.')+thS('Cognome')+thS('Nome')+thS('Ruolo')+thS('Val.')+thS('N.Store');
+  h+=thS('Matr.')+thS('Cogn.','Cognome')+thS('Nome')+thS('Ruolo')+thS('Val.','Valuta')+thS('N.Store');
   var _fcSasCols=!isP&&typeof sasNewActive==='function'&&sasNewActive();
-  h+=thS('Target EUR')+thS('Max Premio')+(!isP?thS('Consuntivo EUR'):'')+(!isP?thS('Esubero'):'')+(_fcSasCols?thS('Valore SAS')+thS('% Ricon.')+thS('Valore Ricon.'):'')+(!isP?thS('Cons. Tot.'):'')+thS('% Area')+thS('SY LY')+thS('SY CY')+thS('Premio LC')+thS('Premio EUR')+thS('BDG')+thS('Esito')+(!isP?'<th style="text-align:center;background:#e8f5e9;color:#2d7a3a;cursor:default;padding:4px 3px">100%</th>':'')+(!isP?'<th style="text-align:center;background:#fff3e0;color:#cf8b4e;cursor:default;padding:4px 3px">60%</th>':'')+'<th style="padding:4px 3px">Lingua</th>'+(!isP?'<th style="text-align:center;cursor:default;min-width:40px">Mal.</th>':'')+'<th style="text-align:center;cursor:default;min-width:36px">Sosp.</th>';
+  h+=thS('Target','Target EUR')+thS('Max Pr.','Max Premio')+(!isP?thS('Consunt.','Consuntivo EUR'):'')+(!isP?thS('Esub.','Esubero'):'')+(_fcSasCols?thS('SAS','Valore SAS')+thS('% Ricon.')+thS('Ricon.','Valore Ricon.'):'')+(!isP?thS('Cons. Tot.'):'')+thS('% Area')+thS('SY LY')+thS('SY CY')+thS('Pr. LC','Premio LC')+thS('Pr. EUR','Premio EUR')+thS('BDG')+thS('Esito')+(!isP?'<th style="text-align:center;background:#e8f5e9;color:#2d7a3a;cursor:default;padding:4px 3px">100%</th>':'')+(!isP?'<th style="text-align:center;background:#fff3e0;color:#cf8b4e;cursor:default;padding:4px 3px">60%</th>':'')+'<th style="padding:4px 3px" title="Lingua">Ling.</th>'+(!isP?'<th style="text-align:center;cursor:default;min-width:40px">Mal.</th>':'')+'<th style="text-align:center;cursor:default;min-width:36px">Sosp.</th>';
   h+='</tr></thead><tbody>';
 
   fl.forEach(function(emp,i){

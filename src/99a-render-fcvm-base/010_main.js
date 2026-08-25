@@ -38,12 +38,13 @@ function rCFcvm(){
   h+='</select>';
   h+='<span style="margin-left:auto;font-size:10px;color:#8a8680">'+fl.length+' dip. \u00b7 Tot: '+fc(Math.round(totEur),'EUR')+'</span></div>';
 
-  // Tabella
-  function thS(label){return'<th>'+label+'</th>';}
+  // Tabella — intestazioni abbreviate + title col nome esteso per risparmiare
+  // larghezza (26 colonne con SAS attivo: senza compressione supera 1920px).
+  function thS(label,full){return'<th'+(full?' title="'+esc(full)+'"':'')+'>'+label+'</th>';}
   h+='<div class="scroll-wrap"><table id="ctbl"><thead><tr>';
-  h+=thS('Matr.')+thS('Cognome')+thS('Nome')+thS('Ruolo')+thS('Val.')+thS('N.Store');
+  h+=thS('Matr.')+thS('Cogn.','Cognome')+thS('Nome')+thS('Ruolo')+thS('Val.','Valuta')+thS('N.Store');
   var _fcSasCols=!isP&&typeof sasNewActive==='function'&&sasNewActive();
-  h+=thS('Target EUR')+thS('Max Premio')+(!isP?thS('Consuntivo EUR'):'')+(!isP?thS('Esubero'):'')+(_fcSasCols?thS('Valore SAS')+thS('% Ricon.')+thS('Valore Ricon.'):'')+(!isP?thS('Cons. Tot.'):'')+thS('% Area')+thS('SY LY')+thS('SY CY')+thS('Premio LC')+thS('Premio EUR')+thS('BDG')+thS('Esito')+(!isP?'<th style="text-align:center;background:#e8f5e9;color:#2d7a3a;cursor:default;padding:4px 3px">100%</th>':'')+(!isP?'<th style="text-align:center;background:#fff3e0;color:#cf8b4e;cursor:default;padding:4px 3px">60%</th>':'')+'<th style="padding:4px 3px">Lingua</th>'+(!isP?'<th style="text-align:center;cursor:default;min-width:40px">Mal.</th>':'')+'<th style="text-align:center;cursor:default;min-width:36px">Sosp.</th>';
+  h+=thS('Target','Target EUR')+thS('Max Pr.','Max Premio')+(!isP?thS('Consunt.','Consuntivo EUR'):'')+(!isP?thS('Esub.','Esubero'):'')+(_fcSasCols?thS('SAS','Valore SAS')+thS('% Ricon.')+thS('Ricon.','Valore Ricon.'):'')+(!isP?thS('Cons. Tot.'):'')+thS('% Area')+thS('SY LY')+thS('SY CY')+thS('Pr. LC','Premio LC')+thS('Pr. EUR','Premio EUR')+thS('BDG')+thS('Esito')+(!isP?'<th style="text-align:center;background:#e8f5e9;color:#2d7a3a;cursor:default;padding:4px 3px">100%</th>':'')+(!isP?'<th style="text-align:center;background:#fff3e0;color:#cf8b4e;cursor:default;padding:4px 3px">60%</th>':'')+'<th style="padding:4px 3px" title="Lingua">Ling.</th>'+(!isP?'<th style="text-align:center;cursor:default;min-width:40px">Mal.</th>':'')+'<th style="text-align:center;cursor:default;min-width:36px">Sosp.</th>';
   h+='</tr></thead><tbody>';
 
   fl.forEach(function(emp,i){
