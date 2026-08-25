@@ -719,20 +719,20 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.46'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.47'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.47: Lettera FC+VM — box Carry-over mese precedente mostra anche la riserva SAS (e se usata/scaduta), non solo l'esubero fatturato",
   "9.46: Fix esito partial_nosy (FC+VM) mostrato come non raggiunto; tooltip SAS mensile+FCVM mostrano riserva usata/scaduta; fix doppio simbolo nel motivo esito lettera",
   "9.45: Lettera SAS — mostra quanto della riserva mese prec. è stata usata e quanto è scaduta",
   "9.44: FC+VM — bottone Screenshot Tabella (cattura l'intera tabella Calcolo Premi come PNG, righe/colonne fuori scroll comprese)",
   "9.43: Tabella Calcolo Premi FC+VM — intestazioni compresse e padding ridotto per ridurre lo scroll orizzontale",
   "9.42: Fix riserva SAS — non si accumula più mese su mese (scade se non usata a coprire il gap)",
   "9.41: Seasonal — SAS→fatturato incluso anche nella lettera Mid-Season (riga Store Budget + riga dedicata, allineata al gate)",
-  "9.40: Seasonal — SAS→fatturato esteso al Seasonal Bonus (SS26: import Luglio+Agosto; da FW26: file unico) in tab, export e lettere (tutte le lingue)",
-  "9.39: Seasonal — import Mid-Season già erogato: dedotto dal saldo fine stagione in tab, export e lettere (tutte le lingue)"
+  "9.40: Seasonal — SAS→fatturato esteso al Seasonal Bonus (SS26: import Luglio+Agosto; da FW26: file unico) in tab, export e lettere (tutte le lingue)"
 ];
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
@@ -9429,12 +9429,23 @@ function buildFcVmLetter(emp){
   h+='</div></div>';
   } // end if(r.stores.length>0)
 
-  // ── Esubero mese precedente (area) ──────────────────────────────────────
-  if(!isP&&r.stores&&r.stores.length>0&&r.totEsubero>0){
+  // ── Carry-over mese precedente (area): fatturato E SAS insieme, così il
+  // lettore vede entrambi gli "avanzi" riportati nello stesso posto invece
+  // di doverli cercare in due box separati della lettera ──────────────────
+  var _hasSasResIn=(r.totSasReserveIn||0)>0;
+  if(!isP&&r.stores&&r.stores.length>0&&(r.totEsubero>0||_hasSasResIn)){
     h+='<div style="margin-top:10px;border:1px solid #c7d2fe;border-radius:6px;overflow:hidden">';
     h+='<div style="background:#3d4a6b;padding:6px 14px"><span style="font-size:9px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:1px">'+(T.carry_over_title||'CARRY-OVER PREVIOUS MONTH')+'</span></div>';
     h+='<div style="padding:8px 14px;background:#f8f9ff">';
-    h+='<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span style="color:#8a8680">'+(T.esub_prev||'Carry-over prev. month')+'</span><span style="font-weight:600;color:#5b6abf">+'+fc(Math.round(r.totEsubero),'EUR')+'</span></div>';
+    if(r.totEsubero>0)h+='<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span style="color:#8a8680">'+(T.esub_prev||'Carry-over prev. month')+'</span><span style="font-weight:600;color:#5b6abf">+'+fc(Math.round(r.totEsubero),'EUR')+'</span></div>';
+    if(_hasSasResIn){
+      var _slt=(typeof _SAS_LT!=='undefined'?(_SAS_LT[lang]||_SAS_LT.INGLESE):null);
+      var _resInUsedCo=Math.min(r.totSasReserveIn||0,r.totSasUsed||0);
+      var _resInExpCo=(r.totSasReserveIn||0)-_resInUsedCo;
+      h+='<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span style="color:#8a8680">'+esc(_slt?_slt.resIn:'SAS reserve prev. month')+'</span><span style="font-weight:600;color:#a07d2c">'+fc(Math.round(r.totSasReserveIn),'EUR')+'</span></div>';
+      if(_resInUsedCo>0)h+='<div style="display:flex;justify-content:space-between;font-size:10px;padding-left:10px;margin-bottom:2px"><span style="color:#a09a92">'+esc(_slt?_slt.resInUsed:'— of which used')+'</span><span style="color:#2d7a3a;font-weight:600">'+fc(Math.round(_resInUsedCo),'EUR')+'</span></div>';
+      if(_resInExpCo>0)h+='<div style="display:flex;justify-content:space-between;font-size:10px;padding-left:10px;margin-bottom:4px"><span style="color:#a09a92">'+esc(_slt?_slt.resInExpired:'— of which expired')+'</span><span style="color:#cf5b5b;font-weight:600">'+fc(Math.round(_resInExpCo),'EUR')+'</span></div>';
+    }
     h+='<div style="display:flex;justify-content:space-between;font-size:11px;border-top:1px solid #e5e1db;padding-top:4px"><span style="color:#2c2925;font-weight:700">'+(T.cons_tot||'Total Actual')+'</span><span style="font-weight:800;color:#2c2925">'+fc(Math.round(r.totConsWithEsub),'EUR')+'</span></div>';
     h+='</div></div>';
   }
