@@ -135,12 +135,14 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 .sas-bdg b{font-size:12.5px}.sas-bdg small{font-size:9.5px;color:#999}
 .sas-bdg.hi b{color:#16a34a}.sas-bdg.mid b{color:#b45309}.sas-bdg.lo b{color:#dc2626}
 .sas-bdg-wrap{display:inline-flex;flex-direction:column;align-items:flex-end;gap:4px}
-.sas-bdg-dots{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:2px;max-width:90px;cursor:default;position:relative}
+.sas-bdg-dots{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:2px;max-width:55px;cursor:default;position:relative}
 .sas-bdg-dots::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);right:0;background:#1a1a2e;color:#fff;font-size:10px;font-weight:400;line-height:1.6;padding:7px 10px;border-radius:7px;white-space:pre-wrap;width:200px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:999;text-align:left}
 .sas-bdg-dots:hover::after{opacity:1}
 .sas-bdg-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0}
 .sas-bdg-dot.full{background:#16a34a}.sas-bdg-dot.partial{background:#f59e0b}.sas-bdg-dot.none{background:#ef4444}
 .sas-bdg-dot.missing{background:#9ca3af}
+/* Store ID (vista Negozi): 4 cifre, non serve la larghezza che l'header "STORE ID" richiederebbe di default */
+#sasTbl.sas-neg-view th:first-child,#sasTbl.sas-neg-view td:first-child{width:54px;max-width:54px}
 .sas-badge{display:inline-flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;color:#b45309;background:#fffbeb;border:1px solid #fcd34d;padding:1px 6px;border-radius:6px;margin-right:5px}
 .sas-chip-file{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;background:#eff6ff;border:1px solid #93c5fd;color:#1d4ed8;border-radius:8px;padding:5px 10px}
 .sas-chip-file .x{cursor:pointer;color:#93c5fd;font-weight:800;margin-left:2px}
@@ -5184,7 +5186,7 @@ function renderSas(){
   };
 
   const identCols=sasView==='negozi'
-    ?[{label:'Store ID',filter:'text'},{label:'Negozio',filter:'text'}]
+    ?[{label:'ID',filter:'text'},{label:'Negozio',filter:'text'}]
     :[{label:'Nome',filter:'text'},{label:'Ruolo',filter:'select'},{label:'N. Negozi',align:'right',filter:'none'}];
   const cols=identCols.concat([
     {label:'Target',align:'right',filter:'none'},{label:'Consuntivo',align:'right',filter:'none'},{label:'Esub. prec.',align:'right',filter:'none'},
@@ -5211,6 +5213,8 @@ function renderSas(){
       {disp:esitoChip(r),val:r.esito},bdgCell(r),
     ])};
   });
+  const sasTblEl=document.getElementById('sasTbl');
+  if(sasTblEl&&sasTblEl.classList) sasTblEl.classList.toggle('sas-neg-view',sasView==='negozi');
   // default: Negozi → Store ID crescente (col.0); FC+VM → Ruolo crescente (col.1, "FC" prima di
   // "VM"), con Nome alfabetico dentro ciascun ruolo grazie al pre-ordinamento sopra.
   makeSortTable('sasTbl','sas'+sasView,cols,trows,sasView==='negozi'?{i:0,dir:1}:{i:1,dir:1});
