@@ -725,20 +725,20 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.55'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.56'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.56: Seasonal Dept Store — Turnover Target e QTY ora confrontano davvero target/consuntivo (paracadute 99,5%/95%, come il BDG mensile), prima pagavano sempre il 150% incondizionato",
   "9.55: Fix import Seasonal — Target SY (header \"sy\" nudo) e SAS Luglio/Agosto (formato QWRT pct_speed/store_sas_value_*) non venivano più riconosciuti dai nuovi export",
   "9.54: Seasonal — Target Accuracy % configurabile (default 99%) in Configurazione; rimosso divider doppio sotto \"Anno\" in Periodo e Output",
   "9.53: Fix premi FC+VM — l'esubero fatturato dell'area viene usato PRIMA del SAS per colmare il gap (come già per negozi/BDG extra), non più dopo",
   "9.52: Export SAS→Fatturato (JSON) v2 — actual ora consuntivo puro in entrambi i kind (negozi era consuntivo+esubero), aggiunti esuberoSasPrec/esuberoSasPrecUsed/sasReserveNext",
   "9.51: Lettera mensile — tradotta anche l'etichetta \"Esubero fatturato\" (prima restava in inglese in tutte le lingue), stesso trattamento del box SAS",
   "9.50: Lettere — etichette esubero fatturato vs riserva SAS ora distinte per nome (\"Esubero fatturato mese prec.\" vs \"Riserva SAS mese prec.\"), non più ambigue",
-  "9.49: Fonti Dati — check diagnostico \"Riserva SAS prec.\" (mensile+FCVM), per capire subito se il file riserva del mese scorso è stato ricaricato",
-  "9.48: Lettera mensile — carry-over fatturato+SAS (usata/scaduta) visibile insieme, come nella FC+VM"
+  "9.49: Fonti Dati — check diagnostico \"Riserva SAS prec.\" (mensile+FCVM), per capire subito se il file riserva del mese scorso è stato ricaricato"
 ];
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
@@ -1689,10 +1689,38 @@ function seasIsKpiAchieved(kdef, auto){
   // so the standard >= check works correctly. No special case needed here.
   return pct>=kdef.threshold*100;
 }
+// Dept Store (concessioni nei grandi magazzini: Selfridges, KaDeWe, NK, El Corte
+// Inglés...): due sezioni indipendenti, Turnover Target (BDG×6) e QTY (50% BDG×6),
+// ciascuna con lo stesso paracadute a doppia soglia del BDG mensile — ≥99,5% target
+// paga intera la sezione, 95-99,5% paga il 60% ridotto, sotto 95% paga zero. Prima
+// (fino a v9.55) pagava sempre il 150% incondizionato, senza confrontare target/
+// consuntivo — bug segnalato 25/08/2026, corretto qui. Fonte unica per tabella
+// Calcolo Premi (calcSeasonal) e lettera (buildSeasonalDeptLetter).
+function calcSeasonalDeptInfo(e){
+  var sid=String(e.si);
+  var stg=SEAS_TARGETS[sid]||{};
+  var cn=(D.cs&&D.cs[sid])||{};
+  var isP=MODE==="preventivo";
+  var bdg6=Math.round((e.ib||0)*6*100)/100;
+  var qty6=Math.round(bdg6*0.5*100)/100;
+  function mult(pct,hasTarget){if(!hasTarget)return 0;if(pct>=PARAMS.bdg100)return 1;if(pct>=PARAMS.bdg60)return PARAMS.bdg60mult;return 0;}
+  var toTarget=stg.to||0;
+  var toActual=(cn.sc||0)+(cn.es||0)+(typeof seasSasAddon==="function"?seasSasAddon(sid):0);
+  var toPct=toTarget>0?toActual/toTarget:0;
+  var toMult=isP?1:mult(toPct,toTarget>0);
+  var qtyTarget=stg.qt||0;
+  var qtyActual=cn.qc||0;
+  var qtyPct=qtyTarget>0?qtyActual/qtyTarget:0;
+  var qtyMult=isP?1:mult(qtyPct,qtyTarget>0);
+  var bdg6Earned=Math.round(bdg6*toMult*100)/100;
+  var qty6Earned=Math.round(qty6*qtyMult*100)/100;
+  return {bdg6:bdg6,qty6:qty6,toTarget:toTarget,toActual:toActual,toPct:toPct,toMult:toMult,
+    qtyTarget:qtyTarget,qtyActual:qtyActual,qtyPct:qtyPct,qtyMult:qtyMult,
+    bdg6Earned:bdg6Earned,qty6Earned:qty6Earned,tot:Math.round((bdg6Earned+qty6Earned)*100)/100};
+}
 function calcSeasonal(e){
   if(isD(e.si)){
-    var bdg6=Math.round((e.ib||0)*6*100)/100;
-    return Math.round((bdg6+bdg6*0.5)*100)/100;
+    return calcSeasonalDeptInfo(e).tot;
   }
   var rlSem=(e.rl||0)*6;
   var base=rlSem*SEAS_CFG.basePct;
@@ -2803,6 +2831,8 @@ var SEAS_TR={
     bdg_monthly:"BUDGET INDIVIDUALE (MENSILE)",
     period_mult:"MOLTIPLICATORE PERIODO",
     qty_formula:"50% BDG × 6",
+    to_target:"TARGET FATTURATO SEMESTRALE",
+    to_result:"RISULTATO FATTURATO",
     qty_target:"TARGET QTY",
     qty_result:"RISULTATO QTY",
     max_bonus:"MASSIMO BONUS POTENZIALE",
@@ -2858,6 +2888,8 @@ var SEAS_TR={
     bdg_monthly:"INDIVIDUAL BUDGET (MONTHLY)",
     period_mult:"PERIOD MULTIPLIER",
     qty_formula:"50% BDG × 6",
+    to_target:"HALF-YEAR TURNOVER TARGET",
+    to_result:"TURNOVER RESULT",
     qty_target:"QTY TARGET",
     qty_result:"QTY RESULT",
     max_bonus:"MAXIMUM POTENTIAL BONUS",
@@ -2913,6 +2945,8 @@ var SEAS_TR={
     bdg_monthly:"BUDGET INDIVIDUEL (MENSUEL)",
     period_mult:"MULTIPLICATEUR PÉRIODE",
     qty_formula:"50% BDG × 6",
+    to_target:"OBJECTIF CA SEMESTRIEL",
+    to_result:"RÉSULTAT CA",
     qty_target:"OBJECTIF QTY",
     qty_result:"RÉSULTAT QTY",
     max_bonus:"BONUS POTENTIEL MAXIMUM",
@@ -2968,6 +3002,8 @@ var SEAS_TR={
     bdg_monthly:"INDIVIDUELLES BUDGET (MONATLICH)",
     period_mult:"PERIODEN-MULTIPLIKATOR",
     qty_formula:"50% BDG × 6",
+    to_target:"HALBJAHRES-UMSATZZIEL",
+    to_result:"UMSATZERGEBNIS",
     qty_target:"QTY ZIEL",
     qty_result:"QTY ERGEBNIS",
     max_bonus:"MAXIMALER BONUS",
@@ -3023,6 +3059,8 @@ var SEAS_TR={
     bdg_monthly:"PRESUPUESTO INDIVIDUAL (MENSUAL)",
     period_mult:"MULTIPLICADOR PERÍODO",
     qty_formula:"50% BDG × 6",
+    to_target:"OBJETIVO FACTURACIÓN SEMESTRAL",
+    to_result:"RESULTADO FACTURACIÓN",
     qty_target:"OBJETIVO QTY",
     qty_result:"RESULTADO QTY",
     max_bonus:"BONO POTENCIAL MÁXIMO",
@@ -3430,9 +3468,8 @@ try{ rL(); }catch(_e){ try{setTimeout(rL,0)}catch(_e2){} }
 // Struttura coerente con la lettera mensile (buildLetter)
 function buildSeasonalDeptLetter(e){
   var cu=e.cu||"EUR",sid=String(e.si);
-  var bdg6=Math.round((e.ib||0)*6*100)/100;
-  var qty6=Math.round(bdg6*0.5*100)/100;
-  var tot=Math.round((bdg6+qty6)*100)/100;
+  var dInfo=calcSeasonalDeptInfo(e);
+  var bdg6=dInfo.bdg6,qty6=dInfo.qty6,tot=dInfo.tot;
   var isP=MODE==="preventivo";
   var lang=trLang(e);
   var T=SEAS_TR[lang]||SEAS_TR["INGLESE"];
@@ -3470,26 +3507,25 @@ function buildSeasonalDeptLetter(e){
     h+='<div style="font-size:12px;font-weight:700;color:#2c2925;margin-bottom:16px">'+esc(CFG_SEASON+' '+CFG_YEAR)+'</div>';
   }
 
-  // Sezione 1: BDG × 6
+  // Sezione 1: BDG × 6 — pagato per intero se target ≥99,5% raggiunto, 60% ridotto
+  // tra 95% e 99,5%, zero sotto 95% (stesso paracadute del BDG mensile, v9.56).
   var sN=0;
   sN++;
-  h+=secHd(sN,tr(e,"turnover","TURNOVER TARGET"),true,isP);
+  h+=secHd(sN,tr(e,"turnover","TURNOVER TARGET"),dInfo.toMult>0,isP);
   h+=ltRow(T.bdg_monthly,'<span class="lt-row-cur">'+cu+'</span>'+Math.round(e.ib||0).toLocaleString("it-IT"));
   h+=ltRow(T.period_mult,"× 6");
-  // In preventivo mostra target fatturato se disponibile
-  if(isP&&(stgDept.to||0)>0) h+=ltRow(tr(e,"target","TARGET FATTURATO SEMESTRALE"),'<span class="lt-row-cur">'+cu+'</span>'+Math.round(stgDept.to).toLocaleString("it-IT"));
-  h+=secPd(pdLabel,bdg6,cu,true);
+  if((stgDept.to||0)>0) h+=ltRow(T.to_target,'<span class="lt-row-cur">'+cu+'</span>'+Math.round(stgDept.to).toLocaleString("it-IT"));
+  if(!isP&&dInfo.toTarget>0) h+=ltRow(T.to_result,'<span class="lt-row-cur">'+cu+'</span>'+Math.round(dInfo.toActual).toLocaleString("it-IT")+' ('+(dInfo.toPct*100).toFixed(1)+'%)');
+  h+=secPd(pdLabel,isP?bdg6:dInfo.bdg6Earned,cu,dInfo.toMult>0);
   h+="</div></div>";
 
-  // Sezione 2: QTY (50% BDG×6)
+  // Sezione 2: QTY (50% BDG×6) — stesso paracadute a doppia soglia della Sezione 1.
   sN++;
-  h+=secHd(sN,"QTY",true,isP);
-  // In preventivo mostra target QTY se disponibile
-  if(isP&&(stgDept.qt||0)>0) h+=ltRow(T.qty_target,""+stgDept.qt.toLocaleString("it-IT"));
-  if(!isP&&(stgDept.qt||0)>0) h+=ltRow(T.qty_target,""+stgDept.qt.toLocaleString("it-IT"));
-  if(!isP&&(cnDept.qc||0)>0) h+=ltRow(T.qty_result,""+cnDept.qc.toLocaleString("it-IT"));
+  h+=secHd(sN,"QTY",dInfo.qtyMult>0,isP);
+  if((stgDept.qt||0)>0) h+=ltRow(T.qty_target,""+stgDept.qt.toLocaleString("it-IT"));
+  if(!isP&&dInfo.qtyTarget>0) h+=ltRow(T.qty_result,""+dInfo.qtyActual.toLocaleString("it-IT")+' ('+(dInfo.qtyPct*100).toFixed(1)+'%)');
   h+=ltRow(tr(e,"incentive","FORMULA"),T.qty_formula);
-  h+=secPd(pdLabel,qty6,cu,true);
+  h+=secPd(pdLabel,isP?qty6:dInfo.qty6Earned,cu,dInfo.qtyMult>0);
   h+="</div></div>";
 
   // Totale

@@ -323,6 +323,8 @@ var SEAS_TR={
     bdg_monthly:"BUDGET INDIVIDUALE (MENSILE)",
     period_mult:"MOLTIPLICATORE PERIODO",
     qty_formula:"50% BDG × 6",
+    to_target:"TARGET FATTURATO SEMESTRALE",
+    to_result:"RISULTATO FATTURATO",
     qty_target:"TARGET QTY",
     qty_result:"RISULTATO QTY",
     max_bonus:"MASSIMO BONUS POTENZIALE",
@@ -378,6 +380,8 @@ var SEAS_TR={
     bdg_monthly:"INDIVIDUAL BUDGET (MONTHLY)",
     period_mult:"PERIOD MULTIPLIER",
     qty_formula:"50% BDG × 6",
+    to_target:"HALF-YEAR TURNOVER TARGET",
+    to_result:"TURNOVER RESULT",
     qty_target:"QTY TARGET",
     qty_result:"QTY RESULT",
     max_bonus:"MAXIMUM POTENTIAL BONUS",
@@ -433,6 +437,8 @@ var SEAS_TR={
     bdg_monthly:"BUDGET INDIVIDUEL (MENSUEL)",
     period_mult:"MULTIPLICATEUR PÉRIODE",
     qty_formula:"50% BDG × 6",
+    to_target:"OBJECTIF CA SEMESTRIEL",
+    to_result:"RÉSULTAT CA",
     qty_target:"OBJECTIF QTY",
     qty_result:"RÉSULTAT QTY",
     max_bonus:"BONUS POTENTIEL MAXIMUM",
@@ -488,6 +494,8 @@ var SEAS_TR={
     bdg_monthly:"INDIVIDUELLES BUDGET (MONATLICH)",
     period_mult:"PERIODEN-MULTIPLIKATOR",
     qty_formula:"50% BDG × 6",
+    to_target:"HALBJAHRES-UMSATZZIEL",
+    to_result:"UMSATZERGEBNIS",
     qty_target:"QTY ZIEL",
     qty_result:"QTY ERGEBNIS",
     max_bonus:"MAXIMALER BONUS",
@@ -543,6 +551,8 @@ var SEAS_TR={
     bdg_monthly:"PRESUPUESTO INDIVIDUAL (MENSUAL)",
     period_mult:"MULTIPLICADOR PERÍODO",
     qty_formula:"50% BDG × 6",
+    to_target:"OBJETIVO FACTURACIÓN SEMESTRAL",
+    to_result:"RESULTADO FACTURACIÓN",
     qty_target:"OBJETIVO QTY",
     qty_result:"RESULTADO QTY",
     max_bonus:"BONO POTENCIAL MÁXIMO",
@@ -950,9 +960,8 @@ try{ rL(); }catch(_e){ try{setTimeout(rL,0)}catch(_e2){} }
 // Struttura coerente con la lettera mensile (buildLetter)
 function buildSeasonalDeptLetter(e){
   var cu=e.cu||"EUR",sid=String(e.si);
-  var bdg6=Math.round((e.ib||0)*6*100)/100;
-  var qty6=Math.round(bdg6*0.5*100)/100;
-  var tot=Math.round((bdg6+qty6)*100)/100;
+  var dInfo=calcSeasonalDeptInfo(e);
+  var bdg6=dInfo.bdg6,qty6=dInfo.qty6,tot=dInfo.tot;
   var isP=MODE==="preventivo";
   var lang=trLang(e);
   var T=SEAS_TR[lang]||SEAS_TR["INGLESE"];
@@ -990,26 +999,25 @@ function buildSeasonalDeptLetter(e){
     h+='<div style="font-size:12px;font-weight:700;color:#2c2925;margin-bottom:16px">'+esc(CFG_SEASON+' '+CFG_YEAR)+'</div>';
   }
 
-  // Sezione 1: BDG × 6
+  // Sezione 1: BDG × 6 — pagato per intero se target ≥99,5% raggiunto, 60% ridotto
+  // tra 95% e 99,5%, zero sotto 95% (stesso paracadute del BDG mensile, v9.56).
   var sN=0;
   sN++;
-  h+=secHd(sN,tr(e,"turnover","TURNOVER TARGET"),true,isP);
+  h+=secHd(sN,tr(e,"turnover","TURNOVER TARGET"),dInfo.toMult>0,isP);
   h+=ltRow(T.bdg_monthly,'<span class="lt-row-cur">'+cu+'</span>'+Math.round(e.ib||0).toLocaleString("it-IT"));
   h+=ltRow(T.period_mult,"× 6");
-  // In preventivo mostra target fatturato se disponibile
-  if(isP&&(stgDept.to||0)>0) h+=ltRow(tr(e,"target","TARGET FATTURATO SEMESTRALE"),'<span class="lt-row-cur">'+cu+'</span>'+Math.round(stgDept.to).toLocaleString("it-IT"));
-  h+=secPd(pdLabel,bdg6,cu,true);
+  if((stgDept.to||0)>0) h+=ltRow(T.to_target,'<span class="lt-row-cur">'+cu+'</span>'+Math.round(stgDept.to).toLocaleString("it-IT"));
+  if(!isP&&dInfo.toTarget>0) h+=ltRow(T.to_result,'<span class="lt-row-cur">'+cu+'</span>'+Math.round(dInfo.toActual).toLocaleString("it-IT")+' ('+(dInfo.toPct*100).toFixed(1)+'%)');
+  h+=secPd(pdLabel,isP?bdg6:dInfo.bdg6Earned,cu,dInfo.toMult>0);
   h+="</div></div>";
 
-  // Sezione 2: QTY (50% BDG×6)
+  // Sezione 2: QTY (50% BDG×6) — stesso paracadute a doppia soglia della Sezione 1.
   sN++;
-  h+=secHd(sN,"QTY",true,isP);
-  // In preventivo mostra target QTY se disponibile
-  if(isP&&(stgDept.qt||0)>0) h+=ltRow(T.qty_target,""+stgDept.qt.toLocaleString("it-IT"));
-  if(!isP&&(stgDept.qt||0)>0) h+=ltRow(T.qty_target,""+stgDept.qt.toLocaleString("it-IT"));
-  if(!isP&&(cnDept.qc||0)>0) h+=ltRow(T.qty_result,""+cnDept.qc.toLocaleString("it-IT"));
+  h+=secHd(sN,"QTY",dInfo.qtyMult>0,isP);
+  if((stgDept.qt||0)>0) h+=ltRow(T.qty_target,""+stgDept.qt.toLocaleString("it-IT"));
+  if(!isP&&dInfo.qtyTarget>0) h+=ltRow(T.qty_result,""+dInfo.qtyActual.toLocaleString("it-IT")+' ('+(dInfo.qtyPct*100).toFixed(1)+'%)');
   h+=ltRow(tr(e,"incentive","FORMULA"),T.qty_formula);
-  h+=secPd(pdLabel,qty6,cu,true);
+  h+=secPd(pdLabel,isP?qty6:dInfo.qty6Earned,cu,dInfo.qtyMult>0);
   h+="</div></div>";
 
   // Totale

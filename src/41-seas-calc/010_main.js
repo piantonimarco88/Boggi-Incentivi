@@ -216,10 +216,38 @@ function seasIsKpiAchieved(kdef, auto){
   // so the standard >= check works correctly. No special case needed here.
   return pct>=kdef.threshold*100;
 }
+// Dept Store (concessioni nei grandi magazzini: Selfridges, KaDeWe, NK, El Corte
+// Inglés...): due sezioni indipendenti, Turnover Target (BDG×6) e QTY (50% BDG×6),
+// ciascuna con lo stesso paracadute a doppia soglia del BDG mensile — ≥99,5% target
+// paga intera la sezione, 95-99,5% paga il 60% ridotto, sotto 95% paga zero. Prima
+// (fino a v9.55) pagava sempre il 150% incondizionato, senza confrontare target/
+// consuntivo — bug segnalato 25/08/2026, corretto qui. Fonte unica per tabella
+// Calcolo Premi (calcSeasonal) e lettera (buildSeasonalDeptLetter).
+function calcSeasonalDeptInfo(e){
+  var sid=String(e.si);
+  var stg=SEAS_TARGETS[sid]||{};
+  var cn=(D.cs&&D.cs[sid])||{};
+  var isP=MODE==="preventivo";
+  var bdg6=Math.round((e.ib||0)*6*100)/100;
+  var qty6=Math.round(bdg6*0.5*100)/100;
+  function mult(pct,hasTarget){if(!hasTarget)return 0;if(pct>=PARAMS.bdg100)return 1;if(pct>=PARAMS.bdg60)return PARAMS.bdg60mult;return 0;}
+  var toTarget=stg.to||0;
+  var toActual=(cn.sc||0)+(cn.es||0)+(typeof seasSasAddon==="function"?seasSasAddon(sid):0);
+  var toPct=toTarget>0?toActual/toTarget:0;
+  var toMult=isP?1:mult(toPct,toTarget>0);
+  var qtyTarget=stg.qt||0;
+  var qtyActual=cn.qc||0;
+  var qtyPct=qtyTarget>0?qtyActual/qtyTarget:0;
+  var qtyMult=isP?1:mult(qtyPct,qtyTarget>0);
+  var bdg6Earned=Math.round(bdg6*toMult*100)/100;
+  var qty6Earned=Math.round(qty6*qtyMult*100)/100;
+  return {bdg6:bdg6,qty6:qty6,toTarget:toTarget,toActual:toActual,toPct:toPct,toMult:toMult,
+    qtyTarget:qtyTarget,qtyActual:qtyActual,qtyPct:qtyPct,qtyMult:qtyMult,
+    bdg6Earned:bdg6Earned,qty6Earned:qty6Earned,tot:Math.round((bdg6Earned+qty6Earned)*100)/100};
+}
 function calcSeasonal(e){
   if(isD(e.si)){
-    var bdg6=Math.round((e.ib||0)*6*100)/100;
-    return Math.round((bdg6+bdg6*0.5)*100)/100;
+    return calcSeasonalDeptInfo(e).tot;
   }
   var rlSem=(e.rl||0)*6;
   var base=rlSem*SEAS_CFG.basePct;

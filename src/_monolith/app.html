@@ -215,20 +215,20 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 /*BUNDLE_INSERT:60-fcvm-state*/
 /*BUNDLE_INSERT:70-fcvm-calc*//*BUNDLE_INSERT:80-roles-config*/var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.55'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.56'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.56: Seasonal Dept Store — Turnover Target e QTY ora confrontano davvero target/consuntivo (paracadute 99,5%/95%, come il BDG mensile), prima pagavano sempre il 150% incondizionato",
   "9.55: Fix import Seasonal — Target SY (header \"sy\" nudo) e SAS Luglio/Agosto (formato QWRT pct_speed/store_sas_value_*) non venivano più riconosciuti dai nuovi export",
   "9.54: Seasonal — Target Accuracy % configurabile (default 99%) in Configurazione; rimosso divider doppio sotto \"Anno\" in Periodo e Output",
   "9.53: Fix premi FC+VM — l'esubero fatturato dell'area viene usato PRIMA del SAS per colmare il gap (come già per negozi/BDG extra), non più dopo",
   "9.52: Export SAS→Fatturato (JSON) v2 — actual ora consuntivo puro in entrambi i kind (negozi era consuntivo+esubero), aggiunti esuberoSasPrec/esuberoSasPrecUsed/sasReserveNext",
   "9.51: Lettera mensile — tradotta anche l'etichetta \"Esubero fatturato\" (prima restava in inglese in tutte le lingue), stesso trattamento del box SAS",
   "9.50: Lettere — etichette esubero fatturato vs riserva SAS ora distinte per nome (\"Esubero fatturato mese prec.\" vs \"Riserva SAS mese prec.\"), non più ambigue",
-  "9.49: Fonti Dati — check diagnostico \"Riserva SAS prec.\" (mensile+FCVM), per capire subito se il file riserva del mese scorso è stato ricaricato",
-  "9.48: Lettera mensile — carry-over fatturato+SAS (usata/scaduta) visibile insieme, come nella FC+VM"
+  "9.49: Fonti Dati — check diagnostico \"Riserva SAS prec.\" (mensile+FCVM), per capire subito se il file riserva del mese scorso è stato ricaricato"
 ];
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 /*BUNDLE_INSERT:82-month-labels*/
