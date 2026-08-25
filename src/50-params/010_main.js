@@ -59,18 +59,26 @@ function sasRecognizedValue(acc,vel,value){
   return p*value;
 }
 // Logica riserva: il riconosciuto (+riserva precedente) colma il gap verso
-// il target fino al 100%; l'avanzo diventa riserva del mese dopo.
+// il target fino al 100%. La riserva NON si accumula di mese in mese: quella
+// portata dal mese precedente (reserveIn) viene consumata per PRIMA a coprire
+// il gap e poi scade sempre (usata o no, non si riporta oltre) — solo
+// l'eventuale avanzo del riconosciuto DI QUESTO MESE diventa la riserva del
+// mese dopo. Vedi discussione 25/08/2026, esempio Covello (reserveIn 23.799
+// + recognized 18.397, gap 10.574 -> reserveIn copre da solo il gap ->
+// reserveOut = 18.397, non 31.622 come dava la vecchia formula cumulativa).
 //   base       = fatturato + esubero fatturato precedente
 //   target     = obiettivo fatturato
 //   recognized = valore SAS riconosciuto questo mese
-//   reserveIn  = riserva SAS riportata dal mese precedente
+//   reserveIn  = riserva SAS riportata dal mese precedente (scade questo mese)
 // Ritorna {avail, gap, used, reserveOut, num} dove num = numeratore verso target.
 function sasReserveCalc(base,target,recognized,reserveIn){
-  base=base||0;target=target||0;
-  var avail=(recognized||0)+(reserveIn||0);
+  base=base||0;target=target||0;recognized=recognized||0;reserveIn=reserveIn||0;
   var gap=Math.max(0,target-base);
-  var used=Math.min(avail,gap);
-  return {avail:avail,gap:gap,used:used,reserveOut:avail-used,num:base+used};
+  var usedFromReserveIn=Math.min(reserveIn,gap);
+  var usedFromRecognized=Math.min(recognized,gap-usedFromReserveIn);
+  var used=usedFromReserveIn+usedFromRecognized;
+  var avail=recognized+reserveIn;
+  return {avail:avail,gap:gap,used:used,reserveOut:recognized-usedFromRecognized,num:base+used};
 }
 
 // === SAS → fatturato (SEASONAL, da SS26) ===================================

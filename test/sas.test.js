@@ -113,12 +113,22 @@ test("riserva: SAS insufficiente a colmare il gap, nessun avanzo", () => {
   assert.strictEqual(r.reserveOut, 0);
   assert.strictEqual(r.num, 93000);
 });
-test("riserva: la riserva del mese precedente si somma al riconosciuto", () => {
-  // avail = 1000 riconosciuto + 5000 riserva = 6000; gap 4000 → usa 4000, avanza 2000
+test("riserva: quella del mese precedente copre il gap per prima e scade (non si accumula)", () => {
+  // gap 4000: la riserva (5000) lo copre da sola -> used=4000 tutto da reserveIn.
+  // Il riconosciuto (1000) resta intatto e diventa l'INTERO riporto al mese dopo,
+  // la riserva vecchia residua (1000) non si riporta: scade.
   const r = ctx({}).sasReserveCalc(96000, 100000, 1000, 5000);
   assert.strictEqual(r.avail, 6000);
   assert.strictEqual(r.used, 4000);
-  assert.strictEqual(r.reserveOut, 2000);
+  assert.strictEqual(r.reserveOut, 1000);
+});
+test("riserva: esempio reale Covello (ago 2026) — riporto = solo il riconosciuto non usato", () => {
+  // gap 10.574 interamente coperto dalla riserva 23.799 (avanzata) -> reserveOut
+  // deve essere il riconosciuto del mese (18.397), non 31.622 come dava la vecchia formula.
+  const r = ctx({}).sasReserveCalc(384517, 395091, 18397, 23799);
+  assert.strictEqual(r.used, 10574);
+  assert.strictEqual(r.reserveOut, 18397);
+  assert.strictEqual(r.num, 395091);
 });
 test("riserva: base oltre target, gap 0, tutto accantonato", () => {
   const r = ctx({}).sasReserveCalc(105000, 100000, 6000, 0);
