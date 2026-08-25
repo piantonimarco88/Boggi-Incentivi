@@ -41,6 +41,13 @@ function rSourcesFcvm(){
   if(!isP&&typeof sasNewActive==='function'&&sasNewActive()){
     var _hasSasArea=Object.values(FC_AREA_SAS).some(function(r){return r.sasv_eur!=null||r.acc!=null||r.vel!=null;});
     checks.push({label:'SAS Area (valore→fatturato)',ok:_hasSasArea});
+    // Diagnostico: la riserva SAS mese prec. arriva SOLO da qui (colonna "riserva" nel
+    // file "SAS Area (Field Coach)", tipicamente il file esportato il mese scorso con
+    // "Esporta Riserva SAS Field Coach" e re-importato). Se questo check è vuoto la
+    // lettera non mostrerà alcuna riga "riserva mese prec." — non è un bug del box,
+    // è che il file con la riserva non è (ancora) stato importato per questo mese.
+    var _nSasResIn=Object.values(FC_AREA_SAS).filter(function(r){return(r.sasr_eur||0)>0;}).length;
+    checks.push({label:'Riserva SAS Field Coach (opt.)'+(_nSasResIn>0?' — '+_nSasResIn+' aree':''),ok:_nSasResIn>0});
     var _hasSasStore=Object.values(FC_RESULTS).some(function(r){return r.sasv_eur!=null||r.acc!=null||r.vel!=null;});
     var _anyBdgStores=Object.values(FC_EMP).some(function(e){return e.bdg_stores&&e.bdg_stores.length>0;});
     if(_anyBdgStores)checks.push({label:'SAS Negozi (per BDG extra)',ok:_hasSasStore});

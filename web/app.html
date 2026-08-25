@@ -719,20 +719,20 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.48'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.49'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.49: Fonti Dati — check diagnostico \"Riserva SAS prec.\" (mensile+FCVM), per capire subito se il file riserva del mese scorso è stato ricaricato",
   "9.48: Lettera mensile — carry-over fatturato+SAS (usata/scaduta) visibile insieme, come nella FC+VM",
   "9.47: Lettera FC+VM — box Carry-over mese precedente mostra anche la riserva SAS (e se usata/scaduta), non solo l'esubero fatturato",
   "9.46: Fix esito partial_nosy (FC+VM) mostrato come non raggiunto; tooltip SAS mensile+FCVM mostrano riserva usata/scaduta; fix doppio simbolo nel motivo esito lettera",
   "9.45: Lettera SAS — mostra quanto della riserva mese prec. è stata usata e quanto è scaduta",
   "9.44: FC+VM — bottone Screenshot Tabella (cattura l'intera tabella Calcolo Premi come PNG, righe/colonne fuori scroll comprese)",
   "9.43: Tabella Calcolo Premi FC+VM — intestazioni compresse e padding ridotto per ridurre lo scroll orizzontale",
-  "9.42: Fix riserva SAS — non si accumula più mese su mese (scade se non usata a coprire il gap)",
-  "9.41: Seasonal — SAS→fatturato incluso anche nella lettera Mid-Season (riga Store Budget + riga dedicata, allineata al gate)"
+  "9.42: Fix riserva SAS — non si accumula più mese su mese (scade se non usata a coprire il gap)"
 ];
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
@@ -7440,6 +7440,11 @@ function rSources(){try{
       checks.push({l:"Malattie",ok:hasMal,v:hasMal?"OK":"Da caricare"});
       checks.push({l:"% Digital (cons.)",ok:hasDigC,v:hasDigC?"OK":"Da caricare"});
       checks.push({l:"Esubero",ok:hasCons&&Object.keys(D.c).some(function(k){return(D.c[k].es||0)>0}),v:"OK"});
+      // Diagnostico: la riserva SAS mese prec. (colonna "riserva"/"sas reserve" nel
+      // file SAS) è opzionale — se assente la lettera semplicemente non mostra la
+      // riga "riserva mese prec.", non è un bug. Conteggio qui per capire al volo
+      // se il file di riserva del mese scorso è stato ricaricato o no.
+      if(_sasNew){var _nResIn=Object.keys(D.c).filter(function(k){return(D.c[k].sasr||0)>0}).length;checks.push({l:"Riserva SAS prec. (opt.)"+(_nResIn>0?" — "+_nResIn+" neg.":""),ok:_nResIn>0,v:"Opzionale"});}
       var hasDCC=hasCons&&Object.keys(D.c).some(function(k){return(D.c[k].dv||0)>0});
       var hasArt=hasCons&&Object.keys(D.c).some(function(k){return(D.c[k].ac||0)>0});
       checks.push({l:"DCC",ok:hasDCC,v:hasDCC?"OK":"Da caricare"});
@@ -9747,6 +9752,13 @@ function rSourcesFcvm(){
   if(!isP&&typeof sasNewActive==='function'&&sasNewActive()){
     var _hasSasArea=Object.values(FC_AREA_SAS).some(function(r){return r.sasv_eur!=null||r.acc!=null||r.vel!=null;});
     checks.push({label:'SAS Area (valore→fatturato)',ok:_hasSasArea});
+    // Diagnostico: la riserva SAS mese prec. arriva SOLO da qui (colonna "riserva" nel
+    // file "SAS Area (Field Coach)", tipicamente il file esportato il mese scorso con
+    // "Esporta Riserva SAS Field Coach" e re-importato). Se questo check è vuoto la
+    // lettera non mostrerà alcuna riga "riserva mese prec." — non è un bug del box,
+    // è che il file con la riserva non è (ancora) stato importato per questo mese.
+    var _nSasResIn=Object.values(FC_AREA_SAS).filter(function(r){return(r.sasr_eur||0)>0;}).length;
+    checks.push({label:'Riserva SAS Field Coach (opt.)'+(_nSasResIn>0?' — '+_nSasResIn+' aree':''),ok:_nSasResIn>0});
     var _hasSasStore=Object.values(FC_RESULTS).some(function(r){return r.sasv_eur!=null||r.acc!=null||r.vel!=null;});
     var _anyBdgStores=Object.values(FC_EMP).some(function(e){return e.bdg_stores&&e.bdg_stores.length>0;});
     if(_anyBdgStores)checks.push({label:'SAS Negozi (per BDG extra)',ok:_hasSasStore});

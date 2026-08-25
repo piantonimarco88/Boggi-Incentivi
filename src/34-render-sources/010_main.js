@@ -144,6 +144,11 @@ function rSources(){try{
       checks.push({l:"Malattie",ok:hasMal,v:hasMal?"OK":"Da caricare"});
       checks.push({l:"% Digital (cons.)",ok:hasDigC,v:hasDigC?"OK":"Da caricare"});
       checks.push({l:"Esubero",ok:hasCons&&Object.keys(D.c).some(function(k){return(D.c[k].es||0)>0}),v:"OK"});
+      // Diagnostico: la riserva SAS mese prec. (colonna "riserva"/"sas reserve" nel
+      // file SAS) è opzionale — se assente la lettera semplicemente non mostra la
+      // riga "riserva mese prec.", non è un bug. Conteggio qui per capire al volo
+      // se il file di riserva del mese scorso è stato ricaricato o no.
+      if(_sasNew){var _nResIn=Object.keys(D.c).filter(function(k){return(D.c[k].sasr||0)>0}).length;checks.push({l:"Riserva SAS prec. (opt.)"+(_nResIn>0?" — "+_nResIn+" neg.":""),ok:_nResIn>0,v:"Opzionale"});}
       var hasDCC=hasCons&&Object.keys(D.c).some(function(k){return(D.c[k].dv||0)>0});
       var hasArt=hasCons&&Object.keys(D.c).some(function(k){return(D.c[k].ac||0)>0});
       checks.push({l:"DCC",ok:hasDCC,v:hasDCC?"OK":"Da caricare"});
