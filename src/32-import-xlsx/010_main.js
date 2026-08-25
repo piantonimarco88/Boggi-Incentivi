@@ -1242,7 +1242,14 @@ function loadResultsExcel(file){
         }
         if(hdrRow<0){alert("Formato file consuntivo seasonal non riconosciuto:\nnessuna colonna store trovata nelle prime 5 righe.");return;}
 
-        function fHP(){for(var ci=0;ci<headers.length;ci++){if(!headers[ci])continue;for(var i=0;i<arguments.length;i++){if(headers[ci].indexOf(arguments[i])>=0)return ci;}}return-1;}
+        // "fcst"/forecast escluso esplicitamente: il file consuntivo SS26 porta ANCHE una
+        // colonna forecast ("Fcst Gross Sales After Returns in LC2026") prima di quella
+        // vera ("Gross Sales After Returns in LC 2026") — senza questa guardia, cSales
+        // matchava per prima la colonna forecast (sostanzialmente uguale al target),
+        // facendo apparire il Dept Store sempre a target anche con un consuntivo reale
+        // diverso (bug segnalato 25/08/2026, es. reale store 1318: target/fcst ~538k,
+        // vero consuntivo 592k, mostrato sempre come 538k=target raggiunto).
+        function fHP(){for(var ci=0;ci<headers.length;ci++){if(!headers[ci]||headers[ci].indexOf("fcst")>=0||headers[ci].indexOf("forecast")>=0)continue;for(var i=0;i<arguments.length;i++){if(headers[ci].indexOf(arguments[i])>=0)return ci;}}return-1;}
 
         // Identifica tipo file dal contenuto delle colonne
         var cSid=fHP("store id","store_id");
@@ -1291,6 +1298,10 @@ function loadResultsExcel(file){
             if(cSales>=0){var v=parseNum(row[cSales]);if(!isNaN(v)&&v>0)D.cs[sid].sc=Math.round(v);}
             if(cSY>=0){var v=parseNum(row[cSY]);if(!isNaN(v)&&v>0)D.cs[sid].sy=v;}
             if(cSub>=0){var v=parseNum(row[cSub]);if(!isNaN(v)&&v>0)D.cs[sid].nf=v;}
+            // QTY Dept Store: stesso file "seas_main" a volte porta anche questa colonna
+            // (es. "Qty Sales Merch After Returns 2026") — non solo il formato dedicato
+            // seas_qty_dept, altrimenti resta sempre a 0 anche quando il dato c'è.
+            if(cQtySales>=0){var v=parseInt(row[cQtySales]);if(!isNaN(v)&&v>0)D.cs[sid].qc=v;}
             // CR: usa colonna trovata per intestazione, altrimenti fallback col H (index 7)
             var crIdx=(cCR>=0)?cCR:7;
             if(row[crIdx]!=null){var cv=parseNum(row[crIdx]);if(!isNaN(cv)&&cv>0)D.cs[sid].cr=cv;}

@@ -725,20 +725,20 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.56'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.57'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.57: Fix import Consuntivo Seasonal — colonna \"Fcst Gross Sales\" (forecast) letta al posto del vero consuntivo per i Dept Store; aggiunta lettura QTY consuntivo dallo stesso file",
   "9.56: Seasonal Dept Store — Turnover Target e QTY ora confrontano davvero target/consuntivo (paracadute 99,5%/95%, come il BDG mensile), prima pagavano sempre il 150% incondizionato",
   "9.55: Fix import Seasonal — Target SY (header \"sy\" nudo) e SAS Luglio/Agosto (formato QWRT pct_speed/store_sas_value_*) non venivano più riconosciuti dai nuovi export",
   "9.54: Seasonal — Target Accuracy % configurabile (default 99%) in Configurazione; rimosso divider doppio sotto \"Anno\" in Periodo e Output",
   "9.53: Fix premi FC+VM — l'esubero fatturato dell'area viene usato PRIMA del SAS per colmare il gap (come già per negozi/BDG extra), non più dopo",
   "9.52: Export SAS→Fatturato (JSON) v2 — actual ora consuntivo puro in entrambi i kind (negozi era consuntivo+esubero), aggiunti esuberoSasPrec/esuberoSasPrecUsed/sasReserveNext",
   "9.51: Lettera mensile — tradotta anche l'etichetta \"Esubero fatturato\" (prima restava in inglese in tutte le lingue), stesso trattamento del box SAS",
-  "9.50: Lettere — etichette esubero fatturato vs riserva SAS ora distinte per nome (\"Esubero fatturato mese prec.\" vs \"Riserva SAS mese prec.\"), non più ambigue",
-  "9.49: Fonti Dati — check diagnostico \"Riserva SAS prec.\" (mensile+FCVM), per capire subito se il file riserva del mese scorso è stato ricaricato"
+  "9.50: Lettere — etichette esubero fatturato vs riserva SAS ora distinte per nome (\"Esubero fatturato mese prec.\" vs \"Riserva SAS mese prec.\"), non più ambigue"
 ];
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
@@ -6872,7 +6872,14 @@ function loadResultsExcel(file){
         }
         if(hdrRow<0){alert("Formato file consuntivo seasonal non riconosciuto:\nnessuna colonna store trovata nelle prime 5 righe.");return;}
 
-        function fHP(){for(var ci=0;ci<headers.length;ci++){if(!headers[ci])continue;for(var i=0;i<arguments.length;i++){if(headers[ci].indexOf(arguments[i])>=0)return ci;}}return-1;}
+        // "fcst"/forecast escluso esplicitamente: il file consuntivo SS26 porta ANCHE una
+        // colonna forecast ("Fcst Gross Sales After Returns in LC2026") prima di quella
+        // vera ("Gross Sales After Returns in LC 2026") — senza questa guardia, cSales
+        // matchava per prima la colonna forecast (sostanzialmente uguale al target),
+        // facendo apparire il Dept Store sempre a target anche con un consuntivo reale
+        // diverso (bug segnalato 25/08/2026, es. reale store 1318: target/fcst ~538k,
+        // vero consuntivo 592k, mostrato sempre come 538k=target raggiunto).
+        function fHP(){for(var ci=0;ci<headers.length;ci++){if(!headers[ci]||headers[ci].indexOf("fcst")>=0||headers[ci].indexOf("forecast")>=0)continue;for(var i=0;i<arguments.length;i++){if(headers[ci].indexOf(arguments[i])>=0)return ci;}}return-1;}
 
         // Identifica tipo file dal contenuto delle colonne
         var cSid=fHP("store id","store_id");
@@ -6921,6 +6928,10 @@ function loadResultsExcel(file){
             if(cSales>=0){var v=parseNum(row[cSales]);if(!isNaN(v)&&v>0)D.cs[sid].sc=Math.round(v);}
             if(cSY>=0){var v=parseNum(row[cSY]);if(!isNaN(v)&&v>0)D.cs[sid].sy=v;}
             if(cSub>=0){var v=parseNum(row[cSub]);if(!isNaN(v)&&v>0)D.cs[sid].nf=v;}
+            // QTY Dept Store: stesso file "seas_main" a volte porta anche questa colonna
+            // (es. "Qty Sales Merch After Returns 2026") — non solo il formato dedicato
+            // seas_qty_dept, altrimenti resta sempre a 0 anche quando il dato c'è.
+            if(cQtySales>=0){var v=parseInt(row[cQtySales]);if(!isNaN(v)&&v>0)D.cs[sid].qc=v;}
             // CR: usa colonna trovata per intestazione, altrimenti fallback col H (index 7)
             var crIdx=(cCR>=0)?cCR:7;
             if(row[crIdx]!=null){var cv=parseNum(row[crIdx]);if(!isNaN(cv)&&cv>0)D.cs[sid].cr=cv;}
