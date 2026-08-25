@@ -1017,6 +1017,11 @@ function loadTargetExcel(file){
         // Identifica tipo file dalle colonne presenti
         var cSalesCol=fSeasCol("gross_sales","gross sales","sales_lc","sales after");
         var cSyCol=fSeasCol("sy gross","sy_gross","sy vat","shopper yield","sy ");
+        // Fallback: intestazione "sy" nuda (2 caratteri) — più corta di ogni pattern sopra,
+        // quindi mai trovata da fSeasCol (che cerca il pattern DENTRO l'header, non il
+        // contrario). Vista nei nuovi export pivot ("Etichette di riga"/"Somma di
+        // gross_sales_LC"/"Somma di footfall"/"sy").
+        if(cSyCol<0){for(var ciSy=0;ciSy<headers.length;ciSy++){if(headers[ciSy]==="sy"){cSyCol=ciSy;break;}}}
         var cSubCol=-1;
         // sub_target: match esatto prima, poi fallback a "subscription"
         for(var ci=0;ci<headers.length;ci++){if(headers[ci]==="sub_target"){cSubCol=ci;break;}}

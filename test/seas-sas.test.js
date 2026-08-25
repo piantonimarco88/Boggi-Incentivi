@@ -103,3 +103,43 @@ test("zero se negozio non eligible (noSas), anche con dati importati", () => {
 test("zero se nessun dato importato per il negozio", () => {
   assert.strictEqual(ctx({ D: { cs: {} } }).seasSasAddon("1001"), 0);
 });
+
+// === Riconoscimento colonne file SAS Luglio/Agosto (formato QWRT reale) ====
+// Bug 25/08/2026: i vecchi pattern (con spazi: "processed within", "value eur")
+// non matchavano più i nuovi export con underscore (pct_speed,
+// store_sas_value_eur/lc) — l'import "riuscisse" (popup OK) ma vel/valore
+// restavano null, quindi il riconosciuto era sempre 0 per ogni negozio.
+// Header reali presi da SAS STORE LUGLIO/AGOSTO 2026.xlsx.
+
+const SRC_SEAS = fs.readFileSync(
+  path.join(__dirname, "..", "src", "91-render-seasonal", "010_main.js"),
+  "utf8"
+);
+function seasColsCtx() {
+  const c = vm.createContext({});
+  vm.runInContext(SRC_SEAS, c);
+  return c;
+}
+const REAL_SAS_HEADERS = [
+  "store_id", "retail_year", "retail_month", "month_start_date", "month_end_date",
+  "pct_accepted", "pct_speed", "acceptance_label", "speed_label", "recognised_pct",
+  "store_sas_value_eur", "store_sas_value_lc", "recognised_value_eur", "recognised_value_lc",
+];
+
+test("_seasSasFindCols: formato QWRT reale (pct_speed, store_sas_value_*) riconosciuto", () => {
+  const c = seasColsCtx();
+  const cols = c._seasSasFindCols(REAL_SAS_HEADERS);
+  assert.strictEqual(cols.sid, 0);
+  assert.strictEqual(cols.acc, 5);   // pct_accepted
+  assert.strictEqual(cols.vel, 6);   // pct_speed
+  assert.strictEqual(cols.valLc, 11); // store_sas_value_lc, non recognised_value_lc (13)
+});
+
+test("_seasSasFindCols: vecchio formato con spazi resta riconosciuto (nessuna regressione)", () => {
+  const c = seasColsCtx();
+  const cols = c._seasSasFindCols(["store id", "% accepted", "% processed within 4h", "value lc"]);
+  assert.strictEqual(cols.sid, 0);
+  assert.strictEqual(cols.acc, 1);
+  assert.strictEqual(cols.vel, 2);
+  assert.strictEqual(cols.valLc, 3);
+});

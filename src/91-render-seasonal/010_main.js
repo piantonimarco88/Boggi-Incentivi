@@ -623,14 +623,21 @@ function loadMidSeasonPaidExcel(input){
 // Bottoni dedicati (non auto-scan generico) perché il file mensile non porta
 // il mese al suo interno — lo tagga il bottone premuto dall'operatore.
 function _seasSasFindCols(headers){
-  function fH(){for(var ci=0;ci<headers.length;ci++){if(!headers[ci])continue;for(var i=0;i<arguments.length;i++){if(headers[ci].indexOf(arguments[i])>=0)return ci;}}return-1;}
-  var valE=fH("valore eur","value eur","valore sas eur","sas value eur","valore euro");
-  var valL=fH("valore lc","value lc","valore sas lc","sas value lc");
+  // "recognised_*" escluso esplicitamente: nei nuovi export QWRT convive con
+  // "store_sas_value_*" e potrebbe matchare per errore i pattern value_eur/value_lc
+  // (recognised_value_lc contiene "value_lc") — stessa guardia di loadFcVmSasArea.
+  function fH(){for(var ci=0;ci<headers.length;ci++){if(!headers[ci]||headers[ci].indexOf("recognised")>=0)continue;for(var i=0;i<arguments.length;i++){if(headers[ci].indexOf(arguments[i])>=0)return ci;}}return-1;}
+  // Include le varianti underscore del formato QWRT (pct_speed, store_sas_value_eur/lc)
+  // già usate in loadFcVmSasArea — i vecchi pattern con spazi ("processed within",
+  // "value eur") non matchano più i nuovi export (bug: import "riuscito" ma acc/vel/
+  // valore restavano null → riconosciuto sempre 0, nessun errore visibile).
+  var valE=fH("valore eur","value eur","valore sas eur","sas value eur","valore euro","value_eur","sas_value_eur","store_sas_value_eur");
+  var valL=fH("valore lc","value lc","valore sas lc","sas value lc","value_lc","sas_value_lc","store_sas_value_lc");
   var valP=fH("valore sas","sas value");
   return {
     sid: fH("store id","store_id"),
-    acc: fH("% sas accepted","sas accepted","% accepted","% accettati","accepted %","accepted","% accettazione","accettati %","% acceptance"),
-    vel: fH("% processed within","processed within 4","% within 4","within 4h","% gestiti entro","% sas gestiti","gestiti entro","velocit","velocity","% handled"),
+    acc: fH("% sas accepted","sas accepted","% accepted","% accettati","accepted %","accepted","% accettazione","accettati %","% acceptance","pct_accepted"),
+    vel: fH("% processed within","processed within 4","% within 4","within 4h","% gestiti entro","% sas gestiti","gestiti entro","velocit","velocity","% handled","pct_speed","pct speed"),
     valLc: valL>=0?valL:((valP>=0&&valP!==valE)?valP:-1)
   };
 }

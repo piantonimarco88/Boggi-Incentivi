@@ -725,20 +725,20 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.54'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.55'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.55: Fix import Seasonal — Target SY (header \"sy\" nudo) e SAS Luglio/Agosto (formato QWRT pct_speed/store_sas_value_*) non venivano più riconosciuti dai nuovi export",
   "9.54: Seasonal — Target Accuracy % configurabile (default 99%) in Configurazione; rimosso divider doppio sotto \"Anno\" in Periodo e Output",
   "9.53: Fix premi FC+VM — l'esubero fatturato dell'area viene usato PRIMA del SAS per colmare il gap (come già per negozi/BDG extra), non più dopo",
   "9.52: Export SAS→Fatturato (JSON) v2 — actual ora consuntivo puro in entrambi i kind (negozi era consuntivo+esubero), aggiunti esuberoSasPrec/esuberoSasPrecUsed/sasReserveNext",
   "9.51: Lettera mensile — tradotta anche l'etichetta \"Esubero fatturato\" (prima restava in inglese in tutte le lingue), stesso trattamento del box SAS",
   "9.50: Lettere — etichette esubero fatturato vs riserva SAS ora distinte per nome (\"Esubero fatturato mese prec.\" vs \"Riserva SAS mese prec.\"), non più ambigue",
   "9.49: Fonti Dati — check diagnostico \"Riserva SAS prec.\" (mensile+FCVM), per capire subito se il file riserva del mese scorso è stato ricaricato",
-  "9.48: Lettera mensile — carry-over fatturato+SAS (usata/scaduta) visibile insieme, come nella FC+VM",
-  "9.47: Lettera FC+VM — box Carry-over mese precedente mostra anche la riserva SAS (e se usata/scaduta), non solo l'esubero fatturato"
+  "9.48: Lettera mensile — carry-over fatturato+SAS (usata/scaduta) visibile insieme, come nella FC+VM"
 ];
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
@@ -5426,14 +5426,21 @@ function loadMidSeasonPaidExcel(input){
 // Bottoni dedicati (non auto-scan generico) perché il file mensile non porta
 // il mese al suo interno — lo tagga il bottone premuto dall'operatore.
 function _seasSasFindCols(headers){
-  function fH(){for(var ci=0;ci<headers.length;ci++){if(!headers[ci])continue;for(var i=0;i<arguments.length;i++){if(headers[ci].indexOf(arguments[i])>=0)return ci;}}return-1;}
-  var valE=fH("valore eur","value eur","valore sas eur","sas value eur","valore euro");
-  var valL=fH("valore lc","value lc","valore sas lc","sas value lc");
+  // "recognised_*" escluso esplicitamente: nei nuovi export QWRT convive con
+  // "store_sas_value_*" e potrebbe matchare per errore i pattern value_eur/value_lc
+  // (recognised_value_lc contiene "value_lc") — stessa guardia di loadFcVmSasArea.
+  function fH(){for(var ci=0;ci<headers.length;ci++){if(!headers[ci]||headers[ci].indexOf("recognised")>=0)continue;for(var i=0;i<arguments.length;i++){if(headers[ci].indexOf(arguments[i])>=0)return ci;}}return-1;}
+  // Include le varianti underscore del formato QWRT (pct_speed, store_sas_value_eur/lc)
+  // già usate in loadFcVmSasArea — i vecchi pattern con spazi ("processed within",
+  // "value eur") non matchano più i nuovi export (bug: import "riuscito" ma acc/vel/
+  // valore restavano null → riconosciuto sempre 0, nessun errore visibile).
+  var valE=fH("valore eur","value eur","valore sas eur","sas value eur","valore euro","value_eur","sas_value_eur","store_sas_value_eur");
+  var valL=fH("valore lc","value lc","valore sas lc","sas value lc","value_lc","sas_value_lc","store_sas_value_lc");
   var valP=fH("valore sas","sas value");
   return {
     sid: fH("store id","store_id"),
-    acc: fH("% sas accepted","sas accepted","% accepted","% accettati","accepted %","accepted","% accettazione","accettati %","% acceptance"),
-    vel: fH("% processed within","processed within 4","% within 4","within 4h","% gestiti entro","% sas gestiti","gestiti entro","velocit","velocity","% handled"),
+    acc: fH("% sas accepted","sas accepted","% accepted","% accettati","accepted %","accepted","% accettazione","accettati %","% acceptance","pct_accepted"),
+    vel: fH("% processed within","processed within 4","% within 4","within 4h","% gestiti entro","% sas gestiti","gestiti entro","velocit","velocity","% handled","pct_speed","pct speed"),
     valLc: valL>=0?valL:((valP>=0&&valP!==valE)?valP:-1)
   };
 }
@@ -6604,6 +6611,11 @@ function loadTargetExcel(file){
         // Identifica tipo file dalle colonne presenti
         var cSalesCol=fSeasCol("gross_sales","gross sales","sales_lc","sales after");
         var cSyCol=fSeasCol("sy gross","sy_gross","sy vat","shopper yield","sy ");
+        // Fallback: intestazione "sy" nuda (2 caratteri) — più corta di ogni pattern sopra,
+        // quindi mai trovata da fSeasCol (che cerca il pattern DENTRO l'header, non il
+        // contrario). Vista nei nuovi export pivot ("Etichette di riga"/"Somma di
+        // gross_sales_LC"/"Somma di footfall"/"sy").
+        if(cSyCol<0){for(var ciSy=0;ciSy<headers.length;ciSy++){if(headers[ciSy]==="sy"){cSyCol=ciSy;break;}}}
         var cSubCol=-1;
         // sub_target: match esatto prima, poi fallback a "subscription"
         for(var ci=0;ci<headers.length;ci++){if(headers[ci]==="sub_target"){cSubCol=ci;break;}}
