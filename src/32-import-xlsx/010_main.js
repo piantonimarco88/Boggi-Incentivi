@@ -922,7 +922,7 @@ function resetEverything(){
   // Seasonal
   D.cs={};
   Object.keys(SEAS_TARGETS).forEach(function(k){
-    SEAS_TARGETS[k]={to:0,pr:null,sy:null,sas:SEAS_CFG.sasMaxHours||4,acc:0.99,qt:0};
+    SEAS_TARGETS[k]={to:0,pr:null,sy:null,sas:SEAS_CFG.sasMaxHours||4,acc:SEAS_CFG.accTarget,qt:0};
   });
   SEAS={};
   // FC+VM
@@ -1040,7 +1040,7 @@ function loadTargetExcel(file){
             var bdgTo=cSalesCol>=0?parseFloat(row[cSalesCol]):0;
             var sy=cSyCol>=0&&row[cSyCol]!=null?parseFloat(row[cSyCol]):null;
             var cr=cCrCol>=0&&row[cCrCol]!=null?parseFloat(row[cCrCol]):null;
-            if(!SEAS_TARGETS[sid]) SEAS_TARGETS[sid]={to:0,pr:null,sy:null,cr:null,sas:SEAS_CFG.sasMaxHours||4,acc:0.99,qt:0};
+            if(!SEAS_TARGETS[sid]) SEAS_TARGETS[sid]={to:0,pr:null,sy:null,cr:null,sas:SEAS_CFG.sasMaxHours||4,acc:SEAS_CFG.accTarget,qt:0};
             if(bdgTo>0) SEAS_TARGETS[sid].to=Math.round(bdgTo*100)/100;
             if(sy!==null&&!isNaN(sy)) SEAS_TARGETS[sid].sy=Math.round(sy*1000000)/1000000;
             if(cr!==null&&!isNaN(cr)) SEAS_TARGETS[sid].cr=Math.round(cr*1000000)/1000000;
@@ -1056,7 +1056,7 @@ function loadTargetExcel(file){
             if(SEASON_PERIOD==="mid"&&isD(sid)){continue;}
             var qtVal=parseInt(row[cQtyCol]);
             if(isNaN(qtVal)||qtVal<=0) continue;
-            if(!SEAS_TARGETS[sid]) SEAS_TARGETS[sid]={to:0,pr:null,sy:null,sas:SEAS_CFG.sasMaxHours||4,acc:0.99,qt:0};
+            if(!SEAS_TARGETS[sid]) SEAS_TARGETS[sid]={to:0,pr:null,sy:null,sas:SEAS_CFG.sasMaxHours||4,acc:SEAS_CFG.accTarget,qt:0};
             SEAS_TARGETS[sid].qt=qtVal;
             imported++;
           }
@@ -1071,7 +1071,7 @@ function loadTargetExcel(file){
             if(seenStores[sid]) continue;
             var subVal=parseFloat(row[cSubCol]);
             if(isNaN(subVal)||subVal<=0) continue;
-            if(!SEAS_TARGETS[sid]) SEAS_TARGETS[sid]={to:0,pr:null,sy:null,sas:SEAS_CFG.sasMaxHours||4,acc:0.99,qt:0};
+            if(!SEAS_TARGETS[sid]) SEAS_TARGETS[sid]={to:0,pr:null,sy:null,sas:SEAS_CFG.sasMaxHours||4,acc:SEAS_CFG.accTarget,qt:0};
             SEAS_TARGETS[sid].pr=Math.round(subVal*1000000)/1000000;
             seenStores[sid]=true;
             imported++;

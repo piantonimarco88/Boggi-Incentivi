@@ -100,7 +100,7 @@ function seasAutoData(e){
   var seas_sy  = stg.sy  !== undefined ? stg.sy  : (tg.sy  || 0);
   var seas_pr  = stg.pr  !== undefined ? stg.pr  : (tg.pr  || 0);
   var seas_sas = stg.sas !== undefined ? stg.sas : (SEAS_CFG.sasMaxHours || 4);
-  var seas_acc = stg.acc !== undefined ? stg.acc : 0.99;
+  var seas_acc = SEAS_CFG.accTarget; // unico target Accuracy, configurabile — stg.acc è sempre 0.99 statico, mai sovrascritto da import
 
   // Scostamento fatturato %: usa target seasonal (+ eventuale contributo SAS→fatturato, da SS26)
   var sasAddon=seasSasAddon(sid);

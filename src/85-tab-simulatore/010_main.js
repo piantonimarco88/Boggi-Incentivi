@@ -85,6 +85,7 @@ function _simCloneSeasCfg(cfg){
   return {
     basePct:cfg.basePct,
     sasMaxHours:cfg.sasMaxHours,
+    accTarget:cfg.accTarget,
     kpi:cfg.kpi.map(function(k){return{k:k.k,label:k.label,weight:k.weight,threshold:k.threshold};}),
     kpi_nosas:cfg.kpi_nosas.map(function(k){return{k:k.k,label:k.label,weight:k.weight,threshold:k.threshold};}),
     kpi_noacc:cfg.kpi_noacc.map(function(k){return{k:k.k,label:k.label,weight:k.weight,threshold:k.threshold};}),

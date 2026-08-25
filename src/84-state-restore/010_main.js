@@ -9,6 +9,7 @@ if(window._autoState){try{
   if(as.store_flags){STORE_FLAGS={};for(var sid in as.store_flags)STORE_FLAGS[sid]=as.store_flags[sid]}
   if(as.seas_cfg){
     if(as.seas_cfg.basePct!==undefined)SEAS_CFG.basePct=as.seas_cfg.basePct;
+    if(as.seas_cfg.accTarget!==undefined)SEAS_CFG.accTarget=as.seas_cfg.accTarget;
     if(as.seas_cfg.kpi)SEAS_CFG.kpi=as.seas_cfg.kpi;
     if(as.seas_cfg.kpi_nosas)SEAS_CFG.kpi_nosas=as.seas_cfg.kpi_nosas;
     if(as.seas_cfg.kpi_noacc)SEAS_CFG.kpi_noacc=as.seas_cfg.kpi_noacc;

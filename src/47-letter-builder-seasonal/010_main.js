@@ -123,10 +123,10 @@ function buildMidSeasonLetter(e){
       if(kdef.k==="sy"){var rv=cn2.sy!==undefined?fDec(cn2.sy,2):"—";risultatoStr=rv;varPctStr=seas_sy>0?fDec(((cn2.sy||0)/seas_sy-1)*100,1)+"%":"—";}
       else if(kdef.k==="sr"){var rv=cn2.nf!==undefined?fDec((cn2.nf*100),2)+"%":"—";risultatoStr=rv;varPctStr=seas_pr>0?fDec(((cn2.nf||0)/seas_pr-1)*100,1)+"%":"—";}
       else if(kdef.k==="sas"){var sasH=cn2.s4!==undefined?cn2.s4:null;risultatoStr=sasH!==null?fDec(sasH,1)+'h':'—';varPctStr=sasH!==null?(sasH<seas_sas?'\u2713':'\u2717'):'—';}
-      else if(kdef.k==="acc"){var rv=cn2.av!==undefined&&cn2.av!==null?fDec((cn2.av*100),2)+"%":"—";var sacc=auto?auto.seas_acc:0.99;risultatoStr=rv;varPctStr=cn2.av!=null?fDec((cn2.av/sacc-1)*100,1)+"%":"—";}
+      else if(kdef.k==="acc"){var rv=cn2.av!==undefined&&cn2.av!==null?fDec((cn2.av*100),2)+"%":"—";var sacc=auto?auto.seas_acc:SEAS_CFG.accTarget;risultatoStr=rv;varPctStr=cn2.av!=null?fDec((cn2.av/sacc-1)*100,1)+"%":"—";}
     }
 
-    var targetStr=({sy:fDec(stg2.sy||0,2),sr:fDec((stg2.pr||0)*100,2)+"%",sas:"< "+fDec(seas_sas,0)+"h",acc:"99%"})[kdef.k]||"—";
+    var targetStr=({sy:fDec(stg2.sy||0,2),sr:fDec((stg2.pr||0)*100,2)+"%",sas:"< "+fDec(seas_sas,0)+"h",acc:Math.round(SEAS_CFG.accTarget*1000)/10+"%"})[kdef.k]||"—";
 
     h+='<div class="lt-kpi-row" style="grid-template-columns:'+kpiCols+';background:'+(achieved?"#f0fbf5":"#fff")+'">';
     h+='<span style="font-weight:600;color:#2c2925">'+esc(kpiLabel)+'</span>';

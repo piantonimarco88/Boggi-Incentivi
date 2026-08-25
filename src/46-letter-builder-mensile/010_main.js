@@ -673,11 +673,11 @@ function buildSeasonalLetter(e){
       if(kdef.k==="sy"){var r=cn.sy!==undefined?fDec(cn.sy,2):"—";risultatoStr=r;varPctStr=seas_sy>0?fDec(((cn.sy||0)/seas_sy-1)*100,1)+"%":"—";}
       else if(kdef.k==="sr"){var r=cn.nf!==undefined?fDec((cn.nf*100),2)+"%":"—";risultatoStr=r;varPctStr=seas_pr>0?fDec(((cn.nf||0)/seas_pr-1)*100,1)+"%":"—";}
       else if(kdef.k==="sas"){var sasH=cn.s4!==undefined?cn.s4:null;risultatoStr=sasH!==null?fDec(sasH,1)+'h':'—';varPctStr=sasH!==null?(sasH<seas_sas?'✓':'✗'):'—';}
-      else if(kdef.k==="acc"){var r=cn.av!==undefined&&cn.av!==null?fDec((cn.av*100),2)+"%":"—";var seas_acc_v=auto?auto.seas_acc:0.99;risultatoStr=r;varPctStr=cn.av!=null?fDec((cn.av/seas_acc_v-1)*100,1)+"%":"—";}
+      else if(kdef.k==="acc"){var r=cn.av!==undefined&&cn.av!==null?fDec((cn.av*100),2)+"%":"—";var seas_acc_v=auto?auto.seas_acc:SEAS_CFG.accTarget;risultatoStr=r;varPctStr=cn.av!=null?fDec((cn.av/seas_acc_v-1)*100,1)+"%":"—";}
     }
     h+='<div class="lt-kpi-row" style="grid-template-columns:'+kpiCols+';background:'+(achieved?"#f0fbf5":"#fff")+'">';
     h+='<span style="font-weight:600;color:#2c2925">'+esc(kpiLabel)+'</span>';
-    h+='<span style="text-align:right;font-size:10px;color:#6b6560">'+(({sy:(seas_sy>0?fDec(seas_sy,2):"\u2014"),sr:(seas_pr>0?fDec(seas_pr*100,2)+"%":"\u2014"),sas:"< "+fDec(seas_sas,0)+"h",acc:"99%"})[kdef.k]||"\u2014")+'</span>';
+    h+='<span style="text-align:right;font-size:10px;color:#6b6560">'+(({sy:(seas_sy>0?fDec(seas_sy,2):"\u2014"),sr:(seas_pr>0?fDec(seas_pr*100,2)+"%":"\u2014"),sas:"< "+fDec(seas_sas,0)+"h",acc:Math.round(SEAS_CFG.accTarget*1000)/10+"%"})[kdef.k]||"\u2014")+'</span>';
     h+='<span style="text-align:right;color:#5b6abf;font-weight:700">'+fDec((kdef.weight*100),0)+'%</span>';
     if(!isP){
       h+='<span style="text-align:right;font-weight:600;color:#2c2925">'+esc(risultatoStr)+'</span>';

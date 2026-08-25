@@ -72,6 +72,7 @@ function loadSession(input){
     if(state.monthly_syly)MONTHLY_SYLY=state.monthly_syly;
     if(state.seas_cfg){
       if(state.seas_cfg.basePct!==undefined)SEAS_CFG.basePct=state.seas_cfg.basePct;
+      if(state.seas_cfg.accTarget!==undefined)SEAS_CFG.accTarget=state.seas_cfg.accTarget;
       if(state.seas_cfg.kpi)SEAS_CFG.kpi=state.seas_cfg.kpi;
       if(state.seas_cfg.kpi_nosas)SEAS_CFG.kpi_nosas=state.seas_cfg.kpi_nosas;
       if(state.seas_cfg.kpi_noacc)SEAS_CFG.kpi_noacc=state.seas_cfg.kpi_noacc;
@@ -165,6 +166,7 @@ function loadConfig(evt){var f=evt.target.files[0];if(!f)return;var reader=new F
     initStoreFlags(); // risemina DEPT stores mancanti
     if(cfg.seas_cfg){
       if(cfg.seas_cfg.basePct!==undefined)SEAS_CFG.basePct=cfg.seas_cfg.basePct;
+      if(cfg.seas_cfg.accTarget!==undefined)SEAS_CFG.accTarget=cfg.seas_cfg.accTarget;
       if(cfg.seas_cfg.kpi)SEAS_CFG.kpi=cfg.seas_cfg.kpi;
       if(cfg.seas_cfg.kpi_nosas)SEAS_CFG.kpi_nosas=cfg.seas_cfg.kpi_nosas;
       if(cfg.seas_cfg.kpi_noacc)SEAS_CFG.kpi_noacc=cfg.seas_cfg.kpi_noacc;

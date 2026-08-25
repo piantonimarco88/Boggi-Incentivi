@@ -11,7 +11,7 @@ function rT(){try{
     h+='</select></div></div>';
     h+='<div class="cfg-row"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">Anno</span></div>';
     h+='<div style="display:flex;align-items:center;gap:4px"><input class="cfg-input" style="width:75px" type="number" id="cfgYearFcvm" value="'+CFG_YEAR+'" min="2024" max="2030" step="1"></div></div>';
-    h+='<div class="cfg-row" style="border-top:1px solid #e5e1db;padding-top:8px;margin-top:4px"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">Percorso base PDF</span><span style="font-size:9px;color:#a09a92">I PDF verranno salvati in: percorso/'+getPdfSubfolder().prev+'/ e /'+getPdfSubfolder().cons+'/</span></div>';
+    h+='<div class="cfg-row"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">Percorso base PDF</span><span style="font-size:9px;color:#a09a92">I PDF verranno salvati in: percorso/'+getPdfSubfolder().prev+'/ e /'+getPdfSubfolder().cons+'/</span></div>';
     h+='<div style="display:flex;align-items:center;gap:4px"><input class="cfg-input" style="width:260px" type="text" id="cfgPdfPathFcvm" value="'+esc(CFG_PDF_PATH)+'" placeholder="C:\\Boggi\\Incentivi\\"></div></div></div>';
     // Parametri FC+VM
     h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">&#128084; FC + VM &mdash; Parametri Calcolo Premio</div>';
@@ -102,7 +102,7 @@ function rT(){try{
     h+='</select></div></div>';
     h+='<div class="cfg-row"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">Anno</span></div>';
     h+='<div style="display:flex;align-items:center;gap:4px"><input class="cfg-input" style="width:75px" type="number" id="cfgYear" value="'+CFG_YEAR+'" min="2024" max="2030" step="1"></div></div>';
-    h+='<div class="cfg-row" style="border-top:1px solid #e5e1db;padding-top:8px;margin-top:4px"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">Percorso base PDF</span><span style="font-size:9px;color:#a09a92">I PDF verranno salvati in: percorso/'+getPdfSubfolder().prev+'/ e /'+getPdfSubfolder().cons+'/</span></div>';
+    h+='<div class="cfg-row"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">Percorso base PDF</span><span style="font-size:9px;color:#a09a92">I PDF verranno salvati in: percorso/'+getPdfSubfolder().prev+'/ e /'+getPdfSubfolder().cons+'/</span></div>';
     h+='<div style="display:flex;align-items:center;gap:4px"><input class="cfg-input" style="width:260px" type="text" id="cfgPdfPath" value="'+esc(CFG_PDF_PATH)+'" placeholder="C:\\Boggi\\Incentivi\\"></div></div>';
     h+='<div style="font-size:10px;color:#a09a92;margin-top:6px">Stagione attiva: <b style="color:#4e4b48">'+getMonthYearLabel()+'</b> \u2014 Cartelle: <b style="color:#4e4b48">'+getPdfSubfolder().prev+'/ &nbsp;|&nbsp; '+getPdfSubfolder().cons+'/</b></div></div>';
   // === SEASONAL CONFIG SECTION ===
@@ -113,6 +113,8 @@ function rT(){try{
   h+='<div style="font-size:11px;font-weight:700;color:#c9a96e;margin:8px 0 6px;text-transform:uppercase;letter-spacing:1px">Base</div>';
   h+='<div class="cfg-row"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">% Retrib. semestrale (base)</span><span style="font-size:9px;color:#a09a92">Default 20% &mdash; massimo raggiungibile 30%</span></div>';
   h+='<div style="display:flex;align-items:center;gap:4px"><input class="cfg-input" style="width:75px" type="number" id="seas_basePct" value="'+(SEAS_CFG.basePct*100).toFixed(1)+'" step="0.5" min="1" max="50"><span style="font-size:10px;color:#8a8680">%</span></div></div>';
+  h+='<div class="cfg-row"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">Target Accuracy</span><span style="font-size:9px;color:#a09a92">Default 99% &mdash; obiettivo di accuratezza (KPI Accuracy e lettere seasonal)</span></div>';
+  h+='<div style="display:flex;align-items:center;gap:4px"><input class="cfg-input" style="width:75px" type="number" id="seas_accTarget" value="'+(SEAS_CFG.accTarget*100).toFixed(1)+'" step="0.1" min="1" max="100"><span style="font-size:10px;color:#8a8680">%</span></div></div>';
 
   // KPI weights + thresholds
   h+='<div style="font-size:11px;font-weight:700;color:#5b6abf;margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px">KPI &mdash; Pesi e Soglie</div>';
@@ -204,6 +206,8 @@ function rT(){try{
   // Seasonal-only bindings
   var seasBase2=document.getElementById("seas_basePct");
   if(seasBase2)seasBase2.onchange=function(){SEAS_CFG.basePct=parseFloat(this.value)/100||0.2;markDirty();autoSave();rC();rA();};
+  var seasAcc2=document.getElementById("seas_accTarget");
+  if(seasAcc2)seasAcc2.onchange=function(){SEAS_CFG.accTarget=parseFloat(this.value)/100||0.99;markDirty();autoSave();rC();rA();};
   document.querySelectorAll(".seas-kw").forEach(function(inp){inp.onchange=function(){
     var ki=parseInt(inp.getAttribute("data-ki"));
     if(!SEAS_CFG.kpi[ki])return;
@@ -297,7 +301,7 @@ function rT(){try{
   h+='</select></div></div>';
   h+='<div class="cfg-row"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">Anno</span></div>';
   h+='<div style="display:flex;align-items:center;gap:4px"><input class="cfg-input" style="width:75px" type="number" id="cfgYear" value="'+CFG_YEAR+'" min="2024" max="2030" step="1"></div></div>';
-  h+='<div class="cfg-row" style="border-top:1px solid #e5e1db;padding-top:8px;margin-top:4px"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">Percorso base PDF</span><span style="font-size:9px;color:#a09a92">Es: C:\\Boggi\\Incentivi\\ \u2014 i PDF verranno salvati in: percorso/'+getPdfSubfolder().base+'/Preventivo/ e /Consuntivo/</span></div>';
+  h+='<div class="cfg-row"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">Percorso base PDF</span><span style="font-size:9px;color:#a09a92">Es: C:\\Boggi\\Incentivi\\ \u2014 i PDF verranno salvati in: percorso/'+getPdfSubfolder().base+'/Preventivo/ e /Consuntivo/</span></div>';
   h+='<div style="display:flex;align-items:center;gap:4px"><input class="cfg-input" style="width:260px" type="text" id="cfgPdfPath" value="'+esc(CFG_PDF_PATH)+'" placeholder="C:\\Boggi\\Incentivi\\"></div></div>';
   h+='<div style="font-size:10px;color:#a09a92;margin-top:6px">Periodo attivo: <b style="color:#4e4b48">'+getMonthYearLabel()+'</b> \u2014 Cartella: <b style="color:#4e4b48">'+getPdfSubfolder().base+'/</b></div></div>';
 
@@ -471,6 +475,8 @@ function rT(){try{
   // Seasonal config bindings
   var seasBase=document.getElementById("seas_basePct");
   if(seasBase)seasBase.onchange=function(){SEAS_CFG.basePct=parseFloat(this.value)/100||0.2;markDirty();autoSave();rC();rA();};
+  var seasAcc=document.getElementById("seas_accTarget");
+  if(seasAcc)seasAcc.onchange=function(){SEAS_CFG.accTarget=parseFloat(this.value)/100||0.99;markDirty();autoSave();rC();rA();};
   document.querySelectorAll(".seas-kw").forEach(function(inp){inp.onchange=function(){
     var ki=parseInt(inp.getAttribute("data-ki"));
     if(!SEAS_CFG.kpi[ki])return;

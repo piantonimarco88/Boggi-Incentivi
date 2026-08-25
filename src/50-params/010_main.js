@@ -123,6 +123,7 @@ function _seasRangeLabel(r){
 var SEAS_CFG = {
   basePct: 0.20,            // % retribuzione semestrale (base incentivo)
   sasMaxHours: 4,           // SAS raggiunto se ore medie < sasMaxHours (meno è meglio)
+  accTarget: 0.99,          // Target Accuracy — unica fonte di verità (SEAS_TARGETS[sid].acc è sempre 0.99 di default, nessun import lo sovrascrive per-negozio)
   kpi: [
     {k:"sy",  label:"Shopper Yield",      weight:0.50, threshold:0.995},
     {k:"sr",  label:"Subscription Rate",  weight:0.35, threshold:0.995},
