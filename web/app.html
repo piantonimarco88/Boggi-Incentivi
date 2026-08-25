@@ -725,20 +725,20 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.58'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.59'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.59: Seasonal Dept Store — tab Calcolo Premi mostra ora scostamento fatturato, moltiplicatore Turnover (0/0,6/1) e stato QTY; LORDO coincide col NETTO reale (non più 150% incondizionato). Lettere: 60% (paracadute) esplicitato, riga \"SAS applicato al fatturato\" sempre visibile anche a €0, saldo €0 senza sfondo verde",
   "9.58: Fix import Consuntivo Seasonal — CR (Conversion Rate) non usa più un fallback per posizione fissa; se manca la colonna col nome, resta assente invece di leggere una colonna sbagliata",
   "9.57: Fix import Consuntivo Seasonal — colonna \"Fcst Gross Sales\" (forecast) letta al posto del vero consuntivo per i Dept Store; aggiunta lettura QTY consuntivo dallo stesso file",
   "9.56: Seasonal Dept Store — Turnover Target e QTY ora confrontano davvero target/consuntivo (paracadute 99,5%/95%, come il BDG mensile), prima pagavano sempre il 150% incondizionato",
   "9.55: Fix import Seasonal — Target SY (header \"sy\" nudo) e SAS Luglio/Agosto (formato QWRT pct_speed/store_sas_value_*) non venivano più riconosciuti dai nuovi export",
   "9.54: Seasonal — Target Accuracy % configurabile (default 99%) in Configurazione; rimosso divider doppio sotto \"Anno\" in Periodo e Output",
   "9.53: Fix premi FC+VM — l'esubero fatturato dell'area viene usato PRIMA del SAS per colmare il gap (come già per negozi/BDG extra), non più dopo",
-  "9.52: Export SAS→Fatturato (JSON) v2 — actual ora consuntivo puro in entrambi i kind (negozi era consuntivo+esubero), aggiunti esuberoSasPrec/esuberoSasPrecUsed/sasReserveNext",
-  "9.51: Lettera mensile — tradotta anche l'etichetta \"Esubero fatturato\" (prima restava in inglese in tutte le lingue), stesso trattamento del box SAS"
+  "9.52: Export SAS→Fatturato (JSON) v2 — actual ora consuntivo puro in entrambi i kind (negozi era consuntivo+esubero), aggiunti esuberoSasPrec/esuberoSasPrecUsed/sasReserveNext"
 ];
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
@@ -3247,7 +3247,7 @@ function buildSeasonalLetter(e){
   // mostra l'importo solo se effettivamente presente, in preventivo mostra una nota
   // informativa (nessun importo, il dato reale non esiste ancora) solo per i negozi
   // dove il KPI seasonal SAS è attivo (Dept Store esclusi a monte).
-  if(!isP&&sasAddonLetter>0){
+  if(!isP&&seasSasEligible(sid2)){
     h+='<div class="lt-kpi-row" style="grid-template-columns:'+boostCols+';background:#fdf8ee">';
     h+='<span style="font-weight:600;color:#a07d2c">'+T.sas_turnover_label+'</span>';
     h+='<span style="text-align:right;font-size:10px;color:#6b6560">—</span>';
@@ -3358,10 +3358,13 @@ function buildSeasonalLetter(e){
   h+='<div style="font-size:18px;font-weight:800;color:#a09a92">'+(isP?fc(midMax,cu):(midPaid>0?'\u2212'+fc(midPaid,cu):fc(0,cu)))+'</div>';
   h+='</div>';
 
-  // SALDO (netto da erogare) \u2014 solo in consuntivo, dopo la detrazione del mid-season
+  // SALDO (netto da erogare) \u2014 solo in consuntivo, dopo la detrazione del mid-season.
+  // Sfondo verde solo se c'\u00e8 davvero un importo da erogare (>0): a saldo zero il verde
+  // \u00e8 fuorviante (segnala un risultato positivo che qui non c'\u00e8), v9.59.
   if(!isP){
-    h+='<div style="background:#2d7a3a;padding:14px 32px;display:flex;justify-content:space-between;align-items:center">';
-    h+='<div style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#eafaf0;font-weight:700">'+(T.seas_net||T.seas_earned)+'</div>';
+    var _seasNetOk=seasonalNet>0;
+    h+='<div style="background:'+(_seasNetOk?"#2d7a3a":"#3d3a36")+';padding:14px 32px;display:flex;justify-content:space-between;align-items:center">';
+    h+='<div style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:'+(_seasNetOk?"#eafaf0":"#a09a92")+';font-weight:700">'+(T.seas_net||T.seas_earned)+'</div>';
     h+='<div style="font-size:20px;font-weight:800;color:#fff">'+fc(seasonalNet,cu)+'</div>';
     h+='</div>';
   }
@@ -3466,6 +3469,18 @@ try{ rL(); }catch(_e){ try{setTimeout(rL,0)}catch(_e2){} }
 // === SEASONAL DEPT LETTER ===
 // Per i dept stores internazionali: premio BDG×6 + QTY (50% di BDG×6)
 // Struttura coerente con la lettera mensile (buildLetter)
+// Nota paracadute 60% (Dept Store): stesso pattern amber di isRidotto() per il BDG
+// mensile, riusata identica per le Sezioni Turnover Target e QTY (v9.59).
+function _deptRdMsg(lang){
+  var d={
+    "ITALIANO":"Moltiplicatore ridotto al "+Math.round(PARAMS.bdg60mult*100)+"% applicato — risultato tra "+Math.round(PARAMS.bdg60*100)+"% e "+Math.round(PARAMS.bdg100*100)+"% del target",
+    "INGLESE":"Reduced multiplier at "+Math.round(PARAMS.bdg60mult*100)+"% applied — result between "+Math.round(PARAMS.bdg60*100)+"% and "+Math.round(PARAMS.bdg100*100)+"% of target",
+    "FRANCESE":"Multiplicateur réduit à "+Math.round(PARAMS.bdg60mult*100)+"% appliqué — résultat entre "+Math.round(PARAMS.bdg60*100)+"% et "+Math.round(PARAMS.bdg100*100)+"% de l'objectif",
+    "TEDESCO":"Reduzierter Multiplikator ("+Math.round(PARAMS.bdg60mult*100)+"%) angewendet — Ergebnis zwischen "+Math.round(PARAMS.bdg60*100)+"% und "+Math.round(PARAMS.bdg100*100)+"% des Ziels",
+    "SPAGNOLO":"Multiplicador reducido al "+Math.round(PARAMS.bdg60mult*100)+"% aplicado — resultado entre "+Math.round(PARAMS.bdg60*100)+"% y "+Math.round(PARAMS.bdg100*100)+"% del objetivo"
+  };
+  return d[lang]||d["INGLESE"];
+}
 function buildSeasonalDeptLetter(e){
   var cu=e.cu||"EUR",sid=String(e.si);
   var dInfo=calcSeasonalDeptInfo(e);
@@ -3517,6 +3532,7 @@ function buildSeasonalDeptLetter(e){
   if((stgDept.to||0)>0) h+=ltRow(T.to_target,'<span class="lt-row-cur">'+cu+'</span>'+Math.round(stgDept.to).toLocaleString("it-IT"));
   if(!isP&&dInfo.toTarget>0) h+=ltRow(T.to_result,'<span class="lt-row-cur">'+cu+'</span>'+Math.round(dInfo.toActual).toLocaleString("it-IT")+' ('+(dInfo.toPct*100).toFixed(1)+'%)');
   h+=secPd(pdLabel,isP?bdg6:dInfo.bdg6Earned,cu,dInfo.toMult>0);
+  if(!isP&&dInfo.toMult===0.6)h+='<div style="font-size:9px;margin-top:6px;padding:4px 8px;background:#fff3e0;border-left:3px solid #c9a96e;color:#856404;border-radius:0 4px 4px 0">⚡ '+esc(_deptRdMsg(lang))+'</div>';
   h+="</div></div>";
 
   // Sezione 2: QTY (50% BDG×6) — stesso paracadute a doppia soglia della Sezione 1.
@@ -3526,6 +3542,7 @@ function buildSeasonalDeptLetter(e){
   if(!isP&&dInfo.qtyTarget>0) h+=ltRow(T.qty_result,""+dInfo.qtyActual.toLocaleString("it-IT")+' ('+(dInfo.qtyPct*100).toFixed(1)+'%)');
   h+=ltRow(tr(e,"incentive","FORMULA"),T.qty_formula);
   h+=secPd(pdLabel,isP?qty6:dInfo.qty6Earned,cu,dInfo.qtyMult>0);
+  if(!isP&&dInfo.qtyMult===0.6)h+='<div style="font-size:9px;margin-top:6px;padding:4px 8px;background:#fff3e0;border-left:3px solid #c9a96e;color:#856404;border-radius:0 4px 4px 0">⚡ '+esc(_deptRdMsg(lang))+'</div>';
   h+="</div></div>";
 
   // Totale
@@ -3718,7 +3735,7 @@ function buildMidSeasonLetter(e){
 
   // SAS → fatturato (da SS26): riga separata solo dove pertinente — stesso
   // pattern della lettera di fine stagione (buildSeasonalLetter).
-  if(!isP&&sasAddonLetter>0){
+  if(!isP&&seasSasEligible(sid)){
     h+='<div class="lt-kpi-row" style="grid-template-columns:'+sbarCols+';background:#fdf8ee">';
     h+='<span style="font-weight:600;color:#a07d2c">'+T.sas_turnover_label+'</span>';
     h+='<span style="text-align:right;font-size:10px;color:#6b6560">—</span>';
@@ -5077,12 +5094,14 @@ function rCSeasonal(){
   });
 
   function calcSeasonalRow(e){
-    // Dept stores internazionali: BDG×6 + QTY (50% di BDG×6) — no mid-season per i dept
+    // Dept stores internazionali: BDG×6 + QTY (50% di BDG×6), paracadute a doppia
+    // soglia indipendente per le due sezioni (calcSeasonalDeptInfo, v9.56) — no
+    // mid-season per i dept. LORDO usa la stessa fonte del NETTO (dInfo.tot):
+    // devono coincidere in assenza di mid-season, altrimenti LORDO era sempre il
+    // massimo incondizionato e non spiegava lo scarto col NETTO reale (v9.59).
     if(isD(e.si)){
-      var bdg6=Math.round((e.ib||0)*6*100)/100;
-      var qty6=Math.round(bdg6*0.5*100)/100;
-      var grossD=Math.round((bdg6+qty6)*100)/100;
-      return {isDept:true,bdg6:bdg6,qty6:qty6,gross:grossD,midPaid:0,val:calcSeasonal(e),kpiScore:1,m1:1,m2:1,auto:null};
+      var dInfo=calcSeasonalDeptInfo(e);
+      return {isDept:true,bdg6:dInfo.bdg6,qty6:dInfo.qty6,gross:Math.round(dInfo.tot*100)/100,midPaid:0,val:calcSeasonal(e),kpiScore:1,m1:dInfo.toMult,m2:dInfo.qtyMult,auto:null,dInfo:dInfo};
     }
     var rlSem=(e.rl||0)*6;
     var base=rlSem*SEAS_CFG.basePct;
@@ -5189,17 +5208,45 @@ function rCSeasonal(){
     h+='<td class="r mn gy">'+fc(row.isDept?Math.round((e.ib||0)*6*1.5*100)/100:maxPremio,cu)+'</td>';
 
     if(row.isDept){
-      // Dept stores: mostra BDG×6 e QTY come info, resto —
+      // Dept stores: le colonne KPI (Shopper/Subscription/Seek/Accuracy) non si
+      // applicano — riusate per mostrare lo stato reale delle due sezioni Dept
+      // (Turnover Target e QTY), stesso stile ✓/pct% delle celle KPI normali (v9.59).
+      var dI=row.dInfo||{};
       var nKpi=kpiCols.length;
-      h+='<td class="r" style="text-align:center;color:#6b3fa0;font-size:9px" colspan="'+nKpi+'">BDG×6: '+fc(row.bdg6,cu)+'<br>QTY: '+fc(row.qty6,cu)+'</td>';
-      // colonne M.Turn / M.Inv / Scost / BOOST
-      if(isP){
-        h+='<td class="r mn gy">&mdash;</td><td class="r mn gy">&mdash;</td>';
+      var halfL=Math.ceil(nKpi/2),halfR=nKpi-halfL;
+      h+='<td class="r" style="text-align:center;font-size:9px" colspan="'+halfL+'">';
+      h+='<div style="font-weight:600;color:#6b3fa0">BDG×6: '+fc(row.bdg6,cu)+'</div>';
+      if(!isP&&dI.toTarget>0){
+        h+='<div class="b" style="color:'+(dI.toMult===1?'#2d7a3a':dI.toMult===0.6?'#c9a96e':'#cf5b5b')+'">'+(dI.toMult===1?'&#10003;':dI.toMult===0.6?'&#9889;':'&#10007;')+'</div>';
+        h+='<div style="color:#8a8680">'+(dI.toPct*100).toFixed(1)+'%</div>';
+      } else if(isP){
+        h+='<div class="b" style="color:#2d7a3a">&#10003;</div>';
       } else {
-        h+='<td class="r mn gy">&mdash;</td><td class="r mn gy">&mdash;</td><td class="r mn gy">&mdash;</td>';
+        h+='<div style="color:#b0a99f">&mdash;</div>';
+      }
+      h+='</td>';
+      h+='<td class="r" style="text-align:center;font-size:9px" colspan="'+halfR+'">';
+      h+='<div style="font-weight:600;color:#6b3fa0">QTY: '+fc(row.qty6,cu)+'</div>';
+      if(!isP&&dI.qtyTarget>0){
+        h+='<div class="b" style="color:'+(dI.qtyMult===1?'#2d7a3a':dI.qtyMult===0.6?'#c9a96e':'#cf5b5b')+'">'+(dI.qtyMult===1?'&#10003;':dI.qtyMult===0.6?'&#9889;':'&#10007;')+'</div>';
+        h+='<div style="color:#8a8680">'+(dI.qtyPct*100).toFixed(1)+'%</div>';
+      } else if(isP){
+        h+='<div class="b" style="color:#2d7a3a">&#10003;</div>';
+      } else {
+        h+='<div style="color:#b0a99f">&mdash;</div>';
+      }
+      h+='</td>';
+      // Scost.% / M.Turn. (0/0,6/1 = moltiplicatore Turnover Target) / M.Inv. (n/a per Dept)
+      if(isP){
+        h+='<td class="r mn" style="color:#cf8b4e">1.00</td><td class="r mn gy">&mdash;</td>';
+      } else {
+        var toScostD=dI.toTarget>0?((dI.toPct-1)*100):null;
+        h+='<td class="r mn b" style="color:'+(toScostD===null?'#b0a99f':toScostD>=0?'#2d7a3a':toScostD<=-5?'#c0392b':'#c9a96e')+'">'+(toScostD===null?'&mdash;':toScostD.toFixed(2)+'%')+'</td>';
+        h+='<td class="r mn b" style="color:'+(dI.toMult===0?'#c0392b':dI.toMult===1?'#2d7a3a':'#c9a96e')+'">'+dI.toMult.toFixed(2)+'</td>';
+        h+='<td class="r mn gy">&mdash;</td>';
       }
       h+='<td class="r mn gy">&mdash;</td>'; // SAS→Fatt.: Dept Store esclusi (formula fissa, no gap fatturato/target)
-      h+='<td class="r mn gy">&mdash;</td>';
+      h+='<td class="r mn gy">&mdash;</td>'; // BOOST: non applicabile (Dept non ha inventario)
     } else {
       var kpiSet=seasGetKpiSet(e);
       kpiCols.forEach(function(kdef){
@@ -5370,9 +5417,10 @@ function exportSeasonalExcel(){
     }
     r.push(isDept?'':(auto&&auto.sasAddon!==undefined?auto.sasAddon:0));
 
-    // Results
-    var gross=isDept?Math.round((e.ib||0)*6*1.5*100)/100:Math.round(base*kpiScore*m1*m2*100)/100;
+    // Results. Dept: LORDO = NETTO (stessa fonte, calcSeasonalDeptInfo via calcSeasonal) —
+    // niente più incondizionato 150%, coerente con la tabella "Calcolo Premi" (v9.59).
     var net=calcSeasonal(e); // unica fonte di verità: stessa cifra di tab e lettere
+    var gross=isDept?net:Math.round(base*kpiScore*m1*m2*100)/100;
     var totLC=excl?0:net;
     var totEUR=Math.round(totLC*ex*100)/100;
     r.push(excl?0:gross, midPaid, totLC, totEUR, excl?'SI':'NO');

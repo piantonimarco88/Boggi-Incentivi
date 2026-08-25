@@ -739,7 +739,7 @@ function buildSeasonalLetter(e){
   // mostra l'importo solo se effettivamente presente, in preventivo mostra una nota
   // informativa (nessun importo, il dato reale non esiste ancora) solo per i negozi
   // dove il KPI seasonal SAS è attivo (Dept Store esclusi a monte).
-  if(!isP&&sasAddonLetter>0){
+  if(!isP&&seasSasEligible(sid2)){
     h+='<div class="lt-kpi-row" style="grid-template-columns:'+boostCols+';background:#fdf8ee">';
     h+='<span style="font-weight:600;color:#a07d2c">'+T.sas_turnover_label+'</span>';
     h+='<span style="text-align:right;font-size:10px;color:#6b6560">—</span>';
@@ -850,10 +850,13 @@ function buildSeasonalLetter(e){
   h+='<div style="font-size:18px;font-weight:800;color:#a09a92">'+(isP?fc(midMax,cu):(midPaid>0?'\u2212'+fc(midPaid,cu):fc(0,cu)))+'</div>';
   h+='</div>';
 
-  // SALDO (netto da erogare) \u2014 solo in consuntivo, dopo la detrazione del mid-season
+  // SALDO (netto da erogare) \u2014 solo in consuntivo, dopo la detrazione del mid-season.
+  // Sfondo verde solo se c'\u00e8 davvero un importo da erogare (>0): a saldo zero il verde
+  // \u00e8 fuorviante (segnala un risultato positivo che qui non c'\u00e8), v9.59.
   if(!isP){
-    h+='<div style="background:#2d7a3a;padding:14px 32px;display:flex;justify-content:space-between;align-items:center">';
-    h+='<div style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#eafaf0;font-weight:700">'+(T.seas_net||T.seas_earned)+'</div>';
+    var _seasNetOk=seasonalNet>0;
+    h+='<div style="background:'+(_seasNetOk?"#2d7a3a":"#3d3a36")+';padding:14px 32px;display:flex;justify-content:space-between;align-items:center">';
+    h+='<div style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:'+(_seasNetOk?"#eafaf0":"#a09a92")+';font-weight:700">'+(T.seas_net||T.seas_earned)+'</div>';
     h+='<div style="font-size:20px;font-weight:800;color:#fff">'+fc(seasonalNet,cu)+'</div>';
     h+='</div>';
   }
@@ -958,6 +961,18 @@ try{ rL(); }catch(_e){ try{setTimeout(rL,0)}catch(_e2){} }
 // === SEASONAL DEPT LETTER ===
 // Per i dept stores internazionali: premio BDG×6 + QTY (50% di BDG×6)
 // Struttura coerente con la lettera mensile (buildLetter)
+// Nota paracadute 60% (Dept Store): stesso pattern amber di isRidotto() per il BDG
+// mensile, riusata identica per le Sezioni Turnover Target e QTY (v9.59).
+function _deptRdMsg(lang){
+  var d={
+    "ITALIANO":"Moltiplicatore ridotto al "+Math.round(PARAMS.bdg60mult*100)+"% applicato — risultato tra "+Math.round(PARAMS.bdg60*100)+"% e "+Math.round(PARAMS.bdg100*100)+"% del target",
+    "INGLESE":"Reduced multiplier at "+Math.round(PARAMS.bdg60mult*100)+"% applied — result between "+Math.round(PARAMS.bdg60*100)+"% and "+Math.round(PARAMS.bdg100*100)+"% of target",
+    "FRANCESE":"Multiplicateur réduit à "+Math.round(PARAMS.bdg60mult*100)+"% appliqué — résultat entre "+Math.round(PARAMS.bdg60*100)+"% et "+Math.round(PARAMS.bdg100*100)+"% de l'objectif",
+    "TEDESCO":"Reduzierter Multiplikator ("+Math.round(PARAMS.bdg60mult*100)+"%) angewendet — Ergebnis zwischen "+Math.round(PARAMS.bdg60*100)+"% und "+Math.round(PARAMS.bdg100*100)+"% des Ziels",
+    "SPAGNOLO":"Multiplicador reducido al "+Math.round(PARAMS.bdg60mult*100)+"% aplicado — resultado entre "+Math.round(PARAMS.bdg60*100)+"% y "+Math.round(PARAMS.bdg100*100)+"% del objetivo"
+  };
+  return d[lang]||d["INGLESE"];
+}
 function buildSeasonalDeptLetter(e){
   var cu=e.cu||"EUR",sid=String(e.si);
   var dInfo=calcSeasonalDeptInfo(e);
@@ -1009,6 +1024,7 @@ function buildSeasonalDeptLetter(e){
   if((stgDept.to||0)>0) h+=ltRow(T.to_target,'<span class="lt-row-cur">'+cu+'</span>'+Math.round(stgDept.to).toLocaleString("it-IT"));
   if(!isP&&dInfo.toTarget>0) h+=ltRow(T.to_result,'<span class="lt-row-cur">'+cu+'</span>'+Math.round(dInfo.toActual).toLocaleString("it-IT")+' ('+(dInfo.toPct*100).toFixed(1)+'%)');
   h+=secPd(pdLabel,isP?bdg6:dInfo.bdg6Earned,cu,dInfo.toMult>0);
+  if(!isP&&dInfo.toMult===0.6)h+='<div style="font-size:9px;margin-top:6px;padding:4px 8px;background:#fff3e0;border-left:3px solid #c9a96e;color:#856404;border-radius:0 4px 4px 0">⚡ '+esc(_deptRdMsg(lang))+'</div>';
   h+="</div></div>";
 
   // Sezione 2: QTY (50% BDG×6) — stesso paracadute a doppia soglia della Sezione 1.
@@ -1018,6 +1034,7 @@ function buildSeasonalDeptLetter(e){
   if(!isP&&dInfo.qtyTarget>0) h+=ltRow(T.qty_result,""+dInfo.qtyActual.toLocaleString("it-IT")+' ('+(dInfo.qtyPct*100).toFixed(1)+'%)');
   h+=ltRow(tr(e,"incentive","FORMULA"),T.qty_formula);
   h+=secPd(pdLabel,isP?qty6:dInfo.qty6Earned,cu,dInfo.qtyMult>0);
+  if(!isP&&dInfo.qtyMult===0.6)h+='<div style="font-size:9px;margin-top:6px;padding:4px 8px;background:#fff3e0;border-left:3px solid #c9a96e;color:#856404;border-radius:0 4px 4px 0">⚡ '+esc(_deptRdMsg(lang))+'</div>';
   h+="</div></div>";
 
   // Totale

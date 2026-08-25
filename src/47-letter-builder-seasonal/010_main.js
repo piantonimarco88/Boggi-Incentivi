@@ -175,7 +175,7 @@ function buildMidSeasonLetter(e){
 
   // SAS → fatturato (da SS26): riga separata solo dove pertinente — stesso
   // pattern della lettera di fine stagione (buildSeasonalLetter).
-  if(!isP&&sasAddonLetter>0){
+  if(!isP&&seasSasEligible(sid)){
     h+='<div class="lt-kpi-row" style="grid-template-columns:'+sbarCols+';background:#fdf8ee">';
     h+='<span style="font-weight:600;color:#a07d2c">'+T.sas_turnover_label+'</span>';
     h+='<span style="text-align:right;font-size:10px;color:#6b6560">—</span>';
