@@ -182,7 +182,23 @@ function buildLetter(e){
     if(!isP||tg.to)h+=ltRow(tr(e,"target","TARGET"),'<span class="lt-row-cur">'+cu+"</span>"+Math.round(tg.to||0).toLocaleString("it-IT"));
     h+=ltRow(dp?"INCENTIVE MAX":tr(e,"incentive","INCENTIVE"),'<span class="lt-row-cur">'+cu+"</span>"+e.ib);
     if(!isP){h+=ltRow(tr(e,"balance","FINAL BALANCE"),'<span class="lt-row-cur">'+cu+"</span>"+Math.round(cn.sc+(cn.es||0)).toLocaleString("it-IT"));
-      if(surplus>0)h+='<div style="font-size:9px;color:#a09a92;padding:2px 0;font-style:italic">Surplus (+'+Math.round(surplus).toLocaleString("it-IT")+")</div>"}
+      if(surplus>0)h+='<div style="font-size:9px;color:#a09a92;padding:2px 0;font-style:italic">Surplus (+'+Math.round(surplus).toLocaleString("it-IT")+")</div>";
+      // Carry-over mese precedente: fatturato E riserva SAS insieme, stesso
+      // trattamento del box "CARRY-OVER PREVIOUS MONTH" della lettera FC+VM
+      // (v9.47) — prima la riserva SAS prec. si vedeva solo dentro il box
+      // SAS più sotto (e lì manca del tutto se non usata: used=0 non genera
+      // riga "usata"), qui invece è sempre esplicita se >0.
+      var _resInLt=(_ssiL&&_ssiL.reserveIn)||0;
+      if(_resInLt>0){
+        var _sltM=(typeof _SAS_LT!=='undefined'?(_SAS_LT[lang]||_SAS_LT.INGLESE):null);
+        var _resInUsedLt=Math.min(_resInLt,(_ssiL&&_ssiL.used)||0);
+        var _resInExpLt=_resInLt-_resInUsedLt;
+        h+='<div style="font-size:9px;color:#a09a92;padding:2px 0"><span style="font-style:italic">'+esc(_sltM?_sltM.resIn:'Previous month SAS reserve')+': '+cu+' '+Math.round(_resInLt).toLocaleString("it-IT")+'</span>';
+        if(_resInUsedLt>0)h+='<span style="color:#2d7a3a;margin-left:6px">'+esc(_sltM?_sltM.resInUsed:'used')+': '+cu+' '+Math.round(_resInUsedLt).toLocaleString("it-IT")+'</span>';
+        if(_resInExpLt>0)h+='<span style="color:#cf5b5b;margin-left:6px">'+esc(_sltM?_sltM.resInExpired:'expired')+': '+cu+' '+Math.round(_resInExpLt).toLocaleString("it-IT")+'</span>';
+        h+='</div>';
+      }
+    }
     h+=secPd(pdLabel,vS,cu,p);
     if(!isP){
       var _ovLang=trLang(e);
