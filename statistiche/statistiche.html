@@ -521,10 +521,10 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
       <div style="font-size:22px">📂</div>
       <div style="flex:1">
         <div style="font-weight:700;font-size:13px">Carica i JSON mensili SAS → Fatturato</div>
-        <div style="font-size:11.5px;color:#888">Trascina qui, o clicca per selezionare, i file "dashboard_sas_negozi_*.json" e "dashboard_sas_fcvm_*.json" del mese</div>
+        <div style="font-size:11.5px;color:#888">Trascina qui, o clicca per selezionare, i file "dashboard_sas_negozi_*.json" e "dashboard_sas_fcvm_*.json" del mese, oppure la TESTATA INCENTIVI FC+VM (xlsx) per abbinare i negozi ai FC/VM</div>
       </div>
     </div>
-    <input type="file" id="sasFi" accept=".json" multiple style="display:none" onchange="sasHandleFiles(this.files);this.value=''">
+    <input type="file" id="sasFi" accept=".json,.xlsx,.xls" multiple style="display:none" onchange="sasHandleFiles(this.files);this.value=''">
     <div id="sasChips" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"></div>
   </div>
 
@@ -542,6 +542,8 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
       <div class="ms-wrap" id="sas-name"><button class="ms-btn" id="sas-name-btn" onclick="toggleMs(event,'sas-name')">Tutti</button><div class="ms-panel" id="sas-name-panel" style="display:none"></div></div></div>
     <div class="fg"><label>Nazione</label>
       <div class="ms-wrap" id="sas-naz"><button class="ms-btn" id="sas-naz-btn" onclick="toggleMs(event,'sas-naz')">Tutti</button><div class="ms-panel" id="sas-naz-panel" style="display:none"></div></div></div>
+    <div class="fg" id="sasAssignWrap" style="display:none"><label>FC/VM assegnato</label>
+      <div class="ms-wrap" id="sas-assign"><button class="ms-btn" id="sas-assign-btn" onclick="toggleMs(event,'sas-assign')">Tutti</button><div class="ms-panel" id="sas-assign-panel" style="display:none"></div></div></div>
     <div class="fg"><label>Esito</label>
       <div class="ms-wrap" id="sas-esito"><button class="ms-btn" id="sas-esito-btn" onclick="toggleMs(event,'sas-esito')">Tutti</button><div class="ms-panel" id="sas-esito-panel" style="display:none"></div></div></div>
     <div class="fg" id="sasRoleWrap" style="display:none"><label>Ruolo</label>
@@ -1589,7 +1591,7 @@ function importDiff(){
 const IDB_NAME='boggiPremiDB', IDB_STORE='session';
 function idbOpen(){return new Promise((res,rej)=>{const r=indexedDB.open(IDB_NAME,1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains(IDB_STORE))r.result.createObjectStore(IDB_STORE);};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
 let _idbT=null;
-function idbAutoSave(){clearTimeout(_idbT);_idbT=setTimeout(async()=>{try{const db=await idbOpen();db.transaction(IDB_STORE,'readwrite').objectStore(IDB_STORE).put({rows:allData,savedAt:new Date().toISOString(),sasFiles:(typeof sasFiles!=='undefined'?sasFiles:{})},'current');}catch(e){console.warn('IDB save fallito',e);}},1500);}
+function idbAutoSave(){clearTimeout(_idbT);_idbT=setTimeout(async()=>{try{const db=await idbOpen();db.transaction(IDB_STORE,'readwrite').objectStore(IDB_STORE).put({rows:allData,savedAt:new Date().toISOString(),sasFiles:(typeof sasFiles!=='undefined'?sasFiles:{}),storeAssignMap:(typeof storeAssignMap!=='undefined'?storeAssignMap:{}),storeAssignFname:(typeof storeAssignMeta!=='undefined'&&storeAssignMeta?storeAssignMeta.fname:null)},'current');}catch(e){console.warn('IDB save fallito',e);}},1500);}
 async function idbLoadSession(){try{const db=await idbOpen();return await new Promise(res=>{const r=db.transaction(IDB_STORE,'readonly').objectStore(IDB_STORE).get('current');r.onsuccess=()=>res(r.result||null);r.onerror=()=>res(null);});}catch(e){return null;}}
 async function idbClearSession(){try{const db=await idbOpen();db.transaction(IDB_STORE,'readwrite').objectStore(IDB_STORE).delete('current');}catch(e){}}
 async function tryRestoreSession(){
@@ -1615,8 +1617,17 @@ async function tryRestoreSession(){
 async function tryRestoreSasSession(){
   try{
     const s=await idbLoadSession();
+    let restored=false;
     if(s&&s.sasFiles&&Object.keys(s.sasFiles).length){
-      sasFiles=s.sasFiles;sasRenderChips();sasPopulateMonths();
+      sasFiles=s.sasFiles;sasPopulateMonths();restored=true;
+    }
+    if(s&&s.storeAssignMap&&Object.keys(s.storeAssignMap).length){
+      storeAssignMap=s.storeAssignMap;
+      storeAssignMeta={fname:s.storeAssignFname||'mappa negozi↔FC/VM',count:Object.keys(storeAssignMap).length};
+      sasPopulateAssignFilter();restored=true;
+    }
+    if(restored){
+      sasRenderChips();
       // Race condition all'avvio: questo ripristino è async e gira in parallelo a hashApply()
       // (che può già aver attivato il tab SAS da un link #t=sas prima che sasFiles sia pronto,
       // lasciando la tabella bloccata sullo stato "nessun dato" iniziale). Se il tab è già visibile,
@@ -4922,6 +4933,11 @@ function malExport(){
 // ═══════════════════════════════════════════════════════════════
 let sasFiles={}; // fname -> {kind:'negozi'|'fcvm', period:{month,year,monthKey,label}, meta, rows, fname}
 let sasView='negozi';
+// Mappa negozio→FC/VM assegnato (storeId string -> {fc:[nomi], vm:[nomi]}), da un file separato
+// ("TESTATA INCENTIVI FC+VM") caricato a parte — NON è un consuntivo premi, quindi resta fuori dal
+// pipeline allData/parseRows: serve solo al filtro "FC/VM assegnato" in vista Negozi. Un negozio può
+// avere più VM (es. copertura condivisa) ma un solo FC, quindi entrambe le liste sono array.
+let storeAssignMap={}, storeAssignMeta=null; // storeAssignMeta: {fname,count}
 const SAS_MESI_IT=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
 
 // Estrae mese/anno dal subtitle del JSON (es. "... — Consuntivo Luglio 2026 · ..."). Non c'è un campo
@@ -4937,31 +4953,77 @@ function sasParsePeriod(meta){
 }
 
 function sasHandleFiles(fileList){
-  [...fileList].filter(f=>f.name.toLowerCase().endsWith('.json')).forEach(f=>{
-    const rd=new FileReader();
-    rd.onload=e=>{
-      let json;
-      try{json=JSON.parse(e.target.result);}catch(err){alert('File "'+f.name+'" non è un JSON valido: '+err.message);return;}
-      const kind=json.meta&&json.meta.kind;
-      if(kind!=='negozi'&&kind!=='fcvm'){alert('File "'+f.name+'": campo meta.kind non riconosciuto (atteso "negozi" o "fcvm").');return;}
-      if(!Array.isArray(json.rows)||!json.rows.length){alert('File "'+f.name+'": nessuna riga in "rows".');return;}
-      const period=sasParsePeriod(json.meta);
-      if(!period){alert('File "'+f.name+'": non riesco a determinare mese/anno dal subtitle (atteso "Consuntivo <Mese> <Anno>").');return;}
-      if(json.meta.schemaVersion!=null&&json.meta.schemaVersion!==1)console.warn('sasHandleFiles: schemaVersion inattesa per '+f.name,json.meta.schemaVersion);
-      sasFiles[f.name]={kind,period,meta:json.meta,rows:json.rows,fname:f.name};
-      sasRenderChips();sasPopulateMonths();renderSas();try{idbAutoSave();}catch(e2){}
-    };
-    rd.readAsText(f);
+  [...fileList].forEach(f=>{
+    const ext=f.name.split('.').pop().toLowerCase();
+    if(ext==='json'){
+      const rd=new FileReader();
+      rd.onload=e=>{
+        let json;
+        try{json=JSON.parse(e.target.result);}catch(err){alert('File "'+f.name+'" non è un JSON valido: '+err.message);return;}
+        const kind=json.meta&&json.meta.kind;
+        if(kind!=='negozi'&&kind!=='fcvm'){alert('File "'+f.name+'": campo meta.kind non riconosciuto (atteso "negozi" o "fcvm").');return;}
+        if(!Array.isArray(json.rows)||!json.rows.length){alert('File "'+f.name+'": nessuna riga in "rows".');return;}
+        const period=sasParsePeriod(json.meta);
+        if(!period){alert('File "'+f.name+'": non riesco a determinare mese/anno dal subtitle (atteso "Consuntivo <Mese> <Anno>").');return;}
+        if(json.meta.schemaVersion!=null&&json.meta.schemaVersion!==1)console.warn('sasHandleFiles: schemaVersion inattesa per '+f.name,json.meta.schemaVersion);
+        sasFiles[f.name]={kind,period,meta:json.meta,rows:json.rows,fname:f.name};
+        sasRenderChips();sasPopulateMonths();renderSas();try{idbAutoSave();}catch(e2){}
+      };
+      rd.readAsText(f);
+    } else if(ext==='xlsx'||ext==='xls'){
+      const rd=new FileReader();
+      rd.onload=e=>{
+        try{
+          const wb=XLSX.read(e.target.result,{type:'array'});
+          const rows=sheetToObj(wb.Sheets[wb.SheetNames[0]]);
+          if(!_looksLikeStoreAssignSheet(rows)){alert('File "'+f.name+'": non riconosciuto come mappa negozi↔FC/VM (attese colonne STORE ID, NOME STORE, RUOLO).');return;}
+          storeAssignMap=parseStoreAssignRows(rows);
+          storeAssignMeta={fname:f.name,count:Object.keys(storeAssignMap).length};
+          sasRenderChips();sasPopulateAssignFilter();renderSas();try{idbAutoSave();}catch(e2){}
+        }catch(err){alert('Errore: '+f.name+'\n'+err.message);}
+      };
+      rd.readAsArrayBuffer(f);
+    }
   });
 }
 function sasDrop(ev){ev.preventDefault();sasHandleFiles(ev.dataTransfer.files);}
 function sasRemoveFile(fname){delete sasFiles[fname];sasRenderChips();sasPopulateMonths();renderSas();try{idbAutoSave();}catch(e){}}
+// Riconosce il file "TESTATA INCENTIVI FC+VM" (anagrafica assegnazione negozio→FC/VM) dalla firma
+// delle colonne. Escludiamo esplicitamente i file premi FC/VM nuovo formato, che hanno anche
+// "RUOLO" ma un tracciato diverso (PREMIO MAX LC, senza STORE ID/NOME STORE).
+function _looksLikeStoreAssignSheet(rows){
+  if(!rows.length)return false;
+  const r0=rows[0];
+  return ('STORE ID' in r0)&&('NOME STORE' in r0)&&('RUOLO' in r0)&&!('PREMIO MAX LC' in r0);
+}
+// Costruisce storeId -> {fc:[nomi], vm:[nomi]} dalle righe della TESTATA. Un negozio ha righe
+// multiple (una per FC/VM assegnato); teniamo nomi unici per evitare duplicati se lo stesso
+// FC/VM compare più volte per lo stesso negozio (es. più matricole/periodi nello stesso export).
+function parseStoreAssignRows(rows){
+  const map={};
+  rows.forEach(r=>{
+    const sid=String(r['STORE ID']||'').trim(); if(!sid)return;
+    const role=String(r['RUOLO']||'').trim().toUpperCase();
+    if(role!=='FC'&&role!=='VM')return;
+    const nome=(String(r['NOME']||'').trim()+' '+String(r['COGNOME']||'').trim()).trim();
+    if(!nome)return;
+    const m=map[sid]||(map[sid]={fc:[],vm:[]});
+    const key=role==='FC'?'fc':'vm';
+    if(!m[key].includes(nome))m[key].push(nome);
+  });
+  return map;
+}
+function sasRemoveAssignFile(){storeAssignMap={};storeAssignMeta=null;sasRenderChips();sasPopulateAssignFilter();renderSas();try{idbAutoSave();}catch(e){}}
 function sasRenderChips(){
   const c=document.getElementById('sasChips');if(!c)return;
   const names=Object.keys(sasFiles);
-  c.innerHTML=names.length?names.map(fn=>{const f=sasFiles[fn];
+  let html=names.length?names.map(fn=>{const f=sasFiles[fn];
     return '<span class="sas-chip-file">✅ '+agEsc(fn)+' · '+f.rows.length+' <span class="x" onclick="sasRemoveFile(\''+fn.replace(/'/g,"\\'")+'\')" title="Rimuovi">✕</span></span>';
   }).join(''):'<span style="font-size:11.5px;color:#bbb">Nessun file caricato — trascina qui i JSON mensili (Negozi + FC/VM)</span>';
+  if(storeAssignMeta){
+    html+=' <span class="sas-chip-file">🧭 '+agEsc(storeAssignMeta.fname)+' · '+storeAssignMeta.count+' negozi↔FC/VM <span class="x" onclick="sasRemoveAssignFile()" title="Rimuovi">✕</span></span>';
+  }
+  c.innerHTML=html;
 }
 function sasPopulateMonths(){
   const sel=document.getElementById('sasMonth');if(!sel)return;
@@ -4994,6 +5056,7 @@ function sasSetView(v){
   sasView=v;
   document.querySelectorAll('#sasViewToggle .l4l-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
   const fr=document.getElementById('sasRoleWrap');if(fr)fr.style.display=v==='fcvm'?'':'none';
+  sasPopulateAssignFilter();
   sasPopulateMonths();renderSas();
 }
 function sasSetDet(v){
@@ -5105,6 +5168,22 @@ function sasPopulateNazFilter(rows){
   const naz=[...new Set(rows.map(r=>r._nazione).filter(Boolean))].sort();
   setMsOpts('sas-naz',naz.map(n=>({v:n,l:n})),renderSas);
 }
+// "FC/VM assegnato": visibile solo in vista Negozi e solo se una TESTATA è stata caricata. Opzioni
+// ricostruite dalla mappa statica (non dalle righe correnti, a differenza di Nazione/Nome) perché
+// l'assegnazione negozio→persona non dipende dal mese SAS selezionato.
+function sasPopulateAssignFilter(){
+  const wrap=document.getElementById('sasAssignWrap');if(!wrap)return;
+  const has=Object.keys(storeAssignMap).length>0;
+  wrap.style.display=(sasView==='negozi'&&has)?'':'none';
+  if(!has)return;
+  const people={};
+  Object.values(storeAssignMap).forEach(a=>{
+    (a.fc||[]).forEach(n=>{(people[n]||(people[n]=new Set())).add('FC');});
+    (a.vm||[]).forEach(n=>{(people[n]||(people[n]=new Set())).add('VM');});
+  });
+  const opts=Object.keys(people).sort((a,b)=>a.localeCompare(b)).map(n=>({v:n,l:n+' ('+[...people[n]].sort().join('/')+')'}));
+  setMsOpts('sas-assign',opts,renderSas);
+}
 function renderSas(){
   sasPopulateMonths();sasPopulateBdgPeriod();sasPopulateFilters();
   const file=sasCurrentFile();
@@ -5132,9 +5211,11 @@ function renderSas(){
     r._nazione=withNaz?withNaz._nazione:null;
   });
   sasPopulateNazFilter(rows);
+  sasPopulateAssignFilter();
 
   const q=(document.getElementById('sasQ').value||'').toLowerCase();
   const fEsito=getMsVals('sas-esito'), fRole=[...sasRoleSel], fName=getMsVals('sas-name'), fNaz=getMsVals('sas-naz');
+  const fAssign=sasView==='negozi'?getMsVals('sas-assign'):[];
   const onlyDet=(document.getElementById('sasFDet-si')||{}).classList.contains('active');
   document.querySelectorAll('#sasRoleToggle .l4l-btn').forEach(b=>b.classList.toggle('active',sasRoleSel.has(b.dataset.role)));
   rows=rows.filter(r=>{
@@ -5145,6 +5226,11 @@ function renderSas(){
     // guard sulla vista: le righe Negozi non hanno "role" — senza questo, un filtro Ruolo lasciato
     // attivo passando da FC+VM a Negozi azzererebbe la tabella (r.role sempre undefined lì)
     if(sasView==='fcvm'&&fRole.length&&!fRole.includes(r.role))return false;
+    // filtro FC/VM assegnato: solo vista Negozi, incrocia lo Store ID con la TESTATA caricata
+    if(fAssign.length){
+      const asg=storeAssignMap[String(r.sid)];
+      if(!asg||!fAssign.some(v=>(asg.fc||[]).includes(v)||(asg.vm||[]).includes(v)))return false;
+    }
     if(onlyDet&&!r.determinante)return false;
     return true;
   });
