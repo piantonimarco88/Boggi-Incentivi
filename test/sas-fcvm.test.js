@@ -37,8 +37,11 @@ test("area: SAS colma il gap e porta a target → premio pieno", () => {
   c.FC_EMP = { F1: { m: "F1", j: "FC", ib: 1000, cu: "EUR", ex: 1, ps: "NO", ml: 0, bdg_stores: [] } };
   c.FC_MAP = { "500": { fc: ["F1"], vm: [] } };
   c.FC_TARGETS = { "500": { to_eur: 100000 } };
+  c.FC_RESULTS = { "500": { sc_eur: 96000 } };
+  // Dato SAS aggregato per l'AREA del field coach vive in FC_AREA_SAS[matricola],
+  // non in FC_RESULTS[negozio] (quello è per-negozio, usato solo dai bdg_stores extra).
   // acc 0.85 × vel 0.75 → 65% di 10.000 = 6.500 riconosciuti; gap 4.000 → usa 4.000
-  c.FC_RESULTS = { "500": { sc_eur: 96000, acc: 0.85, vel: 0.75, sasv_eur: 10000 } };
+  c.FC_AREA_SAS = { F1: { acc: 0.85, vel: 0.75, sasv_eur: 10000 } };
   const r = c.calcFcVmPremio("F1");
   assert.strictEqual(r.totSasUsed, 4000);
   assert.strictEqual(r.totCons, 100000);
@@ -53,7 +56,8 @@ test("area: prima di luglio nessun SAS (gating)", () => {
   c.FC_EMP = { F1: { m: "F1", j: "FC", ib: 1000, cu: "EUR", ex: 1, ps: "NO", ml: 0, bdg_stores: [] } };
   c.FC_MAP = { "500": { fc: ["F1"], vm: [] } };
   c.FC_TARGETS = { "500": { to_eur: 100000 } };
-  c.FC_RESULTS = { "500": { sc_eur: 96000, acc: 0.85, vel: 0.75, sasv_eur: 10000 } };
+  c.FC_RESULTS = { "500": { sc_eur: 96000 } };
+  c.FC_AREA_SAS = { F1: { acc: 0.85, vel: 0.75, sasv_eur: 10000 } };
   const r = c.calcFcVmPremio("F1");
   assert.strictEqual(r.totSasUsed, 0);
   assert.strictEqual(r.totCons, 96000);
@@ -65,12 +69,30 @@ test("area: SAS non spinge oltre il 100% (avanzo tutto a riserva)", () => {
   c.FC_EMP = { F1: { m: "F1", j: "FC", ib: 1000, cu: "EUR", ex: 1, ps: "NO", ml: 0, bdg_stores: [] } };
   c.FC_MAP = { "500": { fc: ["F1"], vm: [] } };
   c.FC_TARGETS = { "500": { to_eur: 100000 } };
-  // negozio già a target: tutto il SAS riconosciuto (100% di 8000) si accantona
-  c.FC_RESULTS = { "500": { sc_eur: 100000, acc: 0.95, vel: 0.95, sasv_eur: 8000 } };
+  c.FC_RESULTS = { "500": { sc_eur: 100000 } };
+  // area già a target: tutto il SAS riconosciuto (100% di 8000) si accantona
+  c.FC_AREA_SAS = { F1: { acc: 0.95, vel: 0.95, sasv_eur: 8000 } };
   const r = c.calcFcVmPremio("F1");
   assert.strictEqual(r.totSasUsed, 0);
   assert.strictEqual(r.totCons, 100000);
   assert.strictEqual(r.totSasReserveOut, 8000);
+});
+
+test("area: la riserva del mese precedente copre il gap e scade, non si accumula", () => {
+  const c = fcCtx({});
+  c.FC_EMP = { F1: { m: "F1", j: "FC", ib: 1000, cu: "EUR", ex: 1, ps: "NO", ml: 0, bdg_stores: [] } };
+  c.FC_MAP = { "500": { fc: ["F1"], vm: [] } };
+  c.FC_TARGETS = { "500": { to_eur: 100000 } };
+  c.FC_RESULTS = { "500": { sc_eur: 96000 } };
+  // gap 4.000: la riserva del mese prima (7.000) lo copre da sola -> used=4.000 da reserveIn.
+  // Il riconosciuto di quest'area (3.000) resta intatto e diventa l'intero riporto,
+  // i 3.000 di riserva vecchia residua NON si riportano: scadono.
+  c.FC_AREA_SAS = { F1: { acc: 0.85, vel: 0.75, sasv_eur: 3000 / 0.65, sasr_eur: 7000 } };
+  const r = c.calcFcVmPremio("F1");
+  assert.strictEqual(Math.round(r.totSasRec), 3000);
+  assert.strictEqual(r.totSasUsed, 4000);
+  assert.strictEqual(r.totCons, 100000);
+  assert.strictEqual(r.totSasReserveOut, 3000);
 });
 
 // === BDG singolo negozio ====================================
