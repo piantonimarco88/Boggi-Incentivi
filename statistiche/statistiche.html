@@ -5175,10 +5175,10 @@ function renderSas(){
     :[{label:'Nome',filter:'text'},{label:'Ruolo',filter:'select'},{label:'N. Negozi',align:'right',filter:'none'}];
   const cols=identCols.concat([
     {label:'Target',align:'right',filter:'none'},{label:'Consuntivo',align:'right',filter:'none'},{label:'Esub. prec.',align:'right',filter:'none'},
-    {label:'SY (vs LY)',align:'right',filter:'none'},{label:'% senza SAS',align:'right',filter:'none'},{label:'Valore SAS',align:'right',filter:'none'},
-    {label:'Ricon.',align:'right',filter:'none'},{label:'Esub. SAS prec.',align:'right',filter:'none'},{label:'Esub. SAS prec. usata',align:'right',filter:'none'},
-    {label:'Applicato',align:'right',filter:'none'},{label:'Riserva SAS succ.',align:'right',filter:'none'},{label:'% finale',align:'right',filter:'none'},
-    {label:'Esito',filter:'select'},{label:'BDG storico',align:'right',filter:'none'},
+    {label:'SY',align:'right',filter:'none'},{label:'% no SAS',align:'right',filter:'none'},{label:'Valore SAS',align:'right',filter:'none'},
+    {label:'Ricon.',align:'right',filter:'none'},{label:'SAS prec.',align:'right',filter:'none'},{label:'SAS usata',align:'right',filter:'none'},
+    {label:'Applicato',align:'right',filter:'none'},{label:'SAS succ.',align:'right',filter:'none'},{label:'% finale',align:'right',filter:'none'},
+    {label:'Esito',filter:'select'},{label:'BDG stor.',align:'right',filter:'none'},
   ]);
   // Ordine di default: Negozi → Store ID crescente; FC+VM → Ruolo (FC poi VM) con Nome alfabetico
   // dentro ciascun ruolo — il pre-ordinamento per nome qui sotto fa da tie-break stabile quando
