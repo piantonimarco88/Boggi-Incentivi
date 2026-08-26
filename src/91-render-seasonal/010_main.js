@@ -361,7 +361,7 @@ function rCSeasonal(){
       h+='<td class="r" style="text-align:center;font-size:9px" colspan="'+halfL+'">';
       h+='<div style="font-weight:600;color:#6b3fa0">BDG×6: '+fc(row.bdg6,cu)+'</div>';
       if(!isP&&dI.toTarget>0){
-        h+='<div class="b" style="color:'+(dI.toMult===1?'#2d7a3a':dI.toMult===0.6?'#c9a96e':'#cf5b5b')+'">'+(dI.toMult===1?'&#10003;':dI.toMult===0.6?'&#9889;':'&#10007;')+'</div>';
+        h+='<div class="b" style="color:'+(dI.toMult===1?'#2d7a3a':'#cf5b5b')+'">'+(dI.toMult===1?'&#10003;':'&#10007;')+'</div>';
         h+='<div style="color:#8a8680">'+(dI.toPct*100).toFixed(1)+'%</div>';
       } else if(isP){
         h+='<div class="b" style="color:#2d7a3a">&#10003;</div>';
@@ -372,7 +372,7 @@ function rCSeasonal(){
       h+='<td class="r" style="text-align:center;font-size:9px" colspan="'+halfR+'">';
       h+='<div style="font-weight:600;color:#6b3fa0">QTY: '+fc(row.qty6,cu)+'</div>';
       if(!isP&&dI.qtyTarget>0){
-        h+='<div class="b" style="color:'+(dI.qtyMult===1?'#2d7a3a':dI.qtyMult===0.6?'#c9a96e':'#cf5b5b')+'">'+(dI.qtyMult===1?'&#10003;':dI.qtyMult===0.6?'&#9889;':'&#10007;')+'</div>';
+        h+='<div class="b" style="color:'+(dI.qtyMult===1?'#2d7a3a':'#cf5b5b')+'">'+(dI.qtyMult===1?'&#10003;':'&#10007;')+'</div>';
         h+='<div style="color:#8a8680">'+(dI.qtyPct*100).toFixed(1)+'%</div>';
       } else if(isP){
         h+='<div class="b" style="color:#2d7a3a">&#10003;</div>';
@@ -380,13 +380,13 @@ function rCSeasonal(){
         h+='<div style="color:#b0a99f">&mdash;</div>';
       }
       h+='</td>';
-      // Scost.% / M.Turn. (0/0,6/1 = moltiplicatore Turnover Target) / M.Inv. (n/a per Dept)
+      // Scost.% / M.Turn. (0 o 1 = moltiplicatore Turnover Target, soglia unica) / M.Inv. (n/a per Dept)
       if(isP){
         h+='<td class="r mn" style="color:#cf8b4e">1.00</td><td class="r mn gy">&mdash;</td>';
       } else {
         var toScostD=dI.toTarget>0?((dI.toPct-1)*100):null;
         h+='<td class="r mn b" style="color:'+(toScostD===null?'#b0a99f':toScostD>=0?'#2d7a3a':toScostD<=-5?'#c0392b':'#c9a96e')+'">'+(toScostD===null?'&mdash;':toScostD.toFixed(2)+'%')+'</td>';
-        h+='<td class="r mn b" style="color:'+(dI.toMult===0?'#c0392b':dI.toMult===1?'#2d7a3a':'#c9a96e')+'">'+dI.toMult.toFixed(2)+'</td>';
+        h+='<td class="r mn b" style="color:'+(dI.toMult===1?'#2d7a3a':'#c0392b')+'">'+dI.toMult.toFixed(2)+'</td>';
         h+='<td class="r mn gy">&mdash;</td>';
       }
       h+='<td class="r mn gy">&mdash;</td>'; // SAS→Fatt.: Dept Store esclusi (formula fissa, no gap fatturato/target)

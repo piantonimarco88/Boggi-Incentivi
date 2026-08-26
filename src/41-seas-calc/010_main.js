@@ -218,11 +218,13 @@ function seasIsKpiAchieved(kdef, auto){
 }
 // Dept Store (concessioni nei grandi magazzini: Selfridges, KaDeWe, NK, El Corte
 // Inglés...): due sezioni indipendenti, Turnover Target (BDG×6) e QTY (50% BDG×6),
-// ciascuna con lo stesso paracadute a doppia soglia del BDG mensile — ≥99,5% target
-// paga intera la sezione, 95-99,5% paga il 60% ridotto, sotto 95% paga zero. Prima
-// (fino a v9.55) pagava sempre il 150% incondizionato, senza confrontare target/
-// consuntivo — bug segnalato 25/08/2026, corretto qui. Fonte unica per tabella
-// Calcolo Premi (calcSeasonal) e lettera (buildSeasonalDeptLetter).
+// ciascuna a soglia unica bianco/nero — ≥99,5% target paga intera la sezione,
+// sotto paga zero (nessun 60% ridotto: a differenza del BDG mensile, i Dept Store
+// non hanno paracadute intermedio, v9.60). Prima (fino a v9.55) pagava sempre il
+// 150% incondizionato, senza confrontare target/consuntivo — bug segnalato
+// 25/08/2026, corretto in v9.56 (poi con paracadute a doppia soglia, rimosso qui
+// su richiesta esplicita). Fonte unica per tabella Calcolo Premi (calcSeasonal)
+// e lettera (buildSeasonalDeptLetter).
 function calcSeasonalDeptInfo(e){
   var sid=String(e.si);
   var stg=SEAS_TARGETS[sid]||{};
@@ -230,7 +232,7 @@ function calcSeasonalDeptInfo(e){
   var isP=MODE==="preventivo";
   var bdg6=Math.round((e.ib||0)*6*100)/100;
   var qty6=Math.round(bdg6*0.5*100)/100;
-  function mult(pct,hasTarget){if(!hasTarget)return 0;if(pct>=PARAMS.bdg100)return 1;if(pct>=PARAMS.bdg60)return PARAMS.bdg60mult;return 0;}
+  function mult(pct,hasTarget){if(!hasTarget)return 0;return pct>=PARAMS.bdg100?1:0;}
   var toTarget=stg.to||0;
   var toActual=(cn.sc||0)+(cn.es||0)+(typeof seasSasAddon==="function"?seasSasAddon(sid):0);
   var toPct=toTarget>0?toActual/toTarget:0;

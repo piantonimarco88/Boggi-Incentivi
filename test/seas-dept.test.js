@@ -1,8 +1,9 @@
 // Test Dept Store seasonal (Selfridges, KaDeWe, NK, El Corte Inglés...): prima
 // (fino a v9.55) calcSeasonal pagava sempre BDG×6×1,5 incondizionato, mai
 // confrontato con target/consuntivo (segnalato dall'utente 25/08/2026, esempio
-// reale SANGIORGIO EDOARDO). Da v9.56: paracadute a doppia soglia come il BDG
-// mensile (PARAMS.bdg100/bdg60/bdg60mult), Turnover Target e QTY indipendenti.
+// reale SANGIORGIO EDOARDO). v9.56: paracadute a doppia soglia come il BDG
+// mensile. v9.60: rimosso il 60% ridotto su richiesta esplicita — soglia unica
+// bianco/nero (PARAMS.bdg100, ≥99,5%), Turnover Target e QTY indipendenti.
 //
 // Esecuzione:  node --test
 
@@ -56,15 +57,15 @@ test("target fatturato mancato (<95%), QTY raggiunto → solo QTY pagato", () =>
   assert.strictEqual(info.tot, 12000);
 });
 
-test("target fatturato in fascia paracadute (95-99,5%) → 60% ridotto", () => {
+test("target fatturato sotto soglia (95-99,5%, ex fascia paracadute) → zero, non 60% ridotto", () => {
   const c = ctx({
     SEAS_TARGETS: { "1319": { to: 100000, qt: 1000 } },
     D: { cs: { "1319": { sc: 96000, qc: 0 } } },
   });
   const info = c.calcSeasonalDeptInfo({ si: "1319", ib: 4000 });
   assert.strictEqual(info.toPct, 0.96);
-  assert.strictEqual(info.toMult, 0.6);
-  assert.strictEqual(info.bdg6Earned, 14400); // 24000 * 0.6
+  assert.strictEqual(info.toMult, 0); // niente più 60% ridotto: soglia unica bianco/nero
+  assert.strictEqual(info.bdg6Earned, 0);
   assert.strictEqual(info.qtyMult, 0); // 0 pezzi su target 1000
 });
 

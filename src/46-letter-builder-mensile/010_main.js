@@ -959,20 +959,8 @@ try{ rL(); }catch(_e){ try{setTimeout(rL,0)}catch(_e2){} }
 <script>
 
 // === SEASONAL DEPT LETTER ===
-// Per i dept stores internazionali: premio BDG×6 + QTY (50% di BDG×6)
-// Struttura coerente con la lettera mensile (buildLetter)
-// Nota paracadute 60% (Dept Store): stesso pattern amber di isRidotto() per il BDG
-// mensile, riusata identica per le Sezioni Turnover Target e QTY (v9.59).
-function _deptRdMsg(lang){
-  var d={
-    "ITALIANO":"Moltiplicatore ridotto al "+Math.round(PARAMS.bdg60mult*100)+"% applicato — risultato tra "+Math.round(PARAMS.bdg60*100)+"% e "+Math.round(PARAMS.bdg100*100)+"% del target",
-    "INGLESE":"Reduced multiplier at "+Math.round(PARAMS.bdg60mult*100)+"% applied — result between "+Math.round(PARAMS.bdg60*100)+"% and "+Math.round(PARAMS.bdg100*100)+"% of target",
-    "FRANCESE":"Multiplicateur réduit à "+Math.round(PARAMS.bdg60mult*100)+"% appliqué — résultat entre "+Math.round(PARAMS.bdg60*100)+"% et "+Math.round(PARAMS.bdg100*100)+"% de l'objectif",
-    "TEDESCO":"Reduzierter Multiplikator ("+Math.round(PARAMS.bdg60mult*100)+"%) angewendet — Ergebnis zwischen "+Math.round(PARAMS.bdg60*100)+"% und "+Math.round(PARAMS.bdg100*100)+"% des Ziels",
-    "SPAGNOLO":"Multiplicador reducido al "+Math.round(PARAMS.bdg60mult*100)+"% aplicado — resultado entre "+Math.round(PARAMS.bdg60*100)+"% y "+Math.round(PARAMS.bdg100*100)+"% del objetivo"
-  };
-  return d[lang]||d["INGLESE"];
-}
+// Per i dept stores internazionali: premio BDG×6 + QTY (50% di BDG×6), soglia
+// unica bianco/nero (≥99,5% target), nessun 60% ridotto (v9.60).
 function buildSeasonalDeptLetter(e){
   var cu=e.cu||"EUR",sid=String(e.si);
   var dInfo=calcSeasonalDeptInfo(e);
@@ -1014,8 +1002,8 @@ function buildSeasonalDeptLetter(e){
     h+='<div style="font-size:12px;font-weight:700;color:#2c2925;margin-bottom:16px">'+esc(CFG_SEASON+' '+CFG_YEAR)+'</div>';
   }
 
-  // Sezione 1: BDG × 6 — pagato per intero se target ≥99,5% raggiunto, 60% ridotto
-  // tra 95% e 99,5%, zero sotto 95% (stesso paracadute del BDG mensile, v9.56).
+  // Sezione 1: BDG × 6 — pagato per intero se target ≥99,5% raggiunto, zero sotto
+  // (soglia unica bianco/nero, nessun 60% ridotto, v9.60).
   var sN=0;
   sN++;
   h+=secHd(sN,tr(e,"turnover","TURNOVER TARGET"),dInfo.toMult>0,isP);
@@ -1024,17 +1012,15 @@ function buildSeasonalDeptLetter(e){
   if((stgDept.to||0)>0) h+=ltRow(T.to_target,'<span class="lt-row-cur">'+cu+'</span>'+Math.round(stgDept.to).toLocaleString("it-IT"));
   if(!isP&&dInfo.toTarget>0) h+=ltRow(T.to_result,'<span class="lt-row-cur">'+cu+'</span>'+Math.round(dInfo.toActual).toLocaleString("it-IT")+' ('+(dInfo.toPct*100).toFixed(1)+'%)');
   h+=secPd(pdLabel,isP?bdg6:dInfo.bdg6Earned,cu,dInfo.toMult>0);
-  if(!isP&&dInfo.toMult===0.6)h+='<div style="font-size:9px;margin-top:6px;padding:4px 8px;background:#fff3e0;border-left:3px solid #c9a96e;color:#856404;border-radius:0 4px 4px 0">⚡ '+esc(_deptRdMsg(lang))+'</div>';
   h+="</div></div>";
 
-  // Sezione 2: QTY (50% BDG×6) — stesso paracadute a doppia soglia della Sezione 1.
+  // Sezione 2: QTY (50% BDG×6) — stessa soglia unica bianco/nero della Sezione 1.
   sN++;
   h+=secHd(sN,"QTY",dInfo.qtyMult>0,isP);
   if((stgDept.qt||0)>0) h+=ltRow(T.qty_target,""+stgDept.qt.toLocaleString("it-IT"));
   if(!isP&&dInfo.qtyTarget>0) h+=ltRow(T.qty_result,""+dInfo.qtyActual.toLocaleString("it-IT")+' ('+(dInfo.qtyPct*100).toFixed(1)+'%)');
   h+=ltRow(tr(e,"incentive","FORMULA"),T.qty_formula);
   h+=secPd(pdLabel,isP?qty6:dInfo.qty6Earned,cu,dInfo.qtyMult>0);
-  if(!isP&&dInfo.qtyMult===0.6)h+='<div style="font-size:9px;margin-top:6px;padding:4px 8px;background:#fff3e0;border-left:3px solid #c9a96e;color:#856404;border-radius:0 4px 4px 0">⚡ '+esc(_deptRdMsg(lang))+'</div>';
   h+="</div></div>";
 
   // Totale
