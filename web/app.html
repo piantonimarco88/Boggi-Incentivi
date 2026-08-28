@@ -256,7 +256,7 @@ try{
   try{localStorage.removeItem("boggi_state")}catch(e2){}
   if(_hasWebMsg){try{chrome.webview.postMessage({type:"resetState"})}catch(e2){}}
 }
-var DEPT=[1187,1188,1189,1190,1191,1192,1194,1197,1198,1303,1304,1305,1310,1312,1318,1319,1326,1327,1328,1329,1331,1332,1333,1338,1339,1344];
+var DEPT=[1187,1188,1189,1190,1191,1192,1194,1197,1198,1303,1304,1305,1310,1312,1318,1319,1326,1327,1328,1329,1331,1332,1333,1338,1339,1344,1350];
 // Initialize STORE_FLAGS from DEPT list if not already set
 function initStoreFlags(){DEPT.forEach(function(sid){var k=String(sid);if(!STORE_FLAGS[k])STORE_FLAGS[k]={dept:true,noSas:false,noDig:false}})}
 function isD(s){var sf=STORE_FLAGS[String(s)];return sf?sf.dept:false}
@@ -725,12 +725,13 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.62'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.63'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.63: ECI Santander (1350) aggiunto permanentemente ai Dept Store; export JSON statistiche — tolto il campo \"esubero\" duplicato (era identico a esuberoPrec), schemaVersion 2",
   "9.62: Nuovo bottone \"Esporta dati JSON per statistiche\" (Negozi e FC+VM) per il progetto statistiche esterno: aggiunge parachuteOk, syLastYear, Qty dept store ed esubero riportato dal mese precedente",
   "9.61: USA — commissione raddoppiata (es. 1%→2%) per Hernandez e Iberlucea Rivas quando il negozio raggiunge il target di fatturato",
   "9.60: Seasonal Dept Store — rimosso il premio ridotto al 60%: Turnover Target e QTY tornano a soglia unica bianco/nero (≥99,5% del target = pieno, sotto = zero), niente più fascia intermedia",
@@ -2148,12 +2149,15 @@ function exportSasJsonFcvm(){
 // bottone "Esporta dati JSON per statistiche") ─────────────────────────────────────────────
 // Export indipendente da exportSasJsonStores/Fcvm (che restano invariati): stessa base di
 // calcolo (storeSasInfo/isRidottoStore/calcFcVmPremio, coerenza con i tab) ma con lo schema
-// concordato 28/08/2026 — aggiunge parachuteOk/syLastYear/targetQty/resultQty (negozi) e
-// chiarisce la semantica di "esubero" (è il riporto dal mese PRECEDENTE, non un dato di
-// questo mese: vedi commento su D.c[sid].es in src/32-import-xlsx). esuberoPrecUsed è sempre
-// uguale a esuberoPrec perché l'app non traccia un "usato parziale" per il fatturato (a
-// differenza della riserva SAS): l'esubero si somma sempre per intero, senza cap/riserva
-// residua (comportamento confermato intenzionale, 25/08/2026).
+// concordato 28/08/2026 — aggiunge parachuteOk/syLastYear/targetQty/resultQty (negozi).
+// C'è un solo campo esubero nell'app (D.c[sid].es, vedi src/32-import-xlsx): è il riporto
+// dal mese PRECEDENTE (non un dato "di questo mese" — confermato da import USA "esubero
+// mese precedente" e dal box lettera "carry-over mese precedente"), quindi esposto SOLO
+// come esuberoPrec (niente alias "esubero" duplicato, tolto il 28/08/2026 su segnalazione
+// del consumer esterno che lo trovava sempre identico). esuberoPrecUsed è sempre uguale a
+// esuberoPrec perché l'app non traccia un "usato parziale" per il fatturato (a differenza
+// della riserva SAS): l'esubero si somma sempre per intero, senza cap/riserva residua
+// (comportamento confermato intenzionale, 25/08/2026).
 // Export per negozio (mensile, consuntivo, da luglio 2026)
 function exportStatsJsonStores(){
   var storeNames={},storeEx={};
@@ -2183,7 +2187,7 @@ function exportStatsJsonStores(){
     var parachuteOk=dp?((tg.qt||0)>0&&(cn.qc||0)>=(tg.qt||0)):((cn.sy||0)>(syLy||0)&&(syLy||0)>0);
     return{kind:"negozi",sid:sid,name:storeNames[sid],target:Math.round(info.to*ex),
       actual:Math.round((cn.sc||0)*ex),pctBase:pctBase,
-      esubero:esuberoPrec,esuberoPrec:esuberoPrec,esuberoPrecUsed:esuberoPrec,
+      esuberoPrec:esuberoPrec,esuberoPrecUsed:esuberoPrec,
       targetSY:tg.sy!=null?Math.round(tg.sy*ex*100)/100:null,resultSY:cn.sy!=null?Math.round(cn.sy*ex*100)/100:null,
       targetQty:dp?(tg.qt||0):null,resultQty:dp?(cn.qc||0):null,
       syLastYear:dp?null:(syLy!=null?Math.round(syLy*ex*100)/100:null),
@@ -2200,9 +2204,8 @@ function exportStatsJsonStores(){
     {key:"name",label:"Negozio",type:"text"},
     {key:"target",label:"Target",type:"eur"},
     {key:"actual",label:"Consuntivo",type:"eur"},
-    {key:"esubero",label:"Esub. prec. (alias di esuberoPrec)",type:"eur-dash0"},
-    {key:"esuberoPrec",label:"Esub. riportato dal mese prec.",type:"eur-dash0"},
-    {key:"esuberoPrecUsed",label:"Esub. prec. usato (= esuberoPrec, sempre integrale)",type:"eur-dash0"},
+    {key:"esuberoPrec",label:"Esub. riportato dal mese prec. (unico dato disponibile — non esiste un secondo valore \"generato questo mese\")",type:"eur-dash0"},
+    {key:"esuberoPrecUsed",label:"Esub. prec. usato (= esuberoPrec, sempre integrale: l'app non traccia un usato parziale)",type:"eur-dash0"},
     {key:"targetSY",label:"Target SY",type:"dec1"},
     {key:"resultSY",label:"Risultato SY",type:"dec1"},
     {key:"targetQty",label:"Target Qty (solo dept, pezzi)",type:"int"},
@@ -2223,7 +2226,7 @@ function exportStatsJsonStores(){
   var payload={
     meta:{kind:"negozi",title:"Dati per Statistiche",
       subtitle:"Negozi "+(REGION==="italia"?"Italia":"International")+" — Consuntivo "+getMonthYearLabel(),
-      generatedAt:new Date().toISOString(),source:"BoggiIncentivi",schemaVersion:1},
+      generatedAt:new Date().toISOString(),source:"BoggiIncentivi",schemaVersion:2},
     columns:columns,
     rows:rows
   };
@@ -2246,7 +2249,7 @@ function exportStatsJsonFcvm(){
     var esuberoPrec=Math.round(r.totEsubero||0);
     return{kind:"fcvm",name:emp.n+" "+emp.c,role:emp.j,nStores:(r.stores||[]).length,target:Math.round(r.totTarget||0),
       actual:Math.round(pureCons),
-      esubero:esuberoPrec,esuberoPrec:esuberoPrec,esuberoPrecUsed:esuberoPrec,
+      esuberoPrec:esuberoPrec,esuberoPrecUsed:esuberoPrec,
       targetSY:r.syLyArea!=null?r.syLyArea:null,resultSY:r.syAreaCy!=null?r.syAreaCy:null,
       pctBase:pctBase,sasValue:Math.round((FC_AREA_SAS[emp.m]||{}).sasv_eur||0),
       recPct:sasMatrixPct((FC_AREA_SAS[emp.m]||{}).acc,(FC_AREA_SAS[emp.m]||{}).vel)!=null?Math.round(sasMatrixPct((FC_AREA_SAS[emp.m]||{}).acc,(FC_AREA_SAS[emp.m]||{}).vel)*100):null,
@@ -2262,9 +2265,8 @@ function exportStatsJsonFcvm(){
     {key:"nStores",label:"N. Negozi",type:"int"},
     {key:"target",label:"Target Area",type:"eur"},
     {key:"actual",label:"Consuntivo Area",type:"eur"},
-    {key:"esubero",label:"Esub. prec. (alias di esuberoPrec)",type:"eur-dash0"},
-    {key:"esuberoPrec",label:"Esub. riportato dal mese prec.",type:"eur-dash0"},
-    {key:"esuberoPrecUsed",label:"Esub. prec. usato (= esuberoPrec, sempre integrale)",type:"eur-dash0"},
+    {key:"esuberoPrec",label:"Esub. riportato dal mese prec. (unico dato disponibile — non esiste un secondo valore \"generato questo mese\")",type:"eur-dash0"},
+    {key:"esuberoPrecUsed",label:"Esub. prec. usato (= esuberoPrec, sempre integrale: l'app non traccia un usato parziale)",type:"eur-dash0"},
     {key:"targetSY",label:"SY LY (rif.)",type:"dec1"},
     {key:"resultSY",label:"SY CY",type:"dec1"},
     {key:"pctBase",label:"% senza SAS",type:"pctbar"},
@@ -2281,7 +2283,7 @@ function exportStatsJsonFcvm(){
   var payload={
     meta:{kind:"fcvm",title:"Dati per Statistiche",
       subtitle:"Field Coach + VM — Consuntivo "+getMonthYearLabel(),
-      generatedAt:new Date().toISOString(),source:"BoggiIncentivi",schemaVersion:1},
+      generatedAt:new Date().toISOString(),source:"BoggiIncentivi",schemaVersion:2},
     columns:columns,
     rows:rows
   };

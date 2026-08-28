@@ -386,12 +386,15 @@ function exportSasJsonFcvm(){
 // bottone "Esporta dati JSON per statistiche") ─────────────────────────────────────────────
 // Export indipendente da exportSasJsonStores/Fcvm (che restano invariati): stessa base di
 // calcolo (storeSasInfo/isRidottoStore/calcFcVmPremio, coerenza con i tab) ma con lo schema
-// concordato 28/08/2026 — aggiunge parachuteOk/syLastYear/targetQty/resultQty (negozi) e
-// chiarisce la semantica di "esubero" (è il riporto dal mese PRECEDENTE, non un dato di
-// questo mese: vedi commento su D.c[sid].es in src/32-import-xlsx). esuberoPrecUsed è sempre
-// uguale a esuberoPrec perché l'app non traccia un "usato parziale" per il fatturato (a
-// differenza della riserva SAS): l'esubero si somma sempre per intero, senza cap/riserva
-// residua (comportamento confermato intenzionale, 25/08/2026).
+// concordato 28/08/2026 — aggiunge parachuteOk/syLastYear/targetQty/resultQty (negozi).
+// C'è un solo campo esubero nell'app (D.c[sid].es, vedi src/32-import-xlsx): è il riporto
+// dal mese PRECEDENTE (non un dato "di questo mese" — confermato da import USA "esubero
+// mese precedente" e dal box lettera "carry-over mese precedente"), quindi esposto SOLO
+// come esuberoPrec (niente alias "esubero" duplicato, tolto il 28/08/2026 su segnalazione
+// del consumer esterno che lo trovava sempre identico). esuberoPrecUsed è sempre uguale a
+// esuberoPrec perché l'app non traccia un "usato parziale" per il fatturato (a differenza
+// della riserva SAS): l'esubero si somma sempre per intero, senza cap/riserva residua
+// (comportamento confermato intenzionale, 25/08/2026).
 // Export per negozio (mensile, consuntivo, da luglio 2026)
 function exportStatsJsonStores(){
   var storeNames={},storeEx={};
@@ -421,7 +424,7 @@ function exportStatsJsonStores(){
     var parachuteOk=dp?((tg.qt||0)>0&&(cn.qc||0)>=(tg.qt||0)):((cn.sy||0)>(syLy||0)&&(syLy||0)>0);
     return{kind:"negozi",sid:sid,name:storeNames[sid],target:Math.round(info.to*ex),
       actual:Math.round((cn.sc||0)*ex),pctBase:pctBase,
-      esubero:esuberoPrec,esuberoPrec:esuberoPrec,esuberoPrecUsed:esuberoPrec,
+      esuberoPrec:esuberoPrec,esuberoPrecUsed:esuberoPrec,
       targetSY:tg.sy!=null?Math.round(tg.sy*ex*100)/100:null,resultSY:cn.sy!=null?Math.round(cn.sy*ex*100)/100:null,
       targetQty:dp?(tg.qt||0):null,resultQty:dp?(cn.qc||0):null,
       syLastYear:dp?null:(syLy!=null?Math.round(syLy*ex*100)/100:null),
@@ -438,9 +441,8 @@ function exportStatsJsonStores(){
     {key:"name",label:"Negozio",type:"text"},
     {key:"target",label:"Target",type:"eur"},
     {key:"actual",label:"Consuntivo",type:"eur"},
-    {key:"esubero",label:"Esub. prec. (alias di esuberoPrec)",type:"eur-dash0"},
-    {key:"esuberoPrec",label:"Esub. riportato dal mese prec.",type:"eur-dash0"},
-    {key:"esuberoPrecUsed",label:"Esub. prec. usato (= esuberoPrec, sempre integrale)",type:"eur-dash0"},
+    {key:"esuberoPrec",label:"Esub. riportato dal mese prec. (unico dato disponibile — non esiste un secondo valore \"generato questo mese\")",type:"eur-dash0"},
+    {key:"esuberoPrecUsed",label:"Esub. prec. usato (= esuberoPrec, sempre integrale: l'app non traccia un usato parziale)",type:"eur-dash0"},
     {key:"targetSY",label:"Target SY",type:"dec1"},
     {key:"resultSY",label:"Risultato SY",type:"dec1"},
     {key:"targetQty",label:"Target Qty (solo dept, pezzi)",type:"int"},
@@ -461,7 +463,7 @@ function exportStatsJsonStores(){
   var payload={
     meta:{kind:"negozi",title:"Dati per Statistiche",
       subtitle:"Negozi "+(REGION==="italia"?"Italia":"International")+" — Consuntivo "+getMonthYearLabel(),
-      generatedAt:new Date().toISOString(),source:"BoggiIncentivi",schemaVersion:1},
+      generatedAt:new Date().toISOString(),source:"BoggiIncentivi",schemaVersion:2},
     columns:columns,
     rows:rows
   };
@@ -484,7 +486,7 @@ function exportStatsJsonFcvm(){
     var esuberoPrec=Math.round(r.totEsubero||0);
     return{kind:"fcvm",name:emp.n+" "+emp.c,role:emp.j,nStores:(r.stores||[]).length,target:Math.round(r.totTarget||0),
       actual:Math.round(pureCons),
-      esubero:esuberoPrec,esuberoPrec:esuberoPrec,esuberoPrecUsed:esuberoPrec,
+      esuberoPrec:esuberoPrec,esuberoPrecUsed:esuberoPrec,
       targetSY:r.syLyArea!=null?r.syLyArea:null,resultSY:r.syAreaCy!=null?r.syAreaCy:null,
       pctBase:pctBase,sasValue:Math.round((FC_AREA_SAS[emp.m]||{}).sasv_eur||0),
       recPct:sasMatrixPct((FC_AREA_SAS[emp.m]||{}).acc,(FC_AREA_SAS[emp.m]||{}).vel)!=null?Math.round(sasMatrixPct((FC_AREA_SAS[emp.m]||{}).acc,(FC_AREA_SAS[emp.m]||{}).vel)*100):null,
@@ -500,9 +502,8 @@ function exportStatsJsonFcvm(){
     {key:"nStores",label:"N. Negozi",type:"int"},
     {key:"target",label:"Target Area",type:"eur"},
     {key:"actual",label:"Consuntivo Area",type:"eur"},
-    {key:"esubero",label:"Esub. prec. (alias di esuberoPrec)",type:"eur-dash0"},
-    {key:"esuberoPrec",label:"Esub. riportato dal mese prec.",type:"eur-dash0"},
-    {key:"esuberoPrecUsed",label:"Esub. prec. usato (= esuberoPrec, sempre integrale)",type:"eur-dash0"},
+    {key:"esuberoPrec",label:"Esub. riportato dal mese prec. (unico dato disponibile — non esiste un secondo valore \"generato questo mese\")",type:"eur-dash0"},
+    {key:"esuberoPrecUsed",label:"Esub. prec. usato (= esuberoPrec, sempre integrale: l'app non traccia un usato parziale)",type:"eur-dash0"},
     {key:"targetSY",label:"SY LY (rif.)",type:"dec1"},
     {key:"resultSY",label:"SY CY",type:"dec1"},
     {key:"pctBase",label:"% senza SAS",type:"pctbar"},
@@ -519,7 +520,7 @@ function exportStatsJsonFcvm(){
   var payload={
     meta:{kind:"fcvm",title:"Dati per Statistiche",
       subtitle:"Field Coach + VM — Consuntivo "+getMonthYearLabel(),
-      generatedAt:new Date().toISOString(),source:"BoggiIncentivi",schemaVersion:1},
+      generatedAt:new Date().toISOString(),source:"BoggiIncentivi",schemaVersion:2},
     columns:columns,
     rows:rows
   };
