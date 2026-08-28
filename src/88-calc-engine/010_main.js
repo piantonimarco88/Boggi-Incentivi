@@ -10,8 +10,18 @@ var USA_P={
   "SCS":{noTargetMult:0.4,targetMult:1.0,useStore:false},"STK":{noTargetMult:0.4,targetMult:1.0,useStore:true}
 };
 
+// Regola speciale USA (richiesta 28/08/2026): per questi due dipendenti la commissione
+// raddoppia (es. 1%→2%) quando il negozio raggiunge il target di fatturato — match per nome/cognome.
+var USA_COMM_DOPPIA=[{c:"HERNANDEZ",n:"LUIS"},{c:"IBERLUCEA RIVAS",n:"JUAN MANUEL"}];
+function isUsaCommDoppia(e){
+  var c=(e.c||"").trim().toUpperCase(),n=(e.n||"").trim().toUpperCase();
+  return USA_COMM_DOPPIA.some(function(x){return x.c===c&&x.n===n});
+}
+function usaTargetMult(e,rp){return isUsaCommDoppia(e)?rp.targetMult*2:rp.targetMult;}
+function usaMult(e,storeHit,rp){return storeHit?usaTargetMult(e,rp):rp.noTargetMult;}
+
 // calcUSA: commission% from anagrafica (ud.cm). Base from role toggle (store or personal).
-// Target hit -> 100% commission. Not hit -> noTargetMult%. No esubero for USA.
+// Target hit -> 100% commission (raddoppiata per USA_COMM_DOPPIA). Not hit -> noTargetMult%. No esubero for USA.
 function calcUSA(e){
   var ud=(D.usa||{})[e.m];if(!ud)return 0;
   var sid=String(e.si),tg=D.t[sid],cn=D.c[sid];
@@ -37,7 +47,7 @@ function calcUSA(e){
     if(MODE==="preventivo"&&base===0){base=0} // preventivo USA: non stimiamo
   }
 
-  var mult=storeHit?rp.targetMult:rp.noTargetMult;
+  var mult=usaMult(e,storeHit,rp);
   return Math.round(base*cm*mult*100)/100;
 }
 

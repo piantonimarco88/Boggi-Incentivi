@@ -7,7 +7,7 @@ function buildLetterUSA(e){
   var rp=USA_P[job]||{noTargetMult:0.4,targetMult:1.0,useStore:false};
   var usaDept=ud.isDept||(STORE_FLAGS[sid]&&STORE_FLAGS[sid].usaDept);
   var useStoreSales=rp.useStore||usaDept;
-  var tPct=(rp.targetMult*100).toFixed(0),ntPct=(rp.noTargetMult*100).toFixed(0);
+  var tPct=(usaTargetMult(e,rp)*100).toFixed(0),ntPct=(rp.noTargetMult*100).toFixed(0);
   var baseType=useStoreSales?"STORE SALES":"PERSONAL SALES";
   var lang="INGLESE"; // USA always English
   var gr="Hi";
@@ -46,7 +46,7 @@ function buildLetterUSA(e){
     else storeHit=ud.sb===1;
     if(e.ov_b100==="SI")storeHit=true;
     var base=useStoreSales?(cn.sc||0):(ud.ps||0);
-    var mult=storeHit?rp.targetMult:rp.noTargetMult;
+    var mult=usaMult(e,storeHit,rp);
     var prize=Math.round(base*cm*mult*100)/100;
 
     h+='<div class="lt-kpi">';

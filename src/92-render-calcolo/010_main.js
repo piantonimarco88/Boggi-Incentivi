@@ -456,7 +456,7 @@ function exportExcelUSA(){
     // Store hit logic (incl. esubero mese precedente USA da luglio 2026)
     var storePct=tg.to>0?((cn.sc||0)+(sasNewActive()?cn.esP||0:0))/tg.to:0;
     var storeHit=(tg.to>0&&cn.sc)?storePct>=PARAMS.bdg100:(ud.sb===1);
-    var mult=storeHit?rp.targetMult:rp.noTargetMult;
+    var mult=usaMult(e,storeHit,rp);
 
     // Base for calculation
     var base=useStoreSales?(cn.sc||0):(ud.ps||0);
