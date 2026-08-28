@@ -4563,7 +4563,7 @@ const ALERT_COMPL_SEM={cSySem:'Shopper Yield (sem.)',cUptSem:'UPT (sem.)',cSubSe
 // USA esclusi dal perimetro analisi.
 const DEPT_STORE_IDS=new Set([
   1187,1188,1189,1190,1191,1192,1194,1197,1198, // ECI Spagna
-  1303,1304,1305,1326,1327,1328,1329,1339,1347,1348,1349, // ECI Spagna (2)
+  1303,1304,1305,1326,1327,1328,1329,1339,1347,1348,1349,1350, // ECI Spagna (2) — 1350 Santander aggiunto il 28/08/2026, mancava (trovato via targetQty/resultQty nel JSON reale)
   1338, // ECI Porto (Portogallo)
   1310,1311, // ILLUM Copenaghen (Danimarca) — 1311 = stessa location formato alternativo
   1312,1344, // Selfridges UK
@@ -5291,22 +5291,32 @@ function renderSas(){
   // come 0.9996 si vede scritto "100.0%" ma restava colorato arancio perché il raw <1.
   const pctCls=p=>{const r=+(p*100).toFixed(1);return r>=100?'good':(r>=95?'warn':'bad');};
   const esitoChip=r=>'<span class="sas-esito '+r.esito+'">'+agEsc(r.esitoLabel||r.esito)+'</span>';
-  // ATTENZIONE (25/08/2026): targetSY/resultSY NON è il confronto che decide il salvagente 60% del
-  // premio BDG — verificato sui dati reali che NON correla con `esito` (es. store con delta SY molto
-  // negativo hanno esito "full", altri con delta molto positivo hanno esito "none": vedi CRANS, 1103,
-  // delta -4.0 ma esito "ridotto" = ha comunque preso il salvagente, coerente con l'app incentivi/lettera
-  // reale — solo il NOSTRO delta SY sembrava dire il contrario). L'ESITO è sempre la fonte autorevole
-  // per "ha preso il salvagente o no" — questa colonna resta puramente informativa sul KPI SY/QTY
-  // grezzo, MAI da leggere come "verde=salvagente ok, rosso=salvagente fallito".
-  // Per i dept store il JSON SAS esporta solo targetSY/resultSY (sempre 0/0, loro usano QTY non SY).
-  // Prima mostravamo comunque "0.0 (+0.0)" verde: sembrava un vero zero raggiunto, non "KPI diverso,
-  // non ancora disponibile". Mostriamo un placeholder esplicito finché il tool esterno non esporta
-  // anche targetQty/resultQty.
+  // FIX (28/08/2026): il delta mostrato ora confronta resultSY con syLastYear (SY anno precedente,
+  // nuovo campo esportato dal tool esterno su richiesta) — NON più con targetSY. Verificato sui dati
+  // reali (agosto 2026, 52 negozi con syLastYear disponibile): resultSY>syLastYear coincide ESATTAMENTE
+  // (0 discrepanze) con `parachuteOk`, cioè col vero esito del salvagente 60% — a differenza del vecchio
+  // confronto vs targetSY, che NON correlava affatto con l'Esito (vedi CRANS, 1103: col vecchio delta
+  // sembrava aver fallito il salvagente quando in realtà lo aveva superato). Il colore verde/rosso ORA
+  // è affidabile. Se syLastYear manca (negozio senza storico, es. aperture recenti) mostriamo "(n/d)"
+  // grigio invece di indovinare — mai un colore su un confronto che non abbiamo.
+  // Per i dept store: QTY reale (targetQty/resultQty, in pezzi) se disponibile; "—" se il negozio ha
+  // targetQty mancante/incompleto nel file (es. 0 con un risultato valorizzato, dato chiaramente sporco).
   const syCell=r=>{
     if(sasView==='negozi'&&(typeof isDeptStore==='function')&&isDeptStore(r.sid)){
-      return '<span class="dash" title="Dept store: qui si userebbe la QTY, non la SY — dato QTY non ancora esportato dal tool SAS esterno. Per il salvagente 60% guarda comunque la colonna Esito, non questa colonna.">—</span>';
+      if(r.targetQty>0&&r.resultQty!=null){
+        const d=r.resultQty-r.targetQty;
+        return r.resultQty+' <small style="color:'+(d>=0?'#16a34a':'#dc2626')+'" title="Target QTY: '+r.targetQty+'">('+(d>=0?'+':'')+d+')</small>';
+      }
+      return '<span class="dash" title="Dept store: dato QTY mancante o incompleto per questo negozio nel file SAS.">—</span>';
     }
-    const rs=r.resultSY||0,d=rs-(r.targetSY||0);return rs.toFixed(1)+' <small style="color:'+(d>=0?'#16a34a':'#dc2626')+'">('+(d>=0?'+':'')+d.toFixed(1)+')</small>';};
+    if(r.resultSY==null)return '<span class="dash">—</span>';
+    const rs=r.resultSY;
+    if(r.syLastYear!=null){
+      const d=rs-r.syLastYear;
+      return rs.toFixed(1)+' <small style="color:'+(d>=0?'#16a34a':'#dc2626')+'" title="Anno precedente: '+r.syLastYear.toFixed(1)+'">('+(d>=0?'+':'')+d.toFixed(1)+')</small>';
+    }
+    return rs.toFixed(1)+' <small style="color:#999" title="SY anno precedente non disponibile per questo negozio">(n/d)</small>';
+  };
   const bdgCell=r=>{
     if(!r._bdg)return{disp:'<span class="dash">—</span>',val:-1};
     const h=r._bdg,cls=h.pct>=70?'hi':h.pct>=45?'mid':'lo';
@@ -5321,7 +5331,7 @@ function renderSas(){
     :[{label:'Nome',filter:'text'},{label:'Ruolo',filter:'select'},{label:'N. Negozi',align:'right',filter:'none'}];
   const cols=identCols.concat([
     {label:'Target',align:'right',filter:'none'},{label:'Consuntivo',align:'right',filter:'none'},{label:'Esub. prec.',align:'right',filter:'none'},
-    {label:'SY/QTY <span class="info-tip" data-tip="Shopper Yield (negozi normali) o QTY (dept store, non ancora esportato dal tool SAS esterno — mostra —).&#10;NON è il confronto che decide il salvagente 60% del premio BDG (verificato: non correla con la colonna Esito) — è solo un KPI informativo. Per il salvagente guarda sempre la colonna Esito.">i</span>',align:'right',filter:'none'},{label:'% no SAS',align:'right',filter:'none'},{label:'Valore SAS',align:'right',filter:'none'},
+    {label:'SY/QTY <span class="info-tip" data-tip="Shopper Yield vs anno precedente (negozi normali) o QTY vs target (dept store, in pezzi).&#10;Il colore riflette il vero confronto usato per il salvagente 60% del premio BDG (verificato sui dati reali). Se manca lo storico anno precedente mostra (n/d) invece di un colore indovinato.">i</span>',align:'right',filter:'none'},{label:'% no SAS',align:'right',filter:'none'},{label:'Valore SAS',align:'right',filter:'none'},
     {label:'Ricon.',align:'right',filter:'none'},{label:'SAS prec.',align:'right',filter:'none'},{label:'SAS usata',align:'right',filter:'none'},
     {label:'Applicato',align:'right',filter:'none'},{label:'SAS succ.',align:'right',filter:'none'},{label:'% finale',align:'right',filter:'none'},
     {label:'Esito',filter:'select'},{label:'BDG stor.',align:'right',filter:'none'},
@@ -5356,7 +5366,10 @@ function sasExport(){
     const o={};
     if(sasView==='negozi'){o['Store ID']=r.sid;o['Negozio']=r.name;}else{o['Nome']=r.name;o['Ruolo']=r.role;o['N. Negozi']=r.nStores;}
     return Object.assign(o,{'Target':Math.round(r.target),'Consuntivo':Math.round(r.actual),'Esub. prec.':Math.round(r.esubero||0),
-      'Target SY':r.targetSY,'Risultato SY':r.resultSY,'% senza SAS':+((r.pctBase||0)*100).toFixed(1),'Valore SAS':Math.round(r.sasValue),
+      'Target SY':r.targetSY,'Risultato SY':r.resultSY,'SY anno prec.':r.syLastYear==null?'':r.syLastYear},
+      sasView==='negozi'?{'Target QTY':r.targetQty==null?'':r.targetQty,'Risultato QTY':r.resultQty==null?'':r.resultQty}:{},
+      {'Salvagente 60% OK':r.parachuteOk==null?'':(r.parachuteOk?'Sì':'No'),
+      '% senza SAS':+((r.pctBase||0)*100).toFixed(1),'Valore SAS':Math.round(r.sasValue),
       'Riconosciuto %':r.recPct,'Esub. SAS prec.':Math.round(r.esuberoSasPrec||0),'Esub. SAS prec. usata':Math.round(r.esuberoSasPrecUsed||0),
       'Valore riconosciuto':Math.round(r.recValue),'Applicato':Math.round(r.applied),'Riserva SAS succ.':Math.round(r.sasReserveNext||0),
       '% finale':+((r.pctFinal||0)*100).toFixed(1),'Esito':r.esitoLabel,'Determinante':r.determinante?'Sì':'No'});
