@@ -5291,14 +5291,20 @@ function renderSas(){
   // come 0.9996 si vede scritto "100.0%" ma restava colorato arancio perché il raw <1.
   const pctCls=p=>{const r=+(p*100).toFixed(1);return r>=100?'good':(r>=95?'warn':'bad');};
   const esitoChip=r=>'<span class="sas-esito '+r.esito+'">'+agEsc(r.esitoLabel||r.esito)+'</span>';
-  // Salvagente per il 60% del premio BDG: Shopper Yield nei negozi normali, QTY nei dept store — il
-  // JSON SAS esporta solo targetSY/resultSY (sempre 0/0 per i dept store, che non hanno SY). Prima
-  // mostravamo comunque "0.0 (+0.0)" verde: sembrava un vero zero raggiunto, non "KPI diverso, non
-  // ancora disponibile". Per i dept store (solo vista Negozi, dove sid identifica il negozio) mostriamo
-  // un placeholder esplicito finché il tool esterno non esporta anche targetQty/resultQty.
+  // ATTENZIONE (25/08/2026): targetSY/resultSY NON è il confronto che decide il salvagente 60% del
+  // premio BDG — verificato sui dati reali che NON correla con `esito` (es. store con delta SY molto
+  // negativo hanno esito "full", altri con delta molto positivo hanno esito "none": vedi CRANS, 1103,
+  // delta -4.0 ma esito "ridotto" = ha comunque preso il salvagente, coerente con l'app incentivi/lettera
+  // reale — solo il NOSTRO delta SY sembrava dire il contrario). L'ESITO è sempre la fonte autorevole
+  // per "ha preso il salvagente o no" — questa colonna resta puramente informativa sul KPI SY/QTY
+  // grezzo, MAI da leggere come "verde=salvagente ok, rosso=salvagente fallito".
+  // Per i dept store il JSON SAS esporta solo targetSY/resultSY (sempre 0/0, loro usano QTY non SY).
+  // Prima mostravamo comunque "0.0 (+0.0)" verde: sembrava un vero zero raggiunto, non "KPI diverso,
+  // non ancora disponibile". Mostriamo un placeholder esplicito finché il tool esterno non esporta
+  // anche targetQty/resultQty.
   const syCell=r=>{
     if(sasView==='negozi'&&(typeof isDeptStore==='function')&&isDeptStore(r.sid)){
-      return '<span class="dash" title="Dept store: il salvagente 60% BDG usa QTY, non SY — dato QTY non ancora esportato dal tool SAS esterno">—</span>';
+      return '<span class="dash" title="Dept store: qui si userebbe la QTY, non la SY — dato QTY non ancora esportato dal tool SAS esterno. Per il salvagente 60% guarda comunque la colonna Esito, non questa colonna.">—</span>';
     }
     const rs=r.resultSY||0,d=rs-(r.targetSY||0);return rs.toFixed(1)+' <small style="color:'+(d>=0?'#16a34a':'#dc2626')+'">('+(d>=0?'+':'')+d.toFixed(1)+')</small>';};
   const bdgCell=r=>{
@@ -5315,7 +5321,7 @@ function renderSas(){
     :[{label:'Nome',filter:'text'},{label:'Ruolo',filter:'select'},{label:'N. Negozi',align:'right',filter:'none'}];
   const cols=identCols.concat([
     {label:'Target',align:'right',filter:'none'},{label:'Consuntivo',align:'right',filter:'none'},{label:'Esub. prec.',align:'right',filter:'none'},
-    {label:'SY/QTY <span class="info-tip" data-tip="Salvagente per raggiungere il 60% del premio BDG: Shopper Yield nei negozi normali, QTY nei dept store.&#10;Per i dept store il tool SAS esterno non esporta ancora il dato QTY — mostrano — invece di un falso 0.">i</span>',align:'right',filter:'none'},{label:'% no SAS',align:'right',filter:'none'},{label:'Valore SAS',align:'right',filter:'none'},
+    {label:'SY/QTY <span class="info-tip" data-tip="Shopper Yield (negozi normali) o QTY (dept store, non ancora esportato dal tool SAS esterno — mostra —).&#10;NON è il confronto che decide il salvagente 60% del premio BDG (verificato: non correla con la colonna Esito) — è solo un KPI informativo. Per il salvagente guarda sempre la colonna Esito.">i</span>',align:'right',filter:'none'},{label:'% no SAS',align:'right',filter:'none'},{label:'Valore SAS',align:'right',filter:'none'},
     {label:'Ricon.',align:'right',filter:'none'},{label:'SAS prec.',align:'right',filter:'none'},{label:'SAS usata',align:'right',filter:'none'},
     {label:'Applicato',align:'right',filter:'none'},{label:'SAS succ.',align:'right',filter:'none'},{label:'% finale',align:'right',filter:'none'},
     {label:'Esito',filter:'select'},{label:'BDG stor.',align:'right',filter:'none'},
