@@ -10,6 +10,7 @@ function rC(){
   if(REGION==="international"&&MODE==="consuntivo")mL+=' <button class="exp-btn btn-amber" onclick="exportExcelUSA()" style="font-size:10px;padding:4px 12px">&#127482;&#127480; Export Excel USA</button>';
   if(MODE==="consuntivo"&&typeof sasNewActive==='function'&&sasNewActive())mL+=' <button class="exp-btn btn-violet" onclick="exportSasJsonStores()" style="font-size:10px;padding:4px 12px" title="JSON con target/consuntivo/SAS per negozio, per import in statistiche">&#128202; Esporta SAS Negozi (JSON)</button>';
   if(MODE==="consuntivo"&&typeof sasNewActive==='function'&&sasNewActive())mL+=' <button class="exp-btn" onclick="exportSasReserveStores()" style="font-size:10px;padding:4px 12px" title="Excel con la riserva SAS non utilizzata questo mese, da ricaricare il mese prossimo (Carica Excel Results)">&#128230; Esporta Riserva SAS Negozi</button>';
+  if(MODE==="consuntivo"&&typeof sasNewActive==='function'&&sasNewActive())mL+=' <button class="exp-btn btn-violet" onclick="exportStatsJsonStores()" style="font-size:10px;padding:4px 12px" title="JSON esteso (parachuteOk, Qty dept store, esubero riportato dal mese prec.) per il progetto statistiche esterno">&#128202; Esporta dati JSON per statistiche</button>';
   var fl=E.filter(function(e){if(cF.j!=="ALL"&&e.j!==cF.j)return false;if(cF.s!=="ALL"&&e.s!==cF.s)return false;
     if(cF.q){var q=cF.q.toLowerCase();return(e.c&&e.c.toLowerCase().indexOf(q)>=0)||(e.n&&e.n.toLowerCase().indexOf(q)>=0)||(e.m&&e.m.toLowerCase().indexOf(q)>=0)||(e.s&&e.s.toLowerCase().indexOf(q)>=0)}return true});
   fl.sort(function(a,b){var va,vb,col=cSort.col;
@@ -379,6 +380,150 @@ function exportSasJsonFcvm(){
     rows:rows
   };
   _downloadJson(payload,"sas_fcvm_"+_sessionFileTag()+".json");
+}
+
+// ── Export dati JSON per statistiche esterne (schema concordato col progetto statistiche,
+// bottone "Esporta dati JSON per statistiche") ─────────────────────────────────────────────
+// Export indipendente da exportSasJsonStores/Fcvm (che restano invariati): stessa base di
+// calcolo (storeSasInfo/isRidottoStore/calcFcVmPremio, coerenza con i tab) ma con lo schema
+// concordato 28/08/2026 — aggiunge parachuteOk/syLastYear/targetQty/resultQty (negozi) e
+// chiarisce la semantica di "esubero" (è il riporto dal mese PRECEDENTE, non un dato di
+// questo mese: vedi commento su D.c[sid].es in src/32-import-xlsx). esuberoPrecUsed è sempre
+// uguale a esuberoPrec perché l'app non traccia un "usato parziale" per il fatturato (a
+// differenza della riserva SAS): l'esubero si somma sempre per intero, senza cap/riserva
+// residua (comportamento confermato intenzionale, 25/08/2026).
+// Export per negozio (mensile, consuntivo, da luglio 2026)
+function exportStatsJsonStores(){
+  var storeNames={},storeEx={};
+  E.forEach(function(e){if(e.si){if(!storeNames[e.si])storeNames[e.si]=e.s||String(e.si);if(storeEx[e.si]===undefined)storeEx[e.si]=e.ex||1;}});
+  var sids=Object.keys(storeNames).filter(function(sid){
+    if(isUSA(sid,{si:sid,cu:''}))return false; // USA non usa la matrice SAS
+    var info=storeSasInfo(sid);
+    return info.active&&(info.to>0||info.base>0);
+  });
+  if(!sids.length){alert("Nessun negozio con dati SAS+fatturato disponibili.\nCarica Target, Risultati BDG e SAS dal tab Fonti Dati.");return;}
+  var rows=sids.map(function(sid){
+    var info=storeSasInfo(sid);
+    var tg=D.t[sid]||{},cn=D.c[sid]||{};
+    var ex=storeEx[sid]||1;
+    var pctBase=info.to>0?info.base/info.to:0;
+    var pctFinal=info.pct;
+    var determinante=pctBase<PARAMS.bdg100&&pctFinal>=PARAMS.bdg100;
+    var esito=pctFinal>=PARAMS.bdg100?"full":(isRidottoStore(sid)?"ridotto":"none");
+    var esitoLabel=esito==="full"?"Pieno":(esito==="ridotto"?"Ridotto 60%":"Nessuno");
+    var resInUsed=Math.min(info.reserveIn||0,info.used||0);
+    var esuberoPrec=Math.round((cn.es||0)*ex);
+    var dp=isD(sid);
+    // parachuteOk: confronto nudo, indipendente dalla fascia 60-100% (può risultare true/false
+    // anche quando il salvagente non è rilevante, es. negozio già al target). Stessa formula
+    // di isRidottoStore ma senza il gate sulla fascia — vedi src/88-calc-engine isRidottoStore.
+    var syLy=MONTHLY_SYLY[sid];
+    var parachuteOk=dp?((tg.qt||0)>0&&(cn.qc||0)>=(tg.qt||0)):((cn.sy||0)>(syLy||0)&&(syLy||0)>0);
+    return{kind:"negozi",sid:sid,name:storeNames[sid],target:Math.round(info.to*ex),
+      actual:Math.round((cn.sc||0)*ex),pctBase:pctBase,
+      esubero:esuberoPrec,esuberoPrec:esuberoPrec,esuberoPrecUsed:esuberoPrec,
+      targetSY:tg.sy!=null?Math.round(tg.sy*ex*100)/100:null,resultSY:cn.sy!=null?Math.round(cn.sy*ex*100)/100:null,
+      targetQty:dp?(tg.qt||0):null,resultQty:dp?(cn.qc||0):null,
+      syLastYear:dp?null:(syLy!=null?Math.round(syLy*ex*100)/100:null),
+      parachuteOk:parachuteOk,
+      sasValue:Math.round((info.sasv||0)*ex),recPct:info.pctMatrix!=null?Math.round(info.pctMatrix*100):null,
+      recValue:Math.round((info.recognized||0)*ex),applied:Math.round((info.used||0)*ex),
+      esuberoSasPrec:Math.round((info.reserveIn||0)*ex),esuberoSasPrecUsed:Math.round(resInUsed*ex),
+      sasReserveNext:Math.round((info.reserveOut||0)*ex),pctFinal:pctFinal,
+      esito:esito,esitoLabel:esitoLabel,determinante:determinante};
+  });
+  var columns=[
+    {key:"kind",label:"Tipo",type:"mono"},
+    {key:"sid",label:"Store ID",type:"mono"},
+    {key:"name",label:"Negozio",type:"text"},
+    {key:"target",label:"Target",type:"eur"},
+    {key:"actual",label:"Consuntivo",type:"eur"},
+    {key:"esubero",label:"Esub. prec. (alias di esuberoPrec)",type:"eur-dash0"},
+    {key:"esuberoPrec",label:"Esub. riportato dal mese prec.",type:"eur-dash0"},
+    {key:"esuberoPrecUsed",label:"Esub. prec. usato (= esuberoPrec, sempre integrale)",type:"eur-dash0"},
+    {key:"targetSY",label:"Target SY",type:"dec1"},
+    {key:"resultSY",label:"Risultato SY",type:"dec1"},
+    {key:"targetQty",label:"Target Qty (solo dept, pezzi)",type:"int"},
+    {key:"resultQty",label:"Risultato Qty (solo dept, pezzi)",type:"int"},
+    {key:"syLastYear",label:"SY anno precedente (solo negozi normali)",type:"dec1"},
+    {key:"parachuteOk",label:"Salvagente 60% — confronto OK",type:"bool"},
+    {key:"pctBase",label:"% senza SAS",type:"pctbar"},
+    {key:"sasValue",label:"Valore SAS",type:"eur-muted"},
+    {key:"recPct",label:"Riconosciuto",type:"pct0"},
+    {key:"recValue",label:"Valore ricon.",type:"eur-muted-dash0"},
+    {key:"applied",label:"Applicato",type:"eur-dash0"},
+    {key:"esuberoSasPrec",label:"Riserva SAS prec.",type:"eur-dash0"},
+    {key:"esuberoSasPrecUsed",label:"Riserva SAS prec. usata",type:"eur-dash0"},
+    {key:"sasReserveNext",label:"Riserva SAS riportata",type:"eur-dash0"},
+    {key:"pctFinal",label:"% finale",type:"pctbar-badge"},
+    {key:"esito",label:"Esito",type:"esitochip"}
+  ];
+  var payload={
+    meta:{kind:"negozi",title:"Dati per Statistiche",
+      subtitle:"Negozi "+(REGION==="italia"?"Italia":"International")+" — Consuntivo "+getMonthYearLabel(),
+      generatedAt:new Date().toISOString(),source:"BoggiIncentivi",schemaVersion:1},
+    columns:columns,
+    rows:rows
+  };
+  _downloadJson(payload,"stats_negozi_"+_sessionFileTag()+".json");
+}
+
+// Export per area Field Coach/VM (FC+VM, consuntivo, da luglio 2026)
+function exportStatsJsonFcvm(){
+  var pool=getFcVmPool();
+  if(!pool.length){alert("Nessun dato FC+VM caricato.");return;}
+  var rows=pool.map(function(emp){
+    var r=calcFcVmPremio(emp.m);
+    var pureCons=(r.totCons||0)-(r.totSasUsed||0);
+    var pctBase=r.totTarget>0?(pureCons+(r.totEsubero||0))/r.totTarget:0;
+    var pctFinal=r.pct||0;
+    var determinante=pctBase<FCVM_PARAMS.soglia100&&pctFinal>=FCVM_PARAMS.soglia100;
+    var esitoMap={full:["full","Pieno"],partial:["ridotto","Ridotto 60%"],partial_nosy:["none","Soglia/no SY"],none:["none","Nessuno"],sospeso:["none","Sospeso"],preventivo:["none","—"]};
+    var em=esitoMap[r.esito]||["none",r.esito];
+    var resInUsed=Math.min(r.totSasReserveIn||0,r.totSasUsed||0);
+    var esuberoPrec=Math.round(r.totEsubero||0);
+    return{kind:"fcvm",name:emp.n+" "+emp.c,role:emp.j,nStores:(r.stores||[]).length,target:Math.round(r.totTarget||0),
+      actual:Math.round(pureCons),
+      esubero:esuberoPrec,esuberoPrec:esuberoPrec,esuberoPrecUsed:esuberoPrec,
+      targetSY:r.syLyArea!=null?r.syLyArea:null,resultSY:r.syAreaCy!=null?r.syAreaCy:null,
+      pctBase:pctBase,sasValue:Math.round((FC_AREA_SAS[emp.m]||{}).sasv_eur||0),
+      recPct:sasMatrixPct((FC_AREA_SAS[emp.m]||{}).acc,(FC_AREA_SAS[emp.m]||{}).vel)!=null?Math.round(sasMatrixPct((FC_AREA_SAS[emp.m]||{}).acc,(FC_AREA_SAS[emp.m]||{}).vel)*100):null,
+      recValue:Math.round(r.totSasRec||0),applied:Math.round(r.totSasUsed||0),
+      esuberoSasPrec:Math.round(r.totSasReserveIn||0),esuberoSasPrecUsed:Math.round(resInUsed),
+      sasReserveNext:Math.round(r.totSasReserveOut||0),pctFinal:pctFinal,
+      esito:em[0],esitoLabel:em[1],determinante:determinante};
+  });
+  var columns=[
+    {key:"kind",label:"Tipo",type:"mono"},
+    {key:"name",label:"Nome",type:"text"},
+    {key:"role",label:"Ruolo",type:"mono"},
+    {key:"nStores",label:"N. Negozi",type:"int"},
+    {key:"target",label:"Target Area",type:"eur"},
+    {key:"actual",label:"Consuntivo Area",type:"eur"},
+    {key:"esubero",label:"Esub. prec. (alias di esuberoPrec)",type:"eur-dash0"},
+    {key:"esuberoPrec",label:"Esub. riportato dal mese prec.",type:"eur-dash0"},
+    {key:"esuberoPrecUsed",label:"Esub. prec. usato (= esuberoPrec, sempre integrale)",type:"eur-dash0"},
+    {key:"targetSY",label:"SY LY (rif.)",type:"dec1"},
+    {key:"resultSY",label:"SY CY",type:"dec1"},
+    {key:"pctBase",label:"% senza SAS",type:"pctbar"},
+    {key:"sasValue",label:"Valore SAS",type:"eur-muted"},
+    {key:"recPct",label:"Riconosciuto",type:"pct0"},
+    {key:"recValue",label:"Valore ricon.",type:"eur-muted-dash0"},
+    {key:"applied",label:"Applicato",type:"eur-dash0"},
+    {key:"esuberoSasPrec",label:"Riserva SAS prec.",type:"eur-dash0"},
+    {key:"esuberoSasPrecUsed",label:"Riserva SAS prec. usata",type:"eur-dash0"},
+    {key:"sasReserveNext",label:"Riserva SAS riportata",type:"eur-dash0"},
+    {key:"pctFinal",label:"% finale",type:"pctbar-badge"},
+    {key:"esito",label:"Esito",type:"esitochip"}
+  ];
+  var payload={
+    meta:{kind:"fcvm",title:"Dati per Statistiche",
+      subtitle:"Field Coach + VM — Consuntivo "+getMonthYearLabel(),
+      generatedAt:new Date().toISOString(),source:"BoggiIncentivi",schemaVersion:1},
+    columns:columns,
+    rows:rows
+  };
+  _downloadJson(payload,"stats_fcvm_"+_sessionFileTag()+".json");
 }
 
 // Esporta la riserva SAS non utilizzata questo mese (round-trip): il file va ricaricato

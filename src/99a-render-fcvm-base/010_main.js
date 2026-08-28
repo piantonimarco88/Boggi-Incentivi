@@ -8,6 +8,7 @@ function rCFcvm(){
   if(MODE==="consuntivo")mL+=' <button class="exp-btn btn-lgreen" onclick="saveMonitorSnap()" style="font-size:10px;padding:4px 12px">&#128229; Salva per Monitor</button>';
   if(MODE==="consuntivo"&&typeof sasNewActive==='function'&&sasNewActive())mL+=' <button class="exp-btn btn-violet" onclick="exportSasJsonFcvm()" style="font-size:10px;padding:4px 12px" title="JSON con target/consuntivo/SAS per area FC/VM, per import in statistiche">&#128202; Esporta SAS Field Coach (JSON)</button>';
   if(MODE==="consuntivo"&&typeof sasNewActive==='function'&&sasNewActive())mL+=' <button class="exp-btn" onclick="exportSasReserveFcvm()" style="font-size:10px;padding:4px 12px" title="Excel con la riserva SAS non utilizzata questo mese, da ricaricare il mese prossimo (SAS Area Field Coach)">&#128230; Esporta Riserva SAS Field Coach</button>';
+  if(MODE==="consuntivo"&&typeof sasNewActive==='function'&&sasNewActive())mL+=' <button class="exp-btn btn-violet" onclick="exportStatsJsonFcvm()" style="font-size:10px;padding:4px 12px" title="JSON esteso (esubero riportato dal mese prec.) per il progetto statistiche esterno">&#128202; Esporta dati JSON per statistiche</button>';
   mL+=' <button class="exp-btn" onclick="screenshotFcvmTable(this)" style="font-size:10px;padding:4px 12px" title="Cattura l\'intera tabella Calcolo Premi come immagine, comprese le righe/colonne fuori dallo scroll">&#128247; Screenshot Tabella</button>';
 
   if(!pool.length){
