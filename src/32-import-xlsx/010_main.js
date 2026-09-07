@@ -1228,18 +1228,30 @@ function loadResultsExcel(file){
 
       // ── SEASONAL MODE: gestione separata per tipo di file consuntivo ──
       if(PRIZE_MODE==="seasonal"){
-        var ws0=wb.Sheets[wb.SheetNames[0]];
-        var json0=XLSX.utils.sheet_to_json(ws0,{header:1,raw:true,defval:null});
-
-        // Trova riga intestazione (prime 5 righe)
-        var hdrRow=-1, headers=[];
-        for(var i=0;i<Math.min(5,json0.length);i++){
-          var r=json0[i]; if(!r) continue;
-          var hdr=r.map(function(c){return String(c==null?"":c).toLowerCase().trim();});
-          if(hdr.some(function(h){return h&&(h.indexOf("store")>=0||h.indexOf("store id")>=0||h.indexOf("store_id")>=0)})){
-            hdrRow=i; headers=hdr; break;
+        // Cerca la riga intestazione (prime 5 righe) su TUTTI i fogli, non solo il primo:
+        // i file export tipo "RISULTATI INVENTARI SEMESTRALI" hanno un foglio metadati
+        // (senza intestazione store) seguito da un foglio dettaglio (una riga per evento
+        // inventariale/negozio) e un foglio aggregato "PARAMETRI PER SEMESTRALI" (una riga
+        // per negozio, quello corretto da usare). Tra più fogli candidati si preferisce
+        // quello con "semestral" nel nome, poi quello con meno colonne (aggregato vs dettaglio).
+        var json0=null, hdrRow=-1, headers=[];
+        var bestScore=null;
+        for(var siS=0;siS<wb.SheetNames.length;siS++){
+          var snS=wb.SheetNames[siS];
+          var wsS=wb.Sheets[snS];
+          var jsonS=XLSX.utils.sheet_to_json(wsS,{header:1,raw:true,defval:null});
+          for(var i=0;i<Math.min(5,jsonS.length);i++){
+            var r=jsonS[i]; if(!r) continue;
+            var hdr=r.map(function(c){return String(c==null?"":c).toLowerCase().trim();});
+            if(hdr.some(function(h){return h&&(h.indexOf("store")>=0||h.indexOf("store id")>=0||h.indexOf("store_id")>=0)})){
+              var nCols=hdr.filter(function(h){return h;}).length;
+              var score=(snS.toLowerCase().indexOf("semestral")>=0?0:1)+(nCols/1000); // preferisci nome "semestrale", poi meno colonne
+              if(bestScore===null||score<bestScore){bestScore=score;json0=jsonS;hdrRow=i;headers=hdr;}
+              break;
+            }
           }
         }
+        if(json0===null){var ws0=wb.Sheets[wb.SheetNames[0]];json0=XLSX.utils.sheet_to_json(ws0,{header:1,raw:true,defval:null});}
         if(hdrRow<0){alert("Formato file consuntivo seasonal non riconosciuto:\nnessuna colonna store trovata nelle prime 5 righe.");return;}
 
         // "fcst"/forecast escluso esplicitamente: il file consuntivo SS26 porta ANCHE una
