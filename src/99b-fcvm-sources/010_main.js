@@ -570,9 +570,13 @@ function loadFcVmSas(file){
       row.forEach(function(cell,ci){
         var h=String(cell||'').toLowerCase().trim();
         if(h==='store id'||h==='store_id'||h==='storeid'){hdr.sid=ci;found=true;}
-        if((h.indexOf('accettaz')>=0||h.indexOf('accepted')>=0||h.indexOf('% accept')>=0)&&hdr.acc<0)hdr.acc=ci;
-        if((h.indexOf('processed within')>=0||h.indexOf('within 4')>=0||h.indexOf('gestiti entro')>=0||h.indexOf('% gestiti')>=0||h.indexOf('velocit')>=0||h.indexOf('% handled')>=0)&&hdr.vel<0)hdr.vel=ci;
-        if((h.indexOf('valore eur')>=0||h.indexOf('value eur')>=0||h.indexOf('valore sas')>=0||h.indexOf('sas value')>=0||h.indexOf('sas eur')>=0)&&hdr.sasv<0)hdr.sasv=ci;
+        if(h.indexOf('recognised')<0&&(h.indexOf('accettaz')>=0||h.indexOf('accepted')>=0||h.indexOf('% accept')>=0)&&hdr.acc<0)hdr.acc=ci;
+        // pct_speed/pct speed: schema export "Dati per Statistiche" (QWRT), stesso formato già
+        // riconosciuto da loadFcVmSasArea — mancava qui, causava colonna velocità non trovata e
+        // quindi SAS riconosciuto sempre 0 per i negozi extra (bdg_stores) pur con dati corretti
+        // nel file (es. store 1135 AMBURGO, agosto 2026: pct_speed presente ma non letto).
+        if(h.indexOf('recognised')<0&&(h.indexOf('pct_speed')>=0||h.indexOf('pct speed')>=0||h.indexOf('processed within')>=0||h.indexOf('within 4')>=0||h.indexOf('gestiti entro')>=0||h.indexOf('% gestiti')>=0||h.indexOf('velocit')>=0||h.indexOf('% handled')>=0)&&hdr.vel<0)hdr.vel=ci;
+        if(h.indexOf('recognised')<0&&h.indexOf('riserva')<0&&(h.indexOf('sas_value_eur')>=0||h.indexOf('store_sas_value_eur')>=0||h.indexOf('valore eur')>=0||h.indexOf('value eur')>=0||h.indexOf('valore sas')>=0||h.indexOf('sas value')>=0||h.indexOf('sas eur')>=0)&&hdr.sasv<0)hdr.sasv=ci;
         if((h.indexOf('riserva')>=0||h.indexOf('reserve')>=0)&&hdr.sasr<0)hdr.sasr=ci;
       });
       if(found){hdrRow=ri;break;}

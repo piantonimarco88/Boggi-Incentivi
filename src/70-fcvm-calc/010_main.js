@@ -107,21 +107,8 @@ function calcFcVmPremio(matr){
       // SAS riconosciuto del negozio (da Luglio 2026): colma il gap al target, cap 100%
       var sasOn=isCons&&sasNewActive(),sasUsedB=0,sasRecB=0,sasResInB=0,sasResOutB=0;
       if(sasOn){
-        // Se il negozio è anche presente nel Mensile (D.t/D.c) con dati SAS propri, usa QUELLA
-        // fonte (storeSasInfo, la stessa del premio Negozi) invece del file "SAS Negozi (per BDG
-        // extra)" importato a parte per FC+VM — i due import possono disallinearsi (es. riserva SAS
-        // riportata dal mese precedente presente nel Mensile ma non in quello specifico export
-        // FC+VM), facendo mostrare "negozio extra non raggiunto" in lettera anche quando lo stesso
-        // negozio, nel premio Negozi, ha raggiunto il target proprio grazie a quella riserva.
-        var mensSid=String(b.sid),cnM=D.c[mensSid];
-        var useMens=D.t[mensSid]&&D.t[mensSid].to>0&&cnM&&(cnM.sasr!=null||cnM.sasv!=null||cnM.sa!=null);
-        if(useMens){
-          var siMens=storeSasInfo(mensSid);
-          sasRecB=siMens.recognized;sasResInB=siMens.reserveIn;
-        }else{
-          sasRecB=sasRecognizedValue(cn.acc,cn.vel,cn.sasv_eur||0);
-          sasResInB=cn.sasr_eur||0;
-        }
+        sasRecB=sasRecognizedValue(cn.acc,cn.vel,cn.sasv_eur||0);
+        sasResInB=cn.sasr_eur||0;
         var _srB=sasReserveCalc(sc+esubBdg,to,sasRecB,sasResInB);
         sasUsedB=_srB.used;sasResOutB=_srB.reserveOut;
       }

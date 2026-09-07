@@ -641,21 +641,8 @@ function calcFcVmPremio(matr){
       // SAS riconosciuto del negozio (da Luglio 2026): colma il gap al target, cap 100%
       var sasOn=isCons&&sasNewActive(),sasUsedB=0,sasRecB=0,sasResInB=0,sasResOutB=0;
       if(sasOn){
-        // Se il negozio è anche presente nel Mensile (D.t/D.c) con dati SAS propri, usa QUELLA
-        // fonte (storeSasInfo, la stessa del premio Negozi) invece del file "SAS Negozi (per BDG
-        // extra)" importato a parte per FC+VM — i due import possono disallinearsi (es. riserva SAS
-        // riportata dal mese precedente presente nel Mensile ma non in quello specifico export
-        // FC+VM), facendo mostrare "negozio extra non raggiunto" in lettera anche quando lo stesso
-        // negozio, nel premio Negozi, ha raggiunto il target proprio grazie a quella riserva.
-        var mensSid=String(b.sid),cnM=D.c[mensSid];
-        var useMens=D.t[mensSid]&&D.t[mensSid].to>0&&cnM&&(cnM.sasr!=null||cnM.sasv!=null||cnM.sa!=null);
-        if(useMens){
-          var siMens=storeSasInfo(mensSid);
-          sasRecB=siMens.recognized;sasResInB=siMens.reserveIn;
-        }else{
-          sasRecB=sasRecognizedValue(cn.acc,cn.vel,cn.sasv_eur||0);
-          sasResInB=cn.sasr_eur||0;
-        }
+        sasRecB=sasRecognizedValue(cn.acc,cn.vel,cn.sasv_eur||0);
+        sasResInB=cn.sasr_eur||0;
         var _srB=sasReserveCalc(sc+esubBdg,to,sasRecB,sasResInB);
         sasUsedB=_srB.used;sasResOutB=_srB.reserveOut;
       }
@@ -738,7 +725,7 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.64'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.65'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
@@ -10585,9 +10572,13 @@ function loadFcVmSas(file){
       row.forEach(function(cell,ci){
         var h=String(cell||'').toLowerCase().trim();
         if(h==='store id'||h==='store_id'||h==='storeid'){hdr.sid=ci;found=true;}
-        if((h.indexOf('accettaz')>=0||h.indexOf('accepted')>=0||h.indexOf('% accept')>=0)&&hdr.acc<0)hdr.acc=ci;
-        if((h.indexOf('processed within')>=0||h.indexOf('within 4')>=0||h.indexOf('gestiti entro')>=0||h.indexOf('% gestiti')>=0||h.indexOf('velocit')>=0||h.indexOf('% handled')>=0)&&hdr.vel<0)hdr.vel=ci;
-        if((h.indexOf('valore eur')>=0||h.indexOf('value eur')>=0||h.indexOf('valore sas')>=0||h.indexOf('sas value')>=0||h.indexOf('sas eur')>=0)&&hdr.sasv<0)hdr.sasv=ci;
+        if(h.indexOf('recognised')<0&&(h.indexOf('accettaz')>=0||h.indexOf('accepted')>=0||h.indexOf('% accept')>=0)&&hdr.acc<0)hdr.acc=ci;
+        // pct_speed/pct speed: schema export "Dati per Statistiche" (QWRT), stesso formato già
+        // riconosciuto da loadFcVmSasArea — mancava qui, causava colonna velocità non trovata e
+        // quindi SAS riconosciuto sempre 0 per i negozi extra (bdg_stores) pur con dati corretti
+        // nel file (es. store 1135 AMBURGO, agosto 2026: pct_speed presente ma non letto).
+        if(h.indexOf('recognised')<0&&(h.indexOf('pct_speed')>=0||h.indexOf('pct speed')>=0||h.indexOf('processed within')>=0||h.indexOf('within 4')>=0||h.indexOf('gestiti entro')>=0||h.indexOf('% gestiti')>=0||h.indexOf('velocit')>=0||h.indexOf('% handled')>=0)&&hdr.vel<0)hdr.vel=ci;
+        if(h.indexOf('recognised')<0&&h.indexOf('riserva')<0&&(h.indexOf('sas_value_eur')>=0||h.indexOf('store_sas_value_eur')>=0||h.indexOf('valore eur')>=0||h.indexOf('value eur')>=0||h.indexOf('valore sas')>=0||h.indexOf('sas value')>=0||h.indexOf('sas eur')>=0)&&hdr.sasv<0)hdr.sasv=ci;
         if((h.indexOf('riserva')>=0||h.indexOf('reserve')>=0)&&hdr.sasr<0)hdr.sasr=ci;
       });
       if(found){hdrRow=ri;break;}
