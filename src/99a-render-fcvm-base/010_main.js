@@ -46,7 +46,7 @@ function rCFcvm(){
   h+='<div class="scroll-wrap"><table id="ctbl"><thead><tr>';
   h+=thS('Matr.')+thS('Cogn.','Cognome')+thS('Nome')+thS('Ruolo')+thS('Val.','Valuta')+thS('N.Store');
   var _fcSasCols=!isP&&typeof sasNewActive==='function'&&sasNewActive();
-  h+=thS('Target','Target EUR')+thS('Max Pr.','Max Premio')+(!isP?thS('Consunt.','Consuntivo EUR'):'')+(!isP?thS('Esub.','Esubero'):'')+(_fcSasCols?thS('SAS','Valore SAS')+thS('% Ricon.')+thS('Ricon.','Valore Ricon.'):'')+(!isP?thS('Cons. Tot.'):'')+thS('% Area')+thS('SY LY')+thS('SY CY')+thS('Pr. LC','Premio LC')+thS('Pr. EUR','Premio EUR')+thS('BDG')+thS('Esito')+(!isP?'<th style="text-align:center;background:#e8f5e9;color:#2d7a3a;cursor:default;padding:4px 3px">100%</th>':'')+(!isP?'<th style="text-align:center;background:#fff3e0;color:#cf8b4e;cursor:default;padding:4px 3px">60%</th>':'')+'<th style="padding:4px 3px" title="Lingua">Ling.</th>'+(!isP?'<th style="text-align:center;cursor:default;min-width:40px">Mal.</th>':'')+'<th style="text-align:center;cursor:default;min-width:36px">Sosp.</th>';
+  h+=thS('Target','Target EUR')+thS('Max Pr.','Max Premio')+(!isP?thS('Consunt.','Consuntivo EUR'):'')+(!isP?thS('Esub.','Esubero'):'')+(_fcSasCols?thS('SAS','Valore SAS')+thS('% Ricon.')+thS('Ricon.','Valore Ricon.'):'')+(!isP?thS('Cons. Tot.'):'')+thS('% Area')+thS('SY LY')+thS('SY CY')+thS('Pr. LC','Premio LC')+thS('Pr. EUR','Premio EUR')+thS('BDG')+thS('Esito')+(!isP&&typeof demoltActive==='function'&&demoltActive()?'<th style="cursor:default;color:#a07d2c" title="Demoltiplicatore Inventari (solo FC): riduzione premio area da % invio/completamento inventari">Dem.</th>':'')+(!isP?'<th style="text-align:center;background:#e8f5e9;color:#2d7a3a;cursor:default;padding:4px 3px">100%</th>':'')+(!isP?'<th style="text-align:center;background:#fff3e0;color:#cf8b4e;cursor:default;padding:4px 3px">60%</th>':'')+'<th style="padding:4px 3px" title="Lingua">Ling.</th>'+(!isP?'<th style="text-align:center;cursor:default;min-width:40px">Mal.</th>':'')+'<th style="text-align:center;cursor:default;min-width:36px">Sosp.</th>';
   h+='</tr></thead><tbody>';
 
   fl.forEach(function(emp,i){
@@ -121,6 +121,12 @@ function rCFcvm(){
       h+='<td style="text-align:center;color:#a09a92">—</td>';
     }
     h+='<td style="text-align:center;font-weight:700;color:'+ec+'">'+el+'</td>';
+    if(!isP&&typeof demoltActive==='function'&&demoltActive()){
+      var _demRFc=(emp.j==='FC')?DEMOLT_RESULT_FC[String(emp.m)]:null;
+      var _demTipFc=_demRFc&&_demRFc.pct!=null?('Demoltiplicatore: '+Math.round(_demRFc.pct*100)+'% del premio d\'area riconosciuto'):(emp.j==='FC'?'Nessun dato inventari importato per quest\'area':'Non applicabile ai Visual Merchandiser');
+      var _demColorFc=_demRFc&&_demRFc.pct!=null?(_demRFc.pct>=0.95?'#2d7a3a':(_demRFc.pct>=0.70?'#c9a96e':'#cf5b5b')):'#d5d0c8';
+      h+='<td style="text-align:center;font-size:13px" title="'+esc(_demTipFc)+'">'+(_demRFc&&_demRFc.pct!=null?'<span style="color:'+_demColorFc+'">&#11044;</span>':'—')+'</td>';
+    }
     // Toggle override manuale 100% / 60% (solo consuntivo)
     if(!isP){
       var ov100=FC_OVERRIDES[emp.m]==='100',ov60=FC_OVERRIDES[emp.m]==='60';

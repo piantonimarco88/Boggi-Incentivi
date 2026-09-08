@@ -92,7 +92,19 @@ function storeSasInfo(sid){
 function storePctOf(sid){return storeSasInfo(sid).pct;}
 
 // RECALC ENGINE
+// Demoltiplicatore Inventari (da ottobre 2026): riduce uniformemente ogni voce di premio dei
+// ruoli SM/VSM in consuntivo, in base al risultato KPI inventari+accuracy del negozio (vedi
+// 33-demolt-import/010_main.js). Wrapper sottile per non toccare la logica esistente sotto
+// (_getValRaw ha molteplici return sparsi nello switch, rifattorizzarla sarebbe rischioso).
 function getVal(e,kpiKey){
+  var raw=_getValRaw(e,kpiKey);
+  if(MODE==="consuntivo"&&typeof demoltActive==="function"&&demoltActive()&&e.j&&e.j.indexOf("SM")>=0){
+    var dr=DEMOLT_RESULT_STORE[String(e.si)];
+    if(dr&&dr.pct!=null)return Math.round(raw*dr.pct*100)/100;
+  }
+  return raw;
+}
+function _getValRaw(e,kpiKey){
   if(isUSA(e.si,e))return 0; // USA employees use calcUSA(), not individual KPI
   var sid=String(e.si),tg=D.t[sid]||{},cn=D.c[sid]||{},v=D.v[e.m]||{},dp=isD(e.si);
   if(MODE==="preventivo"){var _rl=e.rl||e.ib||0;switch(kpiKey){

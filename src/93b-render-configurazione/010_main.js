@@ -52,6 +52,28 @@ function rT(){try{
       for(var _i2=0;_i2<3;_i2++)h+='<input class="cfg-input sas-velband" type="number" data-i="'+_i2+'" value="'+Math.round(_vb[_i2]*100)+'" step="1" min="0" max="100" style="width:56px;text-align:center">';
       h+='</div></div>';
     }
+    // Demoltiplicatore Inventari — Area (FC): sempre visibile (etichetta se non ancora attivo),
+    // si applica solo al ruolo Field Coach, mai ai Visual Merchandiser (vedi 88-calc-engine/70-fcvm-calc)
+    h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">&#128203; Demoltiplicatore Inventari &mdash; Area (FC)</div>';
+    if(!demoltActive())h+='<div style="font-size:10px;color:#a07d2c;background:#fff8ee;border:1px solid #f0e2c4;border-radius:5px;padding:6px 10px;margin-bottom:8px">Attivo da '+MONTH_NAMES.IT[DEMOLT_CUTOFF_MONTH]+' '+DEMOLT_CUTOFF_YEAR+' &mdash; i valori qui sotto si possono già impostare in anticipo.</div>';
+    h+='<div style="font-size:10px;color:#8a8680;margin-bottom:8px">Riduce il premio d\'area in base a % Invio (&Sigma; sended/&Sigma; working days) e % Completamento (&Sigma; completed/&Sigma; sended) aggregati sull\'area &mdash; si applica solo al ruolo <b>Field Coach</b>, mai ai Visual Merchandiser.</div>';
+    var _dab=DEMOLT_MATRIX_FC.bpA,_dbb=DEMOLT_MATRIX_FC.bpB;
+    h+='<div style="font-size:10px;font-weight:700;color:#6b6560;text-align:center;margin:6px 0 2px">% COMPLETAMENTO (asse orizzontale) →</div>';
+    h+='<table style="width:100%;border-collapse:collapse;table-layout:fixed;margin:0 0 8px"><thead><tr><th style="width:130px;font-size:9px;font-weight:700;color:#6b6560;padding:3px 8px;text-align:right;white-space:nowrap;vertical-align:bottom">% INVIO<br>(asse verticale) ↓</th>';
+    for(var _dc=0;_dc<3;_dc++)h+='<th style="font-size:9px;font-weight:700;color:#8a8680;padding:3px 8px;text-align:center">'+demoltBandLbl(_dbb,_dc)+'</th>';
+    h+='</tr></thead><tbody>';
+    [2,1,0].forEach(function(_dai){
+      h+='<tr><td style="font-size:9px;color:#6b6560;font-weight:700;padding:3px 8px;text-align:right;white-space:nowrap">'+demoltBandLbl(_dab,_dai)+'</td>';
+      for(var _dc2=0;_dc2<3;_dc2++)h+='<td style="padding:2px;text-align:center"><input class="cfg-input dem-fc-cell" type="number" data-demr="'+_dai+'" data-demc="'+_dc2+'" value="'+Math.round(DEMOLT_MATRIX_FC.grid[_dai][_dc2]*100)+'" step="1" min="0" max="100" style="width:62px;text-align:center"></td>';
+      h+='</tr>';
+    });
+    h+='</tbody></table>';
+    h+='<div style="font-size:10px;color:#8a8680;margin:2px 0">Soglie fasce <b>invio</b> (%, bassa→alta)</div><div style="display:flex;gap:6px;margin-bottom:6px">';
+    for(var _di=0;_di<2;_di++)h+='<input class="cfg-input dem-fc-bandA" type="number" data-i="'+_di+'" value="'+Math.round(_dab[_di]*100)+'" step="1" min="0" max="100" style="width:56px;text-align:center">';
+    h+='</div>';
+    h+='<div style="font-size:10px;color:#8a8680;margin:2px 0">Soglie fasce <b>completamento</b> (%, bassa→alta)</div><div style="display:flex;gap:6px;margin-bottom:8px">';
+    for(var _di2=0;_di2<2;_di2++)h+='<input class="cfg-input dem-fc-bandB" type="number" data-i="'+_di2+'" value="'+Math.round(_dbb[_di2]*100)+'" step="1" min="0" max="100" style="width:56px;text-align:center">';
+    h+='</div></div>';
     // Malattia FC+VM
     h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">&#129298; Malattia &mdash; FC + VM (Consuntivo)</div>';
     h+='<div style="font-size:10px;color:#8a8680;margin-bottom:12px">Soglie giorni assenza per riduzione premio. Stessi parametri del mensile.</div>';
@@ -87,6 +109,16 @@ function rT(){try{
     document.querySelectorAll(".sas-velband").forEach(function(inp){inp.onchange=function(){
       var i=parseInt(inp.getAttribute("data-i")),v=parseFloat(inp.value);
       if(isNaN(v))return;SAS_MATRIX.velBands[i]=v/100;markDirty();rC();rA();}});
+    // Demoltiplicatore Inventari — Area (FC) matrix bindings
+    document.querySelectorAll(".dem-fc-cell").forEach(function(inp){inp.onchange=function(){
+      var r=parseInt(inp.getAttribute("data-demr")),c=parseInt(inp.getAttribute("data-demc")),v=parseFloat(inp.value);
+      if(isNaN(v))return;DEMOLT_MATRIX_FC.grid[r][c]=Math.max(0,Math.min(1,v/100));markDirty();}});
+    document.querySelectorAll(".dem-fc-bandA").forEach(function(inp){inp.onchange=function(){
+      var i=parseInt(inp.getAttribute("data-i")),v=parseFloat(inp.value);
+      if(isNaN(v))return;DEMOLT_MATRIX_FC.bpA[i]=v/100;markDirty();rT();}});
+    document.querySelectorAll(".dem-fc-bandB").forEach(function(inp){inp.onchange=function(){
+      var i=parseInt(inp.getAttribute("data-i")),v=parseFloat(inp.value);
+      if(isNaN(v))return;DEMOLT_MATRIX_FC.bpB[i]=v/100;markDirty();rT();}});
     return;
   }
   // In seasonal mode, show only Periodo/Output + Seasonal Config
@@ -369,6 +401,29 @@ function rT(){try{
     h+='<div style="font-size:10px;color:#8a8680;margin-bottom:6px">Premio SAS individuale (SCS): \u20ac/SAS \u00d7 n. SAS on target, fino al massimale.</div>';
     h+=pRow("sasRate","\u20ac/SAS","",PARAMS.sasRate,"\u20ac",0.5)+pRow("sasMax","Max","",PARAMS.sasMax,"\u20ac",10);
   }
+  h+='</div>';
+  // Demoltiplicatore Inventari \u2014 Negozio (SM/VSM): sempre visibile (etichetta se non ancora attivo)
+  h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">&#128203; Demoltiplicatore Inventari &mdash; Negozio</div>';
+  if(!demoltActive())h+='<div style="font-size:10px;color:#a07d2c;background:#fff8ee;border:1px solid #f0e2c4;border-radius:5px;padding:6px 10px;margin-bottom:8px">Attivo da '+MONTH_NAMES.IT[DEMOLT_CUTOFF_MONTH]+' '+DEMOLT_CUTOFF_YEAR+' &mdash; i valori qui sotto si possono gi\u00e0 impostare in anticipo.</div>';
+  h+='<div style="font-size:10px;color:#8a8680;margin-bottom:8px">Riduce il premio in base a % Completamento (completed/sended) e Accuracy mensile dell\'inventario &mdash; si applica solo ai ruoli <b>SM</b> e <b>VSM</b>.</div>';
+  var _dsab=DEMOLT_MATRIX_STORE.bpA,_dsbb=DEMOLT_MATRIX_STORE.bpB;
+  h+='<div style="font-size:10px;font-weight:700;color:#6b6560;text-align:center;margin:6px 0 2px">ACCURACY (asse orizzontale) \u2192</div>';
+  h+='<table style="width:100%;border-collapse:collapse;table-layout:fixed;margin:0 0 8px"><thead><tr><th style="width:130px;font-size:9px;font-weight:700;color:#6b6560;padding:3px 8px;text-align:right;white-space:nowrap;vertical-align:bottom">% COMPLETAMENTO<br>(asse verticale) \u2193</th>';
+  for(var _dsc=0;_dsc<3;_dsc++)h+='<th style="font-size:9px;font-weight:700;color:#8a8680;padding:3px 8px;text-align:center">'+demoltBandLbl(_dsbb,_dsc)+'</th>';
+  h+='</tr></thead><tbody>';
+  [2,1,0].forEach(function(_dsai){
+    h+='<tr><td style="font-size:9px;color:#6b6560;font-weight:700;padding:3px 8px;text-align:right;white-space:nowrap">'+demoltBandLbl(_dsab,_dsai)+'</td>';
+    for(var _dsc2=0;_dsc2<3;_dsc2++)h+='<td style="padding:2px;text-align:center"><input class="cfg-input dem-st-cell" type="number" data-demr="'+_dsai+'" data-demc="'+_dsc2+'" value="'+Math.round(DEMOLT_MATRIX_STORE.grid[_dsai][_dsc2]*100)+'" step="1" min="0" max="100" style="width:62px;text-align:center"></td>';
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  h+='<div style="font-size:10px;color:#8a8680;margin:2px 0">Soglie fasce <b>completamento</b> (%, bassa\u2192alta)</div><div style="display:flex;gap:6px;margin-bottom:6px">';
+  for(var _dsi=0;_dsi<2;_dsi++)h+='<input class="cfg-input dem-st-bandA" type="number" data-i="'+_dsi+'" value="'+Math.round(_dsab[_dsi]*100)+'" step="1" min="0" max="100" style="width:56px;text-align:center">';
+  h+='</div>';
+  h+='<div style="font-size:10px;color:#8a8680;margin:2px 0">Soglie fasce <b>accuracy</b> (%, bassa\u2192alta)</div><div style="display:flex;gap:6px;margin-bottom:8px">';
+  for(var _dsi2=0;_dsi2<2;_dsi2++)h+='<input class="cfg-input dem-st-bandB" type="number" data-i="'+_dsi2+'" value="'+Math.round(_dsbb[_dsi2]*100)+'" step="1" min="0" max="100" style="width:56px;text-align:center">';
+  h+='</div></div>';
+  h+='<div class="wg" style="margin-bottom:20px">';
   h+='<div style="font-size:11px;font-weight:700;color:#cf5b5b;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">DCC</div>';
   h+=pRow("dccRate","Aliquota","",PARAMS.dccRate*100,"%",0.01)+pRow("dccMax","Max","",PARAMS.dccMax,"\u20ac",10);
   h+='<div style="font-size:11px;font-weight:700;color:#cf8b4e;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;justify-content:space-between">Articoli Incentivati<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:10px;font-weight:400;color:#6b6560;text-transform:none;letter-spacing:0"><input type="checkbox" id="artEnabled"'+(PARAMS.artEnabled?' checked':'')+' style="accent-color:#cf8b4e;width:14px;height:14px;cursor:pointer"> Attivo</label></div>';
@@ -457,6 +512,16 @@ function rT(){try{
   document.querySelectorAll(".sas-velband").forEach(function(inp){inp.onchange=function(){
     var i=parseInt(inp.getAttribute("data-i")),v=parseFloat(inp.value);
     if(isNaN(v))return;SAS_MATRIX.velBands[i]=v/100;markDirty();rC();rA();}});
+  // Demoltiplicatore Inventari — Negozio matrix bindings
+  document.querySelectorAll(".dem-st-cell").forEach(function(inp){inp.onchange=function(){
+    var r=parseInt(inp.getAttribute("data-demr")),c=parseInt(inp.getAttribute("data-demc")),v=parseFloat(inp.value);
+    if(isNaN(v))return;DEMOLT_MATRIX_STORE.grid[r][c]=Math.max(0,Math.min(1,v/100));markDirty();}});
+  document.querySelectorAll(".dem-st-bandA").forEach(function(inp){inp.onchange=function(){
+    var i=parseInt(inp.getAttribute("data-i")),v=parseFloat(inp.value);
+    if(isNaN(v))return;DEMOLT_MATRIX_STORE.bpA[i]=v/100;markDirty();rT();}});
+  document.querySelectorAll(".dem-st-bandB").forEach(function(inp){inp.onchange=function(){
+    var i=parseInt(inp.getAttribute("data-i")),v=parseFloat(inp.value);
+    if(isNaN(v))return;DEMOLT_MATRIX_STORE.bpB[i]=v/100;markDirty();rT();}});
   var artEnabledCb=document.getElementById("artEnabled");if(artEnabledCb)artEnabledCb.onchange=function(){PARAMS.artEnabled=this.checked;var wrap=document.getElementById("artEnabledWrap");if(wrap)wrap.style.display=this.checked?"":"none";markDirty();rC();rA()};
   document.querySelectorAll(".tb").forEach(function(b){
     if(b.getAttribute("data-r")){b.onclick=function(){var r=b.getAttribute("data-r"),k=b.getAttribute("data-k");if(!TC[r]){TC[r]={};KP.forEach(function(kk){TC[r][kk]=false})}TC[r][k]=!TC[r][k];markDirty();rC();rA();rT()}}

@@ -22,6 +22,18 @@ if(window._autoState){try{
     if(as.sas_matrix.velBands)SAS_MATRIX.velBands=as.sas_matrix.velBands;
     if(as.sas_matrix.velLabel!==undefined)SAS_MATRIX.velLabel=as.sas_matrix.velLabel;
   }
+  if(as.demolt_matrix_store){
+    if(as.demolt_matrix_store.grid)DEMOLT_MATRIX_STORE.grid=as.demolt_matrix_store.grid;
+    if(as.demolt_matrix_store.bpA)DEMOLT_MATRIX_STORE.bpA=as.demolt_matrix_store.bpA;
+    if(as.demolt_matrix_store.bpB)DEMOLT_MATRIX_STORE.bpB=as.demolt_matrix_store.bpB;
+  }
+  if(as.demolt_matrix_fc){
+    if(as.demolt_matrix_fc.grid)DEMOLT_MATRIX_FC.grid=as.demolt_matrix_fc.grid;
+    if(as.demolt_matrix_fc.bpA)DEMOLT_MATRIX_FC.bpA=as.demolt_matrix_fc.bpA;
+    if(as.demolt_matrix_fc.bpB)DEMOLT_MATRIX_FC.bpB=as.demolt_matrix_fc.bpB;
+  }
+  if(as.demolt_result_store)DEMOLT_RESULT_STORE=as.demolt_result_store;
+  if(as.demolt_result_fc)DEMOLT_RESULT_FC=as.demolt_result_fc;
   if(as.cfg_month)CFG_MONTH=as.cfg_month;
   if(as.cfg_year)CFG_YEAR=as.cfg_year;
   if(as.cfg_pdf_path!==undefined)CFG_PDF_PATH=as.cfg_pdf_path;
@@ -109,6 +121,8 @@ function autoSave(){
       D:{e:E,t:D.t,c:D.c,cs:D.cs,s:D.s,v:D.v,tr:D.tr,usa:D.usa,us:D.us,d:D.d,vl:D.vl},
       tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,
       seas:SEAS,seas_cfg:SEAS_CFG,seas_targets:SEAS_TARGETS,sas_matrix:SAS_MATRIX,
+      demolt_matrix_store:DEMOLT_MATRIX_STORE,demolt_matrix_fc:DEMOLT_MATRIX_FC,
+      demolt_result_store:DEMOLT_RESULT_STORE,demolt_result_fc:DEMOLT_RESULT_FC,
       agg:AGG,vl:VL,usa_p:USA_P,store_flags:STORE_FLAGS,
       cfg_month:CFG_MONTH,cfg_year:CFG_YEAR,cfg_pdf_path:CFG_PDF_PATH,cfg_season:CFG_SEASON,
       monthly_syly:MONTHLY_SYLY,

@@ -626,6 +626,11 @@ function calcFcVmPremio(matr){
   if(isCons){
     if(emp.ps==="SI"){esito="sospeso";premioLC=0;smFcvm=0;}
     else{smFcvm=sickMult(emp.ml||0);premioLC=Math.round(premioLC*smFcvm*100)/100;}
+    // Demoltiplicatore Inventari (da ottobre 2026): riduce solo il premio d'area, solo FC (mai VM)
+    if(typeof demoltActive==="function"&&demoltActive()&&emp.j==="FC"){
+      var _dDr=DEMOLT_RESULT_FC[matr];
+      if(_dDr&&_dDr.pct!=null)premioLC=Math.round(premioLC*_dDr.pct*100)/100;
+    }
   }
   var exRate=(emp.ex&&emp.ex!==1&&emp.ex>0)?emp.ex:getFcVmExRate(emp.cu);
   // ── Premi BDG singoli negozi ─────────────────────────────────────────────
@@ -725,12 +730,13 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.66'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.67'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.67: Demoltiplicatore Inventari (SM/VSM e Field Coach) — riduce il premio in base a % completamento/invio inventari giornalieri e accuracy; attivo dal preventivo di ottobre 2026, matrici già configurabili in anticipo nel tab Configurazione",
   "9.66: Fix import Consuntivo Seasonal — file inventario/accuracy multi-foglio (es. \"RISULTATI INVENTARI SEMESTRALI\"): ora cerca l'intestazione store su tutti i fogli invece che solo sul primo, preferendo il foglio aggregato \"per semestrali\" a quello di dettaglio",
   "9.63: ECI Santander (1350) aggiunto permanentemente ai Dept Store; export JSON statistiche — tolto il campo \"esubero\" duplicato (era identico a esuberoPrec), schemaVersion 2",
   "9.62: Nuovo bottone \"Esporta dati JSON per statistiche\" (Negozi e FC+VM) per il progetto statistiche esterno: aggiunge parachuteOk, syLastYear, Qty dept store ed esubero riportato dal mese precedente",
@@ -738,9 +744,7 @@ var APP_CHANGELOG=[
   "9.60: Seasonal Dept Store — rimosso il premio ridotto al 60%: Turnover Target e QTY tornano a soglia unica bianco/nero (≥99,5% del target = pieno, sotto = zero), niente più fascia intermedia",
   "9.59: Seasonal Dept Store — tab Calcolo Premi mostra ora scostamento fatturato, moltiplicatore Turnover e stato QTY; LORDO coincide col NETTO reale (non più 150% incondizionato). Lettere: riga \"SAS applicato al fatturato\" sempre visibile anche a €0, saldo €0 senza sfondo verde",
   "9.58: Fix import Consuntivo Seasonal — CR (Conversion Rate) non usa più un fallback per posizione fissa; se manca la colonna col nome, resta assente invece di leggere una colonna sbagliata",
-  "9.57: Fix import Consuntivo Seasonal — colonna \"Fcst Gross Sales\" (forecast) letta al posto del vero consuntivo per i Dept Store; aggiunta lettura QTY consuntivo dallo stesso file",
-  "9.56: Seasonal Dept Store — Turnover Target e QTY ora confrontano davvero target/consuntivo (paracadute 99,5%/95%, come il BDG mensile), prima pagavano sempre il 150% incondizionato",
-  "9.55: Fix import Seasonal — Target SY (header \"sy\" nudo) e SAS Luglio/Agosto (formato QWRT pct_speed/store_sas_value_*) non venivano più riconosciuti dai nuovi export"
+  "9.57: Fix import Consuntivo Seasonal — colonna \"Fcst Gross Sales\" (forecast) letta al posto del vero consuntivo per i Dept Store; aggiunta lettura QTY consuntivo dallo stesso file"
 ];
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
@@ -820,6 +824,18 @@ if(window._autoState){try{
     if(as.sas_matrix.velBands)SAS_MATRIX.velBands=as.sas_matrix.velBands;
     if(as.sas_matrix.velLabel!==undefined)SAS_MATRIX.velLabel=as.sas_matrix.velLabel;
   }
+  if(as.demolt_matrix_store){
+    if(as.demolt_matrix_store.grid)DEMOLT_MATRIX_STORE.grid=as.demolt_matrix_store.grid;
+    if(as.demolt_matrix_store.bpA)DEMOLT_MATRIX_STORE.bpA=as.demolt_matrix_store.bpA;
+    if(as.demolt_matrix_store.bpB)DEMOLT_MATRIX_STORE.bpB=as.demolt_matrix_store.bpB;
+  }
+  if(as.demolt_matrix_fc){
+    if(as.demolt_matrix_fc.grid)DEMOLT_MATRIX_FC.grid=as.demolt_matrix_fc.grid;
+    if(as.demolt_matrix_fc.bpA)DEMOLT_MATRIX_FC.bpA=as.demolt_matrix_fc.bpA;
+    if(as.demolt_matrix_fc.bpB)DEMOLT_MATRIX_FC.bpB=as.demolt_matrix_fc.bpB;
+  }
+  if(as.demolt_result_store)DEMOLT_RESULT_STORE=as.demolt_result_store;
+  if(as.demolt_result_fc)DEMOLT_RESULT_FC=as.demolt_result_fc;
   if(as.cfg_month)CFG_MONTH=as.cfg_month;
   if(as.cfg_year)CFG_YEAR=as.cfg_year;
   if(as.cfg_pdf_path!==undefined)CFG_PDF_PATH=as.cfg_pdf_path;
@@ -907,6 +923,8 @@ function autoSave(){
       D:{e:E,t:D.t,c:D.c,cs:D.cs,s:D.s,v:D.v,tr:D.tr,usa:D.usa,us:D.us,d:D.d,vl:D.vl},
       tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,
       seas:SEAS,seas_cfg:SEAS_CFG,seas_targets:SEAS_TARGETS,sas_matrix:SAS_MATRIX,
+      demolt_matrix_store:DEMOLT_MATRIX_STORE,demolt_matrix_fc:DEMOLT_MATRIX_FC,
+      demolt_result_store:DEMOLT_RESULT_STORE,demolt_result_fc:DEMOLT_RESULT_FC,
       agg:AGG,vl:VL,usa_p:USA_P,store_flags:STORE_FLAGS,
       cfg_month:CFG_MONTH,cfg_year:CFG_YEAR,cfg_pdf_path:CFG_PDF_PATH,cfg_season:CFG_SEASON,
       monthly_syly:MONTHLY_SYLY,
@@ -953,6 +971,8 @@ function saveSession(){
       D:{e:E,t:D.t,c:D.c,cs:D.cs,s:D.s,v:D.v,tr:D.tr,usa:D.usa,us:D.us,d:D.d,vl:D.vl,ur:D.ur},
       tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,
       seas:SEAS,seas_cfg:SEAS_CFG,seas_targets:SEAS_TARGETS,sas_matrix:SAS_MATRIX,
+      demolt_matrix_store:DEMOLT_MATRIX_STORE,demolt_matrix_fc:DEMOLT_MATRIX_FC,
+      demolt_result_store:DEMOLT_RESULT_STORE,demolt_result_fc:DEMOLT_RESULT_FC,
       agg:AGG,vl:VL,usa_p:USA_P,store_flags:STORE_FLAGS,
       cfg_month:CFG_MONTH,cfg_year:CFG_YEAR,cfg_pdf_path:CFG_PDF_PATH,cfg_season:CFG_SEASON,
       monthly_syly:MONTHLY_SYLY,
@@ -1027,6 +1047,18 @@ function loadSession(input){
       if(state.sas_matrix.velBands)SAS_MATRIX.velBands=state.sas_matrix.velBands;
       if(state.sas_matrix.velLabel!==undefined)SAS_MATRIX.velLabel=state.sas_matrix.velLabel;
     }
+    if(state.demolt_matrix_store){
+      if(state.demolt_matrix_store.grid)DEMOLT_MATRIX_STORE.grid=state.demolt_matrix_store.grid;
+      if(state.demolt_matrix_store.bpA)DEMOLT_MATRIX_STORE.bpA=state.demolt_matrix_store.bpA;
+      if(state.demolt_matrix_store.bpB)DEMOLT_MATRIX_STORE.bpB=state.demolt_matrix_store.bpB;
+    }
+    if(state.demolt_matrix_fc){
+      if(state.demolt_matrix_fc.grid)DEMOLT_MATRIX_FC.grid=state.demolt_matrix_fc.grid;
+      if(state.demolt_matrix_fc.bpA)DEMOLT_MATRIX_FC.bpA=state.demolt_matrix_fc.bpA;
+      if(state.demolt_matrix_fc.bpB)DEMOLT_MATRIX_FC.bpB=state.demolt_matrix_fc.bpB;
+    }
+    if(state.demolt_result_store)DEMOLT_RESULT_STORE=state.demolt_result_store;
+    if(state.demolt_result_fc)DEMOLT_RESULT_FC=state.demolt_result_fc;
     // Ripristina FC+VM prima di setPrizeMode: rAFcvm() gira con i dati già pronti (inclusa lang)
     if(state.fc_emp)FC_EMP=state.fc_emp;
     if(state.fc_map)FC_MAP=state.fc_map;
@@ -1043,7 +1075,7 @@ function loadSession(input){
     document.getElementById("modeP").className="gbtn"+(MODE==="preventivo"?" on":"");document.getElementById("modeC").className="gbtn"+(MODE==="consuntivo"?" on":"");
     document.getElementById("regInt").className="gbtn"+(REGION==="international"?" on":"");document.getElementById("regIt").className="gbtn"+(REGION==="italia"?" on":"");
     updateHeader();updateHeaderCount();
-    _origTC=JSON.stringify(TC);_origS50=SICK_50;_origS0=SICK_0;_origP=JSON.stringify(PARAMS);_origUSA=JSON.stringify(USA_P);_origMonth=CFG_MONTH;_origYear=CFG_YEAR;_origPdfPath=CFG_PDF_PATH;_origSeason=CFG_SEASON;_origSF=JSON.stringify(STORE_FLAGS);_origSeasCfg=JSON.stringify(SEAS_CFG);_origPrizeMode=PRIZE_MODE;_origSeasonPeriod=SEASON_PERIOD;_origSasMatrix=JSON.stringify(SAS_MATRIX);
+    _origTC=JSON.stringify(TC);_origS50=SICK_50;_origS0=SICK_0;_origP=JSON.stringify(PARAMS);_origUSA=JSON.stringify(USA_P);_origMonth=CFG_MONTH;_origYear=CFG_YEAR;_origPdfPath=CFG_PDF_PATH;_origSeason=CFG_SEASON;_origSF=JSON.stringify(STORE_FLAGS);_origSeasCfg=JSON.stringify(SEAS_CFG);_origPrizeMode=PRIZE_MODE;_origSeasonPeriod=SEASON_PERIOD;_origSasMatrix=JSON.stringify(SAS_MATRIX);_origDemoltMatrixStore=JSON.stringify(DEMOLT_MATRIX_STORE);_origDemoltMatrixFc=JSON.stringify(DEMOLT_MATRIX_FC);
     var loadMsg;
     if(PRIZE_MODE==="fcvm"){
       var fcvmCount=Object.keys(FC_EMP).length;
@@ -1059,14 +1091,14 @@ function loadSession(input){
 }
 
 // Save/Dirty
-var _origTC=JSON.stringify(TC),_origS50=SICK_50,_origS0=SICK_0,_origP=JSON.stringify(PARAMS),_origUSA=JSON.stringify(USA_P),_origMonth=CFG_MONTH,_origYear=CFG_YEAR,_origPdfPath=CFG_PDF_PATH,_origSeason=CFG_SEASON,_origSF=JSON.stringify(STORE_FLAGS),_origSeasCfg=JSON.stringify(SEAS_CFG),_origPrizeMode=PRIZE_MODE,_origSeasonPeriod=SEASON_PERIOD,_origSasMatrix=JSON.stringify(SAS_MATRIX);
-function markDirty(){var dirty=JSON.stringify(TC)!==_origTC||SICK_50!==_origS50||SICK_0!==_origS0||JSON.stringify(PARAMS)!==_origP||JSON.stringify(USA_P)!==_origUSA||CFG_MONTH!==_origMonth||CFG_YEAR!==_origYear||CFG_PDF_PATH!==_origPdfPath||CFG_SEASON!==_origSeason||JSON.stringify(STORE_FLAGS)!==_origSF||JSON.stringify(SEAS_CFG)!==_origSeasCfg||JSON.stringify(SAS_MATRIX)!==_origSasMatrix||PRIZE_MODE!==_origPrizeMode||SEASON_PERIOD!==_origSeasonPeriod;document.getElementById("saveBar").className="save-bar"+(dirty?" show":"");var cnt=document.querySelector(".cnt");if(cnt)cnt.style.paddingBottom=dirty?"60px":""}
+var _origTC=JSON.stringify(TC),_origS50=SICK_50,_origS0=SICK_0,_origP=JSON.stringify(PARAMS),_origUSA=JSON.stringify(USA_P),_origMonth=CFG_MONTH,_origYear=CFG_YEAR,_origPdfPath=CFG_PDF_PATH,_origSeason=CFG_SEASON,_origSF=JSON.stringify(STORE_FLAGS),_origSeasCfg=JSON.stringify(SEAS_CFG),_origPrizeMode=PRIZE_MODE,_origSeasonPeriod=SEASON_PERIOD,_origSasMatrix=JSON.stringify(SAS_MATRIX),_origDemoltMatrixStore=JSON.stringify(DEMOLT_MATRIX_STORE),_origDemoltMatrixFc=JSON.stringify(DEMOLT_MATRIX_FC);
+function markDirty(){var dirty=JSON.stringify(TC)!==_origTC||SICK_50!==_origS50||SICK_0!==_origS0||JSON.stringify(PARAMS)!==_origP||JSON.stringify(USA_P)!==_origUSA||CFG_MONTH!==_origMonth||CFG_YEAR!==_origYear||CFG_PDF_PATH!==_origPdfPath||CFG_SEASON!==_origSeason||JSON.stringify(STORE_FLAGS)!==_origSF||JSON.stringify(SEAS_CFG)!==_origSeasCfg||JSON.stringify(SAS_MATRIX)!==_origSasMatrix||JSON.stringify(DEMOLT_MATRIX_STORE)!==_origDemoltMatrixStore||JSON.stringify(DEMOLT_MATRIX_FC)!==_origDemoltMatrixFc||PRIZE_MODE!==_origPrizeMode||SEASON_PERIOD!==_origSeasonPeriod;document.getElementById("saveBar").className="save-bar"+(dirty?" show":"");var cnt=document.querySelector(".cnt");if(cnt)cnt.style.paddingBottom=dirty?"60px":""}
 function saveConfig(){
   _flushDigMobInputs();
-  var cfg={tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,seas_cfg:SEAS_CFG,sas_matrix:SAS_MATRIX,agg:AGG,vl:VL,usa_p:USA_P,store_flags:STORE_FLAGS,cfg_month:CFG_MONTH,cfg_year:CFG_YEAR,cfg_pdf_path:CFG_PDF_PATH,cfg_season:CFG_SEASON,saved:new Date().toISOString()};
+  var cfg={tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,seas_cfg:SEAS_CFG,sas_matrix:SAS_MATRIX,demolt_matrix_store:DEMOLT_MATRIX_STORE,demolt_matrix_fc:DEMOLT_MATRIX_FC,agg:AGG,vl:VL,usa_p:USA_P,store_flags:STORE_FLAGS,cfg_month:CFG_MONTH,cfg_year:CFG_YEAR,cfg_pdf_path:CFG_PDF_PATH,cfg_season:CFG_SEASON,saved:new Date().toISOString()};
   var blob=new Blob([JSON.stringify(cfg,null,2)],{type:"application/json"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="boggi_config_"+_sessionFileTag()+".json";a.click();
-  _origTC=JSON.stringify(TC);_origS50=SICK_50;_origS0=SICK_0;_origP=JSON.stringify(PARAMS);_origUSA=JSON.stringify(USA_P);_origMonth=CFG_MONTH;_origYear=CFG_YEAR;_origPdfPath=CFG_PDF_PATH;_origSeason=CFG_SEASON;_origSF=JSON.stringify(STORE_FLAGS);_origSeasCfg=JSON.stringify(SEAS_CFG);_origPrizeMode=PRIZE_MODE;_origSeasonPeriod=SEASON_PERIOD;_origSasMatrix=JSON.stringify(SAS_MATRIX);document.getElementById("saveBar").className="save-bar";autoSave()}
-function discardChanges(){TC=JSON.parse(_origTC);SICK_50=_origS50;SICK_0=_origS0;PARAMS=JSON.parse(_origP);USA_P=JSON.parse(_origUSA);CFG_MONTH=_origMonth;CFG_YEAR=_origYear;CFG_PDF_PATH=_origPdfPath;CFG_SEASON=_origSeason;STORE_FLAGS=JSON.parse(_origSF);SEAS_CFG=JSON.parse(_origSeasCfg);SAS_MATRIX=JSON.parse(_origSasMatrix);PRIZE_MODE=_origPrizeMode;SEASON_PERIOD=_origSeasonPeriod;document.getElementById("saveBar").className="save-bar";setPrizeMode(PRIZE_MODE);setSeasonPeriod(SEASON_PERIOD);rT();rC()}
+  _origTC=JSON.stringify(TC);_origS50=SICK_50;_origS0=SICK_0;_origP=JSON.stringify(PARAMS);_origUSA=JSON.stringify(USA_P);_origMonth=CFG_MONTH;_origYear=CFG_YEAR;_origPdfPath=CFG_PDF_PATH;_origSeason=CFG_SEASON;_origSF=JSON.stringify(STORE_FLAGS);_origSeasCfg=JSON.stringify(SEAS_CFG);_origPrizeMode=PRIZE_MODE;_origSeasonPeriod=SEASON_PERIOD;_origSasMatrix=JSON.stringify(SAS_MATRIX);_origDemoltMatrixStore=JSON.stringify(DEMOLT_MATRIX_STORE);_origDemoltMatrixFc=JSON.stringify(DEMOLT_MATRIX_FC);document.getElementById("saveBar").className="save-bar";autoSave()}
+function discardChanges(){TC=JSON.parse(_origTC);SICK_50=_origS50;SICK_0=_origS0;PARAMS=JSON.parse(_origP);USA_P=JSON.parse(_origUSA);CFG_MONTH=_origMonth;CFG_YEAR=_origYear;CFG_PDF_PATH=_origPdfPath;CFG_SEASON=_origSeason;STORE_FLAGS=JSON.parse(_origSF);SEAS_CFG=JSON.parse(_origSeasCfg);SAS_MATRIX=JSON.parse(_origSasMatrix);DEMOLT_MATRIX_STORE=JSON.parse(_origDemoltMatrixStore);DEMOLT_MATRIX_FC=JSON.parse(_origDemoltMatrixFc);PRIZE_MODE=_origPrizeMode;SEASON_PERIOD=_origSeasonPeriod;document.getElementById("saveBar").className="save-bar";setPrizeMode(PRIZE_MODE);setSeasonPeriod(SEASON_PERIOD);rT();rC()}
 function loadConfig(evt){var f=evt.target.files[0];if(!f)return;var reader=new FileReader();
   reader.onload=function(ev){try{
     var txt=ev.target.result;
@@ -1093,6 +1125,16 @@ function loadConfig(evt){var f=evt.target.files[0];if(!f)return;var reader=new F
       // Migrate legacy digMin to digMinClassic/digMinMobility
       if(cfg.params.digMin!==undefined&&cfg.params.digMinClassic===undefined){cfg.params.digMinClassic=cfg.params.digMin;cfg.params.digMinMobility=cfg.params.digMin+0.02}
       for(var k in cfg.params)if(PARAMS.hasOwnProperty(k))PARAMS[k]=cfg.params[k]
+    }
+    if(cfg.demolt_matrix_store){
+      if(cfg.demolt_matrix_store.grid)DEMOLT_MATRIX_STORE.grid=cfg.demolt_matrix_store.grid;
+      if(cfg.demolt_matrix_store.bpA)DEMOLT_MATRIX_STORE.bpA=cfg.demolt_matrix_store.bpA;
+      if(cfg.demolt_matrix_store.bpB)DEMOLT_MATRIX_STORE.bpB=cfg.demolt_matrix_store.bpB;
+    }
+    if(cfg.demolt_matrix_fc){
+      if(cfg.demolt_matrix_fc.grid)DEMOLT_MATRIX_FC.grid=cfg.demolt_matrix_fc.grid;
+      if(cfg.demolt_matrix_fc.bpA)DEMOLT_MATRIX_FC.bpA=cfg.demolt_matrix_fc.bpA;
+      if(cfg.demolt_matrix_fc.bpB)DEMOLT_MATRIX_FC.bpB=cfg.demolt_matrix_fc.bpB;
     }
     if(cfg.agg)AGG=cfg.agg;if(cfg.vl)VL=cfg.vl;if(cfg.usa_p){for(var r in cfg.usa_p)USA_P[r]=cfg.usa_p[r]}
     if(cfg.cfg_month)CFG_MONTH=cfg.cfg_month;if(cfg.cfg_year)CFG_YEAR=cfg.cfg_year;if(cfg.cfg_pdf_path!==undefined)CFG_PDF_PATH=cfg.cfg_pdf_path;if(cfg.cfg_season)CFG_SEASON=cfg.cfg_season;
@@ -1122,7 +1164,7 @@ function loadConfig(evt){var f=evt.target.files[0];if(!f)return;var reader=new F
     if(cfg.season_period){SEASON_PERIOD=cfg.season_period;setSeasonPeriod(SEASON_PERIOD);}
     // Always sync preventivo/consuntivo buttons
     if(cfg.mode){document.getElementById("modeP").className="gbtn"+(cfg.mode==="preventivo"?" on":"");document.getElementById("modeC").className="gbtn"+(cfg.mode==="consuntivo"?" on":"");}
-    _origTC=JSON.stringify(TC);_origS50=SICK_50;_origS0=SICK_0;_origP=JSON.stringify(PARAMS);_origUSA=JSON.stringify(USA_P);_origMonth=CFG_MONTH;_origYear=CFG_YEAR;_origPdfPath=CFG_PDF_PATH;_origSeason=CFG_SEASON;_origSF=JSON.stringify(STORE_FLAGS);_origSeasCfg=JSON.stringify(SEAS_CFG);_origPrizeMode=PRIZE_MODE;_origSeasonPeriod=SEASON_PERIOD;
+    _origTC=JSON.stringify(TC);_origS50=SICK_50;_origS0=SICK_0;_origP=JSON.stringify(PARAMS);_origUSA=JSON.stringify(USA_P);_origMonth=CFG_MONTH;_origYear=CFG_YEAR;_origPdfPath=CFG_PDF_PATH;_origSeason=CFG_SEASON;_origSF=JSON.stringify(STORE_FLAGS);_origSeasCfg=JSON.stringify(SEAS_CFG);_origPrizeMode=PRIZE_MODE;_origSeasonPeriod=SEASON_PERIOD;_origSasMatrix=JSON.stringify(SAS_MATRIX);_origDemoltMatrixStore=JSON.stringify(DEMOLT_MATRIX_STORE);_origDemoltMatrixFc=JSON.stringify(DEMOLT_MATRIX_FC);
     document.getElementById("saveBar").className="save-bar";updateHeader();rT();rC();rA();rSources();rAgg();if(typeof rStores==="function")rStores();autoSave();alert("Configurazione caricata!");
   }catch(ex){alert("Errore nel file: "+ex.message)}};reader.readAsText(f)}
 
@@ -1220,7 +1262,19 @@ function storeSasInfo(sid){
 function storePctOf(sid){return storeSasInfo(sid).pct;}
 
 // RECALC ENGINE
+// Demoltiplicatore Inventari (da ottobre 2026): riduce uniformemente ogni voce di premio dei
+// ruoli SM/VSM in consuntivo, in base al risultato KPI inventari+accuracy del negozio (vedi
+// 33-demolt-import/010_main.js). Wrapper sottile per non toccare la logica esistente sotto
+// (_getValRaw ha molteplici return sparsi nello switch, rifattorizzarla sarebbe rischioso).
 function getVal(e,kpiKey){
+  var raw=_getValRaw(e,kpiKey);
+  if(MODE==="consuntivo"&&typeof demoltActive==="function"&&demoltActive()&&e.j&&e.j.indexOf("SM")>=0){
+    var dr=DEMOLT_RESULT_STORE[String(e.si)];
+    if(dr&&dr.pct!=null)return Math.round(raw*dr.pct*100)/100;
+  }
+  return raw;
+}
+function _getValRaw(e,kpiKey){
   if(isUSA(e.si,e))return 0; // USA employees use calcUSA(), not individual KPI
   var sid=String(e.si),tg=D.t[sid]||{},cn=D.c[sid]||{},v=D.v[e.m]||{},dp=isD(e.si);
   if(MODE==="preventivo"){var _rl=e.rl||e.ib||0;switch(kpiKey){
@@ -1788,6 +1842,7 @@ function rC(){
   h+='<span style="font-size:11px;color:#8a8680">'+fl.length+" dip. \u00b7 Tot: "+fc(tot,"EUR")+"</span></div>";
   function thS(col,label){var ar=cSort.col===col?(cSort.dir>0?"\u25b2":"\u25bc"):"\u25b4";return'<th data-col="'+col+'"'+(cSort.col===col?' class="sorted"':"")+">"+label+' <span class="arrow">'+ar+"</span></th>"}
   h+='<div class="scroll-wrap"><table id="ctbl"><thead><tr>'+thS("m","Matr.")+thS("c","Cognome")+thS("n","Nome")+thS("si_m","Negozio")+thS("j","Ruolo")+'<th>Val.</th>'+thS("ml","Mal.")+'<th style="cursor:default;color:#c9a96e" title="Premio BDG moltiplicatore ridotto ('+Math.round(PARAMS.bdg60mult*100)+'%)">Rid.</th>';
+  if(MODE==="consuntivo"&&typeof demoltActive==="function"&&demoltActive())h+='<th style="cursor:default;color:#a07d2c" title="Demoltiplicatore Inventari (SM/VSM): riduzione premio da % completamento inventari + accuracy">Dem.</th>';
   IT.forEach(function(it){if(it.k==="ra"&&!PARAMS.artEnabled)return;h+=thS(it.k,it.l)});h+='<th>Agg.</th>'+thS("tl","TOTALE")+(MODE==="consuntivo"?'<th style="cursor:default;font-size:9px;text-align:center" title="Riconosci premio BDG al 100%">100%</th><th style="cursor:default;font-size:9px;text-align:center" title="Riconosci Molt. ridotto ('+Math.round(PARAMS.bdg60mult*100)+'%)">B60</th><th style="cursor:default;font-size:9px;text-align:center" title="Riconosci Workgame ('+Math.round((PARAMS.workgamePct||0)*100)+'% BDG)">WG</th>':'')+' <th style="cursor:default">PS</th>'+(REGION!=="italia"?'<th style="cursor:default">&#128231;</th>':'')+"</tr></thead><tbody>";
   fl.forEach(function(e){var t=calcE(e),cu=e.cu||"EUR",ml=e.ml||0,sm=sickMult(ml),at=aggTotal(e.m);
     var mlc=ml===0?"ml-0":ml<SICK_50?"ml-0":ml<SICK_0?"ml-low":"ml-high";
@@ -1805,6 +1860,12 @@ function rC(){
     h+='<td style="font-size:9px;color:#a09a92">'+cu+'</td><td style="text-align:center"><span class="ml-dot '+mlc+'"></span>'+ml+"</td>";
     var ridotto=!psOn&&t>0&&isRidotto(e)&&isOn(e.j,"rb");
     h+='<td style="text-align:center;font-size:13px" title="'+(ridotto?"Premio BDG ridotto ("+Math.round(PARAMS.bdg60mult*100)+"%)":"—")+'">'+(ridotto?'<span style="color:#c9a96e">&#11044;</span>':'—')+"</td>";
+    if(MODE==="consuntivo"&&typeof demoltActive==="function"&&demoltActive()){
+      var _demR=(e.j&&e.j.indexOf("SM")>=0)?DEMOLT_RESULT_STORE[String(e.si)]:null;
+      var _demTip=_demR&&_demR.pct!=null?("Demoltiplicatore: "+Math.round(_demR.pct*100)+"% del premio riconosciuto"):"Nessun dato inventari importato per questo negozio";
+      var _demColor=_demR&&_demR.pct!=null?(_demR.pct>=0.95?"#2d7a3a":(_demR.pct>=0.70?"#c9a96e":"#cf5b5b")):"#d5d0c8";
+      h+='<td style="text-align:center;font-size:13px" title="'+esc(_demTip)+'">'+(_demR&&_demR.pct!=null?'<span style="color:'+_demColor+'">&#11044;</span>':'—')+"</td>";
+    }
     IT.forEach(function(it){if(it.k==="ra"&&!PARAMS.artEnabled)return;var on=it.k==="vi"?true:isOn(e.j,it.k),raw=getVal(e,it.k),val=on?raw*sm:0;
       // SAS azzerato per soglia % accettati non raggiunta \u2192 mostra "0" in rosso con tooltip
       if(it.k==="rsa"&&on&&!psOn&&sasZeroByAcc(e)){
@@ -2818,6 +2879,45 @@ function sasLetterBlock(lang,info,isP,cu,thPct,isArea){
   return h;
 }
 
+// === Blocco Demoltiplicatore Inventari per le lettere (mensile: SM/VSM; FC+VM: solo FC), da Ottobre 2026 ===
+// dr: {pct, compl, acc} (negozio) oppure {pct, invio, compl} (area) — vedi 33-demolt-import/010_main.js. Solo consuntivo.
+var _DEMOLT_LT={
+  ITALIANO:{title:"DEMOLTIPLICATORE INVENTARI",logic:"Riduzione del premio in base alla % di completamento degli inventari giornalieri (completati/mandati) e all'accuracy mensile.",logicArea:"Riduzione del premio d'area in base alla % di invio degli inventari giornalieri (mandati/max possibile) e alla % di completamento (completati/mandati), aggregate su tutta l'area.",axisA:"% Completamento",axisB:"Accuracy",axisAArea:"% Invio",axisBArea:"% Completamento",pctLbl:"% premio riconosciuta",maturato:"Premio maturato",erogare:"Premio da erogare"},
+  INGLESE:{title:"INVENTORY MULTIPLIER",logic:"Prize reduction based on daily inventory completion % (completed/sent) and monthly accuracy.",logicArea:"Area prize reduction based on daily inventory sending % (sent/max possible) and completion % (completed/sent), aggregated across the area.",axisA:"% Completion",axisB:"Accuracy",axisAArea:"% Sent",axisBArea:"% Completion",pctLbl:"% prize recognised",maturato:"Prize earned",erogare:"Prize to be paid"},
+  FRANCESE:{title:"DÉMULTIPLICATEUR INVENTAIRES",logic:"Réduction de la prime selon le % d'achèvement des inventaires quotidiens (complétés/envoyés) et l'accuracy mensuelle.",logicArea:"Réduction de la prime de zone selon le % d'envoi des inventaires quotidiens (envoyés/max possible) et le % d'achèvement (complétés/envoyés), agrégés sur toute la zone.",axisA:"% Achèvement",axisB:"Accuracy",axisAArea:"% Envoi",axisBArea:"% Achèvement",pctLbl:"% prime reconnue",maturato:"Prime acquise",erogare:"Prime à verser"},
+  TEDESCO:{title:"INVENTUR-MULTIPLIKATOR",logic:"Prämienreduzierung basierend auf dem täglichen Inventur-Abschluss% (abgeschlossen/gesendet) und der monatlichen Accuracy.",logicArea:"Reduzierung der Bereichsprämie basierend auf dem täglichen Inventur-Versand% (gesendet/maximal möglich) und dem Abschluss% (abgeschlossen/gesendet), aggregiert über den gesamten Bereich.",axisA:"% Abschluss",axisB:"Accuracy",axisAArea:"% Versand",axisBArea:"% Abschluss",pctLbl:"% anerkannte Prämie",maturato:"Erwirtschaftete Prämie",erogare:"Auszuzahlende Prämie"},
+  SPAGNOLO:{title:"DEMULTIPLICADOR INVENTARIOS",logic:"Reducción del premio según el % de finalización de los inventarios diarios (completados/enviados) y la accuracy mensual.",logicArea:"Reducción del premio de área según el % de envío de los inventarios diarios (enviados/máximo posible) y el % de finalización (completados/enviados), agregados en toda el área.",axisA:"% Finalización",axisB:"Accuracy",axisAArea:"% Envío",axisBArea:"% Finalización",pctLbl:"% premio reconocido",maturato:"Premio devengado",erogare:"Premio a pagar"}
+};
+function demoltLetterBlock(lang,dr,isP,cu,isArea){
+  if(typeof demoltActive!=='function'||!demoltActive())return '';
+  if(isP||!dr||dr.pct==null)return ''; // import inventari disponibile solo in consuntivo
+  var T=_DEMOLT_LT[lang]||_DEMOLT_LT.INGLESE;
+  var matrix=isArea?DEMOLT_MATRIX_FC:DEMOLT_MATRIX_STORE;
+  var bpA=matrix.bpA,bpB=matrix.bpB;
+  var valA=isArea?dr.invio:dr.compl,valB=isArea?dr.compl:dr.acc;
+  var aIdx=demoltBandIdx(valA,bpA),bIdx=demoltBandIdx(valB,bpB);
+  var axisA=isArea?T.axisAArea:T.axisA,axisB=isArea?T.axisBArea:T.axisB;
+  var h='<div style="margin-top:10px;padding:11px 14px;background:#faf8f4;border:1px solid #ece7df;border-radius:7px">';
+  h+='<div style="font-size:12px;font-weight:700;color:#a07d2c;margin-bottom:4px">'+esc(T.title)+'</div>';
+  h+='<div style="font-size:10px;color:#8a8680;line-height:1.45;margin-bottom:8px">'+esc(isArea?T.logicArea:T.logic)+'</div>';
+  h+='<div style="font-size:10px;font-weight:700;color:#8a8680;text-align:center;margin-bottom:3px">'+esc(axisB)+' →</div>';
+  h+='<table style="border-collapse:collapse;font-size:11px;margin:0 auto 9px"><thead><tr><th style="padding:3px 9px;color:#a09a92;text-align:right;font-weight:700">↓ '+esc(axisA)+'</th>';
+  for(var c=0;c<3;c++)h+='<th style="padding:3px 11px;color:#8a8680;font-weight:700">'+demoltBandLbl(bpB,c)+'</th>';
+  h+='</tr></thead><tbody>';
+  [2,1,0].forEach(function(ai){
+    h+='<tr><td style="padding:3px 9px;color:#6b6560;font-weight:700;text-align:right">'+demoltBandLbl(bpA,ai)+'</td>';
+    for(var c2=0;c2<3;c2++){var hit=(ai===aIdx&&c2===bIdx);h+='<td style="padding:3px 11px;text-align:center;'+(hit?'background:#c9a96e;color:#fff;font-weight:700;border-radius:3px':'color:#9a958d')+'">'+Math.round(matrix.grid[ai][c2]*100)+'</td>';}
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  var row=function(l,v){return '<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0"><span style="color:#8a8680">'+esc(l)+'</span><span style="font-weight:600;color:#2c2925">'+v+'</span></div>';};
+  h+=row(axisA,Math.round((valA||0)*100)+'% ('+demoltBandLbl(bpA,aIdx)+')');
+  h+=row(axisB,Math.round((valB||0)*100)+'% ('+demoltBandLbl(bpB,bIdx)+')');
+  h+=row(T.pctLbl,Math.round(dr.pct*100)+'%');
+  h+='</div>';
+  return h;
+}
+
 function buildLetter(e){
   var cu=e.cu||"EUR",sid=String(e.si),tg=D.t[sid]||{},cn=D.c[sid]||{},tc=calcE(e),sm=sickMult(e.ml),dp=isD(e.si);
   var _rlLt=e.rl||e.ib||0;var pctSal=_rlLt>0?((tc/_rlLt)*100).toFixed(2):"0";var lang=trLang(e);
@@ -2825,6 +2925,8 @@ function buildLetter(e){
   var gr=({"ITALIANO":"Ciao","INGLESE":"Hi","FRANCESE":"Bonjour","TEDESCO":"Hallo","SPAGNOLO":"Hola"})[lang]||"Hi";
   var _ssiL=(typeof storeSasInfo==='function')?storeSasInfo(String(e.si)):null;
   var isP=MODE==="preventivo",pctStore=(_ssiL&&_ssiL.active&&tg.to>0)?(_ssiL.pct*100).toFixed(1):(tg.to>0&&cn.sc?((cn.sc+(cn.es||0))/tg.to*100).toFixed(1):"100.0"),surplus=(cn.es||0);
+  // Demoltiplicatore Inventari — solo SM/VSM, solo consuntivo, solo da ottobre 2026 (vedi demoltActive())
+  var _demDr=(!isP&&typeof demoltActive==="function"&&demoltActive()&&e.j&&e.j.indexOf("SM")>=0)?DEMOLT_RESULT_STORE[sid]:null;
   var mtL=({"ITALIANO":"IT","INGLESE":"EN","FRANCESE":"FR","TEDESCO":"DE","SPAGNOLO":"ES"})[lang]||"EN";
   var modeTag=isP?{IT:" (PREVENTIVO)",EN:" (FORECAST)",FR:" (PR\u00c9VISIONNEL)",DE:" (PROGNOSE)",ES:" (PREVISI\u00d3N)"}:{IT:"",EN:"",FR:"",DE:"",ES:""};
 
@@ -2941,7 +3043,17 @@ function buildLetter(e){
   h+="</div>";
 
   var totalLabel=isP?(lang==="ITALIANO"?"MASSIMO PREMIO POTENZIALE":"MAXIMUM POTENTIAL BONUS"):esc(tr(e,"earned","THIS MONTH YOU HAVE EARNED THE"));
-  if(tc>0){h+='<div class="lt-total"><div><div class="lt-total-label">'+totalLabel+'</div><div class="lt-total-pct">'+pctSal+esc(tr(e,"over_sal","% OVER SALARY"))+"</div></div><div class=\"lt-total-val\">"+fc(tc,cu)+"</div></div>"}
+  if(tc>0&&_demDr&&_demDr.pct!=null&&_demDr.pct<1){
+    // tc riflette già la riduzione (getVal() la applica internamente) — il "maturato" pre-riduzione
+    // si ricostruisce dividendo per la stessa % applicata uniformemente a ogni voce.
+    var _demT=_DEMOLT_LT[lang]||_DEMOLT_LT.INGLESE;
+    var _demMaturato=_demDr.pct>0?Math.round(tc/_demDr.pct):tc;
+    h+='<div class="lt-total" style="opacity:.6"><div><div class="lt-total-label">'+esc(_demT.maturato)+'</div></div><div class="lt-total-val">'+fc(_demMaturato,cu)+'</div></div>';
+    h+=demoltLetterBlock(lang,_demDr,isP,cu,false);
+    h+='<div style="text-align:center;font-size:12px;font-weight:700;color:#a07d2c;margin:4px 0">× '+Math.round(_demDr.pct*100)+'% → </div>';
+    h+='<div class="lt-total"><div><div class="lt-total-label">'+esc(_demT.erogare)+'</div><div class="lt-total-pct">'+pctSal+esc(tr(e,"over_sal","% OVER SALARY"))+"</div></div><div class=\"lt-total-val\">"+fc(tc,cu)+"</div></div>";
+  }
+  else if(tc>0){h+='<div class="lt-total"><div><div class="lt-total-label">'+totalLabel+'</div><div class="lt-total-pct">'+pctSal+esc(tr(e,"over_sal","% OVER SALARY"))+"</div></div><div class=\"lt-total-val\">"+fc(tc,cu)+"</div></div>"}
   else{h+='<div class="lt-total"><div><div class="lt-total-label" style="color:#cf5b5b">NO INCENTIVE</div></div><div class="lt-total-val" style="color:#6b6560">'+fc(0,cu)+"</div></div>"}
   h+='<div class="lt-footer"><div style="font-weight:600;margin-bottom:6px">'+esc(tr(e,"rules","THE DELIVERED INCENTIVES FOLLOW THE RULE"))+'</div><div style="white-space:pre-wrap">'+esc(getDiscl(e))+"</div></div></div>";
   return h}
@@ -4511,6 +4623,28 @@ function rT(){try{
       for(var _i2=0;_i2<3;_i2++)h+='<input class="cfg-input sas-velband" type="number" data-i="'+_i2+'" value="'+Math.round(_vb[_i2]*100)+'" step="1" min="0" max="100" style="width:56px;text-align:center">';
       h+='</div></div>';
     }
+    // Demoltiplicatore Inventari — Area (FC): sempre visibile (etichetta se non ancora attivo),
+    // si applica solo al ruolo Field Coach, mai ai Visual Merchandiser (vedi 88-calc-engine/70-fcvm-calc)
+    h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">&#128203; Demoltiplicatore Inventari &mdash; Area (FC)</div>';
+    if(!demoltActive())h+='<div style="font-size:10px;color:#a07d2c;background:#fff8ee;border:1px solid #f0e2c4;border-radius:5px;padding:6px 10px;margin-bottom:8px">Attivo da '+MONTH_NAMES.IT[DEMOLT_CUTOFF_MONTH]+' '+DEMOLT_CUTOFF_YEAR+' &mdash; i valori qui sotto si possono già impostare in anticipo.</div>';
+    h+='<div style="font-size:10px;color:#8a8680;margin-bottom:8px">Riduce il premio d\'area in base a % Invio (&Sigma; sended/&Sigma; working days) e % Completamento (&Sigma; completed/&Sigma; sended) aggregati sull\'area &mdash; si applica solo al ruolo <b>Field Coach</b>, mai ai Visual Merchandiser.</div>';
+    var _dab=DEMOLT_MATRIX_FC.bpA,_dbb=DEMOLT_MATRIX_FC.bpB;
+    h+='<div style="font-size:10px;font-weight:700;color:#6b6560;text-align:center;margin:6px 0 2px">% COMPLETAMENTO (asse orizzontale) →</div>';
+    h+='<table style="width:100%;border-collapse:collapse;table-layout:fixed;margin:0 0 8px"><thead><tr><th style="width:130px;font-size:9px;font-weight:700;color:#6b6560;padding:3px 8px;text-align:right;white-space:nowrap;vertical-align:bottom">% INVIO<br>(asse verticale) ↓</th>';
+    for(var _dc=0;_dc<3;_dc++)h+='<th style="font-size:9px;font-weight:700;color:#8a8680;padding:3px 8px;text-align:center">'+demoltBandLbl(_dbb,_dc)+'</th>';
+    h+='</tr></thead><tbody>';
+    [2,1,0].forEach(function(_dai){
+      h+='<tr><td style="font-size:9px;color:#6b6560;font-weight:700;padding:3px 8px;text-align:right;white-space:nowrap">'+demoltBandLbl(_dab,_dai)+'</td>';
+      for(var _dc2=0;_dc2<3;_dc2++)h+='<td style="padding:2px;text-align:center"><input class="cfg-input dem-fc-cell" type="number" data-demr="'+_dai+'" data-demc="'+_dc2+'" value="'+Math.round(DEMOLT_MATRIX_FC.grid[_dai][_dc2]*100)+'" step="1" min="0" max="100" style="width:62px;text-align:center"></td>';
+      h+='</tr>';
+    });
+    h+='</tbody></table>';
+    h+='<div style="font-size:10px;color:#8a8680;margin:2px 0">Soglie fasce <b>invio</b> (%, bassa→alta)</div><div style="display:flex;gap:6px;margin-bottom:6px">';
+    for(var _di=0;_di<2;_di++)h+='<input class="cfg-input dem-fc-bandA" type="number" data-i="'+_di+'" value="'+Math.round(_dab[_di]*100)+'" step="1" min="0" max="100" style="width:56px;text-align:center">';
+    h+='</div>';
+    h+='<div style="font-size:10px;color:#8a8680;margin:2px 0">Soglie fasce <b>completamento</b> (%, bassa→alta)</div><div style="display:flex;gap:6px;margin-bottom:8px">';
+    for(var _di2=0;_di2<2;_di2++)h+='<input class="cfg-input dem-fc-bandB" type="number" data-i="'+_di2+'" value="'+Math.round(_dbb[_di2]*100)+'" step="1" min="0" max="100" style="width:56px;text-align:center">';
+    h+='</div></div>';
     // Malattia FC+VM
     h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">&#129298; Malattia &mdash; FC + VM (Consuntivo)</div>';
     h+='<div style="font-size:10px;color:#8a8680;margin-bottom:12px">Soglie giorni assenza per riduzione premio. Stessi parametri del mensile.</div>';
@@ -4546,6 +4680,16 @@ function rT(){try{
     document.querySelectorAll(".sas-velband").forEach(function(inp){inp.onchange=function(){
       var i=parseInt(inp.getAttribute("data-i")),v=parseFloat(inp.value);
       if(isNaN(v))return;SAS_MATRIX.velBands[i]=v/100;markDirty();rC();rA();}});
+    // Demoltiplicatore Inventari — Area (FC) matrix bindings
+    document.querySelectorAll(".dem-fc-cell").forEach(function(inp){inp.onchange=function(){
+      var r=parseInt(inp.getAttribute("data-demr")),c=parseInt(inp.getAttribute("data-demc")),v=parseFloat(inp.value);
+      if(isNaN(v))return;DEMOLT_MATRIX_FC.grid[r][c]=Math.max(0,Math.min(1,v/100));markDirty();}});
+    document.querySelectorAll(".dem-fc-bandA").forEach(function(inp){inp.onchange=function(){
+      var i=parseInt(inp.getAttribute("data-i")),v=parseFloat(inp.value);
+      if(isNaN(v))return;DEMOLT_MATRIX_FC.bpA[i]=v/100;markDirty();rT();}});
+    document.querySelectorAll(".dem-fc-bandB").forEach(function(inp){inp.onchange=function(){
+      var i=parseInt(inp.getAttribute("data-i")),v=parseFloat(inp.value);
+      if(isNaN(v))return;DEMOLT_MATRIX_FC.bpB[i]=v/100;markDirty();rT();}});
     return;
   }
   // In seasonal mode, show only Periodo/Output + Seasonal Config
@@ -4828,6 +4972,29 @@ function rT(){try{
     h+='<div style="font-size:10px;color:#8a8680;margin-bottom:6px">Premio SAS individuale (SCS): \u20ac/SAS \u00d7 n. SAS on target, fino al massimale.</div>';
     h+=pRow("sasRate","\u20ac/SAS","",PARAMS.sasRate,"\u20ac",0.5)+pRow("sasMax","Max","",PARAMS.sasMax,"\u20ac",10);
   }
+  h+='</div>';
+  // Demoltiplicatore Inventari \u2014 Negozio (SM/VSM): sempre visibile (etichetta se non ancora attivo)
+  h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">&#128203; Demoltiplicatore Inventari &mdash; Negozio</div>';
+  if(!demoltActive())h+='<div style="font-size:10px;color:#a07d2c;background:#fff8ee;border:1px solid #f0e2c4;border-radius:5px;padding:6px 10px;margin-bottom:8px">Attivo da '+MONTH_NAMES.IT[DEMOLT_CUTOFF_MONTH]+' '+DEMOLT_CUTOFF_YEAR+' &mdash; i valori qui sotto si possono gi\u00e0 impostare in anticipo.</div>';
+  h+='<div style="font-size:10px;color:#8a8680;margin-bottom:8px">Riduce il premio in base a % Completamento (completed/sended) e Accuracy mensile dell\'inventario &mdash; si applica solo ai ruoli <b>SM</b> e <b>VSM</b>.</div>';
+  var _dsab=DEMOLT_MATRIX_STORE.bpA,_dsbb=DEMOLT_MATRIX_STORE.bpB;
+  h+='<div style="font-size:10px;font-weight:700;color:#6b6560;text-align:center;margin:6px 0 2px">ACCURACY (asse orizzontale) \u2192</div>';
+  h+='<table style="width:100%;border-collapse:collapse;table-layout:fixed;margin:0 0 8px"><thead><tr><th style="width:130px;font-size:9px;font-weight:700;color:#6b6560;padding:3px 8px;text-align:right;white-space:nowrap;vertical-align:bottom">% COMPLETAMENTO<br>(asse verticale) \u2193</th>';
+  for(var _dsc=0;_dsc<3;_dsc++)h+='<th style="font-size:9px;font-weight:700;color:#8a8680;padding:3px 8px;text-align:center">'+demoltBandLbl(_dsbb,_dsc)+'</th>';
+  h+='</tr></thead><tbody>';
+  [2,1,0].forEach(function(_dsai){
+    h+='<tr><td style="font-size:9px;color:#6b6560;font-weight:700;padding:3px 8px;text-align:right;white-space:nowrap">'+demoltBandLbl(_dsab,_dsai)+'</td>';
+    for(var _dsc2=0;_dsc2<3;_dsc2++)h+='<td style="padding:2px;text-align:center"><input class="cfg-input dem-st-cell" type="number" data-demr="'+_dsai+'" data-demc="'+_dsc2+'" value="'+Math.round(DEMOLT_MATRIX_STORE.grid[_dsai][_dsc2]*100)+'" step="1" min="0" max="100" style="width:62px;text-align:center"></td>';
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  h+='<div style="font-size:10px;color:#8a8680;margin:2px 0">Soglie fasce <b>completamento</b> (%, bassa\u2192alta)</div><div style="display:flex;gap:6px;margin-bottom:6px">';
+  for(var _dsi=0;_dsi<2;_dsi++)h+='<input class="cfg-input dem-st-bandA" type="number" data-i="'+_dsi+'" value="'+Math.round(_dsab[_dsi]*100)+'" step="1" min="0" max="100" style="width:56px;text-align:center">';
+  h+='</div>';
+  h+='<div style="font-size:10px;color:#8a8680;margin:2px 0">Soglie fasce <b>accuracy</b> (%, bassa\u2192alta)</div><div style="display:flex;gap:6px;margin-bottom:8px">';
+  for(var _dsi2=0;_dsi2<2;_dsi2++)h+='<input class="cfg-input dem-st-bandB" type="number" data-i="'+_dsi2+'" value="'+Math.round(_dsbb[_dsi2]*100)+'" step="1" min="0" max="100" style="width:56px;text-align:center">';
+  h+='</div></div>';
+  h+='<div class="wg" style="margin-bottom:20px">';
   h+='<div style="font-size:11px;font-weight:700;color:#cf5b5b;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">DCC</div>';
   h+=pRow("dccRate","Aliquota","",PARAMS.dccRate*100,"%",0.01)+pRow("dccMax","Max","",PARAMS.dccMax,"\u20ac",10);
   h+='<div style="font-size:11px;font-weight:700;color:#cf8b4e;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;justify-content:space-between">Articoli Incentivati<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:10px;font-weight:400;color:#6b6560;text-transform:none;letter-spacing:0"><input type="checkbox" id="artEnabled"'+(PARAMS.artEnabled?' checked':'')+' style="accent-color:#cf8b4e;width:14px;height:14px;cursor:pointer"> Attivo</label></div>';
@@ -4916,6 +5083,16 @@ function rT(){try{
   document.querySelectorAll(".sas-velband").forEach(function(inp){inp.onchange=function(){
     var i=parseInt(inp.getAttribute("data-i")),v=parseFloat(inp.value);
     if(isNaN(v))return;SAS_MATRIX.velBands[i]=v/100;markDirty();rC();rA();}});
+  // Demoltiplicatore Inventari — Negozio matrix bindings
+  document.querySelectorAll(".dem-st-cell").forEach(function(inp){inp.onchange=function(){
+    var r=parseInt(inp.getAttribute("data-demr")),c=parseInt(inp.getAttribute("data-demc")),v=parseFloat(inp.value);
+    if(isNaN(v))return;DEMOLT_MATRIX_STORE.grid[r][c]=Math.max(0,Math.min(1,v/100));markDirty();}});
+  document.querySelectorAll(".dem-st-bandA").forEach(function(inp){inp.onchange=function(){
+    var i=parseInt(inp.getAttribute("data-i")),v=parseFloat(inp.value);
+    if(isNaN(v))return;DEMOLT_MATRIX_STORE.bpA[i]=v/100;markDirty();rT();}});
+  document.querySelectorAll(".dem-st-bandB").forEach(function(inp){inp.onchange=function(){
+    var i=parseInt(inp.getAttribute("data-i")),v=parseFloat(inp.value);
+    if(isNaN(v))return;DEMOLT_MATRIX_STORE.bpB[i]=v/100;markDirty();rT();}});
   var artEnabledCb=document.getElementById("artEnabled");if(artEnabledCb)artEnabledCb.onchange=function(){PARAMS.artEnabled=this.checked;var wrap=document.getElementById("artEnabledWrap");if(wrap)wrap.style.display=this.checked?"":"none";markDirty();rC();rA()};
   document.querySelectorAll(".tb").forEach(function(b){
     if(b.getAttribute("data-r")){b.onclick=function(){var r=b.getAttribute("data-r"),k=b.getAttribute("data-k");if(!TC[r]){TC[r]={};KP.forEach(function(kk){TC[r][kk]=false})}TC[r][k]=!TC[r][k];markDirty();rC();rA();rT()}}
@@ -7597,6 +7774,112 @@ function loadUSAPrevResults(file){
   reader.readAsArrayBuffer(file);
 }
 
+// ============================================================
+// Demoltiplicatore Inventari — parametri, cutoff, import
+// Riduce il premio (negozio: SM/VSM; FC+VM: solo FC) in base ai KPI
+// sugli inventari giornalieri, validati nel tool di test
+// demoltiplicatore/kpi_inventari.html. Attivo da DEMOLT_CUTOFF_YEAR/
+// MONTH in poi (preventivo ottobre 2026) — stesso pattern del blocco
+// SAS (SAS_MATRIX/sasNewActive in 50-params/010_main.js).
+// ============================================================
+var DEMOLT_MATRIX_STORE={bpA:[0.70,0.90],bpB:[0.95,0.98],grid:[[0.50,0.65,0.80],[0.60,0.75,0.90],[0.70,0.85,1.00]]};
+var DEMOLT_MATRIX_FC={bpA:[0.80,0.95],bpB:[0.80,0.95],grid:[[0.50,0.65,0.80],[0.60,0.75,0.90],[0.70,0.85,1.00]]};
+var DEMOLT_CUTOFF_YEAR=2026,DEMOLT_CUTOFF_MONTH=10;
+function demoltActive(){return (CFG_YEAR>DEMOLT_CUTOFF_YEAR)||(CFG_YEAR===DEMOLT_CUTOFF_YEAR&&CFG_MONTH>=DEMOLT_CUTOFF_MONTH);}
+function demoltBandIdx(v,bp){if(v==null)return null;return v<bp[0]?0:(v<bp[1]?1:2);}
+function demoltPct(matrix,valA,valB){var ai=demoltBandIdx(valA,matrix.bpA),bi=demoltBandIdx(valB,matrix.bpB);if(ai==null||bi==null)return null;return matrix.grid[ai][bi];}
+function demoltBandLbl(bp,k){return k===0?"<"+Math.round(bp[0]*100)+"%":(k===2?"≥"+Math.round(bp[1]*100)+"%":Math.round(bp[0]*100)+"-"+Math.round(bp[1]*100)+"%");}
+
+var DEMOLT_RESULT_STORE={}; // storeId(string) -> {pct, compl, acc}
+var DEMOLT_RESULT_FC={};    // matricola FC -> {pct, invio, compl}
+
+function _demoltFindCol(headerRow,candidates){
+  for(var i=0;i<headerRow.length;i++){
+    var h=String(headerRow[i]==null?"":headerRow[i]).trim().toLowerCase();
+    for(var j=0;j<candidates.length;j++){if(h===candidates[j]||h.indexOf(candidates[j])>=0)return i;}
+  }
+  return -1;
+}
+
+// Import Store Id/Working days/Sended tasks/Completed tasks/Accuracy (stesso formato
+// del tool di test demoltiplicatore/kpi_inventari.html). Popola DEMOLT_RESULT_STORE
+// (per negozio) e — aggregando per Field Coach via FC_MAP, solo ruolo FC — DEMOLT_RESULT_FC.
+function loadDemoltInventario(file){
+  if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(ev){setTimeout(function(){try{
+    var data=new Uint8Array(ev.target.result);
+    var wb=XLSX.read(data,{type:"array",raw:true});
+    var ws=wb.Sheets[wb.SheetNames[0]];
+    var rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
+    if(!rows.length){alert("File inventari: nessun dato trovato.");return;}
+    var header=rows[0];
+    var cId=_demoltFindCol(header,["store id"]);
+    var cWd=_demoltFindCol(header,["working days"]);
+    var cSended=_demoltFindCol(header,["sended task","sended"]);
+    var cCompleted=_demoltFindCol(header,["completed task","completed"]);
+    var cAcc=_demoltFindCol(header,["% accuracy","accuracy %","accuracy"]);
+    if(cId<0||cWd<0||cSended<0||cCompleted<0){alert("File inventari: colonne obbligatorie non trovate (Store Id, Working days, Sended tasks, Completed tasks).");return;}
+    var byStore={};
+    for(var r=1;r<rows.length;r++){
+      var row=rows[r];
+      if(!row||row[cId]==null||row[cId]==="")continue;
+      var sid=String(row[cId]).trim();
+      var wd=Number(row[cWd])||0,sended=Number(row[cSended])||0,completed=Number(row[cCompleted])||0;
+      var acc=null;
+      if(cAcc>=0&&row[cAcc]!=null&&row[cAcc]!==""){
+        var av=Number(row[cAcc]);
+        // Normalizzato a frazione 0-1 (stessa scala di bpA/bpB/grid, coerente con SAS_MATRIX)
+        if(!isNaN(av))acc=av<=1?av:av/100;
+      }
+      byStore[sid]={wd:wd,sended:sended,completed:completed,acc:acc};
+    }
+    // ── Risultato per negozio ──
+    var nStore=0;
+    Object.keys(byStore).forEach(function(sid){
+      var s=byStore[sid];
+      var compl=s.sended>0?(s.completed/s.sended):null; // frazione 0-1
+      var pct=demoltPct(DEMOLT_MATRIX_STORE,compl,s.acc);
+      if(pct==null)return;
+      DEMOLT_RESULT_STORE[sid]={pct:pct,compl:compl,acc:s.acc};
+      nStore++;
+    });
+    // ── Risultato aggregato per Field Coach (via FC_MAP, solo ruolo FC — mai VM) ──
+    var nFc=0;
+    if(typeof FC_MAP!=="undefined"&&typeof FC_EMP!=="undefined"){
+      var byFc={};
+      Object.keys(FC_MAP).forEach(function(sid){
+        var s=byStore[sid];if(!s)return;
+        var mp=FC_MAP[sid];
+        var fcArr=Array.isArray(mp.fc)?mp.fc:(mp.fc?[mp.fc]:[]);
+        fcArr.forEach(function(matr){
+          var emp=FC_EMP[matr];if(!emp||emp.j!=="FC")return;
+          if(!byFc[matr])byFc[matr]={wd:0,sended:0,completed:0};
+          byFc[matr].wd+=s.wd;byFc[matr].sended+=s.sended;byFc[matr].completed+=s.completed;
+        });
+      });
+      Object.keys(byFc).forEach(function(matr){
+        var g=byFc[matr];
+        var invio=g.wd>0?(g.sended/g.wd):null; // frazione 0-1
+        var compl=g.sended>0?(g.completed/g.sended):null; // frazione 0-1
+        var pct=demoltPct(DEMOLT_MATRIX_FC,invio,compl);
+        if(pct==null)return;
+        DEMOLT_RESULT_FC[matr]={pct:pct,invio:invio,compl:compl};
+        nFc++;
+      });
+    }
+    autoSave();
+    if(typeof rSources==="function")rSources();
+    if(typeof rC==="function")rC();
+    if(typeof rA==="function")rA();
+    if(typeof PRIZE_MODE!=="undefined"&&PRIZE_MODE==="fcvm"){
+      if(typeof rCFcvm==="function")rCFcvm();
+      if(typeof rAFcvm==="function")rAFcvm();
+    }
+    alert("Inventari + Accuracy: "+nStore+" negozi aggiornati"+(nFc>0?", "+nFc+" Field Coach aggregati":"")+".");
+  }catch(ex){alert("Errore lettura file inventari:\n"+ex.message);}},50);};
+  reader.readAsArrayBuffer(file);
+}
 function rSources(){try{
   if(PRIZE_MODE==="fcvm"){document.getElementById("p4").innerHTML=rSourcesFcvm();return;}
   var isP=MODE==="preventivo",sh="";
@@ -7620,6 +7903,7 @@ function rSources(){try{
   sh+='<label class="exp-btn primary" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128194; Carica Excel Target<input type="file" accept=".xlsx,.xlsm,.xls,.csv" id="loadTarget" style="display:none"></label>';
   sh+='<label class="exp-btn btn-purple" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128202; Carica Excel Results<input type="file" accept=".xlsx,.xlsm,.xls,.csv" id="loadCons" style="display:none"></label>';
   if(REGION==="international"&&!isP&&sasNewActive())sh+='<label class="exp-btn btn-amber" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="Stesso formato BDG Results del mese precedente — estrae solo esubero per negozi USA">&#127482;&#127480; Esubero Prec. USA<input type="file" accept=".xlsx,.xlsm,.xls,.csv" onchange="loadUSAPrevResults(this.files[0]);this.value=\'\';" style="display:none"></label>';
+  if(PRIZE_MODE==="mensile"&&!isP&&typeof demoltActive==="function"&&demoltActive())sh+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#d4a94e;color:#a07d2c" title="Store Id, Working days, Sended/Completed tasks, Accuracy — riduce il premio negozio (SM/VSM) in base al Demoltiplicatore Inventari">&#128203; Inventari + Accuracy<input type="file" accept=".xlsx,.xlsm,.xls" onchange="loadDemoltInventario(this.files[0]);this.value=\'\';" style="display:none"></label>';
   sh+='<button class="exp-btn btn-green" onclick="runValidationsAndReport(\'Verifica dati caricati\')" title="Esegue controlli di coerenza su anagrafica e configurazione: matricole duplicate, currency mancanti, store sconosciuti, ruoli non validi, ecc.">&#128269; Verifica Dati</button>';
   sh+='<button class="exp-btn btn-red" onclick="resetAllData()">&#128465; Reset Dati</button>';
   sh+='</div>';
@@ -9390,7 +9674,7 @@ function rCFcvm(){
   h+='<div class="scroll-wrap"><table id="ctbl"><thead><tr>';
   h+=thS('Matr.')+thS('Cogn.','Cognome')+thS('Nome')+thS('Ruolo')+thS('Val.','Valuta')+thS('N.Store');
   var _fcSasCols=!isP&&typeof sasNewActive==='function'&&sasNewActive();
-  h+=thS('Target','Target EUR')+thS('Max Pr.','Max Premio')+(!isP?thS('Consunt.','Consuntivo EUR'):'')+(!isP?thS('Esub.','Esubero'):'')+(_fcSasCols?thS('SAS','Valore SAS')+thS('% Ricon.')+thS('Ricon.','Valore Ricon.'):'')+(!isP?thS('Cons. Tot.'):'')+thS('% Area')+thS('SY LY')+thS('SY CY')+thS('Pr. LC','Premio LC')+thS('Pr. EUR','Premio EUR')+thS('BDG')+thS('Esito')+(!isP?'<th style="text-align:center;background:#e8f5e9;color:#2d7a3a;cursor:default;padding:4px 3px">100%</th>':'')+(!isP?'<th style="text-align:center;background:#fff3e0;color:#cf8b4e;cursor:default;padding:4px 3px">60%</th>':'')+'<th style="padding:4px 3px" title="Lingua">Ling.</th>'+(!isP?'<th style="text-align:center;cursor:default;min-width:40px">Mal.</th>':'')+'<th style="text-align:center;cursor:default;min-width:36px">Sosp.</th>';
+  h+=thS('Target','Target EUR')+thS('Max Pr.','Max Premio')+(!isP?thS('Consunt.','Consuntivo EUR'):'')+(!isP?thS('Esub.','Esubero'):'')+(_fcSasCols?thS('SAS','Valore SAS')+thS('% Ricon.')+thS('Ricon.','Valore Ricon.'):'')+(!isP?thS('Cons. Tot.'):'')+thS('% Area')+thS('SY LY')+thS('SY CY')+thS('Pr. LC','Premio LC')+thS('Pr. EUR','Premio EUR')+thS('BDG')+thS('Esito')+(!isP&&typeof demoltActive==='function'&&demoltActive()?'<th style="cursor:default;color:#a07d2c" title="Demoltiplicatore Inventari (solo FC): riduzione premio area da % invio/completamento inventari">Dem.</th>':'')+(!isP?'<th style="text-align:center;background:#e8f5e9;color:#2d7a3a;cursor:default;padding:4px 3px">100%</th>':'')+(!isP?'<th style="text-align:center;background:#fff3e0;color:#cf8b4e;cursor:default;padding:4px 3px">60%</th>':'')+'<th style="padding:4px 3px" title="Lingua">Ling.</th>'+(!isP?'<th style="text-align:center;cursor:default;min-width:40px">Mal.</th>':'')+'<th style="text-align:center;cursor:default;min-width:36px">Sosp.</th>';
   h+='</tr></thead><tbody>';
 
   fl.forEach(function(emp,i){
@@ -9465,6 +9749,12 @@ function rCFcvm(){
       h+='<td style="text-align:center;color:#a09a92">—</td>';
     }
     h+='<td style="text-align:center;font-weight:700;color:'+ec+'">'+el+'</td>';
+    if(!isP&&typeof demoltActive==='function'&&demoltActive()){
+      var _demRFc=(emp.j==='FC')?DEMOLT_RESULT_FC[String(emp.m)]:null;
+      var _demTipFc=_demRFc&&_demRFc.pct!=null?('Demoltiplicatore: '+Math.round(_demRFc.pct*100)+'% del premio d\'area riconosciuto'):(emp.j==='FC'?'Nessun dato inventari importato per quest\'area':'Non applicabile ai Visual Merchandiser');
+      var _demColorFc=_demRFc&&_demRFc.pct!=null?(_demRFc.pct>=0.95?'#2d7a3a':(_demRFc.pct>=0.70?'#c9a96e':'#cf5b5b')):'#d5d0c8';
+      h+='<td style="text-align:center;font-size:13px" title="'+esc(_demTipFc)+'">'+(_demRFc&&_demRFc.pct!=null?'<span style="color:'+_demColorFc+'">&#11044;</span>':'—')+'</td>';
+    }
     // Toggle override manuale 100% / 60% (solo consuntivo)
     if(!isP){
       var ov100=FC_OVERRIDES[emp.m]==='100',ov60=FC_OVERRIDES[emp.m]==='60';
@@ -9849,6 +10139,19 @@ function buildFcVmLetter(emp){
     h+='<span style="text-align:right;font-size:11px;font-weight:800;color:#fff">'+fc(r.bdgPrize,cu)+'</span>';
     h+='</div></div></div>';
   }
+  // Demoltiplicatore Inventari — solo Field Coach (mai Visual Merchandiser), solo consuntivo,
+  // solo da ottobre 2026. Si applica solo al premio d'area (r.premio/premioLC), non al BDG negozi.
+  var _demDrFc=(!isP&&typeof demoltActive==='function'&&demoltActive()&&emp.j==='FC')?DEMOLT_RESULT_FC[String(emp.m)]:null;
+  if(_demDrFc&&_demDrFc.pct!=null&&_demDrFc.pct<1&&r.premio>0){
+    var _demTF=_DEMOLT_LT[lang]||_DEMOLT_LT.INGLESE;
+    var _demMaturatoF=_demDrFc.pct>0?Math.round(r.premio/_demDrFc.pct):r.premio;
+    h+='<div style="padding:0 32px">';
+    h+='<div class="lt-total" style="opacity:.6"><div><div class="lt-total-label">'+esc(_demTF.maturato)+' (area)</div></div><div class="lt-total-val">'+fc(_demMaturatoF,cu)+'</div></div>';
+    h+=demoltLetterBlock(lang,_demDrFc,isP,cu,true);
+    h+='<div style="text-align:center;font-size:12px;font-weight:700;color:#a07d2c;margin:4px 0">× '+Math.round(_demDrFc.pct*100)+'% → </div>';
+    h+='<div class="lt-total"><div><div class="lt-total-label">'+esc(_demTF.erogare)+' (area)</div></div><div class="lt-total-val">'+fc(r.premio,cu)+'</div></div>';
+    h+='</div>';
+  }
   h+='</div>'; // close lt-body
 
   // ── BARRA FINALE: una sola riga premio ───────────────────────────────────
@@ -10029,6 +10332,7 @@ function rSourcesFcvm(){
   h+='<label class="exp-btn btn-green" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128200; Risultati (Fatt.+Traffico CY)<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_results" style="display:none" onchange="loadFcVmFile(this)"></label>';
   h+='<label class="exp-btn btn-blue" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128194; Risultati Mese Precedente<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_prev" style="display:none" onchange="loadFcVmFile(this)"></label>';
   if(!isP)h+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#129298; Malattie FC/VM<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_malattie" style="display:none" onchange="loadFcVmFile(this)"></label>';
+  if(!isP&&typeof demoltActive==="function"&&demoltActive())h+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#d4a94e;color:#a07d2c" title="Store Id, Working days, Sended/Completed tasks, Accuracy — riduce il premio d\'area del Field Coach (mai i VM) in base al Demoltiplicatore Inventari">&#128203; Inventari + Accuracy<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_demolt" style="display:none" onchange="loadFcVmFile(this)"></label>';
   if(!isP&&typeof sasNewActive==='function'&&sasNewActive()){
     h+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#d4a94e;color:#a07d2c" title="Formato QWRT per field_coach: un solo valore acc/vel/valore per l\'intera area, usato per il premio Area">&#128202; SAS Area (Field Coach)<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_sas_area" style="display:none" onchange="loadFcVmFile(this)"></label>';
     h+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#d4a94e;color:#a07d2c" title="Formato QWRT per store_id: usato solo per il premio dei negozi BDG extra dei FC/VM">&#128202; SAS Negozi (per BDG extra)<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_sas" style="display:none" onchange="loadFcVmFile(this)"></label>';
@@ -10113,6 +10417,7 @@ function loadFcVmFile(input){
   if(srcId==='fcvm_sas'){loadFcVmSas(file);return;}
   if(srcId==='fcvm_sas_area'){loadFcVmSasArea(file);return;}
   if(srcId==='fcvm_malattie'){loadFcVmMalattie(file);return;}
+  if(srcId==='fcvm_demolt'){loadDemoltInventario(file);return;}
   alert('Sorgente non riconosciuta: '+srcId);
 }
 

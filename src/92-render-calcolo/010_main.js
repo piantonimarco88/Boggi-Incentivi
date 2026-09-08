@@ -24,6 +24,7 @@ function rC(){
   h+='<span style="font-size:11px;color:#8a8680">'+fl.length+" dip. \u00b7 Tot: "+fc(tot,"EUR")+"</span></div>";
   function thS(col,label){var ar=cSort.col===col?(cSort.dir>0?"\u25b2":"\u25bc"):"\u25b4";return'<th data-col="'+col+'"'+(cSort.col===col?' class="sorted"':"")+">"+label+' <span class="arrow">'+ar+"</span></th>"}
   h+='<div class="scroll-wrap"><table id="ctbl"><thead><tr>'+thS("m","Matr.")+thS("c","Cognome")+thS("n","Nome")+thS("si_m","Negozio")+thS("j","Ruolo")+'<th>Val.</th>'+thS("ml","Mal.")+'<th style="cursor:default;color:#c9a96e" title="Premio BDG moltiplicatore ridotto ('+Math.round(PARAMS.bdg60mult*100)+'%)">Rid.</th>';
+  if(MODE==="consuntivo"&&typeof demoltActive==="function"&&demoltActive())h+='<th style="cursor:default;color:#a07d2c" title="Demoltiplicatore Inventari (SM/VSM): riduzione premio da % completamento inventari + accuracy">Dem.</th>';
   IT.forEach(function(it){if(it.k==="ra"&&!PARAMS.artEnabled)return;h+=thS(it.k,it.l)});h+='<th>Agg.</th>'+thS("tl","TOTALE")+(MODE==="consuntivo"?'<th style="cursor:default;font-size:9px;text-align:center" title="Riconosci premio BDG al 100%">100%</th><th style="cursor:default;font-size:9px;text-align:center" title="Riconosci Molt. ridotto ('+Math.round(PARAMS.bdg60mult*100)+'%)">B60</th><th style="cursor:default;font-size:9px;text-align:center" title="Riconosci Workgame ('+Math.round((PARAMS.workgamePct||0)*100)+'% BDG)">WG</th>':'')+' <th style="cursor:default">PS</th>'+(REGION!=="italia"?'<th style="cursor:default">&#128231;</th>':'')+"</tr></thead><tbody>";
   fl.forEach(function(e){var t=calcE(e),cu=e.cu||"EUR",ml=e.ml||0,sm=sickMult(ml),at=aggTotal(e.m);
     var mlc=ml===0?"ml-0":ml<SICK_50?"ml-0":ml<SICK_0?"ml-low":"ml-high";
@@ -41,6 +42,12 @@ function rC(){
     h+='<td style="font-size:9px;color:#a09a92">'+cu+'</td><td style="text-align:center"><span class="ml-dot '+mlc+'"></span>'+ml+"</td>";
     var ridotto=!psOn&&t>0&&isRidotto(e)&&isOn(e.j,"rb");
     h+='<td style="text-align:center;font-size:13px" title="'+(ridotto?"Premio BDG ridotto ("+Math.round(PARAMS.bdg60mult*100)+"%)":"—")+'">'+(ridotto?'<span style="color:#c9a96e">&#11044;</span>':'—')+"</td>";
+    if(MODE==="consuntivo"&&typeof demoltActive==="function"&&demoltActive()){
+      var _demR=(e.j&&e.j.indexOf("SM")>=0)?DEMOLT_RESULT_STORE[String(e.si)]:null;
+      var _demTip=_demR&&_demR.pct!=null?("Demoltiplicatore: "+Math.round(_demR.pct*100)+"% del premio riconosciuto"):"Nessun dato inventari importato per questo negozio";
+      var _demColor=_demR&&_demR.pct!=null?(_demR.pct>=0.95?"#2d7a3a":(_demR.pct>=0.70?"#c9a96e":"#cf5b5b")):"#d5d0c8";
+      h+='<td style="text-align:center;font-size:13px" title="'+esc(_demTip)+'">'+(_demR&&_demR.pct!=null?'<span style="color:'+_demColor+'">&#11044;</span>':'—')+"</td>";
+    }
     IT.forEach(function(it){if(it.k==="ra"&&!PARAMS.artEnabled)return;var on=it.k==="vi"?true:isOn(e.j,it.k),raw=getVal(e,it.k),val=on?raw*sm:0;
       // SAS azzerato per soglia % accettati non raggiunta \u2192 mostra "0" in rosso con tooltip
       if(it.k==="rsa"&&on&&!psOn&&sasZeroByAcc(e)){
