@@ -153,38 +153,43 @@ function sasLetterBlock(lang,info,isP,cu,thPct,isArea){
 // === Blocco Demoltiplicatore Inventari per le lettere (mensile: SM/VSM; FC+VM: solo FC), da Ottobre 2026 ===
 // dr: {pct, compl, acc} (negozio) oppure {pct, invio, compl} (area) — vedi 33-demolt-import/010_main.js. Solo consuntivo.
 var _DEMOLT_LT={
-  ITALIANO:{title:"DEMOLTIPLICATORE INVENTARI",logic:"Riduzione del premio in base alla % di completamento degli inventari giornalieri (completati/mandati) e all'accuracy mensile.",logicArea:"Riduzione del premio d'area in base alla % di invio degli inventari giornalieri (mandati/max possibile) e alla % di completamento (completati/mandati), aggregate su tutta l'area.",axisA:"% Completamento",axisB:"Accuracy",axisAArea:"% Invio",axisBArea:"% Completamento",pctLbl:"% premio riconosciuta",maturato:"Premio maturato",erogare:"Premio da erogare"},
-  INGLESE:{title:"INVENTORY MULTIPLIER",logic:"Prize reduction based on daily inventory completion % (completed/sent) and monthly accuracy.",logicArea:"Area prize reduction based on daily inventory sending % (sent/max possible) and completion % (completed/sent), aggregated across the area.",axisA:"% Completion",axisB:"Accuracy",axisAArea:"% Sent",axisBArea:"% Completion",pctLbl:"% prize recognised",maturato:"Prize earned",erogare:"Prize to be paid"},
-  FRANCESE:{title:"DÉMULTIPLICATEUR INVENTAIRES",logic:"Réduction de la prime selon le % d'achèvement des inventaires quotidiens (complétés/envoyés) et l'accuracy mensuelle.",logicArea:"Réduction de la prime de zone selon le % d'envoi des inventaires quotidiens (envoyés/max possible) et le % d'achèvement (complétés/envoyés), agrégés sur toute la zone.",axisA:"% Achèvement",axisB:"Accuracy",axisAArea:"% Envoi",axisBArea:"% Achèvement",pctLbl:"% prime reconnue",maturato:"Prime acquise",erogare:"Prime à verser"},
-  TEDESCO:{title:"INVENTUR-MULTIPLIKATOR",logic:"Prämienreduzierung basierend auf dem täglichen Inventur-Abschluss% (abgeschlossen/gesendet) und der monatlichen Accuracy.",logicArea:"Reduzierung der Bereichsprämie basierend auf dem täglichen Inventur-Versand% (gesendet/maximal möglich) und dem Abschluss% (abgeschlossen/gesendet), aggregiert über den gesamten Bereich.",axisA:"% Abschluss",axisB:"Accuracy",axisAArea:"% Versand",axisBArea:"% Abschluss",pctLbl:"% anerkannte Prämie",maturato:"Erwirtschaftete Prämie",erogare:"Auszuzahlende Prämie"},
-  SPAGNOLO:{title:"DEMULTIPLICADOR INVENTARIOS",logic:"Reducción del premio según el % de finalización de los inventarios diarios (completados/enviados) y la accuracy mensual.",logicArea:"Reducción del premio de área según el % de envío de los inventarios diarios (enviados/máximo posible) y el % de finalización (completados/enviados), agregados en toda el área.",axisA:"% Finalización",axisB:"Accuracy",axisAArea:"% Envío",axisBArea:"% Finalización",pctLbl:"% premio reconocido",maturato:"Premio devengado",erogare:"Premio a pagar"}
+  ITALIANO:{title:"DEMOLTIPLICATORE INVENTARI",logic:"Riduzione del premio in base alla % di completamento degli inventari giornalieri (completati/mandati) e all'accuracy mensile.",logicArea:"Riduzione del premio d'area in base alla % di invio degli inventari giornalieri (mandati/max possibile) e alla % di completamento (completati/mandati), aggregate su tutta l'area.",axisA:"% Completamento",axisB:"Accuracy",axisAArea:"% Invio",axisBArea:"% Completamento",pctLbl:"% premio riconosciuta",maturato:"Premio maturato",erogare:"Premio da erogare",nodata:"Dato inventari non ancora disponibile per questo negozio.",nodataArea:"Dato inventari non ancora disponibile per quest'area."},
+  INGLESE:{title:"INVENTORY MULTIPLIER",logic:"Prize reduction based on daily inventory completion % (completed/sent) and monthly accuracy.",logicArea:"Area prize reduction based on daily inventory sending % (sent/max possible) and completion % (completed/sent), aggregated across the area.",axisA:"% Completion",axisB:"Accuracy",axisAArea:"% Sent",axisBArea:"% Completion",pctLbl:"% prize recognised",maturato:"Prize earned",erogare:"Prize to be paid",nodata:"Inventory data not yet available for this store.",nodataArea:"Inventory data not yet available for this area."},
+  FRANCESE:{title:"DÉMULTIPLICATEUR INVENTAIRES",logic:"Réduction de la prime selon le % d'achèvement des inventaires quotidiens (complétés/envoyés) et l'accuracy mensuelle.",logicArea:"Réduction de la prime de zone selon le % d'envoi des inventaires quotidiens (envoyés/max possible) et le % d'achèvement (complétés/envoyés), agrégés sur toute la zone.",axisA:"% Achèvement",axisB:"Accuracy",axisAArea:"% Envoi",axisBArea:"% Achèvement",pctLbl:"% prime reconnue",maturato:"Prime acquise",erogare:"Prime à verser",nodata:"Données inventaires pas encore disponibles pour ce magasin.",nodataArea:"Données inventaires pas encore disponibles pour cette zone."},
+  TEDESCO:{title:"INVENTUR-MULTIPLIKATOR",logic:"Prämienreduzierung basierend auf dem täglichen Inventur-Abschluss% (abgeschlossen/gesendet) und der monatlichen Accuracy.",logicArea:"Reduzierung der Bereichsprämie basierend auf dem täglichen Inventur-Versand% (gesendet/maximal möglich) und dem Abschluss% (abgeschlossen/gesendet), aggregiert über den gesamten Bereich.",axisA:"% Abschluss",axisB:"Accuracy",axisAArea:"% Versand",axisBArea:"% Abschluss",pctLbl:"% anerkannte Prämie",maturato:"Erwirtschaftete Prämie",erogare:"Auszuzahlende Prämie",nodata:"Inventurdaten für diesen Store noch nicht verfügbar.",nodataArea:"Inventurdaten für diesen Bereich noch nicht verfügbar."},
+  SPAGNOLO:{title:"DEMULTIPLICADOR INVENTARIOS",logic:"Reducción del premio según el % de finalización de los inventarios diarios (completados/enviados) y la accuracy mensual.",logicArea:"Reducción del premio de área según el % de envío de los inventarios diarios (enviados/máximo posible) y el % de finalización (completados/enviados), agregados en toda el área.",axisA:"% Finalización",axisB:"Accuracy",axisAArea:"% Envío",axisBArea:"% Finalización",pctLbl:"% premio reconocido",maturato:"Premio devengado",erogare:"Premio a pagar",nodata:"Datos de inventarios aún no disponibles para esta tienda.",nodataArea:"Datos de inventarios aún no disponibles para esta área."}
 };
 function demoltLetterBlock(lang,dr,isP,cu,isArea){
   if(typeof demoltActive!=='function'||!demoltActive())return '';
-  if(isP||!dr||dr.pct==null)return ''; // import inventari disponibile solo in consuntivo
   var T=_DEMOLT_LT[lang]||_DEMOLT_LT.INGLESE;
   var matrix=isArea?DEMOLT_MATRIX_FC:DEMOLT_MATRIX_STORE;
   var bpA=matrix.bpA,bpB=matrix.bpB;
-  var valA=isArea?dr.invio:dr.compl,valB=isArea?dr.compl:dr.acc;
-  var aIdx=demoltBandIdx(valA,bpA),bIdx=demoltBandIdx(valB,bpB);
+  var hasData=!isP&&dr&&dr.pct!=null; // import inventari disponibile solo in consuntivo
+  var valA=hasData?(isArea?dr.invio:dr.compl):null,valB=hasData?(isArea?dr.compl:dr.acc):null;
+  var aIdx=hasData?demoltBandIdx(valA,bpA):-1,bIdx=hasData?demoltBandIdx(valB,bpB):-1;
   var axisA=isArea?T.axisAArea:T.axisA,axisB=isArea?T.axisBArea:T.axisB;
   var h='<div style="margin-top:10px;padding:11px 14px;background:#faf8f4;border:1px solid #ece7df;border-radius:7px">';
   h+='<div style="font-size:12px;font-weight:700;color:#a07d2c;margin-bottom:4px">'+esc(T.title)+'</div>';
   h+='<div style="font-size:10px;color:#8a8680;line-height:1.45;margin-bottom:8px">'+esc(isArea?T.logicArea:T.logic)+'</div>';
   h+='<div style="font-size:10px;font-weight:700;color:#8a8680;text-align:center;margin-bottom:3px">'+esc(axisB)+' →</div>';
-  h+='<table style="border-collapse:collapse;font-size:11px;margin:0 auto 9px"><thead><tr><th style="padding:3px 9px;color:#a09a92;text-align:right;font-weight:700">↓ '+esc(axisA)+'</th>';
+  h+='<table style="border-collapse:collapse;font-size:11px;margin:0 auto '+(isP?'0':'9px')+'"><thead><tr><th style="padding:3px 9px;color:#a09a92;text-align:right;font-weight:700">↓ '+esc(axisA)+'</th>';
   for(var c=0;c<3;c++)h+='<th style="padding:3px 11px;color:#8a8680;font-weight:700">'+demoltBandLbl(bpB,c)+'</th>';
   h+='</tr></thead><tbody>';
   [2,1,0].forEach(function(ai){
     h+='<tr><td style="padding:3px 9px;color:#6b6560;font-weight:700;text-align:right">'+demoltBandLbl(bpA,ai)+'</td>';
-    for(var c2=0;c2<3;c2++){var hit=(ai===aIdx&&c2===bIdx);h+='<td style="padding:3px 11px;text-align:center;'+(hit?'background:#c9a96e;color:#fff;font-weight:700;border-radius:3px':'color:#9a958d')+'">'+Math.round(matrix.grid[ai][c2]*100)+'</td>';}
+    for(var c2=0;c2<3;c2++){var hit=(!isP&&ai===aIdx&&c2===bIdx);h+='<td style="padding:3px 11px;text-align:center;'+(hit?'background:#c9a96e;color:#fff;font-weight:700;border-radius:3px':'color:#9a958d')+'">'+Math.round(matrix.grid[ai][c2]*100)+'</td>';}
     h+='</tr>';
   });
   h+='</tbody></table>';
-  var row=function(l,v){return '<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0"><span style="color:#8a8680">'+esc(l)+'</span><span style="font-weight:600;color:#2c2925">'+v+'</span></div>';};
-  h+=row(axisA,Math.round((valA||0)*100)+'% ('+demoltBandLbl(bpA,aIdx)+')');
-  h+=row(axisB,Math.round((valB||0)*100)+'% ('+demoltBandLbl(bpB,bIdx)+')');
-  h+=row(T.pctLbl,Math.round(dr.pct*100)+'%');
+  if(!isP){
+    if(!hasData){h+='<div style="font-size:10.5px;color:#a09a92;font-style:italic">'+esc(isArea?T.nodataArea:T.nodata)+'</div>';}
+    else{
+      var row=function(l,v){return '<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0"><span style="color:#8a8680">'+esc(l)+'</span><span style="font-weight:600;color:#2c2925">'+v+'</span></div>';};
+      h+=row(axisA,Math.round((valA||0)*100)+'% ('+demoltBandLbl(bpA,aIdx)+')');
+      h+=row(axisB,Math.round((valB||0)*100)+'% ('+demoltBandLbl(bpB,bIdx)+')');
+      h+=row(T.pctLbl,Math.round(dr.pct*100)+'%');
+    }
+  }
   h+='</div>';
   return h;
 }
@@ -196,8 +201,10 @@ function buildLetter(e){
   var gr=({"ITALIANO":"Ciao","INGLESE":"Hi","FRANCESE":"Bonjour","TEDESCO":"Hallo","SPAGNOLO":"Hola"})[lang]||"Hi";
   var _ssiL=(typeof storeSasInfo==='function')?storeSasInfo(String(e.si)):null;
   var isP=MODE==="preventivo",pctStore=(_ssiL&&_ssiL.active&&tg.to>0)?(_ssiL.pct*100).toFixed(1):(tg.to>0&&cn.sc?((cn.sc+(cn.es||0))/tg.to*100).toFixed(1):"100.0"),surplus=(cn.es||0);
-  // Demoltiplicatore Inventari — solo SM/VSM, solo consuntivo, solo da ottobre 2026 (vedi demoltActive())
-  var _demDr=(!isP&&typeof demoltActive==="function"&&demoltActive()&&e.j&&e.j.indexOf("SM")>=0)?DEMOLT_RESULT_STORE[sid]:null;
+  // Demoltiplicatore Inventari — solo SM/VSM, solo da ottobre 2026 (vedi demoltActive()). In preventivo
+  // mostra solo la matrice a scopo informativo (nessun risultato: l'import è disponibile solo in consuntivo).
+  var _demActive=typeof demoltActive==="function"&&demoltActive()&&e.j&&e.j.indexOf("SM")>=0;
+  var _demDr=(!isP&&_demActive)?DEMOLT_RESULT_STORE[sid]:null;
   var mtL=({"ITALIANO":"IT","INGLESE":"EN","FRANCESE":"FR","TEDESCO":"DE","SPAGNOLO":"ES"})[lang]||"EN";
   var modeTag=isP?{IT:" (PREVENTIVO)",EN:" (FORECAST)",FR:" (PR\u00c9VISIONNEL)",DE:" (PROGNOSE)",ES:" (PREVISI\u00d3N)"}:{IT:"",EN:"",FR:"",DE:"",ES:""};
 
@@ -314,7 +321,7 @@ function buildLetter(e){
   h+="</div>";
 
   var totalLabel=isP?(lang==="ITALIANO"?"MASSIMO PREMIO POTENZIALE":"MAXIMUM POTENTIAL BONUS"):esc(tr(e,"earned","THIS MONTH YOU HAVE EARNED THE"));
-  if(tc>0&&_demDr&&_demDr.pct!=null&&_demDr.pct<1){
+  if(tc>0&&_demDr&&_demDr.pct!=null){
     // tc riflette già la riduzione (getVal() la applica internamente) — il "maturato" pre-riduzione
     // si ricostruisce dividendo per la stessa % applicata uniformemente a ogni voce.
     var _demT=_DEMOLT_LT[lang]||_DEMOLT_LT.INGLESE;
@@ -324,8 +331,14 @@ function buildLetter(e){
     h+='<div style="text-align:center;font-size:12px;font-weight:700;color:#a07d2c;margin:4px 0">× '+Math.round(_demDr.pct*100)+'% → </div>';
     h+='<div class="lt-total"><div><div class="lt-total-label">'+esc(_demT.erogare)+'</div><div class="lt-total-pct">'+pctSal+esc(tr(e,"over_sal","% OVER SALARY"))+"</div></div><div class=\"lt-total-val\">"+fc(tc,cu)+"</div></div>";
   }
-  else if(tc>0){h+='<div class="lt-total"><div><div class="lt-total-label">'+totalLabel+'</div><div class="lt-total-pct">'+pctSal+esc(tr(e,"over_sal","% OVER SALARY"))+"</div></div><div class=\"lt-total-val\">"+fc(tc,cu)+"</div></div>"}
-  else{h+='<div class="lt-total"><div><div class="lt-total-label" style="color:#cf5b5b">NO INCENTIVE</div></div><div class="lt-total-val" style="color:#6b6560">'+fc(0,cu)+"</div></div>"}
+  else if(tc>0){
+    h+='<div class="lt-total"><div><div class="lt-total-label">'+totalLabel+'</div><div class="lt-total-pct">'+pctSal+esc(tr(e,"over_sal","% OVER SALARY"))+"</div></div><div class=\"lt-total-val\">"+fc(tc,cu)+"</div></div>";
+    if(_demActive)h+=demoltLetterBlock(lang,_demDr,isP,cu,false);
+  }
+  else{
+    h+='<div class="lt-total"><div><div class="lt-total-label" style="color:#cf5b5b">NO INCENTIVE</div></div><div class="lt-total-val" style="color:#6b6560">'+fc(0,cu)+"</div></div>";
+    if(_demActive)h+=demoltLetterBlock(lang,_demDr,isP,cu,false);
+  }
   h+='<div class="lt-footer"><div style="font-weight:600;margin-bottom:6px">'+esc(tr(e,"rules","THE DELIVERED INCENTIVES FOLLOW THE RULE"))+'</div><div style="white-space:pre-wrap">'+esc(getDiscl(e))+"</div></div></div>";
   return h}
 

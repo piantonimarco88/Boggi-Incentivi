@@ -219,17 +219,23 @@ function buildFcVmLetter(emp){
     h+='<span style="text-align:right;font-size:11px;font-weight:800;color:#fff">'+fc(r.bdgPrize,cu)+'</span>';
     h+='</div></div></div>';
   }
-  // Demoltiplicatore Inventari — solo Field Coach (mai Visual Merchandiser), solo consuntivo,
-  // solo da ottobre 2026. Si applica solo al premio d'area (r.premio/premioLC), non al BDG negozi.
-  var _demDrFc=(!isP&&typeof demoltActive==='function'&&demoltActive()&&emp.j==='FC')?DEMOLT_RESULT_FC[String(emp.m)]:null;
-  if(_demDrFc&&_demDrFc.pct!=null&&_demDrFc.pct<1&&r.premio>0){
+  // Demoltiplicatore Inventari — solo Field Coach (mai Visual Merchandiser), solo da ottobre 2026.
+  // Si applica solo al premio d'area (r.premio/premioLC), non al BDG negozi. In preventivo mostra
+  // solo la matrice a scopo informativo (l'import è disponibile solo in consuntivo).
+  var _demActiveFc=typeof demoltActive==='function'&&demoltActive()&&emp.j==='FC';
+  var _demDrFc=(!isP&&_demActiveFc)?DEMOLT_RESULT_FC[String(emp.m)]:null;
+  if(_demActiveFc&&(r.premio>0||isP)){
     var _demTF=_DEMOLT_LT[lang]||_DEMOLT_LT.INGLESE;
-    var _demMaturatoF=_demDrFc.pct>0?Math.round(r.premio/_demDrFc.pct):r.premio;
     h+='<div style="padding:0 32px">';
-    h+='<div class="lt-total" style="opacity:.6"><div><div class="lt-total-label">'+esc(_demTF.maturato)+' (area)</div></div><div class="lt-total-val">'+fc(_demMaturatoF,cu)+'</div></div>';
-    h+=demoltLetterBlock(lang,_demDrFc,isP,cu,true);
-    h+='<div style="text-align:center;font-size:12px;font-weight:700;color:#a07d2c;margin:4px 0">× '+Math.round(_demDrFc.pct*100)+'% → </div>';
-    h+='<div class="lt-total"><div><div class="lt-total-label">'+esc(_demTF.erogare)+' (area)</div></div><div class="lt-total-val">'+fc(r.premio,cu)+'</div></div>';
+    if(_demDrFc&&_demDrFc.pct!=null){
+      var _demMaturatoF=_demDrFc.pct>0?Math.round(r.premio/_demDrFc.pct):r.premio;
+      h+='<div class="lt-total" style="opacity:.6"><div><div class="lt-total-label">'+esc(_demTF.maturato)+' (area)</div></div><div class="lt-total-val">'+fc(_demMaturatoF,cu)+'</div></div>';
+      h+=demoltLetterBlock(lang,_demDrFc,isP,cu,true);
+      h+='<div style="text-align:center;font-size:12px;font-weight:700;color:#a07d2c;margin:4px 0">× '+Math.round(_demDrFc.pct*100)+'% → </div>';
+      h+='<div class="lt-total"><div><div class="lt-total-label">'+esc(_demTF.erogare)+' (area)</div></div><div class="lt-total-val">'+fc(r.premio,cu)+'</div></div>';
+    } else {
+      h+=demoltLetterBlock(lang,_demDrFc,isP,cu,true);
+    }
     h+='</div>';
   }
   h+='</div>'; // close lt-body
