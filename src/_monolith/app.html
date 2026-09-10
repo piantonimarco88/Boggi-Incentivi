@@ -215,20 +215,20 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 /*BUNDLE_INSERT:60-fcvm-state*/
 /*BUNDLE_INSERT:70-fcvm-calc*//*BUNDLE_INSERT:80-roles-config*/var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.70'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.71'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.71: Export JSON statistiche FC+VM (stats_fcvm_*) — aggiunto il campo syLastYear (SY anno precedente), già presente per i negozi, per il confronto anno su anno sul salvagente 60%",
   "9.70: Rinominato \"Demoltiplicatore Inventari\" in \"Coefficiente Inventari\" in tutta l'app e nelle lettere, in tutte le lingue supportate",
   "9.69: Demoltiplicatore Inventari — il box con la matrice ora compare anche nella lettera di preventivo (a scopo informativo, senza risultato), non solo nel consuntivo; stesso comportamento del box SAS",
   "9.68: Fix errore al primo avvio e nel caricamento di sessioni/config salvate (\"Cannot set/read properties of undefined\") introdotto dal Demoltiplicatore Inventari in 9.67 — le sue variabili si caricavano troppo tardi rispetto al primo render",
   "9.67: Demoltiplicatore Inventari (SM/VSM e Field Coach) — riduce il premio in base a % completamento/invio inventari giornalieri e accuracy; attivo dal preventivo di ottobre 2026, matrici già configurabili in anticipo nel tab Configurazione",
   "9.66: Fix import Consuntivo Seasonal — file inventario/accuracy multi-foglio (es. \"RISULTATI INVENTARI SEMESTRALI\"): ora cerca l'intestazione store su tutti i fogli invece che solo sul primo, preferendo il foglio aggregato \"per semestrali\" a quello di dettaglio",
   "9.63: ECI Santander (1350) aggiunto permanentemente ai Dept Store; export JSON statistiche — tolto il campo \"esubero\" duplicato (era identico a esuberoPrec), schemaVersion 2",
-  "9.62: Nuovo bottone \"Esporta dati JSON per statistiche\" (Negozi e FC+VM) per il progetto statistiche esterno: aggiunge parachuteOk, syLastYear, Qty dept store ed esubero riportato dal mese precedente",
-  "9.61: USA — commissione raddoppiata (es. 1%→2%) per Hernandez e Iberlucea Rivas quando il negozio raggiunge il target di fatturato"
+  "9.62: Nuovo bottone \"Esporta dati JSON per statistiche\" (Negozi e FC+VM) per il progetto statistiche esterno: aggiunge parachuteOk, syLastYear, Qty dept store ed esubero riportato dal mese precedente"
 ];
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 /*BUNDLE_INSERT:82-month-labels*/
