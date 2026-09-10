@@ -92,7 +92,7 @@ function calcFcVmPremio(matr){
   if(isCons){
     if(emp.ps==="SI"){esito="sospeso";premioLC=0;smFcvm=0;}
     else{smFcvm=sickMult(emp.ml||0);premioLC=Math.round(premioLC*smFcvm*100)/100;}
-    // Demoltiplicatore Inventari (da ottobre 2026): riduce solo il premio d'area, solo FC (mai VM)
+    // Coefficiente Inventari (da ottobre 2026): riduce solo il premio d'area, solo FC (mai VM)
     if(typeof demoltActive==="function"&&demoltActive()&&emp.j==="FC"){
       var _dDr=DEMOLT_RESULT_FC[matr];
       if(_dDr&&_dDr.pct!=null)premioLC=Math.round(premioLC*_dDr.pct*100)/100;

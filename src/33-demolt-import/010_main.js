@@ -1,5 +1,5 @@
 // ============================================================
-// Demoltiplicatore Inventari — parametri, cutoff, import
+// Coefficiente Inventari — parametri, cutoff, import
 // Riduce il premio (negozio: SM/VSM; FC+VM: solo FC) in base ai KPI
 // sugli inventari giornalieri, validati nel tool di test
 // demoltiplicatore/kpi_inventari.html. Attivo da DEMOLT_CUTOFF_YEAR/

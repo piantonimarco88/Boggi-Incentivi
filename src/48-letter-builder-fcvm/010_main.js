@@ -219,7 +219,7 @@ function buildFcVmLetter(emp){
     h+='<span style="text-align:right;font-size:11px;font-weight:800;color:#fff">'+fc(r.bdgPrize,cu)+'</span>';
     h+='</div></div></div>';
   }
-  // Demoltiplicatore Inventari — solo Field Coach (mai Visual Merchandiser), solo da ottobre 2026.
+  // Coefficiente Inventari — solo Field Coach (mai Visual Merchandiser), solo da ottobre 2026.
   // Si applica solo al premio d'area (r.premio/premioLC), non al BDG negozi. In preventivo mostra
   // solo la matrice a scopo informativo (l'import è disponibile solo in consuntivo).
   var _demActiveFc=typeof demoltActive==='function'&&demoltActive()&&emp.j==='FC';

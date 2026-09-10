@@ -52,9 +52,9 @@ function rT(){try{
       for(var _i2=0;_i2<3;_i2++)h+='<input class="cfg-input sas-velband" type="number" data-i="'+_i2+'" value="'+Math.round(_vb[_i2]*100)+'" step="1" min="0" max="100" style="width:56px;text-align:center">';
       h+='</div></div>';
     }
-    // Demoltiplicatore Inventari — Area (FC): sempre visibile (etichetta se non ancora attivo),
+    // Coefficiente Inventari — Area (FC): sempre visibile (etichetta se non ancora attivo),
     // si applica solo al ruolo Field Coach, mai ai Visual Merchandiser (vedi 88-calc-engine/70-fcvm-calc)
-    h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">&#128203; Demoltiplicatore Inventari &mdash; Area (FC)</div>';
+    h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">&#128203; Coefficiente Inventari &mdash; Area (FC)</div>';
     if(!demoltActive())h+='<div style="font-size:10px;color:#a07d2c;background:#fff8ee;border:1px solid #f0e2c4;border-radius:5px;padding:6px 10px;margin-bottom:8px">Attivo da '+MONTH_NAMES.IT[DEMOLT_CUTOFF_MONTH]+' '+DEMOLT_CUTOFF_YEAR+' &mdash; i valori qui sotto si possono già impostare in anticipo.</div>';
     h+='<div style="font-size:10px;color:#8a8680;margin-bottom:8px">Riduce il premio d\'area in base a % Invio (&Sigma; sended/&Sigma; working days) e % Completamento (&Sigma; completed/&Sigma; sended) aggregati sull\'area &mdash; si applica solo al ruolo <b>Field Coach</b>, mai ai Visual Merchandiser.</div>';
     var _dab=DEMOLT_MATRIX_FC.bpA,_dbb=DEMOLT_MATRIX_FC.bpB;
@@ -109,7 +109,7 @@ function rT(){try{
     document.querySelectorAll(".sas-velband").forEach(function(inp){inp.onchange=function(){
       var i=parseInt(inp.getAttribute("data-i")),v=parseFloat(inp.value);
       if(isNaN(v))return;SAS_MATRIX.velBands[i]=v/100;markDirty();rC();rA();}});
-    // Demoltiplicatore Inventari — Area (FC) matrix bindings
+    // Coefficiente Inventari — Area (FC) matrix bindings
     document.querySelectorAll(".dem-fc-cell").forEach(function(inp){inp.onchange=function(){
       var r=parseInt(inp.getAttribute("data-demr")),c=parseInt(inp.getAttribute("data-demc")),v=parseFloat(inp.value);
       if(isNaN(v))return;DEMOLT_MATRIX_FC.grid[r][c]=Math.max(0,Math.min(1,v/100));markDirty();}});
@@ -402,8 +402,8 @@ function rT(){try{
     h+=pRow("sasRate","\u20ac/SAS","",PARAMS.sasRate,"\u20ac",0.5)+pRow("sasMax","Max","",PARAMS.sasMax,"\u20ac",10);
   }
   h+='</div>';
-  // Demoltiplicatore Inventari \u2014 Negozio (SM/VSM): sempre visibile (etichetta se non ancora attivo)
-  h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">&#128203; Demoltiplicatore Inventari &mdash; Negozio</div>';
+  // Coefficiente Inventari \u2014 Negozio (SM/VSM): sempre visibile (etichetta se non ancora attivo)
+  h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">&#128203; Coefficiente Inventari &mdash; Negozio</div>';
   if(!demoltActive())h+='<div style="font-size:10px;color:#a07d2c;background:#fff8ee;border:1px solid #f0e2c4;border-radius:5px;padding:6px 10px;margin-bottom:8px">Attivo da '+MONTH_NAMES.IT[DEMOLT_CUTOFF_MONTH]+' '+DEMOLT_CUTOFF_YEAR+' &mdash; i valori qui sotto si possono gi\u00e0 impostare in anticipo.</div>';
   h+='<div style="font-size:10px;color:#8a8680;margin-bottom:8px">Riduce il premio in base a % Completamento (completed/sended) e Accuracy mensile dell\'inventario &mdash; si applica solo ai ruoli <b>SM</b> e <b>VSM</b>.</div>';
   var _dsab=DEMOLT_MATRIX_STORE.bpA,_dsbb=DEMOLT_MATRIX_STORE.bpB;
@@ -512,7 +512,7 @@ function rT(){try{
   document.querySelectorAll(".sas-velband").forEach(function(inp){inp.onchange=function(){
     var i=parseInt(inp.getAttribute("data-i")),v=parseFloat(inp.value);
     if(isNaN(v))return;SAS_MATRIX.velBands[i]=v/100;markDirty();rC();rA();}});
-  // Demoltiplicatore Inventari — Negozio matrix bindings
+  // Coefficiente Inventari — Negozio matrix bindings
   document.querySelectorAll(".dem-st-cell").forEach(function(inp){inp.onchange=function(){
     var r=parseInt(inp.getAttribute("data-demr")),c=parseInt(inp.getAttribute("data-demc")),v=parseFloat(inp.value);
     if(isNaN(v))return;DEMOLT_MATRIX_STORE.grid[r][c]=Math.max(0,Math.min(1,v/100));markDirty();}});

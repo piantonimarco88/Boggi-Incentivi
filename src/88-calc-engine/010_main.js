@@ -92,7 +92,7 @@ function storeSasInfo(sid){
 function storePctOf(sid){return storeSasInfo(sid).pct;}
 
 // RECALC ENGINE
-// Demoltiplicatore Inventari (da ottobre 2026): riduce uniformemente ogni voce di premio dei
+// Coefficiente Inventari (da ottobre 2026): riduce uniformemente ogni voce di premio dei
 // ruoli SM/VSM in consuntivo, in base al risultato KPI inventari+accuracy del negozio (vedi
 // 33-demolt-import/010_main.js). Wrapper sottile per non toccare la logica esistente sotto
 // (_getValRaw ha molteplici return sparsi nello switch, rifattorizzarla sarebbe rischioso).
