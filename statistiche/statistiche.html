@@ -4971,6 +4971,14 @@ const STORE_ASSIGN_STATIC={"1101":{"fc":["Gianni Zanella"],"vm":["Dario Peluso"]
 let storeAssignMap=STORE_ASSIGN_STATIC, storeAssignOverrideFiles={};
 function _recomputeStoreAssignMap(){storeAssignMap=Object.assign({},STORE_ASSIGN_STATIC,...Object.values(storeAssignOverrideFiles));}
 const SAS_MESI_IT=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
+// Esubero fatturato disponibile: i file vecchi (schemaVersion 1, es. Negozi International 28/08/2026)
+// avevano SIA `esubero` SIA `esuberoPrec` (identici — il tool esterno non distingueva ancora "esubero
+// di questo mese" da "riportato dal mese scorso", li duplicava). Dal 10/09/2026 i nuovi export (Negozi
+// Italia, FC+VM, entrambi schemaVersion 2) hanno eliminato il duplicato ridondante: SOLO `esuberoPrec`
+// resta. Il nostro codice leggeva ancora solo `r.esubero` → su questi file più recenti mostrava sempre
+// "—" (colonna Esub. prec.) nonostante il dato ci fosse, sotto un altro nome. `!=null` (non `||`) per
+// non scavalcare un `esubero` legittimamente 0 con `esuberoPrec` quando entrambi i campi sono presenti.
+function sasEsubero(r){return r.esubero!=null?r.esubero:r.esuberoPrec;}
 
 // Estrae mese/anno dal subtitle del JSON (es. "... — Consuntivo Luglio 2026 · ..."). Non c'è un campo
 // mese/anno strutturato nello schema, quindi il subtitle è l'unica fonte affidabile.
@@ -5305,7 +5313,7 @@ function renderSas(){
   // su ogni riga: distinto da "0 su tutte le righe", che invece è un valore legittimo).
   const hasReserveNext=rows.some(r=>r.sasReserveNext!=null);
   const totReserveNext=rows.reduce((s,r)=>s+(r.sasReserveNext||0),0);
-  const totEsubero=rows.reduce((s,r)=>s+(r.esubero||0),0);
+  const totEsubero=rows.reduce((s,r)=>s+(sasEsubero(r)||0),0);
   const det=rows.filter(r=>r.determinante).length;
   if(kpiEl)kpiEl.innerHTML=
     '<div class="kpi"><div class="kpi-lbl">'+(sasView==='negozi'?'Negozi':'Field Coach + VM')+'</div><div class="kpi-val">'+rows.length+'</div></div>'
@@ -5377,7 +5385,7 @@ function renderSas(){
       ?[{disp:r.sid,val:+r.sid||0},{disp:agEsc(r.name),val:r.name}]
       :[{disp:agEsc(r.name),val:r.name},{disp:'<span class="bjob">'+r.role+'</span>',val:r.role},{disp:r.nStores,val:r.nStores}];
     return {cells:identCells.concat([
-      {disp:eu(r.target),val:r.target},{disp:eu(r.actual),val:r.actual},{disp:eud(r.esubero),val:r.esubero},
+      {disp:eu(r.target),val:r.target},{disp:eu(r.actual),val:r.actual},{disp:eud(sasEsubero(r)),val:sasEsubero(r)},
       {disp:syCell(r),val:r.resultSY},
       {disp:bar(r.pctBase*100,pctCls(r.pctBase))+(r.pctBase*100).toFixed(1)+'%',val:r.pctBase},
       {disp:eu(r.sasValue),val:r.sasValue},{disp:Math.round(r.recPct)+'%',val:r.recPct},{disp:eud(r.esuberoSasPrec),val:r.esuberoSasPrec},{disp:eud(r.esuberoSasPrecUsed),val:r.esuberoSasPrecUsed},
@@ -5397,7 +5405,7 @@ function sasExport(){
   const rows=file.rows.map(r=>{
     const o={};
     if(sasView==='negozi'){o['Store ID']=r.sid;o['Negozio']=r.name;}else{o['Nome']=r.name;o['Ruolo']=r.role;o['N. Negozi']=r.nStores;}
-    return Object.assign(o,{'Target':Math.round(r.target),'Consuntivo':Math.round(r.actual),'Esub. prec.':Math.round(r.esubero||0),
+    return Object.assign(o,{'Target':Math.round(r.target),'Consuntivo':Math.round(r.actual),'Esub. prec.':Math.round(sasEsubero(r)||0),
       'Target SY':r.targetSY,'Risultato SY':r.resultSY,'SY anno prec.':r.syLastYear==null?'':r.syLastYear},
       sasView==='negozi'?{'Target QTY':r.targetQty==null?'':r.targetQty,'Risultato QTY':r.resultQty==null?'':r.resultQty}:{},
       {'Salvagente 60% OK':r.parachuteOk==null?'':(r.parachuteOk?'Sì':'No'),
