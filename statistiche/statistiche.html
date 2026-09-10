@@ -5063,9 +5063,26 @@ function sasPopulateMonths(){
   sel.innerHTML=keys.map(k=>{const f=Object.values(sasFiles).find(x=>x.period.monthKey===k);return '<option value="'+k+'">'+f.period.label+'</option>';}).join('');
   sel.value=keys.includes(+cur)?cur:keys[0];
 }
+// Se per lo stesso kind+mese sono caricati PIÙ file (es. "Negozi International" + "Negozi Italia",
+// export separati per ambito geografico) li uniamo in un unico set di righe, invece di mostrarne
+// uno solo a caso e ignorare silenziosamente l'altro (comportamento fino al 10/09/2026: un semplice
+// .find() prendeva il primo trovato — l'altro restava caricato come chip ma MAI mostrato in tabella,
+// bug scoperto perché il collega dell'utente passa i file divisi per Italia/estero).
 function sasCurrentFile(){
   const mk=+((document.getElementById('sasMonth')||{}).value||0);
-  return Object.values(sasFiles).find(f=>f.kind===sasView&&f.period.monthKey===mk)||null;
+  const matches=Object.values(sasFiles).filter(f=>f.kind===sasView&&f.period.monthKey===mk);
+  if(!matches.length)return null;
+  if(matches.length===1)return matches[0];
+  const rows=matches.flatMap(f=>f.rows);
+  const seen=new Set();
+  rows.forEach(r=>{
+    const key=sasView==='negozi'?String(r.sid):r.name;
+    if(seen.has(key))console.warn('sasCurrentFile: chiave duplicata tra i file uniti ('+key+') — controllare sovrapposizioni tra '+matches.map(f=>f.fname).join(', '));
+    seen.add(key);
+  });
+  return {kind:sasView,period:matches[0].period,
+    meta:Object.assign({},matches[0].meta,{subtitle:matches.map(f=>f.meta.subtitle||f.period.label).join(' + ')}),
+    rows,fname:matches.map(f=>f.fname).join(' + ')};
 }
 let _sasFiltersInit=false;
 // Popola il menu a tendina "vero" (stesso componente ms-wrap/checkbox usato in tutti gli altri tab
