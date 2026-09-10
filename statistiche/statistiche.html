@@ -1362,6 +1362,16 @@ const FC_VM_ENTE={
   'A7000134':211,'A1000027':216,'A3000217':217,'A1600144':222,
   'A1200056':220,'A8000107':215,'A9000209':217,'A4000229':209,
   'A7000028':211,'A1500011':224,'A1000076':216,
+  // FC/VM Italia (10/09/2026): matricole SENZA prefisso lettera (formato diverso dagli esteri sopra),
+  // trovate nei file FCVM_MM_2026_ITA.xlsx (aprile-agosto). Senza questa mappatura _ente restava 0
+  // per queste persone (nessun'altra riga in allData con lo stesso numero da cui resolveCrossRefEnte
+  // potesse dedurre l'ente, dato che i Field Coach non compaiono nei consuntivi negozio) → _nazione
+  // sempre null, filtro Nazione della vista FC+VM senza "Italia" nonostante lo storico BDG funzionasse
+  // già (quello dipende solo dal match store/nome, non dall'ente).
+  '0000045':210,'0002152':210,'0001734':210,'0001369':210,'0002473':210,
+  '0001475':210,'0000421':210,'0000231':210,'0000068':210,'0001367':210,
+  '0001713':210,'0001443':210,'0000609':210,'0001304':210,'0000161':210,
+  '0002660':210,'0001571':210,'0002333':210,'0002678':210,
 };
 
 // Cambi statici per ENTE (valuta locale → EUR), fallback quando il file non li fornisce
