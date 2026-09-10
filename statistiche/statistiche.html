@@ -1591,12 +1591,10 @@ function importDiff(){
 const IDB_NAME='boggiPremiDB', IDB_STORE='session';
 function idbOpen(){return new Promise((res,rej)=>{const r=indexedDB.open(IDB_NAME,1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains(IDB_STORE))r.result.createObjectStore(IDB_STORE);};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
 let _idbT=null;
-// storeAssignMap NON va persistito quando è ancora il default statico STORE_ASSIGN_STATIC (già
-// integrato nel codice, si riottiene da solo ad ogni caricamento pagina) — solo quando l'utente ha
-// caricato un override in sessione (storeAssignOverridden), altrimenti il ripristino lo scambierebbe
-// per un "file caricato dall'utente" e mostrerebbe un chip rimovibile per qualcosa che non è mai
-// stato davvero caricato.
-function idbAutoSave(){clearTimeout(_idbT);_idbT=setTimeout(async()=>{try{const db=await idbOpen();const ovr=typeof storeAssignOverridden!=='undefined'&&storeAssignOverridden;db.transaction(IDB_STORE,'readwrite').objectStore(IDB_STORE).put({rows:allData,savedAt:new Date().toISOString(),sasFiles:(typeof sasFiles!=='undefined'?sasFiles:{}),storeAssignMap:ovr?storeAssignMap:null,storeAssignFname:ovr&&storeAssignMeta?storeAssignMeta.fname:null},'current');}catch(e){console.warn('IDB save fallito',e);}},1500);}
+// storeAssignOverrideFiles va persistito per intero (fname -> mappa) così più override (es. TESTATA
+// Italia + International) sopravvivono entrambi al reload — il default statico STORE_ASSIGN_STATIC
+// non va mai persistito (si riottiene da solo ad ogni caricamento pagina, è già nel codice).
+function idbAutoSave(){clearTimeout(_idbT);_idbT=setTimeout(async()=>{try{const db=await idbOpen();db.transaction(IDB_STORE,'readwrite').objectStore(IDB_STORE).put({rows:allData,savedAt:new Date().toISOString(),sasFiles:(typeof sasFiles!=='undefined'?sasFiles:{}),storeAssignOverrideFiles:(typeof storeAssignOverrideFiles!=='undefined'?storeAssignOverrideFiles:{})},'current');}catch(e){console.warn('IDB save fallito',e);}},1500);}
 async function idbLoadSession(){try{const db=await idbOpen();return await new Promise(res=>{const r=db.transaction(IDB_STORE,'readonly').objectStore(IDB_STORE).get('current');r.onsuccess=()=>res(r.result||null);r.onerror=()=>res(null);});}catch(e){return null;}}
 async function idbClearSession(){try{const db=await idbOpen();db.transaction(IDB_STORE,'readwrite').objectStore(IDB_STORE).delete('current');}catch(e){}}
 async function tryRestoreSession(){
@@ -1626,10 +1624,9 @@ async function tryRestoreSasSession(){
     if(s&&s.sasFiles&&Object.keys(s.sasFiles).length){
       sasFiles=s.sasFiles;sasPopulateMonths();restored=true;
     }
-    if(s&&s.storeAssignMap&&Object.keys(s.storeAssignMap).length){
-      storeAssignMap=s.storeAssignMap;
-      storeAssignMeta={fname:s.storeAssignFname||'mappa negozi↔FC/VM',count:Object.keys(storeAssignMap).length};
-      storeAssignOverridden=true;
+    if(s&&s.storeAssignOverrideFiles&&Object.keys(s.storeAssignOverrideFiles).length){
+      storeAssignOverrideFiles=s.storeAssignOverrideFiles;
+      _recomputeStoreAssignMap();
       sasPopulateAssignFilter();restored=true;
     }
     if(restored){
@@ -4950,12 +4947,19 @@ let sasView='negozi';
 // MAX. Il collega dell'utente ha chiesto esplicitamente di tenerle separate nel filtro — vedi
 // "· area N" nei nomi sotto, prodotto da parseStoreAssignRows con la stessa logica.
 // Per aggiornare quando cambiano le assegnazioni: trascinare la nuova TESTATA nella dropzone SAS,
-// che sovrascrive questa mappa per la sola sessione corrente (vedi sasHandleFiles/storeAssignOverridden
+// che si UNISCE a questa mappa per la sola sessione corrente (vedi sasHandleFiles/storeAssignOverrideFiles
 // più sotto); per renderlo permanente, sostituire questo blocco con l'export del file aggiornato.
 const STORE_ASSIGN_STATIC={"1101":{"fc":["Gianni Zanella"],"vm":["Dario Peluso"]},"1102":{"fc":["Gianni Zanella"],"vm":["Dario Peluso"]},"1103":{"fc":["Marco Caselotti"],"vm":["Peter Gnes"]},"1104":{"fc":["Marco Caselotti"],"vm":["Peter Gnes"]},"1105":{"fc":["Alfredo Prieto"],"vm":["Patricia Tobia Gonzales","Alberto Vallespir"]},"1106":{"fc":["Leonardo Maglia"],"vm":["Peter Gnes"]},"1107":{"fc":["Gianni Zanella · area 2"],"vm":["Dario Peluso"]},"1109":{"fc":["Marco Caselotti"],"vm":["Peter Gnes"]},"1110":{"fc":["Leonardo Maglia"],"vm":["Peter Gnes"]},"1113":{"fc":["Marco Caselotti"],"vm":["Peter Gnes","Giuliano Anconetani"]},"1114":{"fc":[],"vm":["Mauro Meazza"]},"1116":{"fc":["Leonardo Maglia"],"vm":["Peter Gnes"]},"1117":{"fc":["Gianni Zanella · area 2"],"vm":["Dario Peluso"]},"1118":{"fc":["Teoman Ozgultekin · area 2"],"vm":["Maria Pilar Ors"]},"1120":{"fc":["Teoman Ozgultekin · area 2"],"vm":["Maria Pilar Ors"]},"1121":{"fc":["Teoman Ozgultekin · area 2"],"vm":["Maria Pilar Ors"]},"1123":{"fc":["Teoman Ozgultekin"],"vm":["Ferdinando Piacezzi"]},"1125":{"fc":["Marco Caselotti"],"vm":["Peter Gnes","Giuliano Anconetani"]},"1131":{"fc":["Giacomo Scalisi"],"vm":["Lucas Richard"]},"1133":{"fc":["Teoman Ozgultekin"],"vm":["Ferdinando Piacezzi"]},"1135":{"fc":["Leonardo Maglia"],"vm":["Peter Gnes"]},"1137":{"fc":["Giacomo Scalisi"],"vm":[]},"1138":{"fc":["Teoman Ozgultekin · area 2"],"vm":["Maria Pilar Ors"]},"1148":{"fc":["Gianni Zanella · area 2"],"vm":["Dario Peluso"]},"1149":{"fc":["Alfredo Prieto"],"vm":["Alberto Vallespir"]},"1152":{"fc":["Leonardo Maglia"],"vm":["Giuliano Anconetani"]},"1155":{"fc":[],"vm":["Mauro Meazza"]},"1158":{"fc":["Teoman Ozgultekin · area 2"],"vm":["Maria Pilar Ors"]},"1159":{"fc":["Teoman Ozgultekin"],"vm":["Ferdinando Piacezzi"]},"1161":{"fc":["Marco Caselotti"],"vm":[]},"1162":{"fc":[],"vm":["Giuliano Anconetani"]},"1165":{"fc":["Giacomo Scalisi"],"vm":["Lucas Richard"]},"1168":{"fc":["Giacomo Scalisi"],"vm":["Lucas Richard"]},"1171":{"fc":["Alfredo Prieto"],"vm":["Alberto Vallespir"]},"1172":{"fc":[],"vm":["Mauro Meazza"]},"1177":{"fc":["Gianni Zanella"],"vm":["Dario Peluso"]},"1178":{"fc":["Giacomo Scalisi"],"vm":[]},"1183":{"fc":["Jakub Kotuniak"],"vm":["Martyna Tomchzuk"]},"1185":{"fc":["Gianni Zanella"],"vm":["Dario Peluso"]},"1186":{"fc":["Gianni Zanella"],"vm":["Dario Peluso"]},"1187":{"fc":["Alfredo Prieto"],"vm":["Patricia Tobia Gonzales","Alberto Vallespir"]},"1188":{"fc":["Alfredo Prieto","Miguel Valero"],"vm":["Alberto Vallespir"]},"1189":{"fc":["Alfredo Prieto","Miguel Valero"],"vm":["Alberto Vallespir"]},"1190":{"fc":["Alfredo Prieto"],"vm":["Alberto Vallespir"]},"1191":{"fc":["Alfredo Prieto"],"vm":["Patricia Tobia Gonzales","Alberto Vallespir"]},"1192":{"fc":["Alfredo Prieto"],"vm":["Alberto Vallespir"]},"1193":{"fc":["Jakub Kotuniak"],"vm":["Martyna Tomchzuk"]},"1194":{"fc":["Alfredo Prieto"],"vm":["Patricia Tobia Gonzales","Alberto Vallespir"]},"1195":{"fc":["Marco Caselotti"],"vm":["Peter Gnes","Giuliano Anconetani"]},"1197":{"fc":["Alfredo Prieto"],"vm":["Patricia Tobia Gonzales","Alberto Vallespir"]},"1198":{"fc":["Alfredo Prieto","Miguel Valero"],"vm":["Alberto Vallespir"]},"1301":{"fc":["Jakub Kotuniak"],"vm":["Martyna Tomchzuk"]},"1303":{"fc":["Alfredo Prieto"],"vm":["Patricia Tobia Gonzales","Alberto Vallespir"]},"1304":{"fc":["Alfredo Prieto","Miguel Valero"],"vm":["Alberto Vallespir"]},"1305":{"fc":["Alfredo Prieto","Miguel Valero"],"vm":["Alberto Vallespir"]},"1309":{"fc":["Marco Caselotti"],"vm":[]},"1310":{"fc":["Teoman Ozgultekin"],"vm":["Ferdinando Piacezzi"]},"1312":{"fc":["Gianni Zanella"],"vm":["Dario Peluso"]},"1318":{"fc":["Leonardo Maglia"],"vm":["Peter Gnes"]},"1319":{"fc":["Teoman Ozgultekin"],"vm":["Ferdinando Piacezzi"]},"1321":{"fc":["Stefano Leonardi"],"vm":[]},"1322":{"fc":["Stefano Leonardi"],"vm":[]},"1323":{"fc":["Stefano Leonardi"],"vm":[]},"1325":{"fc":["Jakub Kotuniak"],"vm":["Martyna Tomchzuk"]},"1326":{"fc":["Alfredo Prieto"],"vm":["Patricia Tobia Gonzales","Alberto Vallespir"]},"1327":{"fc":["Alfredo Prieto","Miguel Valero"],"vm":["Alberto Vallespir"]},"1328":{"fc":["Alfredo Prieto"],"vm":["Alberto Vallespir"]},"1329":{"fc":["Alfredo Prieto","Miguel Valero"],"vm":["Alberto Vallespir"]},"1331":{"fc":["Stefano Leonardi"],"vm":[]},"1332":{"fc":["Stefano Leonardi"],"vm":[]},"1333":{"fc":["Stefano Leonardi"],"vm":[]},"1334":{"fc":["Stefano Leonardi"],"vm":[]},"1335":{"fc":["Stefano Leonardi"],"vm":[]},"1336":{"fc":["Stefano Leonardi"],"vm":[]},"1337":{"fc":["Stefano Leonardi"],"vm":[]},"1338":{"fc":["Alfredo Prieto"],"vm":["Alberto Vallespir"]},"1339":{"fc":["Alfredo Prieto"],"vm":["Patricia Tobia Gonzales","Alberto Vallespir"]},"1340":{"fc":["Jakub Kotuniak"],"vm":["Martyna Tomchzuk"]},"1341":{"fc":["Stefano Leonardi"],"vm":[]},"1344":{"fc":["Gianni Zanella"],"vm":["Dario Peluso"]},"1347":{"fc":["Alfredo Prieto"],"vm":["Alberto Vallespir"]},"1348":{"fc":["Alfredo Prieto","Miguel Valero"],"vm":[]},"1349":{"fc":["Alfredo Prieto","Miguel Valero"],"vm":[]},"1350":{"fc":["Alfredo Prieto"],"vm":[]},"1355":{"fc":["Leonardo Maglia"],"vm":["Peter Gnes"]},"1601":{"fc":["Giacomo Scalisi"],"vm":["Lucas Richard"]},"1602":{"fc":["Giacomo Scalisi"],"vm":["Lucas Richard"]},"2103":{"fc":["Leonardo Maglia"],"vm":["Peter Gnes"]},"3101":{"fc":["Marco Caselotti"],"vm":[]},"3102":{"fc":["Marco Caselotti"],"vm":[]},"3104":{"fc":["Leonardo Maglia"],"vm":[]},"3105":{"fc":["Marco Caselotti"],"vm":[]},"3108":{"fc":["Teoman Ozgultekin · area 2"],"vm":["Maria Pilar Ors"]},"3112":{"fc":["Giacomo Scalisi"],"vm":[]},"3113":{"fc":["Giacomo Scalisi"],"vm":[]},"3119":{"fc":["Gianni Zanella · area 2"],"vm":[]},"3120":{"fc":["Alfredo Prieto"],"vm":["Alberto Vallespir"]},"3122":{"fc":["Jakub Kotuniak"],"vm":["Martyna Tomchzuk"]},"3123":{"fc":["Giacomo Scalisi"],"vm":[]},"3124":{"fc":["Gianni Zanella"],"vm":["Dario Peluso"]},"3125":{"fc":["Leonardo Maglia"],"vm":["Ferdinando Piacezzi"]},"3126":{"fc":["Teoman Ozgultekin · area 2"],"vm":[]},"3127":{"fc":["Alfredo Prieto"],"vm":[]},"3130":{"fc":["Marco Caselotti"],"vm":["Peter Gnes","Giuliano Anconetani"]}};
-// storeAssignMeta resta null finché l'utente non carica un override in sessione (vedi sasHandleFiles):
-// il default statico sopra non genera nessun chip/file da "rimuovere", è semplicemente sempre presente.
-let storeAssignMap=STORE_ASSIGN_STATIC, storeAssignMeta=null, storeAssignOverridden=false;
+// storeAssignOverrideFiles: fname -> mappa parsata da un override xlsx caricato in sessione (es. la
+// TESTATA Italia, separata da quella International già integrata sopra). PIÙ file possono coesistere
+// (store ID range disgiunti tra Italia ed estero) — storeAssignMap è sempre il default statico più
+// l'unione di tutti gli override attivi, ricalcolata da _recomputeStoreAssignMap ad ogni load/remove.
+// Prima (v9.54-v9.58) un secondo xlsx SOSTITUIVA l'intera mappa invece di unirsi: caricare la TESTATA
+// Italia dopo quella International (già integrata di default) avrebbe cancellato tutti i FC/VM esteri
+// dal filtro "FC/VM assegnato" — bug scoperto proprio quando l'utente ha iniziato a caricare entrambi
+// gli ambiti insieme nello stesso mese.
+let storeAssignMap=STORE_ASSIGN_STATIC, storeAssignOverrideFiles={};
+function _recomputeStoreAssignMap(){storeAssignMap=Object.assign({},STORE_ASSIGN_STATIC,...Object.values(storeAssignOverrideFiles));}
 const SAS_MESI_IT=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
 
 // Estrae mese/anno dal subtitle del JSON (es. "... — Consuntivo Luglio 2026 · ..."). Non c'è un campo
@@ -4995,9 +4999,8 @@ function sasHandleFiles(fileList){
           const wb=XLSX.read(e.target.result,{type:'array'});
           const rows=sheetToObj(wb.Sheets[wb.SheetNames[0]]);
           if(!_looksLikeStoreAssignSheet(rows)){alert('File "'+f.name+'": non riconosciuto come mappa negozi↔FC/VM (attese colonne STORE ID, NOME STORE, RUOLO).');return;}
-          storeAssignMap=parseStoreAssignRows(rows);
-          storeAssignMeta={fname:f.name,count:Object.keys(storeAssignMap).length};
-          storeAssignOverridden=true;
+          storeAssignOverrideFiles[f.name]=parseStoreAssignRows(rows);
+          _recomputeStoreAssignMap();
           sasRenderChips();sasPopulateAssignFilter();renderSas();try{idbAutoSave();}catch(e2){}
         }catch(err){alert('Errore: '+f.name+'\n'+err.message);}
       };
@@ -5041,18 +5044,20 @@ function parseStoreAssignRows(rows){
   });
   return map;
 }
-// Rimuove l'override caricato in sessione e torna alla mappa statica integrata (STORE_ASSIGN_STATIC),
-// non a vuoto — il filtro "FC/VM assegnato" resta sempre disponibile.
-function sasRemoveAssignFile(){storeAssignMap=STORE_ASSIGN_STATIC;storeAssignMeta=null;storeAssignOverridden=false;sasRenderChips();sasPopulateAssignFilter();renderSas();try{idbAutoSave();}catch(e){}}
+// Rimuove UN override caricato in sessione (per nome file) e ricalcola la mappa — resta sempre almeno
+// il default statico integrato (STORE_ASSIGN_STATIC) più gli altri eventuali override ancora attivi:
+// il filtro "FC/VM assegnato" non sparisce mai del tutto.
+function sasRemoveAssignFile(fname){delete storeAssignOverrideFiles[fname];_recomputeStoreAssignMap();sasRenderChips();sasPopulateAssignFilter();renderSas();try{idbAutoSave();}catch(e){}}
 function sasRenderChips(){
   const c=document.getElementById('sasChips');if(!c)return;
   const names=Object.keys(sasFiles);
   let html=names.length?names.map(fn=>{const f=sasFiles[fn];
     return '<span class="sas-chip-file">✅ '+agEsc(fn)+' · '+f.rows.length+' <span class="x" onclick="sasRemoveFile(\''+fn.replace(/'/g,"\\'")+'\')" title="Rimuovi">✕</span></span>';
   }).join(''):'<span style="font-size:11.5px;color:#bbb">Nessun file caricato — trascina qui i JSON mensili (Negozi + FC/VM)</span>';
-  if(storeAssignMeta){
-    html+=' <span class="sas-chip-file">🧭 '+agEsc(storeAssignMeta.fname)+' · '+storeAssignMeta.count+' negozi↔FC/VM <span class="x" onclick="sasRemoveAssignFile()" title="Rimuovi">✕</span></span>';
-  }
+  html+=Object.keys(storeAssignOverrideFiles).map(fn=>{
+    const n=Object.keys(storeAssignOverrideFiles[fn]).length;
+    return ' <span class="sas-chip-file">🧭 '+agEsc(fn)+' · '+n+' negozi↔FC/VM <span class="x" onclick="sasRemoveAssignFile(\''+fn.replace(/'/g,"\\'")+'\')" title="Rimuovi">✕</span></span>';
+  }).join('');
   c.innerHTML=html;
 }
 function sasPopulateMonths(){
