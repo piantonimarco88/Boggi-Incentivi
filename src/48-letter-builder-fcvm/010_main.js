@@ -226,7 +226,9 @@ function buildFcVmLetter(emp){
   var _demDrFc=(!isP&&_demActiveFc)?DEMOLT_RESULT_FC[String(emp.m)]:null;
   if(_demActiveFc&&(r.premio>0||isP)){
     var _demTF=_DEMOLT_LT[lang]||_DEMOLT_LT.INGLESE;
-    h+='<div style="padding:0 32px">';
+    // Nessun wrapper extra di padding qui: .lt-body ha già padding:28px 32px, la stessa
+    // spaziatura di ogni altro elemento della lettera (tabella negozi, box SAS, ecc.) —
+    // un wrapper aggiuntivo raddoppiava il padding orizzontale e restringeva questi box.
     if(_demDrFc&&_demDrFc.pct!=null){
       var _demMaturatoF=_demDrFc.pct>0?Math.round(r.premio/_demDrFc.pct):r.premio;
       h+='<div class="lt-total" style="opacity:.6"><div><div class="lt-total-label">'+esc(_demTF.maturato)+' (area)</div></div><div class="lt-total-val">'+fc(_demMaturatoF,cu)+'</div></div>';
@@ -236,7 +238,6 @@ function buildFcVmLetter(emp){
     } else {
       h+=demoltLetterBlock(lang,_demDrFc,isP,cu,true);
     }
-    h+='</div>';
   }
   h+='</div>'; // close lt-body
 
