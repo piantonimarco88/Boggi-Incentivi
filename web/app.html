@@ -836,12 +836,14 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.72'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.74'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.74: Tab Calcolo Premi Seasonal — aggiunto bottone Screenshot Tabella (come già in FC+VM), cattura l'intera tabella come immagine PNG, righe/colonne fuori dallo scroll comprese",
+  "9.73: Lettera Seasonal (mensile) — tolto il segno \"−\" davanti all'importo mid-season già erogato: era solo grafico, il calcolo del saldo non cambia",
   "9.72: Lettera FC+VM — fix larghezza dei box Premio maturato/Coefficiente Inventari/Premio da erogare (area): un padding extra li restringeva rispetto al resto della lettera",
   "9.71: Export JSON statistiche FC+VM (stats_fcvm_*) — aggiunto il campo syLastYear (SY anno precedente), già presente per i negozi, per il confronto anno su anno sul salvagente 60%",
   "9.70: Rinominato \"Demoltiplicatore Inventari\" in \"Coefficiente Inventari\" in tutta l'app e nelle lettere, in tutte le lingue supportate",
@@ -3765,7 +3767,7 @@ function buildSeasonalLetter(e){
   h+='<div style="background:#3d3a36;padding:12px 32px;display:flex;justify-content:space-between;align-items:center">';
   h+='<div><div style="font-size:9px;text-transform:uppercase;letter-spacing:2px;color:#a09a92">'+(isP?T.mid_max:(T.mid_deducted||T.mid_max))+'</div>';
   h+='<div style="font-size:10px;color:#a09a92;margin-top:2px">'+(isP?fc(kpiIncentive,cu)+' \u00d7 30%':'')+'</div></div>';
-  h+='<div style="font-size:18px;font-weight:800;color:#a09a92">'+(isP?fc(midMax,cu):(midPaid>0?'\u2212'+fc(midPaid,cu):fc(0,cu)))+'</div>';
+  h+='<div style="font-size:18px;font-weight:800;color:#a09a92">'+(isP?fc(midMax,cu):fc(midPaid,cu))+'</div>';
   h+='</div>';
 
   // SALDO (netto da erogare) \u2014 solo in consuntivo, dopo la detrazione del mid-season.
@@ -5346,6 +5348,7 @@ function rCSeasMid(){
   });
 
   var h='<button class="exp-btn" onclick="exportMidSeasonExcel()" style="font-size:10px;padding:4px 12px;margin-bottom:8px">&#128202; Export Excel</button>';
+  h+=' <button class="exp-btn" onclick="screenshotSeasonalTable(this)" style="font-size:10px;padding:4px 12px;margin-bottom:8px" title="Cattura l\'intera tabella come immagine, comprese le righe/colonne fuori dallo scroll">&#128247; Screenshot Tabella</button>';
   h+='<div style="display:inline-flex;align-items:center;gap:8px;margin-bottom:8px;margin-left:8px;padding:5px 12px;background:#fff3cd;border:1px solid #c9a96e;border-radius:6px;font-size:10px;color:#856404;font-weight:600">&#128197; MID-SEASON &mdash; Premio anticipato 3 mesi &mdash; 30% max KPI &mdash; Nessun boost inventario</div>';
 
   h+='<div class="flt"><input placeholder="Cerca..." id="seasQ" value="'+esc(_seasF.q)+'">';
@@ -5542,6 +5545,41 @@ function exportMidSeasonExcel(){
   XLSX.writeFile(wb,"Incentivi_MidSeason_"+stagione+".xlsx");
 }
 
+// Cattura l'intera tabella #stbl (Calcolo Premi Seasonal, sia mid-season che
+// finale: stesso id in entrambe le viste) come PNG, righe/colonne comprese
+// anche quelle fuori dallo scroll di .scroll-wrap \u2014 stesso approccio di
+// screenshotFcvmTable (99a-render-fcvm-base).
+function screenshotSeasonalTable(btn){
+  var tbl=document.getElementById('stbl');
+  if(!tbl){alert('Tabella non trovata.');return;}
+  if(typeof html2canvas!=='function'){alert('Libreria screenshot (html2canvas) non disponibile.');return;}
+  var oldTxt=btn?btn.innerHTML:null;
+  if(btn){btn.disabled=true;btn.innerHTML='\u23f3 Cattura...';}
+  var clone=tbl.cloneNode(true);
+  var stickyRow=clone.querySelector('thead tr');
+  if(stickyRow)stickyRow.style.position='static';
+  var wrap=document.createElement('div');
+  wrap.style.cssText='position:fixed;top:0;left:-99999px;background:#fff;padding:12px;';
+  wrap.appendChild(clone);
+  document.body.appendChild(wrap);
+  function cleanup(){document.body.removeChild(wrap);if(btn){btn.disabled=false;btn.innerHTML=oldTxt;}}
+  html2canvas(wrap,{scale:2,backgroundColor:'#ffffff',useCORS:true}).then(function(canvas){
+    canvas.toBlob(function(blob){
+      if(!blob){cleanup();alert('Screenshot fallito: immagine vuota.');return;}
+      var a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      var stagione=CFG_SEASON+String(CFG_YEAR).slice(-2);
+      a.download='calcolo_premi_seasonal_'+(SEASON_PERIOD==='mid'?'midseason_':'')+stagione+'.png';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      cleanup();
+    },'image/png');
+  }).catch(function(err){
+    cleanup();
+    alert('Errore durante lo screenshot: '+(err&&err.message?err.message:err));
+  });
+}
+
 // === rCSeasonal: Calcolo Premi in modalit\u00e0 Seasonal ===
 var _seasF={q:'',s:'ALL',j:'ALL'};
 function rCSeasonal(){
@@ -5603,6 +5641,7 @@ function rCSeasonal(){
 
   var h='<button class="exp-btn" onclick="exportSeasonalExcel()" style="font-size:10px;padding:4px 12px;margin-bottom:8px">&#128202; Export Excel</button>';
   if(MODE==="consuntivo")h+='<button class="exp-btn btn-lgreen" onclick="saveMonitorSnap()" style="font-size:10px;padding:4px 12px;margin-bottom:8px">&#128229; Salva per Monitor</button>';
+  h+='<button class="exp-btn" onclick="screenshotSeasonalTable(this)" style="font-size:10px;padding:4px 12px;margin-bottom:8px" title="Cattura l\'intera tabella come immagine, comprese le righe/colonne fuori dallo scroll">&#128247; Screenshot Tabella</button>';
   h+='<div class="flt"><input placeholder="Cerca..." id="seasQ" value="'+esc(_seasF.q)+'">';
   h+='<select id="seasJ">';
   uSeasJ.forEach(function(j){h+='<option value="'+esc(j)+'"'+(_seasF.j===j?' selected':'')+'>'+(j==='ALL'?'Tutti i ruoli':esc(j))+'</option>';});

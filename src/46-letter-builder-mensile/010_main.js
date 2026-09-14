@@ -929,7 +929,7 @@ function buildSeasonalLetter(e){
   h+='<div style="background:#3d3a36;padding:12px 32px;display:flex;justify-content:space-between;align-items:center">';
   h+='<div><div style="font-size:9px;text-transform:uppercase;letter-spacing:2px;color:#a09a92">'+(isP?T.mid_max:(T.mid_deducted||T.mid_max))+'</div>';
   h+='<div style="font-size:10px;color:#a09a92;margin-top:2px">'+(isP?fc(kpiIncentive,cu)+' \u00d7 30%':'')+'</div></div>';
-  h+='<div style="font-size:18px;font-weight:800;color:#a09a92">'+(isP?fc(midMax,cu):(midPaid>0?'\u2212'+fc(midPaid,cu):fc(0,cu)))+'</div>';
+  h+='<div style="font-size:18px;font-weight:800;color:#a09a92">'+(isP?fc(midMax,cu):fc(midPaid,cu))+'</div>';
   h+='</div>';
 
   // SALDO (netto da erogare) \u2014 solo in consuntivo, dopo la detrazione del mid-season.

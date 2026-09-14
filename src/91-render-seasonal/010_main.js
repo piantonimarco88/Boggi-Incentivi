@@ -29,6 +29,7 @@ function rCSeasMid(){
   });
 
   var h='<button class="exp-btn" onclick="exportMidSeasonExcel()" style="font-size:10px;padding:4px 12px;margin-bottom:8px">&#128202; Export Excel</button>';
+  h+=' <button class="exp-btn" onclick="screenshotSeasonalTable(this)" style="font-size:10px;padding:4px 12px;margin-bottom:8px" title="Cattura l\'intera tabella come immagine, comprese le righe/colonne fuori dallo scroll">&#128247; Screenshot Tabella</button>';
   h+='<div style="display:inline-flex;align-items:center;gap:8px;margin-bottom:8px;margin-left:8px;padding:5px 12px;background:#fff3cd;border:1px solid #c9a96e;border-radius:6px;font-size:10px;color:#856404;font-weight:600">&#128197; MID-SEASON &mdash; Premio anticipato 3 mesi &mdash; 30% max KPI &mdash; Nessun boost inventario</div>';
 
   h+='<div class="flt"><input placeholder="Cerca..." id="seasQ" value="'+esc(_seasF.q)+'">';
@@ -225,6 +226,41 @@ function exportMidSeasonExcel(){
   XLSX.writeFile(wb,"Incentivi_MidSeason_"+stagione+".xlsx");
 }
 
+// Cattura l'intera tabella #stbl (Calcolo Premi Seasonal, sia mid-season che
+// finale: stesso id in entrambe le viste) come PNG, righe/colonne comprese
+// anche quelle fuori dallo scroll di .scroll-wrap \u2014 stesso approccio di
+// screenshotFcvmTable (99a-render-fcvm-base).
+function screenshotSeasonalTable(btn){
+  var tbl=document.getElementById('stbl');
+  if(!tbl){alert('Tabella non trovata.');return;}
+  if(typeof html2canvas!=='function'){alert('Libreria screenshot (html2canvas) non disponibile.');return;}
+  var oldTxt=btn?btn.innerHTML:null;
+  if(btn){btn.disabled=true;btn.innerHTML='\u23f3 Cattura...';}
+  var clone=tbl.cloneNode(true);
+  var stickyRow=clone.querySelector('thead tr');
+  if(stickyRow)stickyRow.style.position='static';
+  var wrap=document.createElement('div');
+  wrap.style.cssText='position:fixed;top:0;left:-99999px;background:#fff;padding:12px;';
+  wrap.appendChild(clone);
+  document.body.appendChild(wrap);
+  function cleanup(){document.body.removeChild(wrap);if(btn){btn.disabled=false;btn.innerHTML=oldTxt;}}
+  html2canvas(wrap,{scale:2,backgroundColor:'#ffffff',useCORS:true}).then(function(canvas){
+    canvas.toBlob(function(blob){
+      if(!blob){cleanup();alert('Screenshot fallito: immagine vuota.');return;}
+      var a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      var stagione=CFG_SEASON+String(CFG_YEAR).slice(-2);
+      a.download='calcolo_premi_seasonal_'+(SEASON_PERIOD==='mid'?'midseason_':'')+stagione+'.png';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      cleanup();
+    },'image/png');
+  }).catch(function(err){
+    cleanup();
+    alert('Errore durante lo screenshot: '+(err&&err.message?err.message:err));
+  });
+}
+
 // === rCSeasonal: Calcolo Premi in modalit\u00e0 Seasonal ===
 var _seasF={q:'',s:'ALL',j:'ALL'};
 function rCSeasonal(){
@@ -286,6 +322,7 @@ function rCSeasonal(){
 
   var h='<button class="exp-btn" onclick="exportSeasonalExcel()" style="font-size:10px;padding:4px 12px;margin-bottom:8px">&#128202; Export Excel</button>';
   if(MODE==="consuntivo")h+='<button class="exp-btn btn-lgreen" onclick="saveMonitorSnap()" style="font-size:10px;padding:4px 12px;margin-bottom:8px">&#128229; Salva per Monitor</button>';
+  h+='<button class="exp-btn" onclick="screenshotSeasonalTable(this)" style="font-size:10px;padding:4px 12px;margin-bottom:8px" title="Cattura l\'intera tabella come immagine, comprese le righe/colonne fuori dallo scroll">&#128247; Screenshot Tabella</button>';
   h+='<div class="flt"><input placeholder="Cerca..." id="seasQ" value="'+esc(_seasF.q)+'">';
   h+='<select id="seasJ">';
   uSeasJ.forEach(function(j){h+='<option value="'+esc(j)+'"'+(_seasF.j===j?' selected':'')+'>'+(j==='ALL'?'Tutti i ruoli':esc(j))+'</option>';});

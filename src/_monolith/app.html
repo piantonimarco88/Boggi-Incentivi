@@ -215,12 +215,14 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 /*BUNDLE_INSERT:60-fcvm-state*/
 /*BUNDLE_INSERT:70-fcvm-calc*//*BUNDLE_INSERT:80-roles-config*/var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.72'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.74'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.74: Tab Calcolo Premi Seasonal — aggiunto bottone Screenshot Tabella (come già in FC+VM), cattura l'intera tabella come immagine PNG, righe/colonne fuori dallo scroll comprese",
+  "9.73: Lettera Seasonal (mensile) — tolto il segno \"−\" davanti all'importo mid-season già erogato: era solo grafico, il calcolo del saldo non cambia",
   "9.72: Lettera FC+VM — fix larghezza dei box Premio maturato/Coefficiente Inventari/Premio da erogare (area): un padding extra li restringeva rispetto al resto della lettera",
   "9.71: Export JSON statistiche FC+VM (stats_fcvm_*) — aggiunto il campo syLastYear (SY anno precedente), già presente per i negozi, per il confronto anno su anno sul salvagente 60%",
   "9.70: Rinominato \"Demoltiplicatore Inventari\" in \"Coefficiente Inventari\" in tutta l'app e nelle lettere, in tutte le lingue supportate",
