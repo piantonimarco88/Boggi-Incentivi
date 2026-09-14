@@ -988,16 +988,17 @@ function canProduceLetter(){
 // Ritorna il filename PDF esatto per il dipendente i-esimo nel pool
 // Deve corrispondere esattamente alla colonna FILENAME del tracciato lettere (.znf)
 function getLetterFilename(i){
-  var pool=PRIZE_MODE==="fcvm"?getFcVmPool():getLetterPool();
+  var pool=getLetterPool();
   var e=pool[i];
   if(!e)return null;
   return getEmpPdfFilename(e);
 }
 
 function getLetterPool(){
-  if(PRIZE_MODE==="fcvm")return getFcVmPool();
+  // Premio sospeso: mai generare lettera, in nessuna modalita' (allineato su tutti i PRIZE_MODE)
+  if(PRIZE_MODE==="fcvm")return getFcVmPool().filter(function(e){return e.ps!=="SI";});
   if(PRIZE_MODE==="seasonal")return E.filter(function(e){
-    return isSMVSM(e)&&!(SEAS&&SEAS[e.m]&&SEAS[e.m].excluded);
+    return isSMVSM(e)&&!(SEAS&&SEAS[e.m]&&SEAS[e.m].excluded)&&e.ps!=="SI";
   });
   // Mensile: escludi eventuali sospesi e dipendenti con premio sospeso
   return E.filter(function(e){return !(SEAS&&SEAS[e.m]&&SEAS[e.m].excluded)&&e.ps!=="SI";});
