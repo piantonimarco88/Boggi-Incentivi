@@ -60,6 +60,7 @@ function _downloadEmlWithPdf(e, pdfBlob, pdfName){
 function sendOneEmployeeMail(matr){
   var e=E.filter(function(x){return x.m===matr;})[0];
   if(!e||!e.mp||e.mp.indexOf("@")<0){alert("Email non disponibile per questo dipendente.");return;}
+  if(e.ps==="SI"){alert("Premio sospeso per questo dipendente: nessuna lettera da inviare.");return;}
   var isSeasonal=PRIZE_MODE==="seasonal";
   var pdfName=getEmpPdfFilename(e);
   var PAGE_W_PX=794,SCALE=2,PAGE_W_MM=210,PAGE_H_MM=297,MARGIN_MM=8,CONT_W_MM=PAGE_W_MM-MARGIN_MM*2;
@@ -113,6 +114,7 @@ function sendMailEmployees(){
   var isSeasonal=PRIZE_MODE==="seasonal";
   var isFcvm=PRIZE_MODE==="fcvm";
   var pool=isSeasonal?E.filter(function(e){return isSMVSM(e);}):isFcvm?Object.values(FC_EMP):E;
+  pool=pool.filter(function(e){return e.ps!=="SI";});
   var targets=pool.filter(function(e){return e.mp&&e.mp.indexOf("@")>0;});
   var noEmail=pool.filter(function(e){return !(e.mp&&e.mp.indexOf("@")>0);});
   if(!targets.length){alert("Nessun dipendente con email trovato.");return;}
