@@ -1,5 +1,5 @@
 // === CURRENCY & FC LOOKUP BY ENTE ===
-var ENTE_CU={"209":{cu:"CHF",ex:1.3756},"211":{cu:"GBP",ex:1.1692},"213":{cu:"EUR",ex:1},"215":{cu:"EUR",ex:1},"216":{cu:"EUR",ex:1},"217":{cu:"EUR",ex:1},"219":{cu:"EUR",ex:1},"220":{cu:"HKD",ex:0.11764},"221":{cu:"EUR",ex:1},"222":{cu:"EUR",ex:1},"223":{cu:"SGD",ex:0.68603},"224":{cu:"SEK",ex:0.08836},"226":{cu:"HUF",ex:0.00253},"228":{cu:"EUR",ex:1},"230":{cu:"EUR",ex:1},"231":{cu:"EUR",ex:1},"240":{cu:"DKK",ex:1},"241":{cu:"USD",ex:0.9},"245":{cu:"USD",ex:0.9},"900":{cu:"EUR",ex:1}};
+var ENTE_CU={"209":{cu:"CHF",ex:1.3756},"211":{cu:"GBP",ex:1.1692},"213":{cu:"EUR",ex:1},"215":{cu:"EUR",ex:1},"216":{cu:"EUR",ex:1},"217":{cu:"EUR",ex:1},"219":{cu:"EUR",ex:1},"220":{cu:"HKD",ex:0.11764},"221":{cu:"EUR",ex:1},"222":{cu:"EUR",ex:1},"223":{cu:"SGD",ex:0.68603},"224":{cu:"SEK",ex:0.08836},"226":{cu:"HUF",ex:0.00253},"228":{cu:"EUR",ex:1},"230":{cu:"EUR",ex:1},"231":{cu:"EUR",ex:1},"240":{cu:"DKK",ex:0.13},"241":{cu:"USD",ex:0.9},"245":{cu:"USD",ex:0.9},"900":{cu:"EUR",ex:1}};
 var ENTE_FC={};
 
 // === JOB TITLE PARSER: take first recognized role from cell ===
@@ -1495,8 +1495,12 @@ function loadResultsExcel(file){
         // Premio EUR, lettere, export ecc. usano il cambio reale di questo mese invece di quello
         // statico. Se un negozio non ha il dato (colonna assente o fatturato LC a zero), e.ex
         // resta quello attuale (anagrafica/ENTE_CU) senza alcun avviso.
+        // Guardrail: alcuni file (es. Danimarca) riportano la colonna EUR uguale a quella LC
+        // (cambio≈1, non convertita) — su valute diverse da EUR questo è sempre un file senza
+        // cambio, mai un cambio reale 1:1: in tal caso NON si sovrascrive e.ex, che resta quello
+        // statico/anagrafica (vedi stessa logica in statistiche.html, RATE_FORCE_STATIC/guardrail).
         if(withFx>0){
-          E.forEach(function(e){var fx=(D.c[String(e.si)]||{}).fx;if(fx)e.ex=Math.round(fx*100000)/100000;});
+          E.forEach(function(e){var fx=(D.c[String(e.si)]||{}).fx;if(fx&&!(e.cu&&e.cu!=="EUR"&&Math.abs(fx-1)<0.005))e.ex=Math.round(fx*100000)/100000;});
         }
         report="BDG caricati: "+imported+" negozi."+(withFx>0?(" Cambio reale derivato per "+withFx+" negozi."):"");
       }

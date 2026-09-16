@@ -836,12 +836,13 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.76'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.77'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.77: Fix cambio Danimarca (DKK) — era fermo a 1 nell'anagrafica valute (nessuna conversione in EUR); corretto a 0.13. Aggiunto anche un controllo sull'import file BDG: se il file riporta la colonna EUR uguale a quella in corona (cambio 1:1, bug noto di alcuni consuntivi) il cambio importato non sovrascrive più quello corretto",
   "9.76: Invio mail dipendenti — escluse anche le righe con premio sospeso (invio massivo e bottone busta per riga): prima potevano ancora ricevere la lettera via mail, soprattutto nel fallback browser senza l'exe",
   "9.75: Lettere FC+VM e Seasonal — allineate al comportamento già in uso per i Negozi: le righe con premio sospeso non generano più il PDF (prima la lettera veniva comunque prodotta con premio a zero)",
   "9.74: Tab Calcolo Premi Seasonal — aggiunto bottone Screenshot Tabella (come già in FC+VM), cattura l'intera tabella come immagine PNG, righe/colonne fuori dallo scroll comprese",
@@ -6178,7 +6179,7 @@ var DATA_HINTS={
 var LOAD_RESULTS={}; // id -> {found:bool, sheet:string, cols:[], rows:int}
 
 // === CURRENCY & FC LOOKUP BY ENTE ===
-var ENTE_CU={"209":{cu:"CHF",ex:1.3756},"211":{cu:"GBP",ex:1.1692},"213":{cu:"EUR",ex:1},"215":{cu:"EUR",ex:1},"216":{cu:"EUR",ex:1},"217":{cu:"EUR",ex:1},"219":{cu:"EUR",ex:1},"220":{cu:"HKD",ex:0.11764},"221":{cu:"EUR",ex:1},"222":{cu:"EUR",ex:1},"223":{cu:"SGD",ex:0.68603},"224":{cu:"SEK",ex:0.08836},"226":{cu:"HUF",ex:0.00253},"228":{cu:"EUR",ex:1},"230":{cu:"EUR",ex:1},"231":{cu:"EUR",ex:1},"240":{cu:"DKK",ex:1},"241":{cu:"USD",ex:0.9},"245":{cu:"USD",ex:0.9},"900":{cu:"EUR",ex:1}};
+var ENTE_CU={"209":{cu:"CHF",ex:1.3756},"211":{cu:"GBP",ex:1.1692},"213":{cu:"EUR",ex:1},"215":{cu:"EUR",ex:1},"216":{cu:"EUR",ex:1},"217":{cu:"EUR",ex:1},"219":{cu:"EUR",ex:1},"220":{cu:"HKD",ex:0.11764},"221":{cu:"EUR",ex:1},"222":{cu:"EUR",ex:1},"223":{cu:"SGD",ex:0.68603},"224":{cu:"SEK",ex:0.08836},"226":{cu:"HUF",ex:0.00253},"228":{cu:"EUR",ex:1},"230":{cu:"EUR",ex:1},"231":{cu:"EUR",ex:1},"240":{cu:"DKK",ex:0.13},"241":{cu:"USD",ex:0.9},"245":{cu:"USD",ex:0.9},"900":{cu:"EUR",ex:1}};
 var ENTE_FC={};
 
 // === JOB TITLE PARSER: take first recognized role from cell ===
@@ -7674,8 +7675,12 @@ function loadResultsExcel(file){
         // Premio EUR, lettere, export ecc. usano il cambio reale di questo mese invece di quello
         // statico. Se un negozio non ha il dato (colonna assente o fatturato LC a zero), e.ex
         // resta quello attuale (anagrafica/ENTE_CU) senza alcun avviso.
+        // Guardrail: alcuni file (es. Danimarca) riportano la colonna EUR uguale a quella LC
+        // (cambio≈1, non convertita) — su valute diverse da EUR questo è sempre un file senza
+        // cambio, mai un cambio reale 1:1: in tal caso NON si sovrascrive e.ex, che resta quello
+        // statico/anagrafica (vedi stessa logica in statistiche.html, RATE_FORCE_STATIC/guardrail).
         if(withFx>0){
-          E.forEach(function(e){var fx=(D.c[String(e.si)]||{}).fx;if(fx)e.ex=Math.round(fx*100000)/100000;});
+          E.forEach(function(e){var fx=(D.c[String(e.si)]||{}).fx;if(fx&&!(e.cu&&e.cu!=="EUR"&&Math.abs(fx-1)<0.005))e.ex=Math.round(fx*100000)/100000;});
         }
         report="BDG caricati: "+imported+" negozi."+(withFx>0?(" Cambio reale derivato per "+withFx+" negozi."):"");
       }

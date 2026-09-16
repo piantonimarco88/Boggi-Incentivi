@@ -215,12 +215,13 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 /*BUNDLE_INSERT:60-fcvm-state*/
 /*BUNDLE_INSERT:70-fcvm-calc*//*BUNDLE_INSERT:80-roles-config*/var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.76'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.77'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.77: Fix cambio Danimarca (DKK) — era fermo a 1 nell'anagrafica valute (nessuna conversione in EUR); corretto a 0.13. Aggiunto anche un controllo sull'import file BDG: se il file riporta la colonna EUR uguale a quella in corona (cambio 1:1, bug noto di alcuni consuntivi) il cambio importato non sovrascrive più quello corretto",
   "9.76: Invio mail dipendenti — escluse anche le righe con premio sospeso (invio massivo e bottone busta per riga): prima potevano ancora ricevere la lettera via mail, soprattutto nel fallback browser senza l'exe",
   "9.75: Lettere FC+VM e Seasonal — allineate al comportamento già in uso per i Negozi: le righe con premio sospeso non generano più il PDF (prima la lettera veniva comunque prodotta con premio a zero)",
   "9.74: Tab Calcolo Premi Seasonal — aggiunto bottone Screenshot Tabella (come già in FC+VM), cattura l'intera tabella come immagine PNG, righe/colonne fuori dallo scroll comprese",
