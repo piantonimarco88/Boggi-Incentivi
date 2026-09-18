@@ -215,12 +215,13 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 /*BUNDLE_INSERT:60-fcvm-state*/
 /*BUNDLE_INSERT:70-fcvm-calc*//*BUNDLE_INSERT:80-roles-config*/var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.77'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.78'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.78: Import Anagrafica — Seasonal Bonus: il limite \"data assunzione\" era calcolato sul mese corrente di Configurazione (irrilevante/non aggiornato in modalità Seasonal), scartando erroneamente dipendenti assunti regolarmente; ora si basa sull'inizio stagione (SS=Marzo, FW=Settembre) + 1 mese",
   "9.77: Fix cambio Danimarca (DKK) — era fermo a 1 nell'anagrafica valute (nessuna conversione in EUR); corretto a 0.13. Aggiunto anche un controllo sull'import file BDG: se il file riporta la colonna EUR uguale a quella in corona (cambio 1:1, bug noto di alcuni consuntivi) il cambio importato non sovrascrive più quello corretto",
   "9.76: Invio mail dipendenti — escluse anche le righe con premio sospeso (invio massivo e bottone busta per riga): prima potevano ancora ricevere la lettera via mail, soprattutto nel fallback browser senza l'exe",
   "9.75: Lettere FC+VM e Seasonal — allineate al comportamento già in uso per i Negozi: le righe con premio sospeso non generano più il PDF (prima la lettera veniva comunque prodotta con premio a zero)",
@@ -228,10 +229,7 @@ var APP_CHANGELOG=[
   "9.73: Lettera Seasonal (mensile) — tolto il segno \"−\" davanti all'importo mid-season già erogato: era solo grafico, il calcolo del saldo non cambia",
   "9.72: Lettera FC+VM — fix larghezza dei box Premio maturato/Coefficiente Inventari/Premio da erogare (area): un padding extra li restringeva rispetto al resto della lettera",
   "9.71: Export JSON statistiche FC+VM (stats_fcvm_*) — aggiunto il campo syLastYear (SY anno precedente), già presente per i negozi, per il confronto anno su anno sul salvagente 60%",
-  "9.70: Rinominato \"Demoltiplicatore Inventari\" in \"Coefficiente Inventari\" in tutta l'app e nelle lettere, in tutte le lingue supportate",
-  "9.69: Demoltiplicatore Inventari — il box con la matrice ora compare anche nella lettera di preventivo (a scopo informativo, senza risultato), non solo nel consuntivo; stesso comportamento del box SAS",
-  "9.68: Fix errore al primo avvio e nel caricamento di sessioni/config salvate (\"Cannot set/read properties of undefined\") introdotto dal Demoltiplicatore Inventari in 9.67 — le sue variabili si caricavano troppo tardi rispetto al primo render",
-  "9.67: Demoltiplicatore Inventari (SM/VSM e Field Coach) — riduce il premio in base a % completamento/invio inventari giornalieri e accuracy; attivo dal preventivo di ottobre 2026, matrici già configurabili in anticipo nel tab Configurazione"
+  "9.70: Rinominato \"Demoltiplicatore Inventari\" in \"Coefficiente Inventari\" in tutta l'app e nelle lettere, in tutte le lingue supportate"
 ];
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 /*BUNDLE_INSERT:82-month-labels*/

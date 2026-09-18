@@ -70,7 +70,15 @@ function loadAnagraficaExcel(file){
       }
 
       // Hire date cutoff: giorno 5 del mese corrente dei premi
-      var cutoffDate=new Date(CFG_YEAR,CFG_MONTH-1,5);
+      // Seasonal: il limite e' 1 mese dopo l'inizio della stagione (SS=Marzo, FW=Settembre) — CFG_MONTH
+      // non e' pertinente in seasonal (e' nascosto/stale in configurazione), va ignorato
+      var cutoffMonth=CFG_MONTH,cutoffYear=CFG_YEAR;
+      if(PRIZE_MODE==="seasonal"){
+        var seasonStartMonth=CFG_SEASON==="FW"?9:3;
+        cutoffMonth=seasonStartMonth+1;
+        cutoffYear=CFG_YEAR;
+      }
+      var cutoffDate=new Date(cutoffYear,cutoffMonth-1,5);
       var cutoffStr=cutoffDate.toISOString().slice(0,10);
 
       // Parse date from various formats
@@ -160,7 +168,7 @@ function loadAnagraficaExcel(file){
           var hireDate=parseHireDate(hireDateRaw);
           if(hireDate&&hireDate.toISOString().slice(0,10)>cutoffDate.toISOString().slice(0,10)){
             var hdStr=hireDate.toISOString().slice(0,10);
-            itErrors.push({row:ri+1,name:fullName,reason:"Assunto il "+hdStr+" \u2014 dopo il limite "+cutoffStr+" (giorno 5 di "+MONTH_NAMES.IT[CFG_MONTH]+" "+CFG_YEAR+")"});
+            itErrors.push({row:ri+1,name:fullName,reason:"Assunto il "+hdStr+" \u2014 dopo il limite "+cutoffStr+" (giorno 5 di "+MONTH_NAMES.IT[cutoffMonth]+" "+cutoffYear+")"});
             continue;
           }
           if(!hireDate&&hireDateRaw){
@@ -339,7 +347,7 @@ function loadAnagraficaExcel(file){
         var hireDate=parseHireDate(hireDateRaw);
         if(hireDate&&hireDate.toISOString().slice(0,10)>cutoffDate.toISOString().slice(0,10)){
           var hdStr=hireDate.toISOString().slice(0,10);
-          errors.push({row:ri+1,name:fullName,reason:"Assunto il "+hdStr+" \u2014 dopo il limite "+cutoffStr+" (giorno 5 di "+MONTH_NAMES.IT[CFG_MONTH]+" "+CFG_YEAR+")"});
+          errors.push({row:ri+1,name:fullName,reason:"Assunto il "+hdStr+" \u2014 dopo il limite "+cutoffStr+" (giorno 5 di "+MONTH_NAMES.IT[cutoffMonth]+" "+cutoffYear+")"});
           continue;
         }
         if(!hireDate&&hireDateRaw){
@@ -446,7 +454,7 @@ function showImportReport(imported,errors,sheet,filename,cutoffStr){
   var h='<div class="wg" style="margin-top:16px"><div class="wg-title">\ud83d\udcca Report Importazione Anagrafica'+(isIT?' <span style="background:#0055a4;color:#fff;font-size:9px;padding:2px 6px;border-radius:3px;margin-left:6px">ITALIA / Zucchetti</span>':'')+'</div>';
   h+='<div style="font-size:10px;color:#8a8680;margin-bottom:4px">File: <b>'+esc(filename)+'</b> \u2014 Foglio: <b>'+esc(sheet)+'</b></div>';
   if(isIT)h+='<div style="font-size:10px;color:#8a8680;margin-bottom:8px">Modalit\u00e0: <b>Italia</b> \u2014 Filtro job title piano incentivi \u2014 Data assunzione limite: <b>\u2264 '+esc(cutoffStr)+'</b></div>';
-  else h+='<div style="font-size:10px;color:#8a8680;margin-bottom:8px">Periodo: <b>'+getMonthYearLabel()+'</b> \u2014 Data assunzione limite: <b>\u2264 '+esc(cutoffStr)+'</b> (giorno 5 del mese corrente)</div>';
+  else h+='<div style="font-size:10px;color:#8a8680;margin-bottom:8px">Periodo: <b>'+getMonthYearLabel()+'</b> \u2014 Data assunzione limite: <b>\u2264 '+esc(cutoffStr)+'</b> '+(PRIZE_MODE==="seasonal"?"(giorno 5 del mese successivo all'inizio stagione)":"(giorno 5 del mese corrente)")+'</div>';
   // Bottoni in cima
   if(imported.length>0){
     h+='<div style="display:flex;gap:8px;margin-bottom:10px">';
