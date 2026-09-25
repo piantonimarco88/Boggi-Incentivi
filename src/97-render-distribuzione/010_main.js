@@ -31,7 +31,16 @@ function rDist(){
   h+='<div class="wg" style="margin:0"><div class="wg-title">\ud83c\udfe2 Piattaforma HR / TRM</div>';
   h+='<div style="font-size:11px;color:#6b6560;line-height:1.5;margin-bottom:10px">Tracciati per import in Zucchetti / piattaforma HR.</div>';
   h+='<button class="exp-btn" onclick="exportTracciatoLettere()" style="width:100%">&#128196; Tracciato per Lettere</button>';
-  h+='<button class="exp-btn" onclick="exportTracciatoPagamenti()" style="width:100%;margin-top:6px">&#128176; Tracciato per Pagamenti</button></div>';
+  h+='<button class="exp-btn" onclick="exportTracciatoPagamenti()" style="width:100%;margin-top:6px">&#128176; Tracciato per Pagamenti</button>';
+  if(PRIZE_MODE==="seasonal"&&REGION==="italia"){
+    // Seasonal Italia: mese di pagamento (MMAA) scritto nel 3° campo del tracciato pagamenti
+    var _pm=_seasPayMMAA();
+    h+='<div style="margin-top:10px;display:flex;align-items:center;gap:6px;font-size:11px;color:#6b6560">';
+    h+='<span style="flex:1">Mese pagamento (MMAA):</span>';
+    h+='<input id="seasPayMMAA" type="text" maxlength="4" inputmode="numeric" value="'+_pm+'" onchange="setSeasPayMMAA(this.value)" style="width:56px;text-align:center;font-size:12px;font-weight:700;padding:3px 4px;border:1px solid #d5d0c8;border-radius:4px">';
+    h+='</div>';
+  }
+  h+='</div>';
   if(REGION!=="italia"){h+='<div class="wg" style="margin:0"><div class="wg-title">&#128231; Email Dipendenti</div>';
   h+='<div style="font-size:11px;color:#6b6560;line-height:1.5;margin-bottom:10px">Genera le email con la lettera PDF allegata. Usa il bottone &#128231; per riga nel tab Calcolo Premi per inviarne una alla volta, oppure qui sotto per tutte insieme.</div>';
   h+='<button class="exp-btn" onclick="sendMailEmployees()" style="width:100%">&#128231; Invia mail ai dipendenti</button>';
@@ -413,12 +422,28 @@ function exportTracciatoLettere(){
   URL.revokeObjectURL(a.href);
 }
 
+// Seasonal Italia: mese di pagamento (MMAA, es. "0826" = agosto 2026) scelto nel tab Distribuzione;
+// alimenta il 3° campo (MMAA) e il 4° (AAAAMM01) del tracciato pagamenti.
+// Default = mese corrente (in Seasonal CFG_MONTH non e' significativo).
+var SEAS_PAY_MMAA="";
+function _seasPayMMAA(){
+  if(/^(0[1-9]|1[0-2])\d\d$/.test(SEAS_PAY_MMAA))return SEAS_PAY_MMAA;
+  var d=new Date();return String(d.getMonth()+1).padStart(2,"0")+String(d.getFullYear()).slice(-2);
+}
+function setSeasPayMMAA(v){
+  v=String(v||"").replace(/\D/g,"");
+  if(/^(0[1-9]|1[0-2])\d\d$/.test(v)){SEAS_PAY_MMAA=v;}
+  else{alert("Mese pagamento non valido: usare il formato MMAA (es. 0826 = agosto 2026).");}
+  var el=document.getElementById("seasPayMMAA");if(el)el.value=_seasPayMMAA();
+}
+
 // Export Tracciato Pagamenti for Zucchetti import
 function exportTracciatoPagamenti(){
   var mm=String(CFG_MONTH).padStart(2,"0");
   var mmaa=mm+String(CFG_YEAR).slice(-2);
   var aaaammgg=String(CFG_YEAR)+mm+"01";
   var isSeasItalia=PRIZE_MODE==="seasonal"&&REGION==="italia";
+  if(isSeasItalia){mmaa=_seasPayMMAA();aaaammgg="20"+mmaa.slice(2)+mmaa.slice(0,2)+"01";}
   var isFcvm=PRIZE_MODE==="fcvm";
   var rows=[];
 

@@ -836,12 +836,13 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.78'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.79'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.79: Distribuzione — Seasonal Italia: aggiunto il box \"Mese pagamento (MMAA)\" sotto Tracciato per Pagamenti (es. 0826 = agosto 2026); il valore scelto alimenta il 3° campo (MMAA) e il 4° (data AAAAMM01) del tracciato al posto del mese di Configurazione. Default: mese corrente",
   "9.78: Import Anagrafica — Seasonal Bonus: il limite \"data assunzione\" era calcolato sul mese corrente di Configurazione (irrilevante/non aggiornato in modalità Seasonal), scartando erroneamente dipendenti assunti regolarmente; ora si basa sull'inizio stagione (SS=Marzo, FW=Settembre) + 1 mese",
   "9.77: Fix cambio Danimarca (DKK) — era fermo a 1 nell'anagrafica valute (nessuna conversione in EUR); corretto a 0.13. Aggiunto anche un controllo sull'import file BDG: se il file riporta la colonna EUR uguale a quella in corona (cambio 1:1, bug noto di alcuni consuntivi) il cambio importato non sovrascrive più quello corretto",
   "9.76: Invio mail dipendenti — escluse anche le righe con premio sospeso (invio massivo e bottone busta per riga): prima potevano ancora ricevere la lettera via mail, soprattutto nel fallback browser senza l'exe",
@@ -849,8 +850,7 @@ var APP_CHANGELOG=[
   "9.74: Tab Calcolo Premi Seasonal — aggiunto bottone Screenshot Tabella (come già in FC+VM), cattura l'intera tabella come immagine PNG, righe/colonne fuori dallo scroll comprese",
   "9.73: Lettera Seasonal (mensile) — tolto il segno \"−\" davanti all'importo mid-season già erogato: era solo grafico, il calcolo del saldo non cambia",
   "9.72: Lettera FC+VM — fix larghezza dei box Premio maturato/Coefficiente Inventari/Premio da erogare (area): un padding extra li restringeva rispetto al resto della lettera",
-  "9.71: Export JSON statistiche FC+VM (stats_fcvm_*) — aggiunto il campo syLastYear (SY anno precedente), già presente per i negozi, per il confronto anno su anno sul salvagente 60%",
-  "9.70: Rinominato \"Demoltiplicatore Inventari\" in \"Coefficiente Inventari\" in tutta l'app e nelle lettere, in tutte le lingue supportate"
+  "9.71: Export JSON statistiche FC+VM (stats_fcvm_*) — aggiunto il campo syLastYear (SY anno precedente), già presente per i negozi, per il confronto anno su anno sul salvagente 60%"
 ];
 var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
 var MONTH_NAMES={
@@ -8468,7 +8468,16 @@ function rDist(){
   h+='<div class="wg" style="margin:0"><div class="wg-title">\ud83c\udfe2 Piattaforma HR / TRM</div>';
   h+='<div style="font-size:11px;color:#6b6560;line-height:1.5;margin-bottom:10px">Tracciati per import in Zucchetti / piattaforma HR.</div>';
   h+='<button class="exp-btn" onclick="exportTracciatoLettere()" style="width:100%">&#128196; Tracciato per Lettere</button>';
-  h+='<button class="exp-btn" onclick="exportTracciatoPagamenti()" style="width:100%;margin-top:6px">&#128176; Tracciato per Pagamenti</button></div>';
+  h+='<button class="exp-btn" onclick="exportTracciatoPagamenti()" style="width:100%;margin-top:6px">&#128176; Tracciato per Pagamenti</button>';
+  if(PRIZE_MODE==="seasonal"&&REGION==="italia"){
+    // Seasonal Italia: mese di pagamento (MMAA) scritto nel 3° campo del tracciato pagamenti
+    var _pm=_seasPayMMAA();
+    h+='<div style="margin-top:10px;display:flex;align-items:center;gap:6px;font-size:11px;color:#6b6560">';
+    h+='<span style="flex:1">Mese pagamento (MMAA):</span>';
+    h+='<input id="seasPayMMAA" type="text" maxlength="4" inputmode="numeric" value="'+_pm+'" onchange="setSeasPayMMAA(this.value)" style="width:56px;text-align:center;font-size:12px;font-weight:700;padding:3px 4px;border:1px solid #d5d0c8;border-radius:4px">';
+    h+='</div>';
+  }
+  h+='</div>';
   if(REGION!=="italia"){h+='<div class="wg" style="margin:0"><div class="wg-title">&#128231; Email Dipendenti</div>';
   h+='<div style="font-size:11px;color:#6b6560;line-height:1.5;margin-bottom:10px">Genera le email con la lettera PDF allegata. Usa il bottone &#128231; per riga nel tab Calcolo Premi per inviarne una alla volta, oppure qui sotto per tutte insieme.</div>';
   h+='<button class="exp-btn" onclick="sendMailEmployees()" style="width:100%">&#128231; Invia mail ai dipendenti</button>';
@@ -8850,12 +8859,28 @@ function exportTracciatoLettere(){
   URL.revokeObjectURL(a.href);
 }
 
+// Seasonal Italia: mese di pagamento (MMAA, es. "0826" = agosto 2026) scelto nel tab Distribuzione;
+// alimenta il 3° campo (MMAA) e il 4° (AAAAMM01) del tracciato pagamenti.
+// Default = mese corrente (in Seasonal CFG_MONTH non e' significativo).
+var SEAS_PAY_MMAA="";
+function _seasPayMMAA(){
+  if(/^(0[1-9]|1[0-2])\d\d$/.test(SEAS_PAY_MMAA))return SEAS_PAY_MMAA;
+  var d=new Date();return String(d.getMonth()+1).padStart(2,"0")+String(d.getFullYear()).slice(-2);
+}
+function setSeasPayMMAA(v){
+  v=String(v||"").replace(/\D/g,"");
+  if(/^(0[1-9]|1[0-2])\d\d$/.test(v)){SEAS_PAY_MMAA=v;}
+  else{alert("Mese pagamento non valido: usare il formato MMAA (es. 0826 = agosto 2026).");}
+  var el=document.getElementById("seasPayMMAA");if(el)el.value=_seasPayMMAA();
+}
+
 // Export Tracciato Pagamenti for Zucchetti import
 function exportTracciatoPagamenti(){
   var mm=String(CFG_MONTH).padStart(2,"0");
   var mmaa=mm+String(CFG_YEAR).slice(-2);
   var aaaammgg=String(CFG_YEAR)+mm+"01";
   var isSeasItalia=PRIZE_MODE==="seasonal"&&REGION==="italia";
+  if(isSeasItalia){mmaa=_seasPayMMAA();aaaammgg="20"+mmaa.slice(2)+mmaa.slice(0,2)+"01";}
   var isFcvm=PRIZE_MODE==="fcvm";
   var rows=[];
 
