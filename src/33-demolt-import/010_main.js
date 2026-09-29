@@ -10,6 +10,11 @@ var DEMOLT_MATRIX_STORE={bpA:[0.70,0.90],bpB:[0.95,0.98],grid:[[0.50,0.65,0.80],
 var DEMOLT_MATRIX_FC={bpA:[0.80,0.95],bpB:[0.80,0.95],grid:[[0.50,0.65,0.80],[0.60,0.75,0.90],[0.70,0.85,1.00]]};
 var DEMOLT_CUTOFF_YEAR=2026,DEMOLT_CUTOFF_MONTH=10;
 function demoltActive(){return (CFG_YEAR>DEMOLT_CUTOFF_YEAR)||(CFG_YEAR===DEMOLT_CUTOFF_YEAR&&CFG_MONTH>=DEMOLT_CUTOFF_MONTH);}
+// Coefficiente Inventari negozio: solo SM/VSM, mai per i negozi/dipendenti USA (regola a parte, calcUSA).
+function demoltAppliesStore(e){
+  if(!demoltActive()||!e||!e.j||e.j.indexOf("SM")<0)return false;
+  return !(typeof isUSA==="function"&&isUSA(e.si,e));
+}
 function demoltBandIdx(v,bp){if(v==null)return null;return v<bp[0]?0:(v<bp[1]?1:2);}
 function demoltPct(matrix,valA,valB){var ai=demoltBandIdx(valA,matrix.bpA),bi=demoltBandIdx(valB,matrix.bpB);if(ai==null||bi==null)return null;return matrix.grid[ai][bi];}
 function demoltBandLbl(bp,k){return k===0?"<"+Math.round(bp[0]*100)+"%":(k===2?"≥"+Math.round(bp[1]*100)+"%":Math.round(bp[0]*100)+"-"+Math.round(bp[1]*100)+"%");}
@@ -49,6 +54,7 @@ function loadDemoltInventario(file){
       var row=rows[r];
       if(!row||row[cId]==null||row[cId]==="")continue;
       var sid=String(row[cId]).trim();
+      if(typeof isUSA==="function"&&isUSA(sid))continue; // negozi USA esclusi dal coefficiente inventari
       var wd=Number(row[cWd])||0,sended=Number(row[cSended])||0,completed=Number(row[cCompleted])||0;
       var acc=null;
       if(cAcc>=0&&row[cAcc]!=null&&row[cAcc]!==""){

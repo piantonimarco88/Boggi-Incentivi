@@ -98,7 +98,7 @@ function storePctOf(sid){return storeSasInfo(sid).pct;}
 // (_getValRaw ha molteplici return sparsi nello switch, rifattorizzarla sarebbe rischioso).
 function getVal(e,kpiKey){
   var raw=_getValRaw(e,kpiKey);
-  if(MODE==="consuntivo"&&typeof demoltActive==="function"&&demoltActive()&&e.j&&e.j.indexOf("SM")>=0){
+  if(MODE==="consuntivo"&&typeof demoltAppliesStore==="function"&&demoltAppliesStore(e)){
     var dr=DEMOLT_RESULT_STORE[String(e.si)];
     if(dr&&dr.pct!=null)return Math.round(raw*dr.pct*100)/100;
   }

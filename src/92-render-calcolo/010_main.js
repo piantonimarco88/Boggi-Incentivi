@@ -43,7 +43,7 @@ function rC(){
     var ridotto=!psOn&&t>0&&isRidotto(e)&&isOn(e.j,"rb");
     h+='<td style="text-align:center;font-size:13px" title="'+(ridotto?"Premio BDG ridotto ("+Math.round(PARAMS.bdg60mult*100)+"%)":"—")+'">'+(ridotto?'<span style="color:#c9a96e">&#11044;</span>':'—')+"</td>";
     if(MODE==="consuntivo"&&typeof demoltActive==="function"&&demoltActive()){
-      var _demR=(e.j&&e.j.indexOf("SM")>=0)?DEMOLT_RESULT_STORE[String(e.si)]:null;
+      var _demR=demoltAppliesStore(e)?DEMOLT_RESULT_STORE[String(e.si)]:null;
       var _demTip=_demR&&_demR.pct!=null?("Coefficiente Inventari: "+Math.round(_demR.pct*100)+"% del premio riconosciuto"):"Nessun dato inventari importato per questo negozio";
       var _demColor=_demR&&_demR.pct!=null?(_demR.pct>=0.95?"#2d7a3a":(_demR.pct>=0.70?"#c9a96e":"#cf5b5b")):"#d5d0c8";
       h+='<td style="text-align:center;font-size:13px" title="'+esc(_demTip)+'">'+(_demR&&_demR.pct!=null?'<span style="color:'+_demColor+'">&#11044;</span>':'—')+"</td>";

@@ -527,6 +527,11 @@ var DEMOLT_MATRIX_STORE={bpA:[0.70,0.90],bpB:[0.95,0.98],grid:[[0.50,0.65,0.80],
 var DEMOLT_MATRIX_FC={bpA:[0.80,0.95],bpB:[0.80,0.95],grid:[[0.50,0.65,0.80],[0.60,0.75,0.90],[0.70,0.85,1.00]]};
 var DEMOLT_CUTOFF_YEAR=2026,DEMOLT_CUTOFF_MONTH=10;
 function demoltActive(){return (CFG_YEAR>DEMOLT_CUTOFF_YEAR)||(CFG_YEAR===DEMOLT_CUTOFF_YEAR&&CFG_MONTH>=DEMOLT_CUTOFF_MONTH);}
+// Coefficiente Inventari negozio: solo SM/VSM, mai per i negozi/dipendenti USA (regola a parte, calcUSA).
+function demoltAppliesStore(e){
+  if(!demoltActive()||!e||!e.j||e.j.indexOf("SM")<0)return false;
+  return !(typeof isUSA==="function"&&isUSA(e.si,e));
+}
 function demoltBandIdx(v,bp){if(v==null)return null;return v<bp[0]?0:(v<bp[1]?1:2);}
 function demoltPct(matrix,valA,valB){var ai=demoltBandIdx(valA,matrix.bpA),bi=demoltBandIdx(valB,matrix.bpB);if(ai==null||bi==null)return null;return matrix.grid[ai][bi];}
 function demoltBandLbl(bp,k){return k===0?"<"+Math.round(bp[0]*100)+"%":(k===2?"≥"+Math.round(bp[1]*100)+"%":Math.round(bp[0]*100)+"-"+Math.round(bp[1]*100)+"%");}
@@ -566,6 +571,7 @@ function loadDemoltInventario(file){
       var row=rows[r];
       if(!row||row[cId]==null||row[cId]==="")continue;
       var sid=String(row[cId]).trim();
+      if(typeof isUSA==="function"&&isUSA(sid))continue; // negozi USA esclusi dal coefficiente inventari
       var wd=Number(row[cWd])||0,sended=Number(row[cSended])||0,completed=Number(row[cCompleted])||0;
       var acc=null;
       if(cAcc>=0&&row[cAcc]!=null&&row[cAcc]!==""){
@@ -836,12 +842,13 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.79'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.80'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.80: Coefficiente Inventari — esclusi i negozi/dipendenti USA (a loro non si applica): niente riduzione nel calcolo, niente box nella lettera, niente coefficiente in tabella Calcolo Premi; i negozi USA nel file inventari vengono ignorati all'import",
   "9.79: Distribuzione — Seasonal Italia: aggiunto il box \"Mese pagamento (MMAA)\" sotto Tracciato per Pagamenti (es. 0826 = agosto 2026); il valore scelto alimenta il 3° campo (MMAA) e il 4° (data AAAAMM01) del tracciato al posto del mese di Configurazione. Default: mese corrente",
   "9.78: Import Anagrafica — Seasonal Bonus: il limite \"data assunzione\" era calcolato sul mese corrente di Configurazione (irrilevante/non aggiornato in modalità Seasonal), scartando erroneamente dipendenti assunti regolarmente; ora si basa sull'inizio stagione (SS=Marzo, FW=Settembre) + 1 mese",
   "9.77: Fix cambio Danimarca (DKK) — era fermo a 1 nell'anagrafica valute (nessuna conversione in EUR); corretto a 0.13. Aggiunto anche un controllo sull'import file BDG: se il file riporta la colonna EUR uguale a quella in corona (cambio 1:1, bug noto di alcuni consuntivi) il cambio importato non sovrascrive più quello corretto",
@@ -1374,7 +1381,7 @@ function storePctOf(sid){return storeSasInfo(sid).pct;}
 // (_getValRaw ha molteplici return sparsi nello switch, rifattorizzarla sarebbe rischioso).
 function getVal(e,kpiKey){
   var raw=_getValRaw(e,kpiKey);
-  if(MODE==="consuntivo"&&typeof demoltActive==="function"&&demoltActive()&&e.j&&e.j.indexOf("SM")>=0){
+  if(MODE==="consuntivo"&&typeof demoltAppliesStore==="function"&&demoltAppliesStore(e)){
     var dr=DEMOLT_RESULT_STORE[String(e.si)];
     if(dr&&dr.pct!=null)return Math.round(raw*dr.pct*100)/100;
   }
@@ -1967,7 +1974,7 @@ function rC(){
     var ridotto=!psOn&&t>0&&isRidotto(e)&&isOn(e.j,"rb");
     h+='<td style="text-align:center;font-size:13px" title="'+(ridotto?"Premio BDG ridotto ("+Math.round(PARAMS.bdg60mult*100)+"%)":"—")+'">'+(ridotto?'<span style="color:#c9a96e">&#11044;</span>':'—')+"</td>";
     if(MODE==="consuntivo"&&typeof demoltActive==="function"&&demoltActive()){
-      var _demR=(e.j&&e.j.indexOf("SM")>=0)?DEMOLT_RESULT_STORE[String(e.si)]:null;
+      var _demR=demoltAppliesStore(e)?DEMOLT_RESULT_STORE[String(e.si)]:null;
       var _demTip=_demR&&_demR.pct!=null?("Coefficiente Inventari: "+Math.round(_demR.pct*100)+"% del premio riconosciuto"):"Nessun dato inventari importato per questo negozio";
       var _demColor=_demR&&_demR.pct!=null?(_demR.pct>=0.95?"#2d7a3a":(_demR.pct>=0.70?"#c9a96e":"#cf5b5b")):"#d5d0c8";
       h+='<td style="text-align:center;font-size:13px" title="'+esc(_demTip)+'">'+(_demR&&_demR.pct!=null?'<span style="color:'+_demColor+'">&#11044;</span>':'—')+"</td>";
@@ -3056,7 +3063,7 @@ function buildLetter(e){
   var isP=MODE==="preventivo",pctStore=(_ssiL&&_ssiL.active&&tg.to>0)?(_ssiL.pct*100).toFixed(1):(tg.to>0&&cn.sc?((cn.sc+(cn.es||0))/tg.to*100).toFixed(1):"100.0"),surplus=(cn.es||0);
   // Coefficiente Inventari — solo SM/VSM, solo da ottobre 2026 (vedi demoltActive()). In preventivo
   // mostra solo la matrice a scopo informativo (nessun risultato: l'import è disponibile solo in consuntivo).
-  var _demActive=typeof demoltActive==="function"&&demoltActive()&&e.j&&e.j.indexOf("SM")>=0;
+  var _demActive=typeof demoltAppliesStore==="function"&&demoltAppliesStore(e);
   var _demDr=(!isP&&_demActive)?DEMOLT_RESULT_STORE[sid]:null;
   var mtL=({"ITALIANO":"IT","INGLESE":"EN","FRANCESE":"FR","TEDESCO":"DE","SPAGNOLO":"ES"})[lang]||"EN";
   var modeTag=isP?{IT:" (PREVENTIVO)",EN:" (FORECAST)",FR:" (PR\u00c9VISIONNEL)",DE:" (PROGNOSE)",ES:" (PREVISI\u00d3N)"}:{IT:"",EN:"",FR:"",DE:"",ES:""};

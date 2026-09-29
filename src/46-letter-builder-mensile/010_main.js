@@ -219,7 +219,7 @@ function buildLetter(e){
   var isP=MODE==="preventivo",pctStore=(_ssiL&&_ssiL.active&&tg.to>0)?(_ssiL.pct*100).toFixed(1):(tg.to>0&&cn.sc?((cn.sc+(cn.es||0))/tg.to*100).toFixed(1):"100.0"),surplus=(cn.es||0);
   // Coefficiente Inventari — solo SM/VSM, solo da ottobre 2026 (vedi demoltActive()). In preventivo
   // mostra solo la matrice a scopo informativo (nessun risultato: l'import è disponibile solo in consuntivo).
-  var _demActive=typeof demoltActive==="function"&&demoltActive()&&e.j&&e.j.indexOf("SM")>=0;
+  var _demActive=typeof demoltAppliesStore==="function"&&demoltAppliesStore(e);
   var _demDr=(!isP&&_demActive)?DEMOLT_RESULT_STORE[sid]:null;
   var mtL=({"ITALIANO":"IT","INGLESE":"EN","FRANCESE":"FR","TEDESCO":"DE","SPAGNOLO":"ES"})[lang]||"EN";
   var modeTag=isP?{IT:" (PREVENTIVO)",EN:" (FORECAST)",FR:" (PR\u00c9VISIONNEL)",DE:" (PROGNOSE)",ES:" (PREVISI\u00d3N)"}:{IT:"",EN:"",FR:"",DE:"",ES:""};
