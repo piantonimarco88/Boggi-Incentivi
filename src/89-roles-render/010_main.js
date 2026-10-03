@@ -3,9 +3,25 @@ function gR(e){
 
   // === USA employees: separate reason logic ===
   if(isUSA(e.si,e)){
+    if(usaIsNewRule(e)){
+      // Nuova logica USA (40/60 = NO) da set-2026
+      var nd=usaNewDetail(e);
+      if(MODE==="preventivo"){
+        R.push({t:"info",x:"Premio: vendite personali × "+(nd.cm*100).toFixed(2)+"%"+(nd.bn>0?" ("+(nd.bn*100).toFixed(2)+"% se store a target)":"")+(nd.qb>0?"; trimestrale "+(nd.qb*100).toFixed(2)+"% del fatturato negozio se target 3 mesi raggiunto":"")+". Importo calcolato a consuntivo."});
+      }else{
+        var esPN=nd.esP>0?" (incl. esubero prec. "+fc(nd.esP,cu)+")":"";
+        R.push({t:nd.storeHit?"success":"partial",x:fc(nd.monthly,cu)+" — Vendite personali "+fc(nd.base,cu)+" × "+(nd.rate*100).toFixed(2)+"%. Store "+(nd.storePct*100).toFixed(1)+"%"+esPN+(nd.storeHit?" ≥ target"+(nd.bn>0?" (rate bonus)":""):" < target (rate base)")+"."});
+        if(nd.qi){
+          if(nd.qi.missing.length)R.push({t:"warn",x:"Trimestrale: mancano fatturato/target dei mesi "+nd.qi.missing.join(", ")+" — completa i dati in Configurazione."});
+          else R.push({t:nd.qi.hit?"success":"partial",x:fc(nd.quarterly,cu)+" — Trimestrale "+(nd.qb*100).toFixed(2)+"% × fatturato negozio 3 mesi "+fc(nd.qi.sc,cu)+". Target 3 mesi "+fc(nd.qi.to,cu)+" ("+(nd.qi.pct*100).toFixed(1)+"%)"+(nd.qi.hit?" raggiunto.":" non raggiunto.")});
+        }
+      }
+      var atN=aggTotal(e.m);if(atN>0)R.push({t:"success",x:fc(atN,cu)+" — Aggiunte."});
+      return R;
+    }
     var ud=(D.usa||{})[e.m]||{},cm=ud.cm||0,job=e.f||e.j||"";
     var rp=USA_P[job]||{noTargetMult:0.4,targetMult:1.0,useStore:false};
-    var usaDept=ud.isDept||(STORE_FLAGS[String(e.si)]&&STORE_FLAGS[String(e.si)].usaDept);
+    var usaDept=!usaNewActive()&&(ud.isDept||(STORE_FLAGS[String(e.si)]&&STORE_FLAGS[String(e.si)].usaDept)); // da set-2026 niente override Dept (base per ruolo: SM/VSM/STK negozio, gli altri vendite personali)
     var useStoreSales=rp.useStore||usaDept;
     var esP=sasNewActive()?(cn.esP||0):0;
     var storePct=tg.to>0?(cn.sc+esP)/tg.to:0,storeHit=MODE==="preventivo"||storePct>=PARAMS.bdg100||(MODE==="consuntivo"&&e.ov_b100==="SI");

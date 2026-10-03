@@ -119,6 +119,21 @@ function validateAnagrafica(){
     issues.warnings.push(nUsaNoCommission+" dipendenti USA con commission% mancante o non valida in D.usa");
   }
 
+  // 6b. USA trimestrale (nuova logica da set-2026): dati mensili mancanti nel mese di chiusura trimestre
+  try{
+    if(typeof usaNewActive==="function"&&usaNewActive()&&MODE==="consuntivo"&&usaQuarterMonths(CFG_YEAR,CFG_MONTH)){
+      var qMiss={};
+      E.forEach(function(e){
+        var u=(D.usa||{})[e.m];
+        if(!_isUSA(e)||!u||u.nw!==1||!(u.qb>0))return;
+        var qi=usaQuarterInfo(e.si);
+        if(qi&&qi.missing.length)qMiss[e.si]=qi.missing.join(", ");
+      });
+      var qk=Object.keys(qMiss);
+      if(qk.length)issues.warnings.push("Trimestrale USA: fatturato/target mancanti per "+qk.length+" negozi (es. "+qk[0]+": "+qMiss[qk[0]]+") — completa in Configurazione");
+    }
+  }catch(exq){}
+
   // 7. Info / stats
   issues.info.push("Totale dipendenti: "+E.length);
   if(typeof D!=="undefined"&&D&&D.s)issues.info.push("Negozi noti in anagrafica: "+Object.keys(D.s).length);

@@ -592,7 +592,11 @@ function exportExcelUSA(){
     "STORE SALES ACTUAL (USD)",
     "PERSONAL SALES (USD)",
     "COMMISSION RATE (%)",
+    "40/60",
+    "BONUS- STORE TARGET (%)",
+    "QUARTERLY BONUS (%)",
     "COMMISSION MULTIPLIER (%)",
+    "QUARTERLY BONUS EARNED (USD)",
     "COMMISSION EARNED (USD)"
   ];
   var rows=[headers];
@@ -603,9 +607,25 @@ function exportExcelUSA(){
     var tg=D.t[sid]||{};
     var cn=D.c[sid]||{};
     var ud=(D.usa||{})[e.m]||{};
+    if(usaIsNewRule(e)){
+      // Nuova logica (40/60 = NO) da set-2026: vendite personali x rate (bonus se store a target) + trimestrale
+      var nd=usaNewDetail(e);
+      rows.push([
+        e.m,(e.n||"").toUpperCase(),(e.c||"").toUpperCase(),(e.f||e.j||"").toUpperCase(),
+        tg.to||0,cn.sc||0,nd.base||"",
+        Math.round(nd.cm*10000)/100,
+        "NO",
+        nd.bn>0?Math.round(nd.bn*10000)/100:"",
+        nd.qb>0?Math.round(nd.qb*10000)/100:"",
+        100,                                  // nessun moltiplicatore 40/60: rate pieno (rate bonus se store a target)
+        nd.qi?nd.quarterly:"",
+        nd.prize
+      ]);
+      return;
+    }
     var job=e.f||e.j||"";
     var rp=USA_P[job]||{noTargetMult:0.4,targetMult:1.0,useStore:false};
-    var usaDept=ud.isDept||(STORE_FLAGS[sid]&&STORE_FLAGS[sid].usaDept);
+    var usaDept=!usaNewActive()&&(ud.isDept||(STORE_FLAGS[sid]&&STORE_FLAGS[sid].usaDept)); // da set-2026 niente override Dept (base per ruolo: SM/VSM/STK negozio, gli altri vendite personali)
     var useStoreSales=rp.useStore||usaDept;
 
     // Store hit logic (incl. esubero mese precedente USA da luglio 2026)
@@ -629,14 +649,18 @@ function exportExcelUSA(){
       cn.sc||0,                             // STORE SALES ACTUAL
       personalSales,                        // PERSONAL SALES (solo se usato per il premio)
       Math.round((ud.cm||0)*10000)/100,     // COMMISSION RATE %
+      usaNewActive()?"YES":"",              // 40/60
+      "",                                   // BONUS- STORE TARGET %
+      "",                                   // QUARTERLY BONUS %
       Math.round(mult*10000)/100,           // COMMISSION MULTIPLIER %
+      "",                                   // QUARTERLY BONUS EARNED USD
       prize                                 // COMMISSION EARNED USD
     ]);
   });
 
   var ws=XLSX.utils.aoa_to_sheet(rows);
   // Colonne numeriche: larghezza
-  ws['!cols']=[{wch:22},{wch:16},{wch:16},{wch:10},{wch:22},{wch:22},{wch:18},{wch:18},{wch:22},{wch:20}];
+  ws['!cols']=[{wch:22},{wch:16},{wch:16},{wch:10},{wch:22},{wch:22},{wch:18},{wch:18},{wch:8},{wch:22},{wch:20},{wch:22},{wch:26},{wch:20}];
   var wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"USA Commissions");
   XLSX.writeFile(wb,"USA_Commissions_"+getPdfSubfolder().fileBase+".xlsx");

@@ -215,12 +215,13 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 /*BUNDLE_INSERT:60-fcvm-state*/
 /*BUNDLE_INSERT:70-fcvm-calc*//*BUNDLE_INSERT:80-roles-config*/var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.80'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.81'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.81: Premi USA — nuova logica da consuntivo settembre 2026 (file USA_Commissions_MASTER): 40/60 = YES invariato; 40/60 = NO → premio = vendite personali × COMMISSION RATE, che diventa BONUS-STORE TARGET se il negozio raggiunge il target (esubero mese prec. incluso). Premio trimestrale (set–nov, dic–feb, …) = % del fatturato negozio dei 3 mesi se raggiunto il target dei 3 mesi, erogato nel 3° mese. Import anagrafica USA riconosce il nuovo formato; storico mensile fatturato/target in Configurazione; lettera, motivazioni ed export Excel aggiornati; da settembre 2026 non c'è più distinzione Dept Store per gli USA (SA/SSA/JSA dei Dept ora su vendite personali); il nome negozio USA viene letto dalla colonna STORE DESCRIPTION del file USA (in alternativa dal file target)",
   "9.80: Coefficiente Inventari — esclusi i negozi/dipendenti USA (a loro non si applica): niente riduzione nel calcolo, niente box nella lettera, niente coefficiente in tabella Calcolo Premi; i negozi USA nel file inventari vengono ignorati all'import",
   "9.79: Distribuzione — Seasonal Italia: aggiunto il box \"Mese pagamento (MMAA)\" sotto Tracciato per Pagamenti (es. 0826 = agosto 2026); il valore scelto alimenta il 3° campo (MMAA) e il 4° (data AAAAMM01) del tracciato al posto del mese di Configurazione. Default: mese corrente",
   "9.78: Import Anagrafica — Seasonal Bonus: il limite \"data assunzione\" era calcolato sul mese corrente di Configurazione (irrilevante/non aggiornato in modalità Seasonal), scartando erroneamente dipendenti assunti regolarmente; ora si basa sull'inizio stagione (SS=Marzo, FW=Settembre) + 1 mese",

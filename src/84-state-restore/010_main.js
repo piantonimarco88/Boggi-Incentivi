@@ -116,9 +116,10 @@ function _showChangelogBanner(toVer){
 
 function autoSave(){
   try{
+    try{usaQRecord()}catch(exq){}
     var state={
       v:AUTO_VERSION,
-      D:{e:E,t:D.t,c:D.c,cs:D.cs,s:D.s,v:D.v,tr:D.tr,usa:D.usa,us:D.us,d:D.d,vl:D.vl},
+      D:{e:E,t:D.t,c:D.c,cs:D.cs,s:D.s,v:D.v,tr:D.tr,usa:D.usa,uq:D.uq,us:D.us,d:D.d,vl:D.vl},
       tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,
       seas:SEAS,seas_cfg:SEAS_CFG,seas_targets:SEAS_TARGETS,sas_matrix:SAS_MATRIX,
       demolt_matrix_store:DEMOLT_MATRIX_STORE,demolt_matrix_fc:DEMOLT_MATRIX_FC,

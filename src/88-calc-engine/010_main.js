@@ -20,10 +20,89 @@ function isUsaCommDoppia(e){
 function usaTargetMult(e,rp){return isUsaCommDoppia(e)?rp.targetMult*2:rp.targetMult;}
 function usaMult(e,storeHit,rp){return storeHit?usaTargetMult(e,rp):rp.noTargetMult;}
 
+// === USA: NUOVA LOGICA PREMI (da consuntivo settembre 2026) ===
+// Colonna "40/60" del file USA_Commissions_MASTER:
+//  - YES -> logica precedente (40/60: base store/personal x cm x moltiplicatore)
+//  - NO  -> ud.nw=1: premio = vendite personali x COMMISSION RATE (ud.cm); se il negozio raggiunge il
+//           target (esubero mese prec. incluso) il rate diventa BONUS-STORE TARGET (ud.bn, se >0).
+//           Opzionale premio trimestrale (ud.qb): % del fatturato negozio dei 3 mesi se il negozio
+//           raggiunge il target dei 3 mesi. Trimestri: set-nov, dic-feb, mar-mag, giu-ago (pagati nel 3° mese).
+// D.uq = storico mensile fatturato/target per negozio USA {"YYYY-MM":{sid:{sc,to}}} per il trimestrale.
+var USA_NEW_START_YEAR=2026,USA_NEW_START_MONTH=9;
+function usaNewActive(){
+  if(PRIZE_MODE!=="mensile")return false;
+  return (CFG_YEAR>USA_NEW_START_YEAR)||(CFG_YEAR===USA_NEW_START_YEAR&&CFG_MONTH>=USA_NEW_START_MONTH);
+}
+function usaIsNewRule(e){var ud=(D.usa||{})[e.m];return !!(ud&&ud.nw===1&&usaNewActive());}
+function usaMonthKey(y,m){return y+"-"+(m<10?"0"+m:m);}
+// Mesi {y,m} del trimestre che contiene (y,m); null se prima dell'avvio (set-2026).
+function usaQuarterMonthsOf(y,m){
+  var off=(y*12+m-1)-(USA_NEW_START_YEAR*12+USA_NEW_START_MONTH-1);
+  if(off<0)return null;
+  var out=[];
+  for(var k=off-off%3;k<off-off%3+3;k++){var ab=USA_NEW_START_YEAR*12+USA_NEW_START_MONTH-1+k;out.push({y:Math.floor(ab/12),m:ab%12+1});}
+  return out;
+}
+// Come sopra, ma solo se (y,m) è il mese di chiusura del trimestre (3° mese), altrimenti null.
+function usaQuarterMonths(y,m){
+  var qm=usaQuarterMonthsOf(y,m);
+  return (qm&&qm[2].y===y&&qm[2].m===m)?qm:null;
+}
+// Nome negozio dai target (D.t[sid].nm) per i dipendenti USA con nome segnaposto "<id> STORE <id>".
+function usaApplyStoreNames(){
+  E.forEach(function(e){
+    if(e.cu!=="USD")return;
+    var tg=D.t[String(e.si)];
+    if(tg&&tg.nm&&(!e.s||e.s===(String(e.si)+" STORE "+e.si)))e.s=(String(e.si)+" "+tg.nm).toUpperCase();
+  });
+}
+// Registra fatturato/target del mese corrente (consuntivo) per tutti i negozi USA: alimenta il trimestrale.
+function usaQRecord(){
+  if(MODE!=="consuntivo"||!usaNewActive())return;
+  if(!D.uq)D.uq={};
+  var key=usaMonthKey(CFG_YEAR,CFG_MONTH),any=false,rec={};
+  USA_STORES.forEach(function(s){
+    var sid=String(s),cn=D.c[sid],tg=D.t[sid];
+    if(cn&&(cn.sc||0)>0){rec[sid]={sc:cn.sc||0,to:(tg&&tg.to)||0};any=true;}
+  });
+  if(any){if(!D.uq[key])D.uq[key]={};Object.keys(rec).forEach(function(sid){D.uq[key][sid]=rec[sid];});}
+}
+// Fatturato e target dei 3 mesi per un negozio. Il mese corrente è letto live dai tab.
+function usaQuarterInfo(sid){
+  var qm=usaQuarterMonths(CFG_YEAR,CFG_MONTH);if(!qm)return null;
+  sid=String(sid);
+  var sc=0,to=0,missing=[];
+  qm.forEach(function(x){
+    var rec;
+    if(x.y===CFG_YEAR&&x.m===CFG_MONTH)rec={sc:(D.c[sid]||{}).sc||0,to:(D.t[sid]||{}).to||0};
+    else rec=((D.uq||{})[usaMonthKey(x.y,x.m)]||{})[sid];
+    if(!rec||!(rec.sc>0)){missing.push(usaMonthKey(x.y,x.m));return;}
+    sc+=rec.sc;to+=rec.to||0;
+  });
+  return {months:qm,sc:sc,to:to,missing:missing,pct:to>0?sc/to:0,hit:missing.length===0&&to>0&&sc/to>=PARAMS.bdg100};
+}
+// Dettaglio premio nuova logica (NO). Unica fonte per calcolo, lettera, motivazioni ed export.
+function usaNewDetail(e){
+  var ud=(D.usa||{})[e.m]||{},sid=String(e.si),tg=D.t[sid]||{},cn=D.c[sid]||{};
+  var esP=sasNewActive()?(cn.esP||0):0;
+  var storePct=tg.to>0?((cn.sc||0)+esP)/tg.to:0;
+  var storeHit=(tg.to>0&&cn.sc)?storePct>=PARAMS.bdg100:(ud.sb===1);
+  if(MODE==="consuntivo"&&e.ov_b100==="SI")storeHit=true;
+  var cm=ud.cm||0,bn=ud.bn||0;
+  var rate=(storeHit&&bn>0)?bn:cm;
+  var base=ud.ps||0;
+  var monthly=Math.round(base*rate*100)/100;
+  var qb=ud.qb||0,qi=qb>0?usaQuarterInfo(sid):null,quarterly=0;
+  if(qi&&qi.hit)quarterly=Math.round(qi.sc*qb*100)/100;
+  return {cm:cm,bn:bn,rate:rate,base:base,storeHit:storeHit,storePct:storePct,esP:esP,monthly:monthly,qb:qb,qi:qi,quarterly:quarterly,prize:Math.round((monthly+quarterly)*100)/100};
+}
+
 // calcUSA: commission% from anagrafica (ud.cm). Base from role toggle (store or personal).
 // Target hit -> 100% commission (raddoppiata per USA_COMM_DOPPIA). Not hit -> noTargetMult%. No esubero for USA.
+// Dal consuntivo set-2026, per chi ha 40/60=NO vale la nuova logica (usaNewDetail).
 function calcUSA(e){
   var ud=(D.usa||{})[e.m];if(!ud)return 0;
+  if(usaIsNewRule(e))return usaNewDetail(e).prize;
   var sid=String(e.si),tg=D.t[sid],cn=D.c[sid];
   var cm=ud.cm||0;
 
@@ -36,7 +115,7 @@ function calcUSA(e){
   var job=e.f||e.j||"";
   var rp=USA_P[job]||{noTargetMult:0.4,targetMult:1.0,useStore:false};
   // USA Dept Stores: forza store sales a prescindere dal job title
-  var usaDept=ud.isDept||(STORE_FLAGS[String(e.si)]&&STORE_FLAGS[String(e.si)].usaDept);
+  var usaDept=!usaNewActive()&&(ud.isDept||(STORE_FLAGS[String(e.si)]&&STORE_FLAGS[String(e.si)].usaDept)); // da set-2026 niente override Dept (base per ruolo: SM/VSM/STK negozio, gli altri vendite personali)
   var useStoreSales=rp.useStore||usaDept;
 
   var base;

@@ -5,7 +5,7 @@ function buildLetterUSA(e){
   var cm=ud.cm||0;
   var job=e.f||e.j||"";
   var rp=USA_P[job]||{noTargetMult:0.4,targetMult:1.0,useStore:false};
-  var usaDept=ud.isDept||(STORE_FLAGS[sid]&&STORE_FLAGS[sid].usaDept);
+  var usaDept=!usaNewActive()&&(ud.isDept||(STORE_FLAGS[sid]&&STORE_FLAGS[sid].usaDept)); // da set-2026 niente override Dept (base per ruolo: SM/VSM/STK negozio, gli altri vendite personali)
   var useStoreSales=rp.useStore||usaDept;
   var tPct=(usaTargetMult(e,rp)*100).toFixed(0),ntPct=(rp.noTargetMult*100).toFixed(0);
   var baseType=useStoreSales?"STORE SALES":"PERSONAL SALES";
@@ -24,7 +24,21 @@ function buildLetterUSA(e){
     h+='<div class="lt-info-item"><div class="lt-info-label">'+esc(p[0])+'</div><div class="lt-info-val">'+esc(String(p[1]))+"</div></div>"});
   h+="</div>";
 
-  if(isP){
+  var newRule=usaIsNewRule(e);
+  if(isP&&newRule){
+    // PREVENTIVO USA nuova logica (40/60 = NO): commissione su vendite personali + bonus target store
+    var nd=usaNewDetail(e);
+    h+='<div style="background:#fff3cd;border:1px solid #c9a96e;border-radius:6px;padding:12px 16px;margin:16px 0;font-size:11px;color:#856404"><b>COMMISSION INCENTIVE PLAN — '+mN.toUpperCase()+' '+CFG_YEAR+'</b></div>';
+    h+='<div class="lt-kpi">';
+    h+='<div class="lt-kpi-head"><span>INCENTIVE STRUCTURE</span><span style="text-align:right">DETAILS</span></div>';
+    h+='<div class="lt-kpi-row"><span>Commission Rate</span><span style="text-align:right;font-weight:700">'+(nd.cm*100).toFixed(2)+'% of PERSONAL SALES</span></div>';
+    if(nd.bn>0)h+='<div class="lt-kpi-row" style="background:#faf9f7"><span>Store on Target</span><span style="text-align:right;font-weight:700;color:#2d7a3a">'+(nd.bn*100).toFixed(2)+'% of PERSONAL SALES</span></div>';
+    if(nd.qb>0)h+='<div class="lt-kpi-row"><span>Quarterly Bonus (if store makes quarterly target)</span><span style="text-align:right;font-weight:700">'+(nd.qb*100).toFixed(2)+'% of STORE SALES</span></div>';
+    var storeToN=tg.to||0;
+    if(storeToN>0)h+='<div class="lt-kpi-row"><span>Store Sales Target</span><span style="text-align:right;font-weight:700;color:#2c2925">'+fc(storeToN,cu)+'</span></div>';
+    h+='</div>';
+    h+='<div style="margin-top:14px;padding:12px 16px;background:#f5f4f1;border-radius:6px;font-size:10px;color:#6b6560">Prize calculated at month-end on actual results. No fixed salary component included in this incentive.</div>';
+  } else if(isP){
     // PREVENTIVO USA: logica + store sales target (senza cifre individuali)
     h+='<div style="background:#fff3cd;border:1px solid #c9a96e;border-radius:6px;padding:12px 16px;margin:16px 0;font-size:11px;color:#856404"><b>COMMISSION INCENTIVE PLAN — '+mN.toUpperCase()+' '+CFG_YEAR+'</b></div>';
     h+='<div class="lt-kpi">';
@@ -38,6 +52,40 @@ function buildLetterUSA(e){
     if(storeTo>0)h+='<div class="lt-kpi-row"><span>Store Sales Target</span><span style="text-align:right;font-weight:700;color:#2c2925">'+fc(storeTo,cu)+'</span></div>';
     h+='</div>';
     h+='<div style="margin-top:14px;padding:12px 16px;background:#f5f4f1;border-radius:6px;font-size:10px;color:#6b6560">Prize calculated at month-end on actual results. No fixed salary component included in this incentive.</div>';
+  } else if(newRule){
+    // CONSUNTIVO USA nuova logica (40/60 = NO) da settembre 2026
+    var nd2=usaNewDetail(e),qi2=nd2.qi;
+    h+='<div class="lt-kpi">';
+    h+='<div class="lt-kpi-head"><span>COMMISSION INCENTIVE</span><span style="text-align:right">VALUE</span></div>';
+    h+='<div class="lt-kpi-row"><span>Commission Rate</span><span style="text-align:right;font-weight:700">'+(nd2.cm*100).toFixed(2)+'%</span></div>';
+    if(nd2.bn>0)h+='<div class="lt-kpi-row" style="background:#f5f4f1"><span>Bonus Rate (store on target)</span><span style="text-align:right;font-weight:600">'+(nd2.bn*100).toFixed(2)+'%</span></div>';
+    if((tg.to||0)>0)h+='<div class="lt-kpi-row" style="background:#f5f4f1"><span>Store Sales Target</span><span style="text-align:right;font-weight:600">'+fc(tg.to,cu)+'</span></div>';
+    h+='<div class="lt-kpi-row" style="background:#faf9f7"><span>Store Sales (Actual)</span><span style="text-align:right;font-weight:700">'+fc(cn.sc||0,cu)+'</span></div>';
+    if(nd2.esP>0)h+='<div class="lt-kpi-row" style="background:#fff8ee"><span>Surplus Prev. Month</span><span style="text-align:right;font-weight:700;color:#a07d2c">'+fc(nd2.esP,cu)+'</span></div>';
+    h+='<div class="lt-kpi-row"><span>Personal Sales</span><span style="text-align:right;font-weight:700">'+fc(nd2.base,cu)+'</span></div>';
+    h+='<div class="lt-kpi-row"><span>Store Performance</span><span style="text-align:right;font-weight:700;color:'+(nd2.storeHit?"#2d7a3a":"#cf5b5b")+'">'+(nd2.storeHit?"ON TARGET ✓":"BELOW TARGET ✗")+(tg.to>0?' ('+Math.round(nd2.storePct*100)+'% of target, incl. surplus)':'')+'</span></div>';
+    h+='<div class="lt-kpi-row" style="background:#faf9f7"><span>Rate Applied</span><span style="text-align:right;font-weight:700">'+(nd2.rate*100).toFixed(2)+'% of Personal Sales</span></div>';
+    h+='<div class="lt-kpi-row"><span>Monthly Commission</span><span style="text-align:right;font-weight:700">'+fc(nd2.monthly,cu)+'</span></div>';
+    h+='</div>';
+    if(qi2&&!qi2.missing.length){ // dati dei 3 mesi incompleti: niente box (evita "BELOW TARGET" fuorviante); avviso in Validazione
+      h+='<div class="lt-kpi" style="margin-top:10px"><div class="lt-kpi-head"><span>QUARTERLY BONUS ('+usaMonthKey(qi2.months[0].y,qi2.months[0].m)+' → '+usaMonthKey(qi2.months[2].y,qi2.months[2].m)+')</span><span style="text-align:right">VALUE</span></div>';
+      h+='<div class="lt-kpi-row"><span>Quarterly Rate (of store sales)</span><span style="text-align:right;font-weight:700">'+(nd2.qb*100).toFixed(2)+'%</span></div>';
+      h+='<div class="lt-kpi-row" style="background:#f5f4f1"><span>Store Sales Target (3 months)</span><span style="text-align:right;font-weight:600">'+fc(qi2.to,cu)+'</span></div>';
+      h+='<div class="lt-kpi-row" style="background:#faf9f7"><span>Store Sales Actual (3 months)</span><span style="text-align:right;font-weight:700">'+fc(qi2.sc,cu)+'</span></div>';
+      h+='<div class="lt-kpi-row"><span>Quarterly Performance</span><span style="text-align:right;font-weight:700;color:'+(qi2.hit?"#2d7a3a":"#cf5b5b")+'">'+(qi2.hit?"ON TARGET ✓":"BELOW TARGET ✗")+(qi2.to>0?' ('+Math.round(qi2.pct*100)+'%)':'')+'</span></div>';
+      h+='<div class="lt-kpi-row" style="background:#faf9f7"><span>Quarterly Bonus</span><span style="text-align:right;font-weight:700">'+fc(nd2.quarterly,cu)+'</span></div>';
+      h+='</div>';
+    }
+
+    var at2=aggTotal(e.m);
+    if(at2>0){
+      h+='<div class="lt-kpi" style="margin-top:10px"><div class="lt-kpi-head"><span>ADJUSTMENTS</span><span style="text-align:right">VALUE</span></div>';
+      var a2=AGG[e.m];AGG_KEYS.forEach(function(ak){if(a2[ak.k]>0)h+='<div class="lt-kpi-row"><span>'+ak.l+'</span><span style="text-align:right">'+fc(a2[ak.k],cu)+'</span></div>';});
+      h+='</div>';
+    }
+
+    h+='</div>';
+    h+='<div class="lt-total"><div><div class="lt-total-label">COMMISSION EARNED</div></div><div class="lt-total-val">'+fc(nd2.prize+(at2||0),cu)+'</div></div>';
   } else {
     // CONSUNTIVO USA (esubero mese precedente incluso nel check target da luglio 2026)
     var storeHit=false;

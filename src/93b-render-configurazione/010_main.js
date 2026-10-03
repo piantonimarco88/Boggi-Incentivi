@@ -470,6 +470,37 @@ function rT(){try{
     h+='<div class="cfg-row"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">% se target NON raggiunto</span><span style="font-size:9px;color:#a09a92">Attualmente: '+ntPct+'% della commission</span></div><div style="display:flex;align-items:center;gap:4px"><input class="cfg-input" style="width:75px" type="number" data-ur="'+esc(r)+'" data-uk="noTargetMult" value="'+ntPct+'" step="1" min="0" max="100"><span style="font-size:10px;color:#8a8680">%</span></div></div>';
   });
   h+='<div style="margin-top:12px;font-size:10px;color:#8a8680">Preventivo: si applica sempre la % con target raggiunto. La commission% individuale viene dall\u2019anagrafica.</div></div>';
+
+  // === USA nuova logica (da set-2026): storico mensile per il premio trimestrale ===
+  if(typeof usaNewActive==="function"&&usaNewActive()){
+    var uqM=usaQuarterMonthsOf(CFG_YEAR,CFG_MONTH)||[];
+    var uqStores={};
+    E.forEach(function(e0){var u0=(D.usa||{})[e0.m];if(e0.cu==="USD"&&u0&&u0.nw===1&&(u0.qb||0)>0)uqStores[String(e0.si)]=e0.s;});
+    var uqSids=Object.keys(uqStores).sort();
+    h+='<div class="wg" style="margin-bottom:20px;margin-top:24px"><div class="wg-title">🇺🇸 USA — Premio trimestrale (storico mensile negozi)</div>';
+    h+='<div style="font-size:10px;color:#8a8680;margin-bottom:10px">Chi ha 40/60 = NO e una % trimestrale riceve la % sul fatturato negozio dei 3 mesi se il negozio raggiunge il target dei 3 mesi. Trimestri: set–nov, dic–feb, mar–mag, giu–ago; il premio è erogato nel 3° mese. Fatturato e target di ogni mese vengono registrati automaticamente dal consuntivo; qui puoi verificarli o correggerli. Il mese corrente è letto in tempo reale dai tab.</div>';
+    if(!uqSids.length||!uqM.length){h+='<div style="font-size:11px;color:#a09a92">Nessun dipendente con premio trimestrale in anagrafica.</div>';}
+    else{
+      h+='<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#2c2925;color:#f5f4f1"><th style="padding:5px 8px;text-align:left">Negozio</th>';
+      uqM.forEach(function(x){h+='<th colspan="2" style="padding:5px 8px;text-align:center">'+usaMonthKey(x.y,x.m)+'</th>';});
+      h+='</tr><tr style="background:#f5f4f1;color:#6b6560;font-size:9px"><th></th>';
+      uqM.forEach(function(){h+='<th style="padding:2px 8px;text-align:right">Fatturato</th><th style="padding:2px 8px;text-align:right">Target</th>';});
+      h+='</tr></thead><tbody>';
+      uqSids.forEach(function(sid,ri){
+        h+='<tr style="background:'+(ri%2?"#faf9f7":"#fff")+'"><td style="padding:4px 8px;font-weight:700">'+esc(uqStores[sid])+'</td>';
+        uqM.forEach(function(x){
+          var key=usaMonthKey(x.y,x.m),isCur=(x.y===CFG_YEAR&&x.m===CFG_MONTH);
+          var rec=isCur?{sc:(D.c[sid]||{}).sc||0,to:(D.t[sid]||{}).to||0}:(((D.uq||{})[key]||{})[sid]||{});
+          ['sc','to'].forEach(function(f){
+            h+='<td style="padding:2px 6px;text-align:right">'+(isCur?'<span style="color:#6b6560">'+Math.round(rec[f]||0).toLocaleString("en-US")+'</span>':'<input class="cfg-input usaq-in" style="width:96px;text-align:right" type="number" step="1" data-key="'+key+'" data-sid="'+sid+'" data-f="'+f+'" value="'+(rec[f]||"")+'">')+'</td>';
+          });
+        });
+        h+='</tr>';
+      });
+      h+='</tbody></table>';
+    }
+    h+='</div>';
+  }
   }// end USA config hide for Italia
 
 
@@ -527,6 +558,10 @@ function rT(){try{
     if(b.getAttribute("data-r")){b.onclick=function(){var r=b.getAttribute("data-r"),k=b.getAttribute("data-k");if(!TC[r]){TC[r]={};KP.forEach(function(kk){TC[r][kk]=false})}TC[r][k]=!TC[r][k];markDirty();rC();rA();rT()}}
     if(b.getAttribute("data-ust")){b.onclick=function(){var r=b.getAttribute("data-ust");USA_P[r].useStore=!USA_P[r].useStore;markDirty();rC();rA();rT()}}
   });
+  document.querySelectorAll("input.usaq-in").forEach(function(inp){inp.onchange=function(){
+    var key=inp.getAttribute("data-key"),sid=inp.getAttribute("data-sid"),f=inp.getAttribute("data-f"),v=parseFloat(inp.value);
+    if(!D.uq)D.uq={};if(!D.uq[key])D.uq[key]={};if(!D.uq[key][sid])D.uq[key][sid]={sc:0,to:0};
+    D.uq[key][sid][f]=isNaN(v)?0:v;markDirty();autoSave();rC();rA();rT()}});
   document.querySelectorAll("input[data-ur]").forEach(function(inp){inp.onchange=function(){
     var r=inp.getAttribute("data-ur"),k=inp.getAttribute("data-uk"),v=parseFloat(inp.value);
     if(isNaN(v))return;

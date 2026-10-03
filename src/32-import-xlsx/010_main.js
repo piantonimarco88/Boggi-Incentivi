@@ -739,6 +739,18 @@ function loadAnagraficaUSA(file){
       var emailColUSA=-1;
       (rows[0]||[]).forEach(function(cell,ci){var s=String(cell||'').toLowerCase().replace(/[\s\n\r]+/g,'');if(s==='email'||s==='e-mail'||s.indexOf('email')>=0)emailColUSA=ci;});
 
+      // Nuovo formato USA_Commissions_MASTER (da set-2026): header STORE ID / FIRST NAME / LAST NAME / ROLE /
+      // COMMISSION RATE (%) / 40/60 / BONUS- STORE TARGET / QUARTERLY ... / EMAIL — colonne lette per nome.
+      var hdrN=(rows[0]||[]).map(function(c){return String(c||'').toLowerCase().replace(/\s+/g,' ').trim();});
+      function hIdx(){for(var ci=0;ci<hdrN.length;ci++){for(var k=0;k<arguments.length;k++){if(hdrN[ci].indexOf(arguments[k])===0)return ci;}}return -1;}
+      var cRateN=hIdx('commission rate'),c4060N=hIdx('40/60'),cBonN=hIdx('bonus'),cQuaN=hIdx('quarterly');
+      var cFirstN=hIdx('first name'),cLastN=hIdx('last name'),cRoleN=hIdx('role');
+      var cStoreN=hIdx('store description','store name');
+      var isNewFmt=(cRateN>=0&&c4060N>=0&&cFirstN>=0&&cLastN>=0&&cRoleN>=0);
+      var storeNameBySi={};
+      E.forEach(function(e0){if(e0.cu==="USD"&&e0.s&&!storeNameBySi[String(e0.si)])storeNameBySi[String(e0.si)]=e0.s;});
+      var nNoRule=0,nQuarterly=0;
+
       for(var i=1;i<rows.length;i++){
         var r=rows[i];
         if(!r||!r[0])continue;
@@ -750,6 +762,15 @@ function loadAnagraficaUSA(file){
         var jt=String(r[4]||"").trim();
         var cm=parseFloat(r[6])||0;            // col G (idx 6) = % commissione
         var storeType=String(r[8]||"").trim(); // col I (idx 8) = tipo negozio
+        var newBn=0,newQb=0,newNw=0;
+        if(isNewFmt){
+          nome=String(r[cFirstN]||"").trim();cognome=String(r[cLastN]||"").trim();jt=String(r[cRoleN]||"").trim();
+          cm=parseFloat(r[cRateN])||0;storeType="";
+          storeName=((cStoreN>=0&&r[cStoreN]?String(r[cStoreN]).trim():"")||(D.t[si]&&D.t[si].nm)||(storeNameBySi[si]||"").replace(/^\s*\d+\s*/,""));  // nome negozio: colonna STORE DESCRIPTION del file, poi file target (D.t[sid].nm), poi anagrafica già caricata
+          newNw=String(r[c4060N]||"").trim().toUpperCase()==="NO"?1:0;
+          newBn=cBonN>=0?(parseFloat(r[cBonN])||0):0;
+          newQb=cQuaN>=0?(parseFloat(r[cQuaN])||0):0;
+        }
 
         // Escludi righe con commissione 0
         if(!cm||cm<=0){skipped++;continue;}
@@ -817,6 +838,12 @@ function loadAnagraficaUSA(file){
           tp:0,   // total prize
           isDept:isDept  // flag dept store
         };
+        if(isNewFmt){
+          // dept: il nuovo formato non ha la colonna tipo negozio -> mantieni flag già noto
+          if(STORE_FLAGS[si]&&STORE_FLAGS[si].usaDept)D.usa[matricola].isDept=true;
+          D.usa[matricola].nw=newNw;   // 1 = 40/60 NO -> nuova logica (da consuntivo set-2026)
+          if(newNw){D.usa[matricola].bn=newBn;D.usa[matricola].qb=newQb;nNoRule++;if(newQb>0)nQuarterly++;}
+        }
 
         // Se Dept Store: forza useStore=true nella configurazione USA_P per questo job
         // (già gestito globalmente dalla configurazione, ma salviamo il flag per riferimento)
@@ -841,6 +868,7 @@ function loadAnagraficaUSA(file){
       var repH='<div class="wg" style="margin-top:16px"><div class="wg-title">&#127482;&#127480; Report Importazione Anagrafica USA</div>';
       repH+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">';
       repH+='<span style="background:#d4edda;color:#155724;padding:4px 10px;border-radius:5px;font-size:11px;font-weight:700">✓ '+added+' dipendenti importati</span>';
+      if(isNewFmt)repH+='<span style="background:#e8f0fe;color:#1a3c7a;padding:4px 10px;border-radius:5px;font-size:11px;font-weight:700">Nuova logica 40/60: '+nNoRule+' NO ('+nQuarterly+' con trimestrale) · '+(added-nNoRule)+' YES (logica precedente)</span>';
       if(skipped>0)repH+='<span style="background:#fff3cd;color:#856404;padding:4px 10px;border-radius:5px;font-size:11px;font-weight:700">⚠ '+skipped+' righe escluse (cm=0)</span>';
       repH+='</div>';
       repH+='<div style="font-size:10px;color:#6b6560;margin-bottom:8px">Store USA rilevati: <b>'+storeList+'</b></div>';
@@ -875,6 +903,7 @@ function applyImportedUSAAnagrafica(){
   var nonUSA=E.filter(function(e){return e.cu!=="USD";});
   E.length=0;nonUSA.forEach(function(e){E.push(e);});imported.forEach(function(e){E.push(e);});
   D.e=E;
+  usaApplyStoreNames();
   updateHeaderCount();
   window._pendingImportUSA=null;
   window._pendingNewStoresUSA=null;
@@ -1146,6 +1175,9 @@ function loadTargetExcel(file){
       var cSub=findH(0,"sub_target");if(cSub<0)cSub=findHPartial(0,"subscription","fidelity");
       var cQTY=findHPartial(0,"target qty","qty");
       var cMonth=findHPartial(0,"retail_month","month");
+      // Nome negozio (opzionale): "Store Description" / "store_name" / "Store" (esatto, diverso da Store ID)
+      var cStName=findHPartial(0,"store description","store_name","store name","description");
+      if(cStName<0)cStName=findH(0,"store","negozio");
 
       if(cSid<0){
         // Try Store ID column
@@ -1198,6 +1230,7 @@ function loadTargetExcel(file){
         // Init D.t entry if needed
         var isNew=!D.t[sid];
         if(isNew){D.t[sid]={to:0,sy:0,pr:0,cr:0,di:0,cs:0,qt:0,fc:"",fl:"",mo:""};newStores.push(sid)}
+        if(cStName>=0&&cStName!==cSid&&row[cStName]!=null&&isNaN(Number(row[cStName]))){var _nm=String(row[cStName]).trim();if(_nm)D.t[sid].nm=_nm;}
 
         if(type==="main_target"||type==="turnover_only"){
           if(cSales>=0){var v=parseNum(row[cSales]);if(v>0)D.t[sid].to=Math.round(v)}
@@ -1217,6 +1250,7 @@ function loadTargetExcel(file){
       var msg="Target caricati: "+typeLabel+"\n\nFoglio: "+bestSheet+"\nRighe importate: "+imported+"\nRighe saltate (mese diverso): "+skipped+"\nNuovi store: "+newStores.length+"\n\nStore totali in D.t: "+Object.keys(D.t).length;
 
       alert(msg);
+      try{usaApplyStoreNames()}catch(exn){}
       rC();rA();rSources();autoSave();
 
     }catch(ex){alert("Errore lettura target: "+ex.message)}
@@ -1699,6 +1733,7 @@ function loadResultsExcel(file){
           var n=(emp.n||"").toUpperCase().trim();
           var cNorm=c.replace(/[\s'\-]/g,"");
           usaLookupExact[c+"|"+n]=emp.m;      // exact cognome+nome
+          if(!usaLookupExact[n+"|"+c])usaLookupExact[n+"|"+c]=emp.m; // anagrafica con nome/cognome invertiti
           if(!usaLookupCogn[cNorm])usaLookupCogn[cNorm]=emp.m; // solo cognome normalizzato
         });
         var matched=0,notFound=0,skippedRows=0;

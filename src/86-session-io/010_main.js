@@ -14,9 +14,10 @@ function _flushDigMobInputs(){
 function saveSession(){
   try{
     _flushDigMobInputs();
+    try{usaQRecord()}catch(exq){}
     var state={
       _type:"boggi_session",v:AUTO_VERSION,
-      D:{e:E,t:D.t,c:D.c,cs:D.cs,s:D.s,v:D.v,tr:D.tr,usa:D.usa,us:D.us,d:D.d,vl:D.vl,ur:D.ur},
+      D:{e:E,t:D.t,c:D.c,cs:D.cs,s:D.s,v:D.v,tr:D.tr,usa:D.usa,uq:D.uq,us:D.us,d:D.d,vl:D.vl,ur:D.ur},
       tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,
       seas:SEAS,seas_cfg:SEAS_CFG,seas_targets:SEAS_TARGETS,sas_matrix:SAS_MATRIX,
       demolt_matrix_store:DEMOLT_MATRIX_STORE,demolt_matrix_fc:DEMOLT_MATRIX_FC,
@@ -53,7 +54,7 @@ function loadSession(input){
       }
       if(state.D.t)D.t=state.D.t;if(state.D.c)D.c=state.D.c;if(state.D.cs)D.cs=state.D.cs;if(state.D.s)D.s=state.D.s;
       if(state.D.v)D.v=state.D.v;if(state.D.tr)D.tr=state.D.tr;
-      if(state.D.usa)D.usa=state.D.usa;if(state.D.us)D.us=state.D.us;
+      if(state.D.usa)D.usa=state.D.usa;if(state.D.uq)D.uq=state.D.uq;if(state.D.us)D.us=state.D.us;
       if(state.D.d)D.d=state.D.d;if(state.D.vl)D.vl=state.D.vl;if(state.D.ur)D.ur=state.D.ur;
     }
     if(state.tc){TC=state.tc;RL.forEach(function(r){if(!TC[r]){TC[r]={};KP.forEach(function(k){
