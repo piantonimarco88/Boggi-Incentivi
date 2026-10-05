@@ -5,8 +5,7 @@ function buildLetterUSA(e){
   var cm=ud.cm||0;
   var job=e.f||e.j||"";
   var rp=USA_P[job]||{noTargetMult:0.4,targetMult:1.0,useStore:false};
-  var usaDept=!usaNewActive()&&(ud.isDept||(STORE_FLAGS[sid]&&STORE_FLAGS[sid].usaDept)); // da set-2026 niente override Dept (base per ruolo: SM/VSM/STK negozio, gli altri vendite personali)
-  var useStoreSales=rp.useStore||usaDept;
+  var useStoreSales=usaUseStore(e,ud,rp);
   var tPct=(usaTargetMult(e,rp)*100).toFixed(0),ntPct=(rp.noTargetMult*100).toFixed(0);
   var baseType=useStoreSales?"STORE SALES":"PERSONAL SALES";
   var lang="INGLESE"; // USA always English
@@ -31,7 +30,7 @@ function buildLetterUSA(e){
     h+='<div style="background:#fff3cd;border:1px solid #c9a96e;border-radius:6px;padding:12px 16px;margin:16px 0;font-size:11px;color:#856404"><b>COMMISSION INCENTIVE PLAN — '+mN.toUpperCase()+' '+CFG_YEAR+'</b></div>';
     h+='<div class="lt-kpi">';
     h+='<div class="lt-kpi-head"><span>INCENTIVE STRUCTURE</span><span style="text-align:right">DETAILS</span></div>';
-    h+='<div class="lt-kpi-row"><span>Commission Rate</span><span style="text-align:right;font-weight:700">'+(nd.cm*100).toFixed(2)+'% of PERSONAL SALES</span></div>';
+    h+='<div class="lt-kpi-row"><span>Commission Rate</span><span style="text-align:right;font-weight:700">'+(nd.cm*100).toFixed(2)+'% of '+(nd.useStore?'STORE SALES':'PERSONAL SALES')+'</span></div>';
     if(nd.bn>0)h+='<div class="lt-kpi-row" style="background:#faf9f7"><span>Store on Target</span><span style="text-align:right;font-weight:700;color:#2d7a3a">'+(nd.bn*100).toFixed(2)+'% of PERSONAL SALES</span></div>';
     if(nd.qb>0)h+='<div class="lt-kpi-row"><span>Quarterly Bonus (if store makes quarterly target)</span><span style="text-align:right;font-weight:700">'+(nd.qb*100).toFixed(2)+'% of STORE SALES</span></div>';
     var storeToN=tg.to||0;
@@ -62,9 +61,9 @@ function buildLetterUSA(e){
     if((tg.to||0)>0)h+='<div class="lt-kpi-row" style="background:#f5f4f1"><span>Store Sales Target</span><span style="text-align:right;font-weight:600">'+fc(tg.to,cu)+'</span></div>';
     h+='<div class="lt-kpi-row" style="background:#faf9f7"><span>Store Sales (Actual)</span><span style="text-align:right;font-weight:700">'+fc(cn.sc||0,cu)+'</span></div>';
     if(nd2.esP>0)h+='<div class="lt-kpi-row" style="background:#fff8ee"><span>Surplus Prev. Month</span><span style="text-align:right;font-weight:700;color:#a07d2c">'+fc(nd2.esP,cu)+'</span></div>';
-    h+='<div class="lt-kpi-row"><span>Personal Sales</span><span style="text-align:right;font-weight:700">'+fc(nd2.base,cu)+'</span></div>';
+    if(!nd2.useStore)h+='<div class="lt-kpi-row"><span>Personal Sales</span><span style="text-align:right;font-weight:700">'+fc(nd2.base,cu)+'</span></div>';
     h+='<div class="lt-kpi-row"><span>Store Performance</span><span style="text-align:right;font-weight:700;color:'+(nd2.storeHit?"#2d7a3a":"#cf5b5b")+'">'+(nd2.storeHit?"ON TARGET ✓":"BELOW TARGET ✗")+(tg.to>0?' ('+Math.round(nd2.storePct*100)+'% of target, incl. surplus)':'')+'</span></div>';
-    h+='<div class="lt-kpi-row" style="background:#faf9f7"><span>Rate Applied</span><span style="text-align:right;font-weight:700">'+(nd2.rate*100).toFixed(2)+'% of Personal Sales</span></div>';
+    h+='<div class="lt-kpi-row" style="background:#faf9f7"><span>Rate Applied</span><span style="text-align:right;font-weight:700">'+(nd2.rate*100).toFixed(2)+'% of '+(nd2.useStore?'Store Sales':'Personal Sales')+'</span></div>';
     h+='<div class="lt-kpi-row"><span>Monthly Commission</span><span style="text-align:right;font-weight:700">'+fc(nd2.monthly,cu)+'</span></div>';
     h+='</div>';
     if(qi2&&!qi2.missing.length){ // dati dei 3 mesi incompleti: niente box (evita "BELOW TARGET" fuorviante); avviso in Validazione

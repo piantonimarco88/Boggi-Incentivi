@@ -842,12 +842,13 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.81'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.82'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.82: Premi USA — la base del premio da settembre 2026 segue la colonna TYPE del file USA_Commissions_MASTER: Store Sales (Dept store) = fatturato negozio senza rate bonus; Personal Sales = vendite personali (anche per SM/VSM/STK con 40/60 YES), al posto del toggle per ruolo/Dept. Nome negozio dalla colonna Store Description del file (in alternativa dal file target)",
   "9.81: Premi USA — nuova logica da consuntivo settembre 2026 (file USA_Commissions_MASTER): 40/60 = YES invariato; 40/60 = NO → premio = vendite personali × COMMISSION RATE, che diventa BONUS-STORE TARGET se il negozio raggiunge il target (esubero mese prec. incluso). Premio trimestrale (set–nov, dic–feb, …) = % del fatturato negozio dei 3 mesi se raggiunto il target dei 3 mesi, erogato nel 3° mese. Import anagrafica USA riconosce il nuovo formato; storico mensile fatturato/target in Configurazione; lettera, motivazioni ed export Excel aggiornati; da settembre 2026 non c'è più distinzione Dept Store per gli USA (SA/SSA/JSA dei Dept ora su vendite personali); il nome negozio USA viene letto dalla colonna STORE DESCRIPTION del file USA (in alternativa dal file target)",
   "9.80: Coefficiente Inventari — esclusi i negozi/dipendenti USA (a loro non si applica): niente riduzione nel calcolo, niente box nella lettera, niente coefficiente in tabella Calcolo Premi; i negozi USA nel file inventari vengono ignorati all'import",
   "9.79: Distribuzione — Seasonal Italia: aggiunto il box \"Mese pagamento (MMAA)\" sotto Tracciato per Pagamenti (es. 0826 = agosto 2026); il valore scelto alimenta il 3° campo (MMAA) e il 4° (data AAAAMM01) del tracciato al posto del mese di Configurazione. Default: mese corrente",
@@ -1319,6 +1320,13 @@ function usaNewActive(){
   if(PRIZE_MODE!=="mensile")return false;
   return (CFG_YEAR>USA_NEW_START_YEAR)||(CFG_YEAR===USA_NEW_START_YEAR&&CFG_MONTH>=USA_NEW_START_MONTH);
 }
+// Base del premio. Da set-2026 la colonna TYPE del file USA (ud.ty: "S" Store Sales / "P" Personal Sales) decide per ogni riga
+// (sostituisce toggle per ruolo e Dept); senza TYPE (anagrafica vecchio formato) resta ruolo/Dept.
+function usaUseStore(e,ud,rp){
+  if(usaNewActive()&&(ud.ty==="S"||ud.ty==="P"))return ud.ty==="S";
+  var dept=ud.isDept||(STORE_FLAGS[String(e.si)]&&STORE_FLAGS[String(e.si)].usaDept);
+  return !!(rp.useStore||dept);
+}
 function usaIsNewRule(e){var ud=(D.usa||{})[e.m];return !!(ud&&ud.nw===1&&usaNewActive());}
 function usaMonthKey(y,m){return y+"-"+(m<10?"0"+m:m);}
 // Mesi {y,m} del trimestre che contiene (y,m); null se prima dell'avvio (set-2026).
@@ -1375,12 +1383,14 @@ function usaNewDetail(e){
   var storeHit=(tg.to>0&&cn.sc)?storePct>=PARAMS.bdg100:(ud.sb===1);
   if(MODE==="consuntivo"&&e.ov_b100==="SI")storeHit=true;
   var cm=ud.cm||0,bn=ud.bn||0;
+  var useStore=ud.ty==="S";           // Store Sales: base = fatturato negozio, niente rate bonus al target
+  if(useStore)bn=0;
   var rate=(storeHit&&bn>0)?bn:cm;
-  var base=ud.ps||0;
+  var base=useStore?(MODE==="preventivo"?(tg.to||0):(cn.sc||0)):(ud.ps||0);
   var monthly=Math.round(base*rate*100)/100;
   var qb=ud.qb||0,qi=qb>0?usaQuarterInfo(sid):null,quarterly=0;
   if(qi&&qi.hit)quarterly=Math.round(qi.sc*qb*100)/100;
-  return {cm:cm,bn:bn,rate:rate,base:base,storeHit:storeHit,storePct:storePct,esP:esP,monthly:monthly,qb:qb,qi:qi,quarterly:quarterly,prize:Math.round((monthly+quarterly)*100)/100};
+  return {cm:cm,bn:bn,rate:rate,base:base,useStore:useStore,storeHit:storeHit,storePct:storePct,esP:esP,monthly:monthly,qb:qb,qi:qi,quarterly:quarterly,prize:Math.round((monthly+quarterly)*100)/100};
 }
 
 // calcUSA: commission% from anagrafica (ud.cm). Base from role toggle (store or personal).
@@ -1401,8 +1411,7 @@ function calcUSA(e){
   var job=e.f||e.j||"";
   var rp=USA_P[job]||{noTargetMult:0.4,targetMult:1.0,useStore:false};
   // USA Dept Stores: forza store sales a prescindere dal job title
-  var usaDept=!usaNewActive()&&(ud.isDept||(STORE_FLAGS[String(e.si)]&&STORE_FLAGS[String(e.si)].usaDept)); // da set-2026 niente override Dept (base per ruolo: SM/VSM/STK negozio, gli altri vendite personali)
-  var useStoreSales=rp.useStore||usaDept;
+  var useStoreSales=usaUseStore(e,ud,rp);
 
   var base;
   if(useStoreSales){
@@ -1544,10 +1553,10 @@ function gR(e){
       // Nuova logica USA (40/60 = NO) da set-2026
       var nd=usaNewDetail(e);
       if(MODE==="preventivo"){
-        R.push({t:"info",x:"Premio: vendite personali × "+(nd.cm*100).toFixed(2)+"%"+(nd.bn>0?" ("+(nd.bn*100).toFixed(2)+"% se store a target)":"")+(nd.qb>0?"; trimestrale "+(nd.qb*100).toFixed(2)+"% del fatturato negozio se target 3 mesi raggiunto":"")+". Importo calcolato a consuntivo."});
+        R.push({t:"info",x:"Premio: "+(nd.useStore?"fatturato negozio":"vendite personali")+" × "+(nd.cm*100).toFixed(2)+"%"+(nd.bn>0?" ("+(nd.bn*100).toFixed(2)+"% se store a target)":"")+(nd.qb>0?"; trimestrale "+(nd.qb*100).toFixed(2)+"% del fatturato negozio se target 3 mesi raggiunto":"")+". Importo calcolato a consuntivo."});
       }else{
         var esPN=nd.esP>0?" (incl. esubero prec. "+fc(nd.esP,cu)+")":"";
-        R.push({t:nd.storeHit?"success":"partial",x:fc(nd.monthly,cu)+" — Vendite personali "+fc(nd.base,cu)+" × "+(nd.rate*100).toFixed(2)+"%. Store "+(nd.storePct*100).toFixed(1)+"%"+esPN+(nd.storeHit?" ≥ target"+(nd.bn>0?" (rate bonus)":""):" < target (rate base)")+"."});
+        R.push({t:nd.storeHit?"success":"partial",x:fc(nd.monthly,cu)+" — "+(nd.useStore?"Fatturato negozio ":"Vendite personali ")+fc(nd.base,cu)+" × "+(nd.rate*100).toFixed(2)+"%. Store "+(nd.storePct*100).toFixed(1)+"%"+esPN+(nd.storeHit?" ≥ target"+(nd.bn>0?" (rate bonus)":""):" < target (rate base)")+"."});
         if(nd.qi){
           if(nd.qi.missing.length)R.push({t:"warn",x:"Trimestrale: mancano fatturato/target dei mesi "+nd.qi.missing.join(", ")+" — completa i dati in Configurazione."});
           else R.push({t:nd.qi.hit?"success":"partial",x:fc(nd.quarterly,cu)+" — Trimestrale "+(nd.qb*100).toFixed(2)+"% × fatturato negozio 3 mesi "+fc(nd.qi.sc,cu)+". Target 3 mesi "+fc(nd.qi.to,cu)+" ("+(nd.qi.pct*100).toFixed(1)+"%)"+(nd.qi.hit?" raggiunto.":" non raggiunto.")});
@@ -1558,8 +1567,7 @@ function gR(e){
     }
     var ud=(D.usa||{})[e.m]||{},cm=ud.cm||0,job=e.f||e.j||"";
     var rp=USA_P[job]||{noTargetMult:0.4,targetMult:1.0,useStore:false};
-    var usaDept=!usaNewActive()&&(ud.isDept||(STORE_FLAGS[String(e.si)]&&STORE_FLAGS[String(e.si)].usaDept)); // da set-2026 niente override Dept (base per ruolo: SM/VSM/STK negozio, gli altri vendite personali)
-    var useStoreSales=rp.useStore||usaDept;
+    var useStoreSales=usaUseStore(e,ud,rp);
     var esP=sasNewActive()?(cn.esP||0):0;
     var storePct=tg.to>0?(cn.sc+esP)/tg.to:0,storeHit=MODE==="preventivo"||storePct>=PARAMS.bdg100||(MODE==="consuntivo"&&e.ov_b100==="SI");
     var base,baseLabel;
@@ -2641,7 +2649,7 @@ function exportExcelUSA(){
       var nd=usaNewDetail(e);
       rows.push([
         e.m,(e.n||"").toUpperCase(),(e.c||"").toUpperCase(),(e.f||e.j||"").toUpperCase(),
-        tg.to||0,cn.sc||0,nd.base||"",
+        tg.to||0,cn.sc||0,nd.useStore?"":(nd.base||""),
         Math.round(nd.cm*10000)/100,
         "NO",
         nd.bn>0?Math.round(nd.bn*10000)/100:"",
@@ -2654,8 +2662,7 @@ function exportExcelUSA(){
     }
     var job=e.f||e.j||"";
     var rp=USA_P[job]||{noTargetMult:0.4,targetMult:1.0,useStore:false};
-    var usaDept=!usaNewActive()&&(ud.isDept||(STORE_FLAGS[sid]&&STORE_FLAGS[sid].usaDept)); // da set-2026 niente override Dept (base per ruolo: SM/VSM/STK negozio, gli altri vendite personali)
-    var useStoreSales=rp.useStore||usaDept;
+    var useStoreSales=usaUseStore(e,ud,rp);
 
     // Store hit logic (incl. esubero mese precedente USA da luglio 2026)
     var storePct=tg.to>0?((cn.sc||0)+(sasNewActive()?cn.esP||0:0))/tg.to:0;
@@ -2971,8 +2978,7 @@ function buildLetterUSA(e){
   var cm=ud.cm||0;
   var job=e.f||e.j||"";
   var rp=USA_P[job]||{noTargetMult:0.4,targetMult:1.0,useStore:false};
-  var usaDept=!usaNewActive()&&(ud.isDept||(STORE_FLAGS[sid]&&STORE_FLAGS[sid].usaDept)); // da set-2026 niente override Dept (base per ruolo: SM/VSM/STK negozio, gli altri vendite personali)
-  var useStoreSales=rp.useStore||usaDept;
+  var useStoreSales=usaUseStore(e,ud,rp);
   var tPct=(usaTargetMult(e,rp)*100).toFixed(0),ntPct=(rp.noTargetMult*100).toFixed(0);
   var baseType=useStoreSales?"STORE SALES":"PERSONAL SALES";
   var lang="INGLESE"; // USA always English
@@ -2997,7 +3003,7 @@ function buildLetterUSA(e){
     h+='<div style="background:#fff3cd;border:1px solid #c9a96e;border-radius:6px;padding:12px 16px;margin:16px 0;font-size:11px;color:#856404"><b>COMMISSION INCENTIVE PLAN — '+mN.toUpperCase()+' '+CFG_YEAR+'</b></div>';
     h+='<div class="lt-kpi">';
     h+='<div class="lt-kpi-head"><span>INCENTIVE STRUCTURE</span><span style="text-align:right">DETAILS</span></div>';
-    h+='<div class="lt-kpi-row"><span>Commission Rate</span><span style="text-align:right;font-weight:700">'+(nd.cm*100).toFixed(2)+'% of PERSONAL SALES</span></div>';
+    h+='<div class="lt-kpi-row"><span>Commission Rate</span><span style="text-align:right;font-weight:700">'+(nd.cm*100).toFixed(2)+'% of '+(nd.useStore?'STORE SALES':'PERSONAL SALES')+'</span></div>';
     if(nd.bn>0)h+='<div class="lt-kpi-row" style="background:#faf9f7"><span>Store on Target</span><span style="text-align:right;font-weight:700;color:#2d7a3a">'+(nd.bn*100).toFixed(2)+'% of PERSONAL SALES</span></div>';
     if(nd.qb>0)h+='<div class="lt-kpi-row"><span>Quarterly Bonus (if store makes quarterly target)</span><span style="text-align:right;font-weight:700">'+(nd.qb*100).toFixed(2)+'% of STORE SALES</span></div>';
     var storeToN=tg.to||0;
@@ -3028,9 +3034,9 @@ function buildLetterUSA(e){
     if((tg.to||0)>0)h+='<div class="lt-kpi-row" style="background:#f5f4f1"><span>Store Sales Target</span><span style="text-align:right;font-weight:600">'+fc(tg.to,cu)+'</span></div>';
     h+='<div class="lt-kpi-row" style="background:#faf9f7"><span>Store Sales (Actual)</span><span style="text-align:right;font-weight:700">'+fc(cn.sc||0,cu)+'</span></div>';
     if(nd2.esP>0)h+='<div class="lt-kpi-row" style="background:#fff8ee"><span>Surplus Prev. Month</span><span style="text-align:right;font-weight:700;color:#a07d2c">'+fc(nd2.esP,cu)+'</span></div>';
-    h+='<div class="lt-kpi-row"><span>Personal Sales</span><span style="text-align:right;font-weight:700">'+fc(nd2.base,cu)+'</span></div>';
+    if(!nd2.useStore)h+='<div class="lt-kpi-row"><span>Personal Sales</span><span style="text-align:right;font-weight:700">'+fc(nd2.base,cu)+'</span></div>';
     h+='<div class="lt-kpi-row"><span>Store Performance</span><span style="text-align:right;font-weight:700;color:'+(nd2.storeHit?"#2d7a3a":"#cf5b5b")+'">'+(nd2.storeHit?"ON TARGET ✓":"BELOW TARGET ✗")+(tg.to>0?' ('+Math.round(nd2.storePct*100)+'% of target, incl. surplus)':'')+'</span></div>';
-    h+='<div class="lt-kpi-row" style="background:#faf9f7"><span>Rate Applied</span><span style="text-align:right;font-weight:700">'+(nd2.rate*100).toFixed(2)+'% of Personal Sales</span></div>';
+    h+='<div class="lt-kpi-row" style="background:#faf9f7"><span>Rate Applied</span><span style="text-align:right;font-weight:700">'+(nd2.rate*100).toFixed(2)+'% of '+(nd2.useStore?'Store Sales':'Personal Sales')+'</span></div>';
     h+='<div class="lt-kpi-row"><span>Monthly Commission</span><span style="text-align:right;font-weight:700">'+fc(nd2.monthly,cu)+'</span></div>';
     h+='</div>';
     if(qi2&&!qi2.missing.length){ // dati dei 3 mesi incompleti: niente box (evita "BELOW TARGET" fuorviante); avviso in Validazione
@@ -7135,7 +7141,7 @@ function loadAnagraficaUSA(file){
       function hIdx(){for(var ci=0;ci<hdrN.length;ci++){for(var k=0;k<arguments.length;k++){if(hdrN[ci].indexOf(arguments[k])===0)return ci;}}return -1;}
       var cRateN=hIdx('commission rate'),c4060N=hIdx('40/60'),cBonN=hIdx('bonus'),cQuaN=hIdx('quarterly');
       var cFirstN=hIdx('first name'),cLastN=hIdx('last name'),cRoleN=hIdx('role');
-      var cStoreN=hIdx('store description','store name');
+      var cStoreN=hIdx('store description','store name'),cTypeN=hIdx('type');
       var isNewFmt=(cRateN>=0&&c4060N>=0&&cFirstN>=0&&cLastN>=0&&cRoleN>=0);
       var storeNameBySi={};
       E.forEach(function(e0){if(e0.cu==="USD"&&e0.s&&!storeNameBySi[String(e0.si)])storeNameBySi[String(e0.si)]=e0.s;});
@@ -7152,10 +7158,13 @@ function loadAnagraficaUSA(file){
         var jt=String(r[4]||"").trim();
         var cm=parseFloat(r[6])||0;            // col G (idx 6) = % commissione
         var storeType=String(r[8]||"").trim(); // col I (idx 8) = tipo negozio
-        var newBn=0,newQb=0,newNw=0;
+        var newBn=0,newQb=0,newNw=0,newTy="";
         if(isNewFmt){
           nome=String(r[cFirstN]||"").trim();cognome=String(r[cLastN]||"").trim();jt=String(r[cRoleN]||"").trim();
-          cm=parseFloat(r[cRateN])||0;storeType="";
+          cm=parseFloat(r[cRateN])||0;
+          // TYPE: "Store Sales" (Dept store) / "Personal Sales" -> base del premio per riga (ud.ty S/P)
+          newTy=(cTypeN>=0&&String(r[cTypeN]||"").toLowerCase().indexOf("store")>=0)?"S":(cTypeN>=0&&String(r[cTypeN]||"").trim()?"P":"");
+          storeType=(newTy==="S")?"dept":"";
           storeName=((cStoreN>=0&&r[cStoreN]?String(r[cStoreN]).trim():"")||(D.t[si]&&D.t[si].nm)||(storeNameBySi[si]||"").replace(/^\s*\d+\s*/,""));  // nome negozio: colonna STORE DESCRIPTION del file, poi file target (D.t[sid].nm), poi anagrafica già caricata
           newNw=String(r[c4060N]||"").trim().toUpperCase()==="NO"?1:0;
           newBn=cBonN>=0?(parseFloat(r[cBonN])||0):0;
@@ -7231,6 +7240,7 @@ function loadAnagraficaUSA(file){
         if(isNewFmt){
           // dept: il nuovo formato non ha la colonna tipo negozio -> mantieni flag già noto
           if(STORE_FLAGS[si]&&STORE_FLAGS[si].usaDept)D.usa[matricola].isDept=true;
+          if(newTy)D.usa[matricola].ty=newTy;   // S = Store Sales, P = Personal Sales (colonna TYPE)
           D.usa[matricola].nw=newNw;   // 1 = 40/60 NO -> nuova logica (da consuntivo set-2026)
           if(newNw){D.usa[matricola].bn=newBn;D.usa[matricola].qb=newQb;nNoRule++;if(newQb>0)nQuarterly++;}
         }

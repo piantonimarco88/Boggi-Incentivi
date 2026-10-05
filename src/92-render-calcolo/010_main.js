@@ -612,7 +612,7 @@ function exportExcelUSA(){
       var nd=usaNewDetail(e);
       rows.push([
         e.m,(e.n||"").toUpperCase(),(e.c||"").toUpperCase(),(e.f||e.j||"").toUpperCase(),
-        tg.to||0,cn.sc||0,nd.base||"",
+        tg.to||0,cn.sc||0,nd.useStore?"":(nd.base||""),
         Math.round(nd.cm*10000)/100,
         "NO",
         nd.bn>0?Math.round(nd.bn*10000)/100:"",
@@ -625,8 +625,7 @@ function exportExcelUSA(){
     }
     var job=e.f||e.j||"";
     var rp=USA_P[job]||{noTargetMult:0.4,targetMult:1.0,useStore:false};
-    var usaDept=!usaNewActive()&&(ud.isDept||(STORE_FLAGS[sid]&&STORE_FLAGS[sid].usaDept)); // da set-2026 niente override Dept (base per ruolo: SM/VSM/STK negozio, gli altri vendite personali)
-    var useStoreSales=rp.useStore||usaDept;
+    var useStoreSales=usaUseStore(e,ud,rp);
 
     // Store hit logic (incl. esubero mese precedente USA da luglio 2026)
     var storePct=tg.to>0?((cn.sc||0)+(sasNewActive()?cn.esP||0:0))/tg.to:0;

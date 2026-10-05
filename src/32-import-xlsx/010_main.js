@@ -745,7 +745,7 @@ function loadAnagraficaUSA(file){
       function hIdx(){for(var ci=0;ci<hdrN.length;ci++){for(var k=0;k<arguments.length;k++){if(hdrN[ci].indexOf(arguments[k])===0)return ci;}}return -1;}
       var cRateN=hIdx('commission rate'),c4060N=hIdx('40/60'),cBonN=hIdx('bonus'),cQuaN=hIdx('quarterly');
       var cFirstN=hIdx('first name'),cLastN=hIdx('last name'),cRoleN=hIdx('role');
-      var cStoreN=hIdx('store description','store name');
+      var cStoreN=hIdx('store description','store name'),cTypeN=hIdx('type');
       var isNewFmt=(cRateN>=0&&c4060N>=0&&cFirstN>=0&&cLastN>=0&&cRoleN>=0);
       var storeNameBySi={};
       E.forEach(function(e0){if(e0.cu==="USD"&&e0.s&&!storeNameBySi[String(e0.si)])storeNameBySi[String(e0.si)]=e0.s;});
@@ -762,10 +762,13 @@ function loadAnagraficaUSA(file){
         var jt=String(r[4]||"").trim();
         var cm=parseFloat(r[6])||0;            // col G (idx 6) = % commissione
         var storeType=String(r[8]||"").trim(); // col I (idx 8) = tipo negozio
-        var newBn=0,newQb=0,newNw=0;
+        var newBn=0,newQb=0,newNw=0,newTy="";
         if(isNewFmt){
           nome=String(r[cFirstN]||"").trim();cognome=String(r[cLastN]||"").trim();jt=String(r[cRoleN]||"").trim();
-          cm=parseFloat(r[cRateN])||0;storeType="";
+          cm=parseFloat(r[cRateN])||0;
+          // TYPE: "Store Sales" (Dept store) / "Personal Sales" -> base del premio per riga (ud.ty S/P)
+          newTy=(cTypeN>=0&&String(r[cTypeN]||"").toLowerCase().indexOf("store")>=0)?"S":(cTypeN>=0&&String(r[cTypeN]||"").trim()?"P":"");
+          storeType=(newTy==="S")?"dept":"";
           storeName=((cStoreN>=0&&r[cStoreN]?String(r[cStoreN]).trim():"")||(D.t[si]&&D.t[si].nm)||(storeNameBySi[si]||"").replace(/^\s*\d+\s*/,""));  // nome negozio: colonna STORE DESCRIPTION del file, poi file target (D.t[sid].nm), poi anagrafica già caricata
           newNw=String(r[c4060N]||"").trim().toUpperCase()==="NO"?1:0;
           newBn=cBonN>=0?(parseFloat(r[cBonN])||0):0;
@@ -841,6 +844,7 @@ function loadAnagraficaUSA(file){
         if(isNewFmt){
           // dept: il nuovo formato non ha la colonna tipo negozio -> mantieni flag già noto
           if(STORE_FLAGS[si]&&STORE_FLAGS[si].usaDept)D.usa[matricola].isDept=true;
+          if(newTy)D.usa[matricola].ty=newTy;   // S = Store Sales, P = Personal Sales (colonna TYPE)
           D.usa[matricola].nw=newNw;   // 1 = 40/60 NO -> nuova logica (da consuntivo set-2026)
           if(newNw){D.usa[matricola].bn=newBn;D.usa[matricola].qb=newQb;nNoRule++;if(newQb>0)nQuarterly++;}
         }

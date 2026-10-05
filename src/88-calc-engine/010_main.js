@@ -33,6 +33,13 @@ function usaNewActive(){
   if(PRIZE_MODE!=="mensile")return false;
   return (CFG_YEAR>USA_NEW_START_YEAR)||(CFG_YEAR===USA_NEW_START_YEAR&&CFG_MONTH>=USA_NEW_START_MONTH);
 }
+// Base del premio. Da set-2026 la colonna TYPE del file USA (ud.ty: "S" Store Sales / "P" Personal Sales) decide per ogni riga
+// (sostituisce toggle per ruolo e Dept); senza TYPE (anagrafica vecchio formato) resta ruolo/Dept.
+function usaUseStore(e,ud,rp){
+  if(usaNewActive()&&(ud.ty==="S"||ud.ty==="P"))return ud.ty==="S";
+  var dept=ud.isDept||(STORE_FLAGS[String(e.si)]&&STORE_FLAGS[String(e.si)].usaDept);
+  return !!(rp.useStore||dept);
+}
 function usaIsNewRule(e){var ud=(D.usa||{})[e.m];return !!(ud&&ud.nw===1&&usaNewActive());}
 function usaMonthKey(y,m){return y+"-"+(m<10?"0"+m:m);}
 // Mesi {y,m} del trimestre che contiene (y,m); null se prima dell'avvio (set-2026).
@@ -89,12 +96,14 @@ function usaNewDetail(e){
   var storeHit=(tg.to>0&&cn.sc)?storePct>=PARAMS.bdg100:(ud.sb===1);
   if(MODE==="consuntivo"&&e.ov_b100==="SI")storeHit=true;
   var cm=ud.cm||0,bn=ud.bn||0;
+  var useStore=ud.ty==="S";           // Store Sales: base = fatturato negozio, niente rate bonus al target
+  if(useStore)bn=0;
   var rate=(storeHit&&bn>0)?bn:cm;
-  var base=ud.ps||0;
+  var base=useStore?(MODE==="preventivo"?(tg.to||0):(cn.sc||0)):(ud.ps||0);
   var monthly=Math.round(base*rate*100)/100;
   var qb=ud.qb||0,qi=qb>0?usaQuarterInfo(sid):null,quarterly=0;
   if(qi&&qi.hit)quarterly=Math.round(qi.sc*qb*100)/100;
-  return {cm:cm,bn:bn,rate:rate,base:base,storeHit:storeHit,storePct:storePct,esP:esP,monthly:monthly,qb:qb,qi:qi,quarterly:quarterly,prize:Math.round((monthly+quarterly)*100)/100};
+  return {cm:cm,bn:bn,rate:rate,base:base,useStore:useStore,storeHit:storeHit,storePct:storePct,esP:esP,monthly:monthly,qb:qb,qi:qi,quarterly:quarterly,prize:Math.round((monthly+quarterly)*100)/100};
 }
 
 // calcUSA: commission% from anagrafica (ud.cm). Base from role toggle (store or personal).
@@ -115,8 +124,7 @@ function calcUSA(e){
   var job=e.f||e.j||"";
   var rp=USA_P[job]||{noTargetMult:0.4,targetMult:1.0,useStore:false};
   // USA Dept Stores: forza store sales a prescindere dal job title
-  var usaDept=!usaNewActive()&&(ud.isDept||(STORE_FLAGS[String(e.si)]&&STORE_FLAGS[String(e.si)].usaDept)); // da set-2026 niente override Dept (base per ruolo: SM/VSM/STK negozio, gli altri vendite personali)
-  var useStoreSales=rp.useStore||usaDept;
+  var useStoreSales=usaUseStore(e,ud,rp);
 
   var base;
   if(useStoreSales){
