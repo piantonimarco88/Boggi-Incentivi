@@ -19,8 +19,10 @@ function rSourcesFcvm(){
     h+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#d4a94e;color:#a07d2c" title="Formato QWRT per field_coach: un solo valore acc/vel/valore per l\'intera area, usato per il premio Area">&#128202; SAS Area (Field Coach)<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_sas_area" style="display:none" onchange="loadFcVmFile(this)"></label>';
     h+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#d4a94e;color:#a07d2c" title="Formato QWRT per store_id: usato solo per il premio dei negozi BDG extra dei FC/VM">&#128202; SAS Negozi (per BDG extra)<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_sas" style="display:none" onchange="loadFcVmFile(this)"></label>';
   }
+  h+=manEmpButtonHtml();
   h+='<button onclick="clearFcVmData()" class="exp-btn btn-red">&#128465; Reset Dati</button>';
   h+='</div>';
+  h+=manEmpListHtml();
   h+='<div style="font-size:9px;color:#a09a92;margin-top:8px;line-height:1.6">';
   h+='<b>Anagrafica FC/VM:</b> store_id, nome store, matricola, nome, cognome, ruolo (FC/VM), valuta, premio massimale &mdash; una riga per store/dipendente. Il mapping negozi viene derivato automaticamente. &nbsp;&#183;&nbsp; ';
   h+='<b>Target/Risultati:</b> store_id, fatturato EUR, SY CY, SY LY</div></div>';
@@ -211,6 +213,8 @@ function loadFcVmAnagrafica(file){
       if(json[hdrRow]){var _lastCol=json[hdrRow].length-1;if(_lastCol>_maxKnown)hdr.cf=_lastCol;}
     }
 
+    // Salva i FC/VM inseriti a mano (riapplicati in applyFcVmAnagrafica)
+    if(!window._pendingFcVmManual||!window._pendingFcVmManual.length)window._pendingFcVmManual=Object.keys(FC_EMP).map(function(k){return FC_EMP[k]}).filter(function(e){return e&&e.man&&e.manSpec});
     // Resetta strutture FC+VM
     FC_EMP={};FC_MAP={};
 
@@ -368,12 +372,14 @@ function applyFcVmAnagrafica(){
   FC_EMP={};FC_MAP={};
   list.forEach(function(e){FC_EMP[e.m]=e;});
   Object.keys(map).forEach(function(sid){FC_MAP[sid]=map[sid];});
+  // Rimette i FC/VM inseriti a mano (se la matricola non e' nel nuovo file)
+  var nManFc=manEmpReapplyFcvm(window._pendingFcVmManual);window._pendingFcVmManual=null;
   // Propaga i cambi da FC_TARGETS (se già importato prima dell'anagrafica)
   syncFcExRates();
   // Aggiorna header contatore
   updateHeaderCount();
   rC();rA();rSources();autoSave();
-  alert('✅ Anagrafica FC+VM applicata: '+list.length+' dipendenti, '+Object.keys(FC_MAP).length+' negozi.');
+  alert('✅ Anagrafica FC+VM applicata: '+list.length+' dipendenti, '+Object.keys(FC_MAP).length+' negozi.'+(nManFc?'\n('+nManFc+' inseriti manualmente mantenuti)':''));
 }
 
 function downloadFcVmImportLog(){

@@ -16,6 +16,7 @@ function rSources(){try{
   sh+='</div>';
   sh+='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">';
   sh+='<label class="exp-btn btn-green" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128101; Carica Anagrafica Excel<input type="file" accept=".xlsx,.xlsm,.xls" id="loadAnagrafica" style="display:none"></label>';
+  sh+=manEmpButtonHtml();
   if(REGION==="international"&&PRIZE_MODE==="mensile")sh+='<label class="exp-btn btn-amber" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#127482;&#127480; Carica Anagrafica USA Excel<input type="file" accept=".xlsx,.xlsm,.xls" id="loadAnagraficaUSA" style="display:none"></label>';
   if(REGION==="international"&&(PRIZE_MODE==="mensile"||PRIZE_MODE==="seasonal"))sh+='<label class="exp-btn btn-blue" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="Stessa anagrafica FC+VM — estrae solo il mapping Store→FC per popolare le email FC dei dipendenti">&#128101; Mapping FC (xlsx)<input type="file" accept=".xlsx,.xlsm,.xls" id="loadFcMapping" style="display:none"></label>';
   sh+='<label class="exp-btn primary" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">&#128194; Carica Excel Target<input type="file" accept=".xlsx,.xlsm,.xls,.csv" id="loadTarget" style="display:none"></label>';
@@ -26,6 +27,7 @@ function rSources(){try{
   sh+='<button class="exp-btn btn-red" onclick="resetAllData()">&#128465; Reset Dati</button>';
   sh+='</div>';
   sh+='<div style="font-size:9px;color:#a09a92;margin-top:6px">Anagrafica: carica il file con matricola, cognome, nome, negozio, ruolo, stipendio. Auto-scan: cerca i dati necessari in tutti i fogli.<br>🇺🇸 Anagrafica USA: formato Estrazione_Piantoni — col. A=StoreID, B=Store, C=Nome, D=Cognome, E=Job, G=Commission%, I=Tipo negozio. Righe con 0% escluse automaticamente. Colonna "Email" (se presente, rilevata per header) popola la mail diretta del dipendente per il tab Distribuzione.</div>';
+  sh+=manEmpListHtml();
   sh+='<div id="scanResults"></div></div>';
 
   // Shared checks used in both seasonal and mensile blocks

@@ -215,12 +215,13 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 /*BUNDLE_INSERT:60-fcvm-state*/
 /*BUNDLE_INSERT:70-fcvm-calc*//*BUNDLE_INSERT:80-roles-config*/var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.82'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.83'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.83: Fonti Dati — nuovo pulsante «Aggiungi dipendente»: inserimento manuale di un dipendente (Mensile/Seasonal) o di un FC/VM (FC+VM) con i soli dati minimi, senza reimportare l'anagrafica. Gli inseriti a mano restano elencati (✕ per rimuoverli) e vengono mantenuti anche dopo un nuovo import",
   "9.82: Premi USA — la base del premio da settembre 2026 segue la colonna TYPE del file USA_Commissions_MASTER: Store Sales (Dept store) = fatturato negozio senza rate bonus; Personal Sales = vendite personali (anche per SM/VSM/STK con 40/60 YES), al posto del toggle per ruolo/Dept. Nome negozio dalla colonna Store Description del file (in alternativa dal file target)",
   "9.81: Premi USA — nuova logica da consuntivo settembre 2026 (file USA_Commissions_MASTER): 40/60 = YES invariato; 40/60 = NO → premio = vendite personali × COMMISSION RATE, che diventa BONUS-STORE TARGET se il negozio raggiunge il target (esubero mese prec. incluso). Premio trimestrale (set–nov, dic–feb, …) = % del fatturato negozio dei 3 mesi se raggiunto il target dei 3 mesi, erogato nel 3° mese. Import anagrafica USA riconosce il nuovo formato; storico mensile fatturato/target in Configurazione; lettera, motivazioni ed export Excel aggiornati; da settembre 2026 non c'è più distinzione Dept Store per gli USA (SA/SSA/JSA dei Dept ora su vendite personali); il nome negozio USA viene letto dalla colonna STORE DESCRIPTION del file USA (in alternativa dal file target)",
   "9.80: Coefficiente Inventari — esclusi i negozi/dipendenti USA (a loro non si applica): niente riduzione nel calcolo, niente box nella lettera, niente coefficiente in tabella Calcolo Premi; i negozi USA nel file inventari vengono ignorati all'import",
@@ -319,7 +320,7 @@ var DATA_HINTS={
 
 var LOAD_RESULTS={}; // id -> {found:bool, sheet:string, cols:[], rows:int}
 
-/*BUNDLE_INSERT:32-import-xlsx*//*BUNDLE_INSERT:34-render-sources*/// ── Fonti Dati ────────────────────────────────────────────────
+/*BUNDLE_INSERT:32-import-xlsx*//*BUNDLE_INSERT:36-manual-employee*//*BUNDLE_INSERT:34-render-sources*/// ── Fonti Dati ────────────────────────────────────────────────
 /*BUNDLE_INSERT:99b-fcvm-sources*/// ── Tab Aggiunte FC+VM ───────────────────────────────────────────────────
 /*BUNDLE_INSERT:99c-render-fcvm-aggiunte*/
 /*BUNDLE_INSERT:49-monitor*/

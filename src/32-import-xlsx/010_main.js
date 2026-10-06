@@ -578,6 +578,8 @@ function applyImportedAnagrafica(){
   if(!confirm("Sostituire l'anagrafica con "+window._pendingImport.length+" dipendenti?\n\nI dati di target fatturato, consuntivo e KPI verranno azzerati.\nDovrai ricaricarli per "+getMonthYearLabel()+"."))return;
 
   var oldLen=E.length;
+  // Dipendenti inseriti a mano: vengono rimessi dopo l'import (se la matricola non e' nel file)
+  var manualEmps=E.filter(function(e){return e.man});
   // Replace E array
   E.length=0;
   window._pendingImport.forEach(function(emp){E.push(emp)});
@@ -635,9 +637,11 @@ function applyImportedAnagrafica(){
     dup2Count++;
   });
   window._pendingDuplicates=null;
+  var manCount=manEmpReapplyE(manualEmps);
   // Rebuild all tabs
+  updateHeaderCount();
   rC();rA();rSources();rDist();rAgg();rT();autoSave();
-  alert("Anagrafica aggiornata: "+E.length+" dipendenti"+(dup2Count>0?" (di cui "+dup2Count+" secondo-negozio)":"")+" (precedenti: "+oldLen+").\n\nTarget, consuntivo e KPI azzerati. Ricarica i dati per "+getMonthYearLabel()+".");
+  alert("Anagrafica aggiornata: "+E.length+" dipendenti"+(dup2Count>0?" (di cui "+dup2Count+" secondo-negozio)":"")+(manCount>0?" (di cui "+manCount+" inseriti manualmente mantenuti)":"")+" (precedenti: "+oldLen+").\n\nTarget, consuntivo e KPI azzerati. Ricarica i dati per "+getMonthYearLabel()+".");
 }
 
 // ── IMPORT MAPPING FC PER MODALITÀ MENSILE INTERNAZIONALE ───────────────────
