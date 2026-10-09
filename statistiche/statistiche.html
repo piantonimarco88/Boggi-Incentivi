@@ -126,7 +126,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 .b4{background:#dcfce7;color:#16a34a}
 .b5{background:#f3e8ff;color:#9333ea;border:1px solid #d8b4fe}
 .bjob{background:#f1f5f9;color:#475569;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600}
-.sas-bar{width:46px;height:5px;border-radius:3px;background:#eceef3;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:6px}
+.sas-bar{width:34px;height:5px;border-radius:3px;background:#eceef3;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:5px}
 .sas-bar>span{display:block;height:100%;border-radius:3px}
 .sas-bar.good>span{background:#22c55e}.sas-bar.warn>span{background:#f59e0b}.sas-bar.bad>span{background:#ef4444}
 .sas-esito{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
@@ -137,7 +137,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 .sas-bdg b{font-size:12.5px}.sas-bdg small{font-size:9.5px;color:#999}
 .sas-bdg.hi b{color:#16a34a}.sas-bdg.mid b{color:#b45309}.sas-bdg.lo b{color:#dc2626}
 .sas-bdg-wrap{display:inline-flex;flex-direction:column;align-items:flex-end;gap:4px}
-.sas-bdg-dots{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:2px;max-width:55px;cursor:default;position:relative}
+.sas-bdg-dots{display:grid;grid-template-columns:repeat(6,7px);justify-content:end;gap:2px;width:52px;min-width:52px;cursor:default;position:relative}
 .sas-bdg-dots::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);right:0;background:#1a1a2e;color:#fff;font-size:10px;font-weight:400;line-height:1.6;padding:7px 10px;border-radius:7px;white-space:pre-wrap;width:200px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:999;text-align:left}
 .sas-bdg-dots:hover::after{opacity:1}
 .sas-bdg-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0}
@@ -5301,7 +5301,7 @@ function sasParachute(r,view,storeRows){
       if(!s||!(s.targetQty>0)||s.resultQty==null)return nd('Solo dept store ('+sids.length+'): Qty mancante per il negozio '+sid+' nel file Negozi del mese');
       tq+=s.targetQty;rq+=s.resultQty;
     }
-    return{ok:rq>=tq,kind:'qty',tip:'Solo dept store: Qty area '+rq+' / target '+tq+' ('+sids.length+' negozi)'};
+    return{ok:rq>=tq,kind:'qty',res:rq,tgt:tq,tip:'Solo dept store: Qty area '+rq+' / target '+tq+' ('+sids.length+' negozi)'};
   }
   // FC/VM: i JSON più vecchi non hanno syLastYear, ma targetSY è già l'SY LY d'area (stesso valore
   // che l'app esporta in entrambi i campi, vedi exportStatsJsonFcvm).
@@ -5404,11 +5404,22 @@ function renderSas(){
       }
       return '<span class="dash" title="Dept store: dato QTY mancante o incompleto per questo negozio nel file SAS.">—</span>';
     }
+    // FC/VM che gestiscono SOLO dept store: niente SY d'area → mostro la Qty d'area (Σ risultato, delta
+    // vs Σ target), come per i singoli dept store; il badge Paracadute accanto ne è l'esito.
+    if(sasView==='fcvm'){
+      const p=sasParachute(r,'fcvm',parStoreRows);
+      if(p.kind==='qty'){
+        const d=p.res-p.tgt;
+        return p.res+' <small style="color:'+(d>=0?'#16a34a':'#dc2626')+'" title="Target QTY area: '+p.tgt+'">('+(d>=0?'+':'')+d+')</small>';
+      }
+    }
     if(r.resultSY==null)return '<span class="dash">—</span>';
     const rs=r.resultSY;
-    if(r.syLastYear!=null){
-      const d=rs-r.syLastYear;
-      return rs.toFixed(1)+' <small style="color:'+(d>=0?'#16a34a':'#dc2626')+'" title="Anno precedente: '+r.syLastYear.toFixed(1)+'">('+(d>=0?'+':'')+d.toFixed(1)+')</small>';
+    // FC/VM: nei JSON senza syLastYear l'SY LY d'area è in targetSY (stesso fallback del badge Paracadute)
+    const ly=r.syLastYear!=null?r.syLastYear:(sasView==='fcvm'&&r.targetSY>0?r.targetSY:null);
+    if(ly!=null){
+      const d=rs-ly;
+      return rs.toFixed(1)+' <small style="color:'+(d>=0?'#16a34a':'#dc2626')+'" title="Anno precedente: '+ly.toFixed(1)+'">('+(d>=0?'+':'')+d.toFixed(1)+')</small>';
     }
     return rs.toFixed(1)+' <small style="color:#999" title="SY anno precedente non disponibile per questo negozio">(n/d)</small>';
   };
@@ -5433,7 +5444,7 @@ function renderSas(){
   const cols=identCols.concat([
     {label:'Target',align:'right',filter:'none'},{label:'Consuntivo',align:'right',filter:'none'},{label:'Esub. prec.',align:'right',filter:'none'},
     {label:'SY/QTY <span class="info-tip down" data-tip="Shopper Yield vs anno precedente (negozi normali) o QTY vs target (dept store, in pezzi).&#10;Il colore riflette il vero confronto usato per il salvagente 60% del premio BDG (verificato sui dati reali). Se manca lo storico anno precedente mostra (n/d) invece di un colore indovinato.">i</span>',align:'right',filter:'none'},
-    {label:'Paracadute <span class="info-tip down" data-tip="Paracadute (salvagente 60%) sulle vendite: raggiunto o no.&#10;Dept store: Qty ≥ target Qty. Negozi normali: SY &gt; anno precedente.&#10;FC/VM: SY area &gt; anno precedente; se gestiscono SOLO dept store: Qty area (somma Qty ≥ somma target Qty).&#10;n/d = dato mancante nei file caricati. Passa il mouse sul badge per i valori.">i</span>',filter:'select'},
+    {label:'Paracadute <span class="info-tip down" data-tip="Paracadute (salvagente 60%) sulle vendite: raggiunto o no.&#10;Dept store: Qty ≥ target Qty. Negozi normali: SY &gt; anno precedente.&#10;FC/VM: SY area &gt; anno precedente; se gestiscono SOLO dept store: Qty area (somma Qty ≥ somma target Qty).&#10;n/d = dato mancante nei file caricati. Passa il mouse sul badge per i valori.">i</span>',filter:'none'},
     {label:'% no SAS',align:'right',filter:'none'},{label:'Valore SAS',align:'right',filter:'none'},
     {label:'Ricon.',align:'right',filter:'none'},{label:'SAS prec.',align:'right',filter:'none'},{label:'SAS usata',align:'right',filter:'none'},
     {label:'Applicato',align:'right',filter:'none'},{label:'SAS succ.',align:'right',filter:'none'},{label:'% finale',align:'right',filter:'none'},
