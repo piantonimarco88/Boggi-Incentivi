@@ -2069,6 +2069,9 @@ function refresh(){
   if(document.getElementById('tabSal').style.display!=='none'){popSalFilters();renderSal();}
   if(document.getElementById('tabWhatif').style.display!=='none'){popWhatifFilters();renderWhatif();}
   if(document.getElementById('tabAlert').style.display!=='none'){popAlertFilters();renderAlert();}
+  // SAS→Fatturato: il menu "Storico BDG Da/A" e la colonna BDG stor. dipendono da allData; senza questo
+  // caricando un xlsx premi mentre il tab è aperto restavano fermi all'ultimo mese precedente.
+  try{if(document.getElementById('tabSas').style.display!=='none')renderSas();}catch(e){}
 }
 
 // ─── MULTI-SELECT HELPERS ─────────────────────────────────────
@@ -5140,7 +5143,11 @@ function sasPopulateBdgPeriod(){
   if(!fromSel||!toSel)return;
   const keys=[...new Set(allData.filter(r=>!isSemRow(r)).map(r=>r.monthKey||0).filter(Boolean))].sort((a,b)=>a-b);
   if(!keys.length){fromSel.innerHTML=toSel.innerHTML='<option value="">—</option>';return;}
-  const keepFrom=+fromSel.value,keepTo=+toSel.value;
+  const keepFrom=+fromSel.value;
+  // "A" era sull'ultimo mese disponibile → segue il nuovo ultimo mese (es. dopo aver caricato il consuntivo
+  // successivo); se l'utente l'aveva portato su un mese precedente, la sua scelta resta.
+  const prevLast=(toSel.options&&toSel.options.length)?+toSel.options[toSel.options.length-1].value:0;
+  const keepTo=(+toSel.value===prevLast)?0:+toSel.value;
   const opts=keys.map(k=>'<option value="'+k+'">'+mkLabel(k)+'</option>').join('');
   fromSel.innerHTML=opts;toSel.innerHTML=opts;
   const defFromIdx=Math.max(0,keys.length-6); // default: ultimi 6 mesi disponibili
