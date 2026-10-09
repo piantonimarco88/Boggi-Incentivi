@@ -131,6 +131,8 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 .sas-bar.good>span{background:#22c55e}.sas-bar.warn>span{background:#f59e0b}.sas-bar.bad>span{background:#ef4444}
 .sas-esito{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
 .sas-esito.full{background:#e9f7ee;color:#16a34a}.sas-esito.ridotto{background:#fff7e6;color:#b45309}.sas-esito.none{background:#f1f5f9;color:#94a3b8}
+.sas-par{display:inline-flex;align-items:center;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap;cursor:help}
+.sas-par.ok{background:#e9f7ee;color:#16a34a}.sas-par.ko{background:#fdecec;color:#dc2626}
 .sas-bdg{display:inline-flex;flex-direction:column;align-items:flex-end;line-height:1.15}
 .sas-bdg b{font-size:12.5px}.sas-bdg small{font-size:9.5px;color:#999}
 .sas-bdg.hi b{color:#16a34a}.sas-bdg.mid b{color:#b45309}.sas-bdg.lo b{color:#dc2626}
@@ -5261,6 +5263,52 @@ function sasPopulateAssignFilter(){
   const opts=Object.keys(people).sort((a,b)=>a.localeCompare(b)).map(n=>({v:n,l:n+' ('+[...people[n]].sort().join('/')+')'}));
   setMsOpts('sas-assign',opts,renderSas);
 }
+// ── Paracadute (salvagente 60% del premio BDG): raggiunto o no ───────────────────────────────
+// Negozi dept store → Qty consuntivo ≥ target Qty (stessa formula di parachuteOk nell'app, tab
+// Calcolo). Negozi normali → SY > SY anno precedente. FC/VM → SY area vs anno precedente (come
+// syOk dell'app), TRANNE chi gestisce SOLO dept store: lì SY non esiste (footfall assente) e il
+// paracadute è la Qty d'area = Σ Qty consuntivo ≥ Σ target Qty dei suoi dept store (regola
+// concordata 09/10/2026; indicatore informativo, il calcolo del premio FC nell'app resta su SY).
+// ok: true/false, oppure null = dato mancante (mai indovinato: "n/d" invece di un Sì/No inventato).
+function sasStoreRowsForMonth(mk){
+  const m={};
+  Object.values(sasFiles).filter(f=>f.kind==='negozi'&&f.period.monthKey===mk).forEach(f=>f.rows.forEach(r=>{m[String(r.sid)]=r;}));
+  return m;
+}
+// Store ID assegnati a una persona dalla mappa negozi↔FC/VM. Il JSON scrive la sotto-area come
+// "NOME_2", la mappa come "Nome · area 2" (vedi parseStoreAssignRows): qui le si riconduce alla stessa chiave.
+function sasAssignedStores(name,role){
+  const mt=String(name||'').trim().match(/^(.*?)(?:_(\d+))?$/);
+  const want=mt[1].trim().toUpperCase()+(mt[2]?' · AREA '+mt[2]:'');
+  const key=role==='VM'?'vm':'fc';
+  return Object.keys(storeAssignMap).filter(sid=>((storeAssignMap[sid]||{})[key]||[]).some(n=>String(n).trim().toUpperCase()===want));
+}
+function sasParachute(r,view,storeRows){
+  const nd=tip=>({ok:null,kind:null,tip});
+  if(view==='negozi'){
+    if(isDeptStore(r.sid)){
+      if(r.targetQty>0&&r.resultQty!=null)return{ok:r.resultQty>=r.targetQty,kind:'qty',tip:'Qty '+r.resultQty+' / target '+r.targetQty};
+      return nd('Dept store: dato Qty mancante o incompleto nel file SAS');
+    }
+    if(r.resultSY!=null&&r.syLastYear>0)return{ok:r.resultSY>r.syLastYear,kind:'sy',tip:'SY '+r.resultSY.toFixed(1)+' vs anno precedente '+r.syLastYear.toFixed(1)};
+    return nd('SY anno precedente non disponibile');
+  }
+  const sids=sasAssignedStores(r.name,r.role);
+  if(sids.length&&sids.every(isDeptStore)){
+    let tq=0,rq=0;
+    for(const sid of sids){
+      const s=(storeRows||{})[sid];
+      if(!s||!(s.targetQty>0)||s.resultQty==null)return nd('Solo dept store ('+sids.length+'): Qty mancante per il negozio '+sid+' nel file Negozi del mese');
+      tq+=s.targetQty;rq+=s.resultQty;
+    }
+    return{ok:rq>=tq,kind:'qty',tip:'Solo dept store: Qty area '+rq+' / target '+tq+' ('+sids.length+' negozi)'};
+  }
+  // FC/VM: i JSON più vecchi non hanno syLastYear, ma targetSY è già l'SY LY d'area (stesso valore
+  // che l'app esporta in entrambi i campi, vedi exportStatsJsonFcvm).
+  const ly=r.syLastYear!=null?r.syLastYear:r.targetSY;
+  if(r.resultSY!=null&&ly>0)return{ok:r.resultSY>ly,kind:'sy',tip:'SY area '+r.resultSY.toFixed(1)+' vs anno precedente '+ly.toFixed(1)};
+  return nd('SY area anno precedente non disponibile');
+}
 function renderSas(){
   sasPopulateMonths();sasPopulateBdgPeriod();sasPopulateFilters();
   const file=sasCurrentFile();
@@ -5364,6 +5412,12 @@ function renderSas(){
     }
     return rs.toFixed(1)+' <small style="color:#999" title="SY anno precedente non disponibile per questo negozio">(n/d)</small>';
   };
+  const parStoreRows=sasView==='fcvm'?sasStoreRowsForMonth(file.period.monthKey):null;
+  const parCell=r=>{
+    const p=sasParachute(r,sasView,parStoreRows), tip=agEsc(p.tip).replace(/"/g,'&quot;');
+    if(p.ok==null)return{disp:'<span class="dash" title="'+tip+'">n/d</span>',val:null};
+    return{disp:'<span class="sas-par '+(p.ok?'ok':'ko')+'" title="'+tip+'">'+(p.ok?'✓ Raggiunto':'✗ Non raggiunto')+'</span>',val:p.ok?1:0};
+  };
   const bdgCell=r=>{
     if(!r._bdg)return{disp:'<span class="dash">—</span>',val:-1};
     const h=r._bdg,cls=h.pct>=70?'hi':h.pct>=45?'mid':'lo';
@@ -5378,7 +5432,9 @@ function renderSas(){
     :[{label:'Nome',filter:'text'},{label:'Ruolo',filter:'select'},{label:'N. Negozi',align:'right',filter:'none'}];
   const cols=identCols.concat([
     {label:'Target',align:'right',filter:'none'},{label:'Consuntivo',align:'right',filter:'none'},{label:'Esub. prec.',align:'right',filter:'none'},
-    {label:'SY/QTY <span class="info-tip down" data-tip="Shopper Yield vs anno precedente (negozi normali) o QTY vs target (dept store, in pezzi).&#10;Il colore riflette il vero confronto usato per il salvagente 60% del premio BDG (verificato sui dati reali). Se manca lo storico anno precedente mostra (n/d) invece di un colore indovinato.">i</span>',align:'right',filter:'none'},{label:'% no SAS',align:'right',filter:'none'},{label:'Valore SAS',align:'right',filter:'none'},
+    {label:'SY/QTY <span class="info-tip down" data-tip="Shopper Yield vs anno precedente (negozi normali) o QTY vs target (dept store, in pezzi).&#10;Il colore riflette il vero confronto usato per il salvagente 60% del premio BDG (verificato sui dati reali). Se manca lo storico anno precedente mostra (n/d) invece di un colore indovinato.">i</span>',align:'right',filter:'none'},
+    {label:'Paracadute <span class="info-tip down" data-tip="Paracadute (salvagente 60%) sulle vendite: raggiunto o no.&#10;Dept store: Qty ≥ target Qty. Negozi normali: SY &gt; anno precedente.&#10;FC/VM: SY area &gt; anno precedente; se gestiscono SOLO dept store: Qty area (somma Qty ≥ somma target Qty).&#10;n/d = dato mancante nei file caricati. Passa il mouse sul badge per i valori.">i</span>',filter:'select'},
+    {label:'% no SAS',align:'right',filter:'none'},{label:'Valore SAS',align:'right',filter:'none'},
     {label:'Ricon.',align:'right',filter:'none'},{label:'SAS prec.',align:'right',filter:'none'},{label:'SAS usata',align:'right',filter:'none'},
     {label:'Applicato',align:'right',filter:'none'},{label:'SAS succ.',align:'right',filter:'none'},{label:'% finale',align:'right',filter:'none'},
     {label:'Esito',filter:'select'},{label:'BDG stor.',align:'right',filter:'none'},
@@ -5393,7 +5449,7 @@ function renderSas(){
       :[{disp:agEsc(r.name),val:r.name},{disp:'<span class="bjob">'+r.role+'</span>',val:r.role},{disp:r.nStores,val:r.nStores}];
     return {cells:identCells.concat([
       {disp:eu(r.target),val:r.target},{disp:eu(r.actual),val:r.actual},{disp:eud(sasEsubero(r)),val:sasEsubero(r)},
-      {disp:syCell(r),val:r.resultSY},
+      {disp:syCell(r),val:r.resultSY},parCell(r),
       {disp:bar(r.pctBase*100,pctCls(r.pctBase))+(r.pctBase*100).toFixed(1)+'%',val:r.pctBase},
       {disp:eu(r.sasValue),val:r.sasValue},{disp:Math.round(r.recPct)+'%',val:r.recPct},{disp:eud(r.esuberoSasPrec),val:r.esuberoSasPrec},{disp:eud(r.esuberoSasPrecUsed),val:r.esuberoSasPrecUsed},
       {disp:eud(r.applied),val:r.applied},{disp:eud(r.sasReserveNext),val:r.sasReserveNext},
@@ -5409,13 +5465,14 @@ function renderSas(){
 }
 function sasExport(){
   const file=sasCurrentFile();if(!file){alert('Nessun dato da esportare per questo mese/vista.');return;}
+  const parStoreRows=sasView==='fcvm'?sasStoreRowsForMonth(file.period.monthKey):null;
   const rows=file.rows.map(r=>{
-    const o={};
+    const o={}, par=sasParachute(r,sasView,parStoreRows);
     if(sasView==='negozi'){o['Store ID']=r.sid;o['Negozio']=r.name;}else{o['Nome']=r.name;o['Ruolo']=r.role;o['N. Negozi']=r.nStores;}
     return Object.assign(o,{'Target':Math.round(r.target),'Consuntivo':Math.round(r.actual),'Esub. prec.':Math.round(sasEsubero(r)||0),
       'Target SY':r.targetSY,'Risultato SY':r.resultSY,'SY anno prec.':r.syLastYear==null?'':r.syLastYear},
       sasView==='negozi'?{'Target QTY':r.targetQty==null?'':r.targetQty,'Risultato QTY':r.resultQty==null?'':r.resultQty}:{},
-      {'Salvagente 60% OK':r.parachuteOk==null?'':(r.parachuteOk?'Sì':'No'),
+      {'Salvagente 60% OK':par.ok==null?'':(par.ok?'Sì':'No'),'Criterio paracadute':par.kind==='qty'?'Qty':(par.kind==='sy'?'SY':''),'Dettaglio paracadute':par.tip,
       '% senza SAS':+((r.pctBase||0)*100).toFixed(1),'Valore SAS':Math.round(r.sasValue),
       'Riconosciuto %':r.recPct,'Esub. SAS prec.':Math.round(r.esuberoSasPrec||0),'Esub. SAS prec. usata':Math.round(r.esuberoSasPrecUsed||0),
       'Valore riconosciuto':Math.round(r.recValue),'Applicato':Math.round(r.applied),'Riserva SAS succ.':Math.round(r.sasReserveNext||0),
