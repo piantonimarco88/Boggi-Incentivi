@@ -215,12 +215,13 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 /*BUNDLE_INSERT:60-fcvm-state*/
 /*BUNDLE_INSERT:70-fcvm-calc*//*BUNDLE_INSERT:80-roles-config*/var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.86'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.87'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.87: FIX FC+VM — «Salva Tutti i PDF» / Stampa PDF: con un FC/VM a premio sospeso in elenco, i PDF successivi uscivano con la lettera del collega seguente (nome file di uno, contenuto di un altro, es. Tartaglione/Zenatti). Ora nome e contenuto coincidono sempre",
   "9.86: Calcolo Premi — nuova colonna PDF in fondo (Mensile, Seasonal e FC+VM): il bottone salva la lettera del singolo dipendente nella stessa cartella di «Salva Tutti i PDF» (percorso PDF di Configurazione, altrimenti la cartella scelta con «Salva Tutti i PDF», altrimenti la chiede una volta), con lo stesso nome file",
   "9.85: Banner \"Aggiornato a…\" — ora scorre se le novità sono lunghe, l'intestazione resta in alto e non esce più dallo schermo",
   "9.84: Aggiungi dipendente (internazionale) — l'ente si precompila dai colleghi dello stesso negozio e nel menu è indicata la lingua della lettera (prima un ente francese su un negozio tedesco dava la lettera in francese)",
@@ -331,7 +332,8 @@ var LOAD_RESULTS={}; // id -> {found:bool, sheet:string, cols:[], rows:int}
 var _glhfp=getLetterHtmlForPrint;
 getLetterHtmlForPrint=function(i){
   if(PRIZE_MODE==='fcvm'){
-    var pool=getFcVmPool(),e=pool[i];if(!e)return null;
+    // STESSO pool di getLetterMatricola/getLetterFilename (esclude i sospesi): con getFcVmPool() i PDF dopo un sospeso uscivano con il contenuto del collega successivo
+    var pool=getLetterPool(),e=pool[i];if(!e)return null;
     var lh=buildFcVmLetter(e);
     var css=document.querySelector('style')?document.querySelector('style').textContent:'';
     return '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'+css+
