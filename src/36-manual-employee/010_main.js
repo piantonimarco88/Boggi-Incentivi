@@ -24,6 +24,9 @@ function manEmpStoreHint(){
   if(!sid||!sn)return;
   var nm=_manStoreName(sid);
   if(nm&&!sn.getAttribute("data-edited"))sn.value=nm;
+  // Internazionale: precompila l'ente dai colleghi dello stesso negozio (determina valuta e lingua della lettera)
+  var en=document.getElementById("manEn");
+  if(en&&nm){for(var i=0;i<E.length;i++){if(String(E[i].si)===String(sid)&&E[i].en&&!E[i].man){en.value=String(E[i].en);break}}}
   if(hint)hint.innerHTML=nm?'<span style="color:#2d7a3a">Negozio già presente</span>':'<span style="color:#cf5b5b">Negozio non presente in anagrafica: indica il nome</span>';
 }
 
@@ -65,10 +68,11 @@ function manEmpOpen(){
       body+=_manFld('BDG lordo (€)',_manIn('manIb','es. 2500'));
       body+=_manFld('Gross salary (€)',_manIn('manRl','facoltativo'));
     }else{
-      body+=_manFld('Ente / valuta *',_manSel('manEn',[["","— scegli —"]].concat(Object.keys(ENTE_CU).map(function(k){return[k,k+" — "+ENTE_CU[k].cu]}))));
+      body+=_manFld('Ente / valuta *',_manSel('manEn',[["","— scegli —"]].concat(Object.keys(ENTE_CU).map(function(k){var t=D.tr&&D.tr[k];return[k,k+" — "+ENTE_CU[k].cu+(t&&t.l?" — lettera in "+t.l:"")]}))));
       body+=_manFld('Stipendio lordo * (valuta locale)',_manIn('manRl','es. 1800'));
       body+=_manFld('Budget (BDG)',_manIn('manIb','es. 2500'));
     }
+    if(!isIT)body+='<div style="flex-basis:100%;font-size:9px;color:#a09a92">L\'ente determina valuta e <b>lingua della lettera</b>: si precompila dai colleghi dello stesso negozio.</div>';
     body+='</div><div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px">';
     body+=_manFld('Email',_manIn('manMp','nome.cognome@boggi.com'),2);
     body+=_manFld('Email FC <span style="color:#a09a92">(vuoto = automatica)</span>',_manIn('manMf'),2);
