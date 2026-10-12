@@ -842,12 +842,13 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.84'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.85'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.85: Banner \"Aggiornato a…\" — ora scorre se le novità sono lunghe, l'intestazione resta in alto e non esce più dallo schermo",
   "9.84: Aggiungi dipendente (internazionale) — l'ente si precompila dai colleghi dello stesso negozio e nel menu è indicata la lingua della lettera (prima un ente francese su un negozio tedesco dava la lettera in francese)",
   "9.83: Fonti Dati — nuovo pulsante «Aggiungi dipendente»: inserimento manuale di un dipendente (Mensile/Seasonal) o di un FC/VM (FC+VM) con i soli dati minimi, senza reimportare l'anagrafica. Gli inseriti a mano restano elencati (✕ per rimuoverli) e vengono mantenuti anche dopo un nuovo import",
   "9.82: Premi USA — la base del premio da settembre 2026 segue la colonna TYPE del file USA_Commissions_MASTER: Store Sales (Dept store) = fatturato negozio senza rate bonus; Personal Sales = vendite personali (anche per SM/VSM/STK con 40/60 YES), al posto del toggle per ruolo/Dept. Nome negozio dalla colonna Store Description del file (in alternativa dal file target)",
@@ -1017,8 +1018,8 @@ function _showChangelogBanner(toVer){
     if(!items.length)return;
     var d=document.createElement("div");
     d.id="_changelogBanner";
-    d.style.cssText="position:fixed;bottom:18px;right:18px;max-width:340px;background:#2c2925;color:#f5f4f1;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.35);padding:14px 16px;z-index:99999;font-family:inherit;font-size:12px;line-height:1.5";
-    var h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+    d.style.cssText="position:fixed;bottom:18px;right:18px;max-width:340px;max-height:calc(100vh - 100px);overflow-y:auto;background:#2c2925;color:#f5f4f1;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.35);padding:0 16px 14px;z-index:99999;font-family:inherit;font-size:12px;line-height:1.5";
+    var h='<div style="position:sticky;top:0;background:#2c2925;display:flex;justify-content:space-between;align-items:center;padding:14px 0 8px">';
     h+='<div style="font-weight:700;color:#c9a96e;font-size:12px">✨ Aggiornato a v'+esc(toVer)+'</div>';
     h+='<button id="_changelogBannerClose" style="background:none;border:none;color:#a09a92;font-size:15px;cursor:pointer;line-height:1;padding:0 0 0 8px" title="Chiudi">&#10005;</button>';
     h+='</div>';

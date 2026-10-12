@@ -98,8 +98,8 @@ function _showChangelogBanner(toVer){
     if(!items.length)return;
     var d=document.createElement("div");
     d.id="_changelogBanner";
-    d.style.cssText="position:fixed;bottom:18px;right:18px;max-width:340px;background:#2c2925;color:#f5f4f1;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.35);padding:14px 16px;z-index:99999;font-family:inherit;font-size:12px;line-height:1.5";
-    var h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+    d.style.cssText="position:fixed;bottom:18px;right:18px;max-width:340px;max-height:calc(100vh - 100px);overflow-y:auto;background:#2c2925;color:#f5f4f1;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.35);padding:0 16px 14px;z-index:99999;font-family:inherit;font-size:12px;line-height:1.5";
+    var h='<div style="position:sticky;top:0;background:#2c2925;display:flex;justify-content:space-between;align-items:center;padding:14px 0 8px">';
     h+='<div style="font-weight:700;color:#c9a96e;font-size:12px">✨ Aggiornato a v'+esc(toVer)+'</div>';
     h+='<button id="_changelogBannerClose" style="background:none;border:none;color:#a09a92;font-size:15px;cursor:pointer;line-height:1;padding:0 0 0 8px" title="Chiudi">&#10005;</button>';
     h+='</div>';
