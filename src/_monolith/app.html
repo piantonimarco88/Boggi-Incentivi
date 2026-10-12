@@ -215,12 +215,13 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 /*BUNDLE_INSERT:60-fcvm-state*/
 /*BUNDLE_INSERT:70-fcvm-calc*//*BUNDLE_INSERT:80-roles-config*/var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.87'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.88'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.88: FIX Visual In Store (mensile) — se a un negozio abbinato al Visual è stato attivato l'override manuale 100% o 60% (su tutto il personale del negozio), la riga del Visual di quel negozio viene pagata allo stesso modo. Prima valeva solo il flag sul dipendente Visual (es. Staub Lussemburgo: 1160 al 60% ma Visual a 0). Vale anche nella lettera",
   "9.87: FIX FC+VM — «Salva Tutti i PDF» / Stampa PDF: con un FC/VM a premio sospeso in elenco, i PDF successivi uscivano con la lettera del collega seguente (nome file di uno, contenuto di un altro, es. Tartaglione/Zenatti). Ora nome e contenuto coincidono sempre",
   "9.86: Calcolo Premi — nuova colonna PDF in fondo (Mensile, Seasonal e FC+VM): il bottone salva la lettera del singolo dipendente nella stessa cartella di «Salva Tutti i PDF» (percorso PDF di Configurazione, altrimenti la cartella scelta con «Salva Tutti i PDF», altrimenti la chiede una volta), con lo stesso nome file",
   "9.85: Banner \"Aggiornato a…\" — ora scorre se le novità sono lunghe, l'intestazione resta in alto e non esce più dallo schermo",

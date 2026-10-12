@@ -213,6 +213,9 @@ function _getValRaw(e,kpiKey){
         var _vla=Number(_vle2)||0;if(_vla<=0)return 0;
         if(e.ov_b100==="SI")return _vla;
         if(e.ov_rid==="SI")return Math.round(_vla*PARAMS.bdg60mult*100)/100;
+        var _sot=storeOvTier(sid);
+        if(_sot==="full")return _vla;
+        if(_sot==="rid")return Math.round(_vla*PARAMS.bdg60mult*100)/100;
         if(storePct>=PARAMS.bdg100)return _vla;
         if(isRidottoStore(sid))return Math.round(_vla*PARAMS.bdg60mult*100)/100;
         return 0;
@@ -225,6 +228,10 @@ function _getValRaw(e,kpiKey){
         if(e.ov_rid==="SI"){_vtot+=Math.round(_amt*PARAMS.bdg60mult*100)/100;return;}
         if(!_esid&&_nEmpty!==1)return; // store ambiguo, non determinabile → 0 (comportamento invariato)
         var _ridSid=_esid||sid;
+        // Override manuale del NEGOZIO abbinato alla riga (tutto il suo personale forzato 100%/60%)
+        var _sot2=storeOvTier(_ridSid);
+        if(_sot2==="full"){_vtot+=_amt;return;}
+        if(_sot2==="rid"){_vtot+=Math.round(_amt*PARAMS.bdg60mult*100)/100;return;}
         var _spct=storePctOf(_ridSid);
         if(_spct>=PARAMS.bdg100){_vtot+=_amt;}
         else if(isRidottoStore(_ridSid)){_vtot+=Math.round(_amt*PARAMS.bdg60mult*100)/100;}
@@ -245,6 +252,17 @@ function isRidottoStore(sid){
   if(dp)return (tg.qt||0)>0&&(cn.qc||0)>=(tg.qt||0);
   var syLy=MONTHLY_SYLY[sid]||0;
   return (cn.sy||0)>syLy&&syLy>0;
+}
+// storeOvTier: override manuale 100%/60% attivo su un negozio, per il Visual In Store.
+// I toggle (ov_b100/ov_rid) sono per dipendente: il negozio e' "forzato" se tutto il suo personale
+// (esclusi i sospesi) ha il flag. Misto 100%/60% -> 60% (prudente). Ritorna "full" | "rid" | "".
+function storeOvTier(sid){
+  var n=0,f=0,r=0,s=String(sid);
+  for(var i=0;i<E.length;i++){var x=E[i];if(String(x.si)!==s||x.ps==="SI")continue;n++;if(x.ov_b100==="SI")f++;else if(x.ov_rid==="SI")r++;}
+  if(!n)return "";
+  if(f===n)return "full";
+  if(f+r===n)return "rid";
+  return "";
 }
 // isRidotto: true se l'employee riceve il premio BDG moltiplicato ridotto (60%)
 function isRidotto(e){
