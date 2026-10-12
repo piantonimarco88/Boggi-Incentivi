@@ -59,6 +59,7 @@ function rCSeasMid(){
   h+='<th class="r" style="color:#c9a96e">MID-SEASON</th>';
   h+='<th class="r" style="color:#5b6abf">TOT &euro;</th>';
   h+='<th style="cursor:default">Escl.</th>';
+  h+='<th style="cursor:default" title="Salva il PDF della lettera nella cartella dei PDF">PDF</th>';
   h+='</tr></thead><tbody>';
 
   fl.forEach(function(e){
@@ -121,6 +122,7 @@ function rCSeasMid(){
     h+='<td class="r mn b" style="color:'+(midVal>0?'#2c2925':'#b0a99f')+'">'+fc(midVal,cu)+'</td>';
     h+='<td class="r mn" style="color:#5b6abf">'+fc(Math.round(midVal*ex*100)/100,'EUR')+'</td>';
     h+='<td style="text-align:center"><button class="tb '+(excl?'x':'o')+' seas-excl" data-sm="'+esc(e.m)+'" style="width:28px;height:16px" onclick="event.stopPropagation()"><span class="tk" style="width:10px;height:10px;top:3px"></span></button></td>';
+    h+='<td style="text-align:center;padding:1px">'+pdfRowBtn(e,excl||e.ps==="SI")+'</td>';
     h+='</tr>';
   });
 
@@ -363,6 +365,7 @@ function rCSeasonal(){
   h+='<th class="r">TOTALE'+(!isP?' NETTO':'')+'</th>';
   h+='<th class="r" style="color:#5b6abf">TOT &euro;</th>';
   h+='<th style="cursor:default">Escl.</th>';
+  h+='<th style="cursor:default" title="Salva il PDF della lettera nella cartella dei PDF">PDF</th>';
   h+='</tr></thead><tbody>';
 
   fl.forEach(function(e){
@@ -476,6 +479,7 @@ function rCSeasonal(){
     h+='<td class="r mn b seas-tot-'+esc(e.m)+'" style="color:'+(tot>0?'#2c2925':'#b0a99f')+'">'+fc(tot,cu)+'</td>';
     h+='<td class="r mn" style="color:#5b6abf">'+fc(Math.round(tot*(e.ex||1)*100)/100,'EUR')+'</td>';
     h+='<td style="text-align:center"><button class="tb '+(excl?'x':'o')+' seas-excl" data-sm="'+esc(e.m)+'" style="width:28px;height:16px" onclick="event.stopPropagation()"><span class="tk" style="width:10px;height:10px;top:3px"></span></button></td>';
+    h+='<td style="text-align:center;padding:1px">'+pdfRowBtn(e,excl||e.ps==="SI")+'</td>';
     h+='</tr>';
   });
 

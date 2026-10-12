@@ -46,7 +46,7 @@ function rCFcvm(){
   h+='<div class="scroll-wrap"><table id="ctbl"><thead><tr>';
   h+=thS('Matr.')+thS('Cogn.','Cognome')+thS('Nome')+thS('Ruolo')+thS('Val.','Valuta')+thS('N.Store');
   var _fcSasCols=!isP&&typeof sasNewActive==='function'&&sasNewActive();
-  h+=thS('Target','Target EUR')+thS('Max Pr.','Max Premio')+(!isP?thS('Consunt.','Consuntivo EUR'):'')+(!isP?thS('Esub.','Esubero'):'')+(_fcSasCols?thS('SAS','Valore SAS')+thS('% Ricon.')+thS('Ricon.','Valore Ricon.'):'')+(!isP?thS('Cons. Tot.'):'')+thS('% Area')+thS('SY LY')+thS('SY CY')+thS('Pr. LC','Premio LC')+thS('Pr. EUR','Premio EUR')+thS('BDG')+thS('Esito')+(!isP&&typeof demoltActive==='function'&&demoltActive()?'<th style="cursor:default;color:#a07d2c" title="Coefficiente Inventari (solo FC): riduzione premio area da % invio/completamento inventari">Coef.</th>':'')+(!isP?'<th style="text-align:center;background:#e8f5e9;color:#2d7a3a;cursor:default;padding:4px 3px">100%</th>':'')+(!isP?'<th style="text-align:center;background:#fff3e0;color:#cf8b4e;cursor:default;padding:4px 3px">60%</th>':'')+'<th style="padding:4px 3px" title="Lingua">Ling.</th>'+(!isP?'<th style="text-align:center;cursor:default;min-width:40px">Mal.</th>':'')+'<th style="text-align:center;cursor:default;min-width:36px">Sosp.</th>';
+  h+=thS('Target','Target EUR')+thS('Max Pr.','Max Premio')+(!isP?thS('Consunt.','Consuntivo EUR'):'')+(!isP?thS('Esub.','Esubero'):'')+(_fcSasCols?thS('SAS','Valore SAS')+thS('% Ricon.')+thS('Ricon.','Valore Ricon.'):'')+(!isP?thS('Cons. Tot.'):'')+thS('% Area')+thS('SY LY')+thS('SY CY')+thS('Pr. LC','Premio LC')+thS('Pr. EUR','Premio EUR')+thS('BDG')+thS('Esito')+(!isP&&typeof demoltActive==='function'&&demoltActive()?'<th style="cursor:default;color:#a07d2c" title="Coefficiente Inventari (solo FC): riduzione premio area da % invio/completamento inventari">Coef.</th>':'')+(!isP?'<th style="text-align:center;background:#e8f5e9;color:#2d7a3a;cursor:default;padding:4px 3px">100%</th>':'')+(!isP?'<th style="text-align:center;background:#fff3e0;color:#cf8b4e;cursor:default;padding:4px 3px">60%</th>':'')+'<th style="padding:4px 3px" title="Lingua">Ling.</th>'+(!isP?'<th style="text-align:center;cursor:default;min-width:40px">Mal.</th>':'')+'<th style="text-align:center;cursor:default;min-width:36px">Sosp.</th>'+'<th style="text-align:center;cursor:default" title="Salva il PDF della lettera nella cartella dei PDF">PDF</th>';
   h+='</tr></thead><tbody>';
 
   fl.forEach(function(emp,i){
@@ -148,6 +148,7 @@ function rCFcvm(){
     if(!isP)h+='<td style="text-align:center" onclick="event.stopPropagation()"><span class="ml-dot '+mlc+'"></span>'+ml+'</td>';
     // Sospendi premio
     h+='<td style="text-align:center" onclick="event.stopPropagation()"><button class="tb '+(psOn?"x":"o")+'" data-fcvm-ps="'+esc(emp.m)+'" style="width:28px;height:16px" title="Sospendi premio" onclick="event.stopPropagation()"><span class="tk" style="width:10px;height:10px;top:3px"></span></button></td>';
+    h+='<td style="text-align:center;padding:1px" onclick="event.stopPropagation()">'+pdfRowBtn(emp,psOn)+'</td>';
     h+='</tr>';
   });
   h+='</tbody></table></div><div id="fcvmDetail"></div>';

@@ -842,12 +842,13 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.85'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.86'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.86: Calcolo Premi — nuova colonna PDF in fondo (Mensile, Seasonal e FC+VM): il bottone salva la lettera del singolo dipendente nella stessa cartella di «Salva Tutti i PDF» (percorso PDF di Configurazione, altrimenti la cartella scelta con «Salva Tutti i PDF», altrimenti la chiede una volta), con lo stesso nome file",
   "9.85: Banner \"Aggiornato a…\" — ora scorre se le novità sono lunghe, l'intestazione resta in alto e non esce più dallo schermo",
   "9.84: Aggiungi dipendente (internazionale) — l'ente si precompila dai colleghi dello stesso negozio e nel menu è indicata la lingua della lettera (prima un ente francese su un negozio tedesco dava la lettera in francese)",
   "9.83: Fonti Dati — nuovo pulsante «Aggiungi dipendente»: inserimento manuale di un dipendente (Mensile/Seasonal) o di un FC/VM (FC+VM) con i soli dati minimi, senza reimportare l'anagrafica. Gli inseriti a mano restano elencati (✕ per rimuoverli) e vengono mantenuti anche dopo un nuovo import",
@@ -2065,7 +2066,7 @@ function rC(){
   function thS(col,label){var ar=cSort.col===col?(cSort.dir>0?"\u25b2":"\u25bc"):"\u25b4";return'<th data-col="'+col+'"'+(cSort.col===col?' class="sorted"':"")+">"+label+' <span class="arrow">'+ar+"</span></th>"}
   h+='<div class="scroll-wrap"><table id="ctbl"><thead><tr>'+thS("m","Matr.")+thS("c","Cognome")+thS("n","Nome")+thS("si_m","Negozio")+thS("j","Ruolo")+'<th>Val.</th>'+thS("ml","Mal.")+'<th style="cursor:default;color:#c9a96e" title="Premio BDG moltiplicatore ridotto ('+Math.round(PARAMS.bdg60mult*100)+'%)">Rid.</th>';
   if(MODE==="consuntivo"&&typeof demoltActive==="function"&&demoltActive())h+='<th style="cursor:default;color:#a07d2c" title="Coefficiente Inventari (SM/VSM): riduzione premio da % completamento inventari + accuracy">Coef.</th>';
-  IT.forEach(function(it){if(it.k==="ra"&&!PARAMS.artEnabled)return;h+=thS(it.k,it.l)});h+='<th>Agg.</th>'+thS("tl","TOTALE")+(MODE==="consuntivo"?'<th style="cursor:default;font-size:9px;text-align:center" title="Riconosci premio BDG al 100%">100%</th><th style="cursor:default;font-size:9px;text-align:center" title="Riconosci Molt. ridotto ('+Math.round(PARAMS.bdg60mult*100)+'%)">B60</th><th style="cursor:default;font-size:9px;text-align:center" title="Riconosci Workgame ('+Math.round((PARAMS.workgamePct||0)*100)+'% BDG)">WG</th>':'')+' <th style="cursor:default">PS</th>'+(REGION!=="italia"?'<th style="cursor:default">&#128231;</th>':'')+"</tr></thead><tbody>";
+  IT.forEach(function(it){if(it.k==="ra"&&!PARAMS.artEnabled)return;h+=thS(it.k,it.l)});h+='<th>Agg.</th>'+thS("tl","TOTALE")+(MODE==="consuntivo"?'<th style="cursor:default;font-size:9px;text-align:center" title="Riconosci premio BDG al 100%">100%</th><th style="cursor:default;font-size:9px;text-align:center" title="Riconosci Molt. ridotto ('+Math.round(PARAMS.bdg60mult*100)+'%)">B60</th><th style="cursor:default;font-size:9px;text-align:center" title="Riconosci Workgame ('+Math.round((PARAMS.workgamePct||0)*100)+'% BDG)">WG</th>':'')+' <th style="cursor:default">PS</th>'+(REGION!=="italia"?'<th style="cursor:default">&#128231;</th>':'')+'<th style="cursor:default" title="Salva il PDF della lettera nella cartella dei PDF">PDF</th>'+"</tr></thead><tbody>";
   fl.forEach(function(e){var t=calcE(e),cu=e.cu||"EUR",ml=e.ml||0,sm=sickMult(ml),at=aggTotal(e.m);
     var mlc=ml===0?"ml-0":ml<SICK_50?"ml-0":ml<SICK_0?"ml-low":"ml-high";
     var psOn=e.ps==="SI";
@@ -2119,6 +2120,7 @@ function rC(){
     if(MODE==="consuntivo"){h+='<td style="text-align:center"><button class="tb '+(e.ov_b100==="SI"?"x":"o")+'" data-ov-b100="'+esc(e.m)+'" style="width:28px;height:16px" title="BDG 100%" onclick="event.stopPropagation()"><span class="tk" style="width:10px;height:10px;top:3px"></span></button></td>';h+='<td style="text-align:center"><button class="tb '+(e.ov_rid==="SI"?"x":"o")+'" data-ov-rid="'+esc(e.m)+'" style="width:28px;height:16px" title="BDG ridotto" onclick="event.stopPropagation()"><span class="tk" style="width:10px;height:10px;top:3px"></span></button></td>';h+='<td style="text-align:center"><button class="tb '+(e.ov_wg==="SI"?"x":"o")+'" data-ov-wg="'+esc(e.m)+'" style="width:28px;height:16px" title="Workgame" onclick="event.stopPropagation()"><span class="tk" style="width:10px;height:10px;top:3px"></span></button></td>';}
     h+='<td style="text-align:center"><button class="tb '+(psOn?"x":"o")+'" data-ps="'+esc(e.m)+'" style="width:28px;height:16px" onclick="event.stopPropagation()"><span class="tk" style="width:10px;height:10px;top:3px"></span></button></td>';
     if(REGION!=="italia")h+='<td style="text-align:center;padding:1px">'+(psOn?'<span style="color:#6b6560;font-size:10px" title="Premio sospeso">—</span>':(e.mp&&e.mp.indexOf("@")>0?'<button class="exp-btn" onclick="event.stopPropagation();sendOneEmployeeMail(\''+esc(e.m)+'\')" style="padding:2px 7px;font-size:11px;min-width:0" title="Apri email per '+esc(e.n)+'">&#128231;</button>':'<span style="color:#6b6560;font-size:10px">—</span>'))+'</td>';
+    h+='<td style="text-align:center;padding:1px">'+pdfRowBtn(e,psOn)+'</td>';
     h+="</tr>"});
   h+="</tbody></table></div><div id='cd'></div>";
   document.getElementById("p0").innerHTML=h;
@@ -5599,6 +5601,7 @@ function rCSeasMid(){
   h+='<th class="r" style="color:#c9a96e">MID-SEASON</th>';
   h+='<th class="r" style="color:#5b6abf">TOT &euro;</th>';
   h+='<th style="cursor:default">Escl.</th>';
+  h+='<th style="cursor:default" title="Salva il PDF della lettera nella cartella dei PDF">PDF</th>';
   h+='</tr></thead><tbody>';
 
   fl.forEach(function(e){
@@ -5661,6 +5664,7 @@ function rCSeasMid(){
     h+='<td class="r mn b" style="color:'+(midVal>0?'#2c2925':'#b0a99f')+'">'+fc(midVal,cu)+'</td>';
     h+='<td class="r mn" style="color:#5b6abf">'+fc(Math.round(midVal*ex*100)/100,'EUR')+'</td>';
     h+='<td style="text-align:center"><button class="tb '+(excl?'x':'o')+' seas-excl" data-sm="'+esc(e.m)+'" style="width:28px;height:16px" onclick="event.stopPropagation()"><span class="tk" style="width:10px;height:10px;top:3px"></span></button></td>';
+    h+='<td style="text-align:center;padding:1px">'+pdfRowBtn(e,excl||e.ps==="SI")+'</td>';
     h+='</tr>';
   });
 
@@ -5903,6 +5907,7 @@ function rCSeasonal(){
   h+='<th class="r">TOTALE'+(!isP?' NETTO':'')+'</th>';
   h+='<th class="r" style="color:#5b6abf">TOT &euro;</th>';
   h+='<th style="cursor:default">Escl.</th>';
+  h+='<th style="cursor:default" title="Salva il PDF della lettera nella cartella dei PDF">PDF</th>';
   h+='</tr></thead><tbody>';
 
   fl.forEach(function(e){
@@ -6016,6 +6021,7 @@ function rCSeasonal(){
     h+='<td class="r mn b seas-tot-'+esc(e.m)+'" style="color:'+(tot>0?'#2c2925':'#b0a99f')+'">'+fc(tot,cu)+'</td>';
     h+='<td class="r mn" style="color:#5b6abf">'+fc(Math.round(tot*(e.ex||1)*100)/100,'EUR')+'</td>';
     h+='<td style="text-align:center"><button class="tb '+(excl?'x':'o')+' seas-excl" data-sm="'+esc(e.m)+'" style="width:28px;height:16px" onclick="event.stopPropagation()"><span class="tk" style="width:10px;height:10px;top:3px"></span></button></td>';
+    h+='<td style="text-align:center;padding:1px">'+pdfRowBtn(e,excl||e.ps==="SI")+'</td>';
     h+='</tr>';
   });
 
@@ -9961,13 +9967,15 @@ function _downloadEmlWithPdf(e, pdfBlob, pdfName){
   reader.readAsDataURL(pdfBlob);
 }
 
-// Genera PDF + EML per un singolo dipendente (bottone 📧 per riga)
-function sendOneEmployeeMail(matr){
-  var e=E.filter(function(x){return x.m===matr;})[0];
-  if(!e||!e.mp||e.mp.indexOf("@")<0){alert("Email non disponibile per questo dipendente.");return;}
-  if(e.ps==="SI"){alert("Premio sospeso per questo dipendente: nessuna lettera da inviare.");return;}
-  var isSeasonal=PRIZE_MODE==="seasonal";
-  var pdfName=getEmpPdfFilename(e);
+// HTML della lettera di un dipendente nella modalità corrente (mensile / seasonal / FC+VM)
+function _empLetterHtml(e){
+  if(PRIZE_MODE==="fcvm")return buildFcVmLetter(e);
+  if(PRIZE_MODE==="seasonal")return buildSeasonalLetterAuto(e);
+  return isUSA(e.si,e)?buildLetterUSA(e):buildLetter(e);
+}
+
+// Genera il PDF (blob) della lettera di un dipendente via html2canvas + jsPDF
+function _empLetterPdfBlob(e,cb){
   var PAGE_W_PX=794,SCALE=2,PAGE_W_MM=210,PAGE_H_MM=297,MARGIN_MM=8,CONT_W_MM=PAGE_W_MM-MARGIN_MM*2;
   var PX_PER_MM=(PAGE_W_PX/PAGE_W_MM)*SCALE;
   var PAGE_H_PX_SCALED=Math.round(PAGE_H_MM*PX_PER_MM),MARGIN_PX_SCALED=Math.round(MARGIN_MM*PX_PER_MM),CONT_H_PX_SCALED=PAGE_H_PX_SCALED-MARGIN_PX_SCALED*2;
@@ -9975,7 +9983,7 @@ function sendOneEmployeeMail(matr){
   var wrap=document.createElement("div");
   wrap.style.cssText="position:fixed;left:-900px;top:0;width:800px;overflow:visible;z-index:1;background:#fff";
   document.body.appendChild(wrap);
-  wrap.innerHTML='<style>'+css+'</style><style>*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body,div{font-family:"DM Sans",sans-serif;font-size:13px}.lt{max-width:800px;width:800px;box-shadow:none;border:none}</style>'+(isSeasonal?buildSeasonalLetterAuto(e):(isUSA(e.si,e)?buildLetterUSA(e):buildLetter(e)));
+  wrap.innerHTML='<style>'+css+'</style><style>*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body,div{font-family:"DM Sans",sans-serif;font-size:13px}.lt{max-width:800px;width:800px;box-shadow:none;border:none}</style>'+_empLetterHtml(e);
   document.fonts.ready.then(function(){setTimeout(function(){
     var target=wrap.querySelector(".lt")||wrap;
     var fullH=target.scrollHeight||1200,fullHScaled=Math.round(fullH*SCALE);
@@ -9991,9 +9999,79 @@ function sendOneEmployeeMail(matr){
         pdf.addImage(sc.toDataURL("image/jpeg",0.92),"JPEG",MARGIN_MM,MARGIN_MM,CONT_W_MM,sliceH/PX_PER_MM);
       }
       document.body.removeChild(wrap);
-      _downloadEmlWithPdf(e,pdf.output("blob"),pdfName);
+      cb(pdf.output("blob"));
     });
   },200);});
+}
+
+// Genera PDF + EML per un singolo dipendente (bottone 📧 per riga)
+function sendOneEmployeeMail(matr){
+  var e=E.filter(function(x){return x.m===matr;})[0];
+  if(!e||!e.mp||e.mp.indexOf("@")<0){alert("Email non disponibile per questo dipendente.");return;}
+  if(e.ps==="SI"){alert("Premio sospeso per questo dipendente: nessuna lettera da inviare.");return;}
+  var pdfName=getEmpPdfFilename(e);
+  _empLetterPdfBlob(e,function(blob){_downloadEmlWithPdf(e,blob,pdfName);});
+}
+
+// Messaggio breve in basso a sinistra (esito salvataggio PDF singolo)
+function _pdfToast(msg,ok){
+  var old=document.getElementById("_pdfToast");if(old&&old.parentNode)old.parentNode.removeChild(old);
+  var d=document.createElement("div");d.id="_pdfToast";
+  d.style.cssText="position:fixed;bottom:44px;left:18px;max-width:420px;background:"+(ok===false?"#7a2a2a":"#2c2925")+";color:#f5f4f1;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.35);padding:10px 14px;z-index:99999;font-size:12px;line-height:1.4;word-break:break-all";
+  d.textContent=msg;document.body.appendChild(d);
+  setTimeout(function(){if(d.parentNode)d.parentNode.removeChild(d);},ok===false?9000:5000);
+}
+
+// Salva il PDF della lettera di UN dipendente nella stessa cartella di "Salva Tutti i PDF"
+// (base: percorso PDF di Configurazione, altrimenti quello scelto con "Salva Tutti i PDF", altrimenti picker)
+function saveOneEmployeePdf(matr){
+  if(!(window.chrome&&window.chrome.webview)){alert("Il salvataggio diretto del PDF \u00e8 disponibile solo nell'app desktop.");return;}
+  var fcvm=PRIZE_MODE==="fcvm";
+  var e=fcvm?FC_EMP[matr]:E.filter(function(x){return x.m===matr;})[0];
+  if(!e)return;
+  if(e.ps==="SI"){alert("Premio sospeso per questo dipendente: nessuna lettera da salvare.");return;}
+  var miss=canProduceLetter();
+  if(miss.length>0){alert("Impossibile generare la lettera.\n\nDati mancanti:\n\u2022 "+miss.join("\n\u2022 "));return;}
+  var sub=(MODE==="preventivo"?getPdfSubfolder().prev:getPdfSubfolder().cons).replace(/\//g,"\\");
+  var baseF=CFG_PDF_PATH?CFG_PDF_PATH.replace(/[\/\\]$/,""):(_pdfSaveBaseFolder||null);
+  if(baseF){_saveEmpPdfTo(e,baseF+"\\"+sub);return;}
+  // Nessuna cartella nota: chiedila una volta (poi viene ricordata fino alla chiusura dell'app)
+  var h=function(ev){
+    if(typeof ev.data!=="string")return;
+    if(ev.data.indexOf("folderSelected:")===0){
+      window.chrome.webview.removeEventListener("message",h);
+      var sel=ev.data.slice("folderSelected:".length);
+      _pdfSaveBaseFolder=sel.slice(-(sub.length+1))==="\\"+sub?sel.slice(0,sel.length-sub.length-1):sel;
+      _saveEmpPdfTo(e,_pdfSaveBaseFolder+"\\"+sub);
+    }else if(ev.data==="folderCancelled"){
+      window.chrome.webview.removeEventListener("message",h);
+    }
+  };
+  window.chrome.webview.addEventListener("message",h);
+  window.chrome.webview.postMessage({type:"selectPdfFolder",initialPath:""});
+}
+function _saveEmpPdfTo(e,folder){
+  var name=getEmpPdfFilename(e);
+  _pdfToast("Generazione PDF "+name+"\u2026");
+  _empLetterPdfBlob(e,function(blob){
+    var reader=new FileReader();
+    reader.onload=function(ev){
+      var b64=ev.target.result.split(",")[1];
+      var h=function(m){
+        if(typeof m.data!=="string")return;
+        if(m.data==="fileSaved:"+name){window.chrome.webview.removeEventListener("message",h);_pdfToast("\u2713 PDF salvato: "+folder+"\\"+name);}
+        else if(m.data==="fileSaveError:"+name){window.chrome.webview.removeEventListener("message",h);_pdfToast("Errore salvataggio PDF in "+folder,false);}
+      };
+      window.chrome.webview.addEventListener("message",h);
+      window.chrome.webview.postMessage({type:"saveFileBase64",folderPath:folder,fileName:name,fileBase64:b64});
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+// Cella/bottone "PDF" per le tabelle Calcolo Premi (tutte le modalità)
+function pdfRowBtn(e,off){
+  if(off)return '<span style="color:#6b6560;font-size:10px" title="Nessuna lettera (sospeso/escluso)">\u2014</span>';
+  return '<button class="exp-btn" onclick="event.stopPropagation();saveOneEmployeePdf(\''+esc(String(e.m).replace(/'/g,""))+'\')" style="padding:2px 7px;font-size:11px;min-width:0" title="Salva il PDF della lettera di '+esc(e.n)+' nella cartella dei PDF">&#128190;</button>';
 }
 
 // === Invio batch ai dipendenti: pre-flight → invio → esito =================
@@ -10317,7 +10395,7 @@ function rCFcvm(){
   h+='<div class="scroll-wrap"><table id="ctbl"><thead><tr>';
   h+=thS('Matr.')+thS('Cogn.','Cognome')+thS('Nome')+thS('Ruolo')+thS('Val.','Valuta')+thS('N.Store');
   var _fcSasCols=!isP&&typeof sasNewActive==='function'&&sasNewActive();
-  h+=thS('Target','Target EUR')+thS('Max Pr.','Max Premio')+(!isP?thS('Consunt.','Consuntivo EUR'):'')+(!isP?thS('Esub.','Esubero'):'')+(_fcSasCols?thS('SAS','Valore SAS')+thS('% Ricon.')+thS('Ricon.','Valore Ricon.'):'')+(!isP?thS('Cons. Tot.'):'')+thS('% Area')+thS('SY LY')+thS('SY CY')+thS('Pr. LC','Premio LC')+thS('Pr. EUR','Premio EUR')+thS('BDG')+thS('Esito')+(!isP&&typeof demoltActive==='function'&&demoltActive()?'<th style="cursor:default;color:#a07d2c" title="Coefficiente Inventari (solo FC): riduzione premio area da % invio/completamento inventari">Coef.</th>':'')+(!isP?'<th style="text-align:center;background:#e8f5e9;color:#2d7a3a;cursor:default;padding:4px 3px">100%</th>':'')+(!isP?'<th style="text-align:center;background:#fff3e0;color:#cf8b4e;cursor:default;padding:4px 3px">60%</th>':'')+'<th style="padding:4px 3px" title="Lingua">Ling.</th>'+(!isP?'<th style="text-align:center;cursor:default;min-width:40px">Mal.</th>':'')+'<th style="text-align:center;cursor:default;min-width:36px">Sosp.</th>';
+  h+=thS('Target','Target EUR')+thS('Max Pr.','Max Premio')+(!isP?thS('Consunt.','Consuntivo EUR'):'')+(!isP?thS('Esub.','Esubero'):'')+(_fcSasCols?thS('SAS','Valore SAS')+thS('% Ricon.')+thS('Ricon.','Valore Ricon.'):'')+(!isP?thS('Cons. Tot.'):'')+thS('% Area')+thS('SY LY')+thS('SY CY')+thS('Pr. LC','Premio LC')+thS('Pr. EUR','Premio EUR')+thS('BDG')+thS('Esito')+(!isP&&typeof demoltActive==='function'&&demoltActive()?'<th style="cursor:default;color:#a07d2c" title="Coefficiente Inventari (solo FC): riduzione premio area da % invio/completamento inventari">Coef.</th>':'')+(!isP?'<th style="text-align:center;background:#e8f5e9;color:#2d7a3a;cursor:default;padding:4px 3px">100%</th>':'')+(!isP?'<th style="text-align:center;background:#fff3e0;color:#cf8b4e;cursor:default;padding:4px 3px">60%</th>':'')+'<th style="padding:4px 3px" title="Lingua">Ling.</th>'+(!isP?'<th style="text-align:center;cursor:default;min-width:40px">Mal.</th>':'')+'<th style="text-align:center;cursor:default;min-width:36px">Sosp.</th>'+'<th style="text-align:center;cursor:default" title="Salva il PDF della lettera nella cartella dei PDF">PDF</th>';
   h+='</tr></thead><tbody>';
 
   fl.forEach(function(emp,i){
@@ -10419,6 +10497,7 @@ function rCFcvm(){
     if(!isP)h+='<td style="text-align:center" onclick="event.stopPropagation()"><span class="ml-dot '+mlc+'"></span>'+ml+'</td>';
     // Sospendi premio
     h+='<td style="text-align:center" onclick="event.stopPropagation()"><button class="tb '+(psOn?"x":"o")+'" data-fcvm-ps="'+esc(emp.m)+'" style="width:28px;height:16px" title="Sospendi premio" onclick="event.stopPropagation()"><span class="tk" style="width:10px;height:10px;top:3px"></span></button></td>';
+    h+='<td style="text-align:center;padding:1px" onclick="event.stopPropagation()">'+pdfRowBtn(emp,psOn)+'</td>';
     h+='</tr>';
   });
   h+='</tbody></table></div><div id="fcvmDetail"></div>';
