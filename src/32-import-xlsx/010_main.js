@@ -37,6 +37,107 @@ function parseNum(s){
   return parseFloat(s)||0;
 }
 
+// === WORKDAY: nuovo export HR (estero dal preventivo ottobre 2026, poi Italia) ===
+// Colonne per nome header (identificate dal nome, non dall'indice). Stipendio = Prorated Monthly Salary (quello
+// effettivamente pagato, come il vecchio CODICE_INTERNO), BDG = Amount del piano "Budget Amount" (mensile).
+// Ruolo = Primary Job Title; ASM = VSM, STK = SA. FC / VM / HR e ogni ruolo non di negozio restano fuori.
+var WD_ENTE={"BOGGI-SWITZERLAND SA":209,"BOGGI (UK) LTD":211,"BOGGI IRELAND FASHION LIMITED":213,"BOGGI FRANCE SARL":215,"BOGGI HISPANIA SL":216,"BOGGI DEUTSCHLAND GMBH":217,"BOGGI AUSTRIA GMBH":219,"BOGGI HONG KONG LTD":220,"BOGGI LUXEMBOURG SARL":221,"BOGGI BELGIUM NV":222,"BOGGI SINGAPORE PTE LTD":223,"BOGGI SWEDEN AB":224,"BOGGI HUNGARY KFT":226,"BOGGI HOLLAND BV":228,"BOGGI HELLAS SA":230,"B1939M UNIPESSOAL LDA":231,"BOGGI DENMARK APS":240};
+var WD_JOBS={"SM":"SM","ASM":"VSM","SSAP":"SSAP","SSA":"SSA","SCS":"SCS","SA":"SA","STK":"SA","JSA":"JSA"};
+function wdNorm(s){return String(s==null?"":s).replace(/\s+/g," ").trim().toUpperCase();}
+// Ritorna null se l'header non e' Workday; altrimenti {W:mappa colonne, missing:[nomi mancanti]}
+function wdDetect(hdr){
+  var H=(hdr||[]).map(function(c){return wdNorm(c).toLowerCase();});
+  function col(name,nth){var n=0;for(var i=0;i<H.length;i++){if(H[i]===name){if(n===(nth||0))return i;n++;}}return -1;}
+  if(col("employee id")<0||col("cost center")<0||col("primary job title")<0)return null;
+  var W={id:col("employee id"),first:col("first name"),last:col("last name"),title:col("primary job title"),company:col("company"),cc:col("cost center"),
+    sal:col("prorated monthly salary"),salCur:col("currency",0),salFreq:col("frequency",0),plan:col("compensation plan"),amt:col("amount"),amtFreq:col("frequency",1),
+    hire:col("hire date"),term:col("termination date - all"),mail:col("emails")};
+  var missing=[];for(var k in W){if(W[k]<0)missing.push(k);}
+  return{W:W,missing:missing};
+}
+// o: {parseHireDate,cutoffDate,cutoffStr,cutoffMonth,cutoffYear}. Ritorna {imported,errors}.
+function wdParseAnagrafica(json,hdrRow,W,o){
+  var imported=[],errors=[];
+  var nextMonthStart=new Date(CFG_YEAR,CFG_MONTH,1);
+  for(var ri=hdrRow+1;ri<json.length;ri++){
+    var row=json[ri];if(!row)continue;
+    var cognome=String(row[W.last]||"").trim(),nome=String(row[W.first]||"").trim();
+    if(!cognome&&!nome)continue;
+    var fullName=cognome+" "+nome;
+    var ko=function(reason){errors.push({row:ri+1,name:fullName,reason:reason});};
+
+    // Ruolo (Primary Job Title): solo ruoli di negozio
+    var title=wdNorm(row[W.title]);
+    var job=WD_JOBS[title];
+    if(!job){ko("Ruolo '"+title+"' escluso (FC, VM, HR e ruoli non di negozio non si importano)");continue}
+    if(PRIZE_MODE==="seasonal"&&job!=="SM"&&job!=="VSM"){ko("Seasonal: ruolo '"+title+"' escluso (solo SM/VSM)");continue}
+
+    // Cost Center = "<id negozio> <descrizione>"
+    var ccRaw=String(row[W.cc]||"").trim();
+    var ccm=ccRaw.match(/^(\d+)\s*(.*)$/);
+    if(!ccm){ko(ccRaw?"Centro di costo '"+ccRaw+"' non di negozio — escluso":"Centro di costo mancante — escluso");continue}
+    var cdc=parseInt(ccm[1],10);
+    var storeName=(cdc+" "+(ccm[2].trim()||"Store "+cdc)).toUpperCase();
+
+    // Cessazione: stessa regola dell'anagrafica Zucchetti (escluso se cessa nel mese premi o prima)
+    var termRaw=row[W.term];
+    if(termRaw!=null&&String(termRaw).trim()!==""){
+      var termDate=o.parseHireDate(termRaw);
+      if(!termDate){ko("Data cessazione non leggibile: "+String(termRaw));continue}
+      if(termDate<nextMonthStart){ko("Cessato/dimesso il "+termDate.toISOString().slice(0,10)+" (cessazione nel mese premi o precedente)");continue}
+    }
+    // Assunzione: limite giorno 5
+    var hireRaw=row[W.hire],hireDate=o.parseHireDate(hireRaw);
+    if(hireDate&&hireDate.toISOString().slice(0,10)>o.cutoffDate.toISOString().slice(0,10)){
+      ko("Assunto il "+hireDate.toISOString().slice(0,10)+" — dopo il limite "+o.cutoffStr+" (giorno 5 di "+MONTH_NAMES.IT[o.cutoffMonth]+" "+o.cutoffYear+")");continue}
+    if(!hireDate&&hireRaw){ko("Data assunzione non leggibile: "+hireRaw);continue}
+
+    // Matricola: cosi' come nell'export HR (solo cifre; un ID corrotto non si importa)
+    var eid=String(row[W.id]==null?"":row[W.id]).trim();
+    if(!/^\d+$/.test(eid)){ko("ID non valido: '"+eid+"'");continue}
+
+    // Societa' -> ente (valuta e cambio da ENTE_CU)
+    var comp=wdNorm(row[W.company]),ente=WD_ENTE[comp];
+    if(!ente){ko("Societa' '"+comp+"' non riconosciuta (manca la mappatura ente)");continue}
+    var cuInfo=ENTE_CU[String(ente)]||{cu:"EUR",ex:1};
+    var fileCu=wdNorm(row[W.salCur]);
+    if(fileCu&&fileCu!==cuInfo.cu){ko("Valuta stipendio "+fileCu+" diversa da quella dell'ente "+ente+" ("+cuInfo.cu+")");continue}
+
+    // Stipendio e BDG: senza uno dei due non si importa
+    var sal=parseNum(row[W.sal]);
+    if(!(sal>0)){ko("Stipendio mancante — escluso dal piano incentivi");continue}
+    var bdg=parseNum(row[W.amt]);
+    if(!(bdg>0)){ko("BDG mancante — escluso dal piano incentivi");continue}
+    if(wdNorm(row[W.plan])!=="BUDGET AMOUNT"||wdNorm(row[W.amtFreq])!=="MONTHLY"){ko("BDG non valido (piano '"+row[W.plan]+"', frequenza '"+row[W.amtFreq]+"': atteso Budget Amount mensile)");continue}
+    if(wdNorm(row[W.salFreq])!=="MONTHLY")errors.push({row:ri+1,name:fullName,reason:"IMPORTATO CON AVVISO: frequenza stipendio '"+row[W.salFreq]+"' (atteso Monthly) — verificare con HR"});
+
+    // Mid-season internazionale: dept store esclusi
+    if(PRIZE_MODE==="seasonal"&&SEASON_PERIOD==="mid"&&isD(cdc)){ko("Dept store ("+cdc+") escluso dal Mid-Season — premio solo a fine stagione");continue}
+
+    // FC del negozio: FC_MAP, fallback ENTE_FC (il file Workday non ha la colonna FC)
+    var fc="";
+    (function(){var _mp=FC_MAP[String(cdc)];if(_mp){var _fa=Array.isArray(_mp.fc)?_mp.fc[0]:_mp.fc;if(_fa&&FC_EMP[_fa]){var _fe=FC_EMP[_fa];fc=_fe.n+' '+_fe.c;return;}}fc=ENTE_FC[String(ente)]||'';})();
+
+    // Email: "indirizzo (NOME)", anche piu' indirizzi su righe diverse -> il primo
+    var em=String(row[W.mail]||"").match(/[^\s;,()<>]+@[^\s;,()<>]+/);
+    var email=em?em[0]:"";
+
+    imported.push({
+      si:cdc,s:storeName,m:eid,
+      c:cognome.toUpperCase(),n:nome.toUpperCase(),
+      j:job,f:job,rl:sal,ib:bdg,
+      fc:fc,en:ente,
+      rb:0,rbn:0,rd:0,rs:0,rp:0,rsa:0,rdc:0,rcs:0,ra:0,
+      ml:0,vi:0,tl:0,tn:0,sc:0,il:0,
+      ps:"NO",dv:0,md:0,pq:0,
+      cu:cuInfo.cu,ex:cuInfo.ex,
+      mp:email,
+      mf:fc?fc.toLowerCase().replace(/ /g,'.')+'@boggi.com':''
+    });
+  }
+  return{imported:imported,errors:errors};
+}
+
 // === LOAD ANAGRAFICA FROM EXCEL ===
 // Nuovo formato HR (foglio "db"): C(2)=dipendente, D(3)=cognome, E(4)=nome, H(7)=data_assunzione,
 // I(8)=data_cessazione, O(14)=CODICE_INTERNO (e.rl/salary), P(15)=AZIENDA_PER_COSTI (e.ib/budget),
@@ -248,6 +349,15 @@ function loadAnagraficaExcel(file){
         return;
       }
       // === END ITALIA BRANCH ===
+
+      // === FORMATO WORKDAY (export HR dal preventivo ottobre 2026) ===
+      var wdDet=wdDetect(json[hdrRow]);
+      if(wdDet){
+        if(wdDet.missing.length){alert("Export Workday: colonne mancanti ("+wdDet.missing.join(", ")+"). Controlla l'intestazione del file.");return}
+        var wdRes=wdParseAnagrafica(json,hdrRow,wdDet.W,{parseHireDate:parseHireDate,cutoffDate:cutoffDate,cutoffStr:cutoffStr,cutoffMonth:cutoffMonth,cutoffYear:cutoffYear});
+        showImportReport(wdRes.imported,wdRes.errors,sheet,file.name,cutoffStr);
+        return;
+      }
 
       // === RILEVAZIONE COLONNE INTERNAZIONALI DAL HEADER ===
       // Il file HR pu\u00f2 cambiare struttura nel tempo (es. v31.03.2026 aggiunge colonna "Plus" che shifta Budget/Status/Hire).
