@@ -842,12 +842,13 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.89'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.90'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.90: Fonti Dati — nuovo check «Inventari + Accuracy» nel box Completezza, sia in Mensile sia in FC+VM (solo Consuntivo, da ottobre 2026): diventa verde quando il file inventari è stato caricato e mostra quanti negozi / Field Coach sono stati valorizzati",
   "9.89: Import anagrafica estero — supporto al nuovo export HR Workday (preventivo ottobre 2026): stipendio = Prorated Monthly Salary, BDG = Amount, ruolo = Primary Job Title (ASM→VSM, STK→SA), store dal Cost Center, ente dalla società. Esclusi FC/VM/HR, righe senza stipendio o BDG e ID non numerici; stesse regole su cessazioni e assunzioni. Il vecchio formato Zucchetti resta supportato",
   "9.88: FIX Visual In Store (mensile) — se a un negozio abbinato al Visual è stato attivato l'override manuale 100% o 60% (su tutto il personale del negozio), la riga del Visual di quel negozio viene pagata allo stesso modo. Prima valeva solo il flag sul dipendente Visual (es. Staub Lussemburgo: 1160 al 60% ma Visual a 0). Vale anche nella lettera",
   "9.87: FIX FC+VM — «Salva Tutti i PDF» / Stampa PDF: con un FC/VM a premio sospeso in elenco, i PDF successivi uscivano con la lettera del collega seguente (nome file di uno, contenuto di un altro, es. Tartaglione/Zenatti). Ora nome e contenuto coincidono sempre",
@@ -8788,6 +8789,8 @@ function rSources(){try{
       var hasDCC=hasCons&&Object.keys(D.c).some(function(k){return(D.c[k].dv||0)>0});
       var hasArt=hasCons&&Object.keys(D.c).some(function(k){return(D.c[k].ac||0)>0});
       checks.push({l:"DCC",ok:hasDCC,v:hasDCC?"OK":"Da caricare"});
+      // Coefficiente Inventari (da ott. 2026): senza il file inventari+accuracy il premio SM/VSM non viene ridotto
+      if(typeof demoltActive==="function"&&demoltActive()){var _nDem=Object.keys(DEMOLT_RESULT_STORE).length;checks.push({l:"Inventari + Accuracy"+(_nDem>0?" — "+_nDem+" neg.":""),ok:_nDem>0,v:_nDem>0?"OK":"Da caricare"});}
       if(PARAMS.artEnabled)checks.push({l:"Articoli Incentivati",ok:hasArt,v:hasArt?"OK":"Da caricare"});
       if(!isIT){
         var hasUSAps=Object.keys(D.usa||{}).length>0&&Object.keys(D.usa).some(function(k){return(D.usa[k].ps||0)>0});
@@ -11218,6 +11221,11 @@ function rSourcesFcvm(){
     {label:'Risultati Mese Precedente (opt.)',ok:hasPrevResults},
     {label:'Malattie FC/VM (opt.)',ok:Object.values(FC_EMP).some(function(e){return(e.ml||0)>0;})}
   ]);
+  // Coefficiente Inventari (da ott. 2026): senza il file inventari+accuracy il premio d'area dei FC non viene ridotto
+  if(!isP&&typeof demoltActive==="function"&&demoltActive()){
+    var _nDemFc=Object.keys(DEMOLT_RESULT_FC).length;
+    checks.push({label:'Inventari + Accuracy'+(_nDemFc>0?' — '+_nDemFc+' FC':''),ok:_nDemFc>0});
+  }
   // SAS valore→fatturato: richiesto in consuntivo da luglio 2026 (dato aggregato per area FC)
   if(!isP&&typeof sasNewActive==='function'&&sasNewActive()){
     var _hasSasArea=Object.values(FC_AREA_SAS).some(function(r){return r.sasv_eur!=null||r.acc!=null||r.vel!=null;});

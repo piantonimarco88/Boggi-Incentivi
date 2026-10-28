@@ -40,6 +40,11 @@ function rSourcesFcvm(){
     {label:'Risultati Mese Precedente (opt.)',ok:hasPrevResults},
     {label:'Malattie FC/VM (opt.)',ok:Object.values(FC_EMP).some(function(e){return(e.ml||0)>0;})}
   ]);
+  // Coefficiente Inventari (da ott. 2026): senza il file inventari+accuracy il premio d'area dei FC non viene ridotto
+  if(!isP&&typeof demoltActive==="function"&&demoltActive()){
+    var _nDemFc=Object.keys(DEMOLT_RESULT_FC).length;
+    checks.push({label:'Inventari + Accuracy'+(_nDemFc>0?' — '+_nDemFc+' FC':''),ok:_nDemFc>0});
+  }
   // SAS valore→fatturato: richiesto in consuntivo da luglio 2026 (dato aggregato per area FC)
   if(!isP&&typeof sasNewActive==='function'&&sasNewActive()){
     var _hasSasArea=Object.values(FC_AREA_SAS).some(function(r){return r.sasv_eur!=null||r.acc!=null||r.vel!=null;});

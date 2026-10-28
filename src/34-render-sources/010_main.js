@@ -155,6 +155,8 @@ function rSources(){try{
       var hasDCC=hasCons&&Object.keys(D.c).some(function(k){return(D.c[k].dv||0)>0});
       var hasArt=hasCons&&Object.keys(D.c).some(function(k){return(D.c[k].ac||0)>0});
       checks.push({l:"DCC",ok:hasDCC,v:hasDCC?"OK":"Da caricare"});
+      // Coefficiente Inventari (da ott. 2026): senza il file inventari+accuracy il premio SM/VSM non viene ridotto
+      if(typeof demoltActive==="function"&&demoltActive()){var _nDem=Object.keys(DEMOLT_RESULT_STORE).length;checks.push({l:"Inventari + Accuracy"+(_nDem>0?" — "+_nDem+" neg.":""),ok:_nDem>0,v:_nDem>0?"OK":"Da caricare"});}
       if(PARAMS.artEnabled)checks.push({l:"Articoli Incentivati",ok:hasArt,v:hasArt?"OK":"Da caricare"});
       if(!isIT){
         var hasUSAps=Object.keys(D.usa||{}).length>0&&Object.keys(D.usa).some(function(k){return(D.usa[k].ps||0)>0});
