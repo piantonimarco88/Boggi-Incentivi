@@ -842,12 +842,13 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.90'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.91'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.91: Import anagrafica estero (Workday) — supporto al nuovo export di consuntivo ottobre 2026: il BDG si legge dalle colonne dedicate Budget Amount / Budget Currency / Budget Frequency (prima: Compensation Plan + Amount). Controllo in più: la valuta del BDG deve coincidere con quella dell'ente. Il formato precedente resta supportato",
   "9.90: Fonti Dati — nuovo check «Inventari + Accuracy» nel box Completezza, sia in Mensile sia in FC+VM (solo Consuntivo, da ottobre 2026): diventa verde quando il file inventari è stato caricato e mostra quanti negozi / Field Coach sono stati valorizzati",
   "9.89: Import anagrafica estero — supporto al nuovo export HR Workday (preventivo ottobre 2026): stipendio = Prorated Monthly Salary, BDG = Amount, ruolo = Primary Job Title (ASM→VSM, STK→SA), store dal Cost Center, ente dalla società. Esclusi FC/VM/HR, righe senza stipendio o BDG e ID non numerici; stesse regole su cessazioni e assunzioni. Il vecchio formato Zucchetti resta supportato",
   "9.88: FIX Visual In Store (mensile) — se a un negozio abbinato al Visual è stato attivato l'override manuale 100% o 60% (su tutto il personale del negozio), la riga del Visual di quel negozio viene pagata allo stesso modo. Prima valeva solo il flag sul dipendente Visual (es. Staub Lussemburgo: 1160 al 60% ma Visual a 0). Vale anche nella lettera",
@@ -6477,9 +6478,17 @@ function wdDetect(hdr){
   function col(name,nth){var n=0;for(var i=0;i<H.length;i++){if(H[i]===name){if(n===(nth||0))return i;n++;}}return -1;}
   if(col("employee id")<0||col("cost center")<0||col("primary job title")<0)return null;
   var W={id:col("employee id"),first:col("first name"),last:col("last name"),title:col("primary job title"),company:col("company"),cc:col("cost center"),
-    sal:col("prorated monthly salary"),salCur:col("currency",0),salFreq:col("frequency",0),plan:col("compensation plan"),amt:col("amount"),amtFreq:col("frequency",1),
+    sal:col("prorated monthly salary"),salCur:col("currency",0),salFreq:col("frequency",0),
     hire:col("hire date"),term:col("termination date - all"),mail:col("emails")};
-  var missing=[];for(var k in W){if(W[k]<0)missing.push(k);}
+  // BDG: export di ottobre 2026 = colonne dedicate "Budget Amount / Budget Currency / Budget Frequency";
+  // export di preventivo = piano "Compensation Plan"=Budget Amount con "Amount" e secondo "Frequency".
+  if(col("budget amount")>=0){
+    W.plan=-1;W.amt=col("budget amount");W.amtCur=col("budget currency");W.amtFreq=col("budget frequency");
+  }else{
+    W.plan=col("compensation plan");W.amt=col("amount");W.amtCur=-1;W.amtFreq=col("frequency",1);
+  }
+  var missing=[];for(var k in W){if(W[k]<0&&k!=="plan"&&k!=="amtCur")missing.push(k);}
+  if(W.plan<0&&col("budget amount")<0)missing.push("plan");
   return{W:W,missing:missing};
 }
 // o: {parseHireDate,cutoffDate,cutoffStr,cutoffMonth,cutoffYear}. Ritorna {imported,errors}.
@@ -6535,7 +6544,9 @@ function wdParseAnagrafica(json,hdrRow,W,o){
     if(!(sal>0)){ko("Stipendio mancante — escluso dal piano incentivi");continue}
     var bdg=parseNum(row[W.amt]);
     if(!(bdg>0)){ko("BDG mancante — escluso dal piano incentivi");continue}
-    if(wdNorm(row[W.plan])!=="BUDGET AMOUNT"||wdNorm(row[W.amtFreq])!=="MONTHLY"){ko("BDG non valido (piano '"+row[W.plan]+"', frequenza '"+row[W.amtFreq]+"': atteso Budget Amount mensile)");continue}
+    if((W.plan>=0&&wdNorm(row[W.plan])!=="BUDGET AMOUNT")||wdNorm(row[W.amtFreq])!=="MONTHLY"){ko("BDG non valido (piano '"+(W.plan>=0?row[W.plan]:"Budget Amount")+"', frequenza '"+row[W.amtFreq]+"': atteso Budget Amount mensile)");continue}
+    var bdgCu=W.amtCur>=0?wdNorm(row[W.amtCur]):"";
+    if(bdgCu&&bdgCu!==cuInfo.cu){ko("Valuta BDG "+bdgCu+" diversa da quella dell'ente "+ente+" ("+cuInfo.cu+")");continue}
     if(wdNorm(row[W.salFreq])!=="MONTHLY")errors.push({row:ri+1,name:fullName,reason:"IMPORTATO CON AVVISO: frequenza stipendio '"+row[W.salFreq]+"' (atteso Monthly) — verificare con HR"});
 
     // Mid-season internazionale: dept store esclusi

@@ -50,9 +50,17 @@ function wdDetect(hdr){
   function col(name,nth){var n=0;for(var i=0;i<H.length;i++){if(H[i]===name){if(n===(nth||0))return i;n++;}}return -1;}
   if(col("employee id")<0||col("cost center")<0||col("primary job title")<0)return null;
   var W={id:col("employee id"),first:col("first name"),last:col("last name"),title:col("primary job title"),company:col("company"),cc:col("cost center"),
-    sal:col("prorated monthly salary"),salCur:col("currency",0),salFreq:col("frequency",0),plan:col("compensation plan"),amt:col("amount"),amtFreq:col("frequency",1),
+    sal:col("prorated monthly salary"),salCur:col("currency",0),salFreq:col("frequency",0),
     hire:col("hire date"),term:col("termination date - all"),mail:col("emails")};
-  var missing=[];for(var k in W){if(W[k]<0)missing.push(k);}
+  // BDG: export di ottobre 2026 = colonne dedicate "Budget Amount / Budget Currency / Budget Frequency";
+  // export di preventivo = piano "Compensation Plan"=Budget Amount con "Amount" e secondo "Frequency".
+  if(col("budget amount")>=0){
+    W.plan=-1;W.amt=col("budget amount");W.amtCur=col("budget currency");W.amtFreq=col("budget frequency");
+  }else{
+    W.plan=col("compensation plan");W.amt=col("amount");W.amtCur=-1;W.amtFreq=col("frequency",1);
+  }
+  var missing=[];for(var k in W){if(W[k]<0&&k!=="plan"&&k!=="amtCur")missing.push(k);}
+  if(W.plan<0&&col("budget amount")<0)missing.push("plan");
   return{W:W,missing:missing};
 }
 // o: {parseHireDate,cutoffDate,cutoffStr,cutoffMonth,cutoffYear}. Ritorna {imported,errors}.
@@ -108,7 +116,9 @@ function wdParseAnagrafica(json,hdrRow,W,o){
     if(!(sal>0)){ko("Stipendio mancante — escluso dal piano incentivi");continue}
     var bdg=parseNum(row[W.amt]);
     if(!(bdg>0)){ko("BDG mancante — escluso dal piano incentivi");continue}
-    if(wdNorm(row[W.plan])!=="BUDGET AMOUNT"||wdNorm(row[W.amtFreq])!=="MONTHLY"){ko("BDG non valido (piano '"+row[W.plan]+"', frequenza '"+row[W.amtFreq]+"': atteso Budget Amount mensile)");continue}
+    if((W.plan>=0&&wdNorm(row[W.plan])!=="BUDGET AMOUNT")||wdNorm(row[W.amtFreq])!=="MONTHLY"){ko("BDG non valido (piano '"+(W.plan>=0?row[W.plan]:"Budget Amount")+"', frequenza '"+row[W.amtFreq]+"': atteso Budget Amount mensile)");continue}
+    var bdgCu=W.amtCur>=0?wdNorm(row[W.amtCur]):"";
+    if(bdgCu&&bdgCu!==cuInfo.cu){ko("Valuta BDG "+bdgCu+" diversa da quella dell'ente "+ente+" ("+cuInfo.cu+")");continue}
     if(wdNorm(row[W.salFreq])!=="MONTHLY")errors.push({row:ri+1,name:fullName,reason:"IMPORTATO CON AVVISO: frequenza stipendio '"+row[W.salFreq]+"' (atteso Monthly) — verificare con HR"});
 
     // Mid-season internazionale: dept store esclusi
