@@ -149,3 +149,33 @@ function autoSave(){
     }
   }catch(ex){/* quota exceeded or private mode */}
 }
+
+// Selettore file "Carica ...": il dialogo nativo di <input type=file> si apre sempre sulla cartella Download
+// (e lì può bloccarsi). Dove disponibile uso showOpenFilePicker con startIn:'desktop' e un id fisso: la prima volta
+// parte dal Desktop, poi ricorda l'ultima cartella scelta. Il file scelto viene passato all'input originale e
+// scatta il suo evento change, quindi tutti gli handler esistenti (onchange="loadX(this)") restano invariati.
+// Qualsiasi errore diverso dall'annullamento ripiega sul dialogo nativo.
+(function(){
+  if(typeof window.showOpenFilePicker!=="function"||typeof DataTransfer==="undefined")return;
+  var bypass=false;
+  document.addEventListener("click",function(ev){
+    var inp=ev.target;
+    if(bypass||!inp||inp.tagName!=="INPUT"||inp.type!=="file"||inp.webkitdirectory||inp.disabled)return;
+    var exts=String(inp.accept||"").split(",").map(function(s){return s.trim().toLowerCase();}).filter(function(s){return /^\.[a-z0-9]+$/.test(s);});
+    var opts={id:"boggi-carica-file",startIn:"desktop",multiple:!!inp.multiple,excludeAcceptAllOption:false};
+    if(exts.length)opts.types=[{description:"File supportati",accept:{"application/octet-stream":exts}}];
+    ev.preventDefault();
+    window.showOpenFilePicker(opts).then(function(handles){
+      return Promise.all(handles.map(function(h){return h.getFile();}));
+    }).then(function(files){
+      if(!files.length)return;
+      var dt=new DataTransfer();
+      files.forEach(function(f){dt.items.add(f);});
+      inp.files=dt.files;
+      inp.dispatchEvent(new Event("change",{bubbles:true}));
+    }).catch(function(err){
+      if(err&&err.name==="AbortError")return;
+      bypass=true;try{inp.click();}finally{bypass=false;}
+    });
+  },true);
+})();

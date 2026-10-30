@@ -967,12 +967,13 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.97'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.98'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.98: Pulsanti «Carica ...» — il selettore file non si apre più sulla cartella Download (dove poteva bloccarsi): parte dal Desktop e poi ricorda l'ultima cartella usata",
   "9.97: Import SAS Area FC+VM — se lo stesso nome compare più volte nel file (l'abbinamento è per nome, vale l'ultima riga) l'import ora lo segnala con le righe e i valori in conflitto, invece di sovrascrivere in silenzio",
   "9.95: Lettere — nel box Coefficiente Inventari i valori % (Accuracy, % Completamento, % Invio) sono mostrati con 2 decimali (es. 91,27% invece di 91%), troncati e non arrotondati per non sembrare dentro una fascia diversa da quella applicata",
   "9.94: Controllo Inventari + Accuracy — regole confermate dall'utente (negozi WIC con 0 task inviati = 0/4 = 0%; negozi senza Accuracy o senza task = nessuna riduzione; area FC interamente USA esclusa): nel pannello non compaiono più come avvisi da verificare.",
@@ -1205,6 +1206,36 @@ function autoSave(){
     }
   }catch(ex){/* quota exceeded or private mode */}
 }
+
+// Selettore file "Carica ...": il dialogo nativo di <input type=file> si apre sempre sulla cartella Download
+// (e lì può bloccarsi). Dove disponibile uso showOpenFilePicker con startIn:'desktop' e un id fisso: la prima volta
+// parte dal Desktop, poi ricorda l'ultima cartella scelta. Il file scelto viene passato all'input originale e
+// scatta il suo evento change, quindi tutti gli handler esistenti (onchange="loadX(this)") restano invariati.
+// Qualsiasi errore diverso dall'annullamento ripiega sul dialogo nativo.
+(function(){
+  if(typeof window.showOpenFilePicker!=="function"||typeof DataTransfer==="undefined")return;
+  var bypass=false;
+  document.addEventListener("click",function(ev){
+    var inp=ev.target;
+    if(bypass||!inp||inp.tagName!=="INPUT"||inp.type!=="file"||inp.webkitdirectory||inp.disabled)return;
+    var exts=String(inp.accept||"").split(",").map(function(s){return s.trim().toLowerCase();}).filter(function(s){return /^\.[a-z0-9]+$/.test(s);});
+    var opts={id:"boggi-carica-file",startIn:"desktop",multiple:!!inp.multiple,excludeAcceptAllOption:false};
+    if(exts.length)opts.types=[{description:"File supportati",accept:{"application/octet-stream":exts}}];
+    ev.preventDefault();
+    window.showOpenFilePicker(opts).then(function(handles){
+      return Promise.all(handles.map(function(h){return h.getFile();}));
+    }).then(function(files){
+      if(!files.length)return;
+      var dt=new DataTransfer();
+      files.forEach(function(f){dt.items.add(f);});
+      inp.files=dt.files;
+      inp.dispatchEvent(new Event("change",{bubbles:true}));
+    }).catch(function(err){
+      if(err&&err.name==="AbortError")return;
+      bypass=true;try{inp.click();}finally{bypass=false;}
+    });
+  },true);
+})();
 
 // === SESSION SAVE / LOAD (file-based) ===
 // Flush pending input[data-digmob] values to STORE_FLAGS before any save.
