@@ -1301,8 +1301,10 @@ function loadTargetExcel(file){
       var cCR=findH(0,"cr");if(cCR<0)cCR=findHPartial(0,"conversion","cr");
       var cForex=findH(0,"forex");if(cForex<0)cForex=findHPartial(0,"forex","fx");
       var cSub=findH(0,"sub_target");if(cSub<0)cSub=findHPartial(0,"subscription","fidelity");
-      var cQTY=findHPartial(0,"target qty","qty");
+      // Formato dept store nov-2026: "Mese | Mese nome | Store Id | Negozio | Country | Field Coach | Target pezzi"
+      var cQTY=findHPartial(0,"target qty","target pezzi","qty");
       var cMonth=findHPartial(0,"retail_month","month");
+      if(cMonth<0)cMonth=findH(0,"mese");
       // Nome negozio (opzionale): "Store Description" / "store_name" / "Store" (esatto, diverso da Store ID)
       var cStName=findHPartial(0,"store description","store_name","store name","description");
       if(cStName<0)cStName=findH(0,"store","negozio");

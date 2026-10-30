@@ -215,12 +215,13 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 /*BUNDLE_INSERT:60-fcvm-state*/
 /*BUNDLE_INSERT:70-fcvm-calc*//*BUNDLE_INSERT:80-roles-config*/var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.91'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.92'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.92: Import Target QTY (dept store, mensile) — supporto al nuovo formato con colonne Mese / Store Id / Negozio / Country / Field Coach / Target pezzi (nov 2026): il Target pezzi è letto come target QTY, le righe di altri mesi vengono saltate. Il formato precedente (colonna Target QTY) resta supportato",
   "9.91: Import anagrafica estero (Workday) — supporto al nuovo export di consuntivo ottobre 2026: il BDG si legge dalle colonne dedicate Budget Amount / Budget Currency / Budget Frequency (prima: Compensation Plan + Amount). Controllo in più: la valuta del BDG deve coincidere con quella dell'ente. Il formato precedente resta supportato",
   "9.90: Fonti Dati — nuovo check «Inventari + Accuracy» nel box Completezza, sia in Mensile sia in FC+VM (solo Consuntivo, da ottobre 2026): diventa verde quando il file inventari è stato caricato e mostra quanti negozi / Field Coach sono stati valorizzati",
   "9.89: Import anagrafica estero — supporto al nuovo export HR Workday (preventivo ottobre 2026): stipendio = Prorated Monthly Salary, BDG = Amount, ruolo = Primary Job Title (ASM→VSM, STK→SA), store dal Cost Center, ente dalla società. Esclusi FC/VM/HR, righe senza stipendio o BDG e ID non numerici; stesse regole su cessazioni e assunzioni. Il vecchio formato Zucchetti resta supportato",
