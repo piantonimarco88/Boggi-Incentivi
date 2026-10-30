@@ -206,6 +206,8 @@ var _DEMOLT_LT={
   TEDESCO:{title:"INVENTUR-KOEFFIZIENT",logic:"Prämienreduzierung basierend auf dem täglichen Inventur-Abschluss% (abgeschlossen/gesendet) und der monatlichen Accuracy.",logicArea:"Reduzierung der Bereichsprämie basierend auf dem täglichen Inventur-Versand% (gesendet/maximal möglich) und dem Abschluss% (abgeschlossen/gesendet), aggregiert über den gesamten Bereich.",axisA:"% Abschluss",axisB:"Accuracy",axisAArea:"% Versand",axisBArea:"% Abschluss",pctLbl:"% anerkannte Prämie",maturato:"Erwirtschaftete Prämie",erogare:"Auszuzahlende Prämie",nodata:"Inventurdaten für diesen Store noch nicht verfügbar.",nodataArea:"Inventurdaten für diesen Bereich noch nicht verfügbar."},
   SPAGNOLO:{title:"COEFICIENTE INVENTARIOS",logic:"Reducción del premio según el % de finalización de los inventarios diarios (completados/enviados) y la accuracy mensual.",logicArea:"Reducción del premio de área según el % de envío de los inventarios diarios (enviados/máximo posible) y el % de finalización (completados/enviados), agregados en toda el área.",axisA:"% Finalización",axisB:"Accuracy",axisAArea:"% Envío",axisBArea:"% Finalización",pctLbl:"% premio reconocido",maturato:"Premio devengado",erogare:"Premio a pagar",nodata:"Datos de inventarios aún no disponibles para esta tienda.",nodataArea:"Datos de inventarios aún no disponibles para esta área."}
 };
+// % con 2 decimali (virgola, come il resto della lettera), troncata e non arrotondata: un 94,996% non deve comparire come "95,00%" dentro la fascia <95%.
+function demoltPct2(v){return (Math.floor((v||0)*10000+1e-6)/100).toFixed(2).replace('.',',')+'%';}
 function demoltLetterBlock(lang,dr,isP,cu,isArea){
   if(typeof demoltActive!=='function'||!demoltActive())return '';
   var T=_DEMOLT_LT[lang]||_DEMOLT_LT.INGLESE;
@@ -232,8 +234,8 @@ function demoltLetterBlock(lang,dr,isP,cu,isArea){
     if(!hasData){h+='<div style="font-size:10.5px;color:#a09a92;font-style:italic">'+esc(isArea?T.nodataArea:T.nodata)+'</div>';}
     else{
       var row=function(l,v){return '<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0"><span style="color:#8a8680">'+esc(l)+'</span><span style="font-weight:600;color:#2c2925">'+v+'</span></div>';};
-      h+=row(axisA,Math.round((valA||0)*100)+'% ('+demoltBandLbl(bpA,aIdx)+')');
-      h+=row(axisB,Math.round((valB||0)*100)+'% ('+demoltBandLbl(bpB,bIdx)+')');
+      h+=row(axisA,demoltPct2(valA)+' ('+demoltBandLbl(bpA,aIdx)+')');
+      h+=row(axisB,demoltPct2(valB)+' ('+demoltBandLbl(bpB,bIdx)+')');
       h+=row(T.pctLbl,Math.round(dr.pct*100)+'%');
     }
   }
