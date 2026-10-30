@@ -18,6 +18,7 @@ function rSourcesFcvm(){
   if(!isP&&typeof sasNewActive==='function'&&sasNewActive()){
     h+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#d4a94e;color:#a07d2c" title="Formato QWRT per field_coach: un solo valore acc/vel/valore per l\'intera area, usato per il premio Area">&#128202; SAS Area (Field Coach)<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_sas_area" style="display:none" onchange="loadFcVmFile(this)"></label>';
     h+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#d4a94e;color:#a07d2c" title="Formato QWRT per store_id: usato solo per il premio dei negozi BDG extra dei FC/VM">&#128202; SAS Negozi (per BDG extra)<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_sas" style="display:none" onchange="loadFcVmFile(this)"></label>';
+    h+='<label class="exp-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#d4a94e;color:#a07d2c" title="File esportato il mese scorso con &laquo;Esporta Riserva SAS Field Coach&raquo; (colonne NOME, RUOLO, RISERVA SAS EUR): riserva SAS non utilizzata, riportata a questo mese">&#128230; Riserva SAS FC/VM (mese prec.)<input type="file" accept=".xlsx,.xlsm,.xls,.csv" data-fcvmsrc="fcvm_sas_riserva" style="display:none" onchange="loadFcVmFile(this)"></label>';
   }
   h+=manEmpButtonHtml();
   h+='<button onclick="clearFcVmData()" class="exp-btn btn-red">&#128465; Reset Dati</button>';
@@ -106,6 +107,7 @@ function loadFcVmFile(input){
   if(srcId==='fcvm_prev'){loadFcVmPrevResults(file);return;}
   if(srcId==='fcvm_sas'){loadFcVmSas(file);return;}
   if(srcId==='fcvm_sas_area'){loadFcVmSasArea(file);return;}
+  if(srcId==='fcvm_sas_riserva'){loadFcVmSasRiserva(file);return;}
   if(srcId==='fcvm_malattie'){loadFcVmMalattie(file);return;}
   if(srcId==='fcvm_demolt'){loadDemoltInventario(file);return;}
   alert('Sorgente non riconosciuta: '+srcId);
@@ -669,6 +671,55 @@ function loadFcVmSasArea(file){
     alert(msg);
     rC();rA();rSources();autoSave();
   }catch(ex){alert('Errore import SAS Area:\n'+ex.message);}},50);};
+  reader.readAsArrayBuffer(file);
+}
+// Import dedicato Riserva SAS FC/VM del mese precedente: file esportato da
+// "Esporta Riserva SAS Field Coach" (NOME, RUOLO, RISERVA SAS EUR). Scrive solo
+// FC_AREA_SAS[matr].sasr_eur, senza toccare acc/vel/valore del file SAS Area.
+// Il file sostituisce la riserva già caricata (le aree non presenti tornano a 0).
+function loadFcVmSasRiserva(file){
+  var reader=new FileReader();
+  reader.onload=function(ev){setTimeout(function(){try{
+    var data=new Uint8Array(ev.target.result);
+    var wb=XLSX.read(data,{type:'array'});
+    var ws=wb.Sheets[wb.SheetNames[0]];
+    var json=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
+    if(json.length<2){alert('Foglio vuoto.');return;}
+    var hdrRow=-1,cName=-1,cRes=-1;
+    for(var ri=0;ri<Math.min(5,json.length)&&hdrRow<0;ri++){
+      var row=json[ri];if(!row)continue;
+      var n=-1,r=-1;
+      row.forEach(function(cell,ci){
+        var h=String(cell||'').toLowerCase().trim();
+        if(n<0&&(h.indexOf('field_coach')>=0||h.indexOf('field coach')>=0||h==='fc'||h.indexOf('nome')>=0))n=ci;
+        if(r<0&&(h.indexOf('riserva')>=0||h.indexOf('reserve')>=0))r=ci;
+      });
+      if(n>=0&&r>=0){hdrRow=ri;cName=n;cRes=r;}
+    }
+    if(hdrRow<0){alert('Colonne non trovate: servono "NOME" e "RISERVA SAS EUR" (file esportato con "Esporta Riserva SAS Field Coach").');return;}
+    function normName(s){return String(s||'').toUpperCase().trim().replace(/\s+/g,' ');}
+    var nameLookup={};
+    Object.values(FC_EMP).forEach(function(fe){
+      nameLookup[normName(fe.n+' '+fe.c)]=fe.m;nameLookup[normName(fe.c+' '+fe.n)]=fe.m;
+    });
+    var parsed=[],notFound=[],tot=0;
+    for(var ri2=hdrRow+1;ri2<json.length;ri2++){
+      var row2=json[ri2];if(!row2)continue;var rawName=row2[cName];
+      if(rawName==null||String(rawName).trim()==='')continue;
+      var rv=parseFloat(row2[cRes]);if(isNaN(rv))continue;
+      var matr=nameLookup[normName(rawName)];
+      if(!matr){notFound.push(String(rawName).trim());continue;}
+      rv=Math.round(rv*100)/100;
+      parsed.push([matr,rv]);tot+=rv;
+    }
+    if(!parsed.length){alert('Nessuna riga abbinata ai FC/VM caricati'+(notFound.length?' (non abbinati: '+notFound.slice(0,10).join(', ')+')':'')+'.\nCarica prima l\'Anagrafica FC/VM.');return;}
+    Object.keys(FC_AREA_SAS).forEach(function(m){delete FC_AREA_SAS[m].sasr_eur;});
+    parsed.forEach(function(p){if(!FC_AREA_SAS[p[0]])FC_AREA_SAS[p[0]]={};FC_AREA_SAS[p[0]].sasr_eur=p[1];});
+    var msg='✅ Riserva SAS FC/VM mese precedente importata: '+parsed.length+' aree · totale '+tot.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' EUR.';
+    if(notFound.length)msg+='\n\n⚠ Non abbinati ('+notFound.length+'):\n'+notFound.slice(0,10).join('\n')+(notFound.length>10?'\n...':'');
+    alert(msg);
+    rC();rA();rSources();autoSave();
+  }catch(ex){alert('Errore import Riserva SAS FC/VM:\n'+ex.message);}},50);};
   reader.readAsArrayBuffer(file);
 }
 function loadFcVmResults(file){
