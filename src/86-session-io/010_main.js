@@ -21,7 +21,7 @@ function saveSession(){
       tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,
       seas:SEAS,seas_cfg:SEAS_CFG,seas_targets:SEAS_TARGETS,sas_matrix:SAS_MATRIX,
       demolt_matrix_store:DEMOLT_MATRIX_STORE,demolt_matrix_fc:DEMOLT_MATRIX_FC,
-      demolt_result_store:DEMOLT_RESULT_STORE,demolt_result_fc:DEMOLT_RESULT_FC,
+      demolt_result_store:DEMOLT_RESULT_STORE,demolt_result_fc:DEMOLT_RESULT_FC,demolt_check:DEMOLT_CHECK,
       agg:AGG,vl:VL,usa_p:USA_P,store_flags:STORE_FLAGS,
       cfg_month:CFG_MONTH,cfg_year:CFG_YEAR,cfg_pdf_path:CFG_PDF_PATH,cfg_season:CFG_SEASON,
       monthly_syly:MONTHLY_SYLY,
@@ -108,6 +108,7 @@ function loadSession(input){
     }
     if(state.demolt_result_store)DEMOLT_RESULT_STORE=state.demolt_result_store;
     if(state.demolt_result_fc)DEMOLT_RESULT_FC=state.demolt_result_fc;
+    if(state.demolt_check)DEMOLT_CHECK=state.demolt_check;
     // Ripristina FC+VM prima di setPrizeMode: rAFcvm() gira con i dati già pronti (inclusa lang)
     if(state.fc_emp)FC_EMP=state.fc_emp;
     if(state.fc_map)FC_MAP=state.fc_map;

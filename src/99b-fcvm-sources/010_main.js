@@ -42,8 +42,8 @@ function rSourcesFcvm(){
   ]);
   // Coefficiente Inventari (da ott. 2026): senza il file inventari+accuracy il premio d'area dei FC non viene ridotto
   if(!isP&&typeof demoltActive==="function"&&demoltActive()){
-    var _nDemFc=Object.keys(DEMOLT_RESULT_FC).length;
-    checks.push({label:'Inventari + Accuracy'+(_nDemFc>0?' — '+_nDemFc+' FC':''),ok:_nDemFc>0});
+    var _dF=demoltCheckState('f');
+    checks.push({label:'Inventari + Accuracy'+(_dF.n>0?' — '+_dF.n+' FC':'')+(_dF.nE+_dF.nW>0?' ⚠ '+(_dF.nE+_dF.nW)+' da verificare':''),ok:_dF.ok});
   }
   // SAS valore→fatturato: richiesto in consuntivo da luglio 2026 (dato aggregato per area FC)
   if(!isP&&typeof sasNewActive==='function'&&sasNewActive()){
@@ -88,6 +88,7 @@ function rSourcesFcvm(){
     });
     h+='</div>';
   }
+    if(!isP)h+=demoltCheckPanelHtml('f');
     h+='<div id="scanResults"></div>';
     h+='<div id="scanResults" style="margin-top:8px"></div>';
   return h;

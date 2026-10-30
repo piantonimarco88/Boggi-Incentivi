@@ -156,7 +156,7 @@ function rSources(){try{
       var hasArt=hasCons&&Object.keys(D.c).some(function(k){return(D.c[k].ac||0)>0});
       checks.push({l:"DCC",ok:hasDCC,v:hasDCC?"OK":"Da caricare"});
       // Coefficiente Inventari (da ott. 2026): senza il file inventari+accuracy il premio SM/VSM non viene ridotto
-      if(typeof demoltActive==="function"&&demoltActive()){var _nDem=Object.keys(DEMOLT_RESULT_STORE).length;checks.push({l:"Inventari + Accuracy"+(_nDem>0?" — "+_nDem+" neg.":""),ok:_nDem>0,v:_nDem>0?"OK":"Da caricare"});}
+      if(typeof demoltActive==="function"&&demoltActive()){var _dS=demoltCheckState("s");checks.push({l:"Inventari + Accuracy"+(_dS.n>0?" — "+_dS.n+" neg.":"")+(_dS.nE+_dS.nW>0?" ⚠ "+(_dS.nE+_dS.nW)+" da verificare":""),ok:_dS.ok,v:_dS.ok?"OK":"Da caricare"});}
       if(PARAMS.artEnabled)checks.push({l:"Articoli Incentivati",ok:hasArt,v:hasArt?"OK":"Da caricare"});
       if(!isIT){
         var hasUSAps=Object.keys(D.usa||{}).length>0&&Object.keys(D.usa).some(function(k){return(D.usa[k].ps||0)>0});
@@ -170,6 +170,7 @@ function rSources(){try{
   sh+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px">';
   checks.forEach(function(ck){sh+='<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:'+(ck.ok?"#f0faf2":"#fef6f0")+';border-radius:5px;border:1px solid '+(ck.ok?"#d4edda":"#f8d7da")+'"><span style="font-size:12px">'+(ck.ok?"\u2705":"\u274c")+'</span><span style="font-size:10px;font-weight:600">'+ck.l+"</span></div>"});
   sh+="</div></div>";
+  if(PRIZE_MODE==="mensile"&&!isP)sh+=demoltCheckPanelHtml("s");
 
   // === SEASONAL: import Mid-Season gi\u00e0 erogato (solo semestrale, consuntivo) ===
   if(isSeasonal&&!isMid&&!isP){

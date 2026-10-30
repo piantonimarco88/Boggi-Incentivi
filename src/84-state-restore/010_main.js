@@ -34,6 +34,7 @@ if(window._autoState){try{
   }
   if(as.demolt_result_store)DEMOLT_RESULT_STORE=as.demolt_result_store;
   if(as.demolt_result_fc)DEMOLT_RESULT_FC=as.demolt_result_fc;
+  if(as.demolt_check)DEMOLT_CHECK=as.demolt_check;
   if(as.cfg_month)CFG_MONTH=as.cfg_month;
   if(as.cfg_year)CFG_YEAR=as.cfg_year;
   if(as.cfg_pdf_path!==undefined)CFG_PDF_PATH=as.cfg_pdf_path;
@@ -123,7 +124,7 @@ function autoSave(){
       tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,
       seas:SEAS,seas_cfg:SEAS_CFG,seas_targets:SEAS_TARGETS,sas_matrix:SAS_MATRIX,
       demolt_matrix_store:DEMOLT_MATRIX_STORE,demolt_matrix_fc:DEMOLT_MATRIX_FC,
-      demolt_result_store:DEMOLT_RESULT_STORE,demolt_result_fc:DEMOLT_RESULT_FC,
+      demolt_result_store:DEMOLT_RESULT_STORE,demolt_result_fc:DEMOLT_RESULT_FC,demolt_check:DEMOLT_CHECK,
       agg:AGG,vl:VL,usa_p:USA_P,store_flags:STORE_FLAGS,
       cfg_month:CFG_MONTH,cfg_year:CFG_YEAR,cfg_pdf_path:CFG_PDF_PATH,cfg_season:CFG_SEASON,
       monthly_syly:MONTHLY_SYLY,
