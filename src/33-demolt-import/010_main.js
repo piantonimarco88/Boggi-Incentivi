@@ -109,9 +109,9 @@ function demoltProcessInventari(sh){
   if(cU>=0)add(uMis.length?"err":"ok","s","Colonna «% DCC Executed corretta» verificata",uMis.length?uMis.length+" negozi con valore del file diverso dal ricalcolo (l'import usa il ricalcolo).":"Il valore del file coincide con il ricalcolo per tutti i negozi con task inviati.",uMis);
   else add("warn","s","Colonna «% DCC Executed corretta» assente","Completamento ricalcolato dalle colonne grezze (Sended/Completed/CycleCountType).");
   if(usa.length)add("ok","s","Negozi USA esclusi: "+usa.length,"Hanno la loro regola (calcUSA): non ricevono il Coefficiente Inventari.",usa);
-  if(noSent.length)add("warn","s","Negozi senza task inviati: "+noSent.length,"Il file dà #DIV/0! — non valorizzati: nessuna riduzione del premio.",noSent);
-  if(wicZero.length)add("warn","s","Negozi WIC con 0 task inviati: "+wicZero.length,"Per la formula del file (Completed / 4) risultano a 0% di completamento → fascia più bassa del demoltiplicatore. Verificare se il task non è mai stato inviato.",wicZero);
-  if(noAcc.length)add("warn","s","Negozi senza Accuracy («-»): "+noAcc.length,"Non valorizzati: nessuna riduzione del premio, anche se il completamento è basso.",noAcc);
+  if(noSent.length)add("ok","s","Negozi senza task inviati: "+noSent.length,"Il file dà #DIV/0! — non valorizzati: nessuna riduzione del premio.",noSent);
+  if(wicZero.length)add("ok","s","Negozi WIC con 0 task inviati: "+wicZero.length,"Regola confermata: Completed / 4 = 0% di completamento → fascia più bassa del demoltiplicatore.",wicZero);
+  if(noAcc.length)add("ok","s","Negozi senza Accuracy («-»): "+noAcc.length,"Regola confermata: non valorizzati, nessuna riduzione del premio anche se il completamento è basso.",noAcc);
   if(accOdd.length)add("warn","s","Accuracy anomala (<50%): "+accOdd.length,"",accOdd);
   // ── Aggregato per Field Coach (assegnazione negozio→FC dell'anagrafica app) ──
   var fcDiff=[],haveMap=typeof FC_MAP!=="undefined"&&typeof FC_EMP!=="undefined"&&Object.keys(FC_MAP).length>0&&Object.keys(FC_EMP).length>0;
@@ -211,7 +211,7 @@ function demoltCheckItems(scope){
   }
   if(scope==="f"&&typeof FC_EMP!=="undefined"){
     var mf=[];Object.keys(FC_EMP).forEach(function(m){var e=FC_EMP[m];if(e.j==="FC"&&!DEMOLT_RESULT_FC[m])mf.push(e.n+" "+e.c);});
-    live.push({lvl:mf.length?"warn":"ok",sc:"f",t:"Field Coach senza risultato inventari: "+mf.length,d:mf.length?"Il premio d'area non viene ridotto (area interamente USA, negozi non mappati o senza task).":"Tutti i Field Coach hanno un risultato.",list:mf});
+    live.push({lvl:mf.length?"warn":"ok",sc:"f",t:"Field Coach senza risultato inventari: "+mf.length,d:mf.length?"Il premio d'area non viene ridotto (area interamente USA — confermato —, negozi non mappati o senza task).":"Tutti i Field Coach hanno un risultato.",list:mf});
   }
   return items.concat(live);
 }

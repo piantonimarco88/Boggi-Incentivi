@@ -626,9 +626,9 @@ function demoltProcessInventari(sh){
   if(cU>=0)add(uMis.length?"err":"ok","s","Colonna «% DCC Executed corretta» verificata",uMis.length?uMis.length+" negozi con valore del file diverso dal ricalcolo (l'import usa il ricalcolo).":"Il valore del file coincide con il ricalcolo per tutti i negozi con task inviati.",uMis);
   else add("warn","s","Colonna «% DCC Executed corretta» assente","Completamento ricalcolato dalle colonne grezze (Sended/Completed/CycleCountType).");
   if(usa.length)add("ok","s","Negozi USA esclusi: "+usa.length,"Hanno la loro regola (calcUSA): non ricevono il Coefficiente Inventari.",usa);
-  if(noSent.length)add("warn","s","Negozi senza task inviati: "+noSent.length,"Il file dà #DIV/0! — non valorizzati: nessuna riduzione del premio.",noSent);
-  if(wicZero.length)add("warn","s","Negozi WIC con 0 task inviati: "+wicZero.length,"Per la formula del file (Completed / 4) risultano a 0% di completamento → fascia più bassa del demoltiplicatore. Verificare se il task non è mai stato inviato.",wicZero);
-  if(noAcc.length)add("warn","s","Negozi senza Accuracy («-»): "+noAcc.length,"Non valorizzati: nessuna riduzione del premio, anche se il completamento è basso.",noAcc);
+  if(noSent.length)add("ok","s","Negozi senza task inviati: "+noSent.length,"Il file dà #DIV/0! — non valorizzati: nessuna riduzione del premio.",noSent);
+  if(wicZero.length)add("ok","s","Negozi WIC con 0 task inviati: "+wicZero.length,"Regola confermata: Completed / 4 = 0% di completamento → fascia più bassa del demoltiplicatore.",wicZero);
+  if(noAcc.length)add("ok","s","Negozi senza Accuracy («-»): "+noAcc.length,"Regola confermata: non valorizzati, nessuna riduzione del premio anche se il completamento è basso.",noAcc);
   if(accOdd.length)add("warn","s","Accuracy anomala (<50%): "+accOdd.length,"",accOdd);
   // ── Aggregato per Field Coach (assegnazione negozio→FC dell'anagrafica app) ──
   var fcDiff=[],haveMap=typeof FC_MAP!=="undefined"&&typeof FC_EMP!=="undefined"&&Object.keys(FC_MAP).length>0&&Object.keys(FC_EMP).length>0;
@@ -728,7 +728,7 @@ function demoltCheckItems(scope){
   }
   if(scope==="f"&&typeof FC_EMP!=="undefined"){
     var mf=[];Object.keys(FC_EMP).forEach(function(m){var e=FC_EMP[m];if(e.j==="FC"&&!DEMOLT_RESULT_FC[m])mf.push(e.n+" "+e.c);});
-    live.push({lvl:mf.length?"warn":"ok",sc:"f",t:"Field Coach senza risultato inventari: "+mf.length,d:mf.length?"Il premio d'area non viene ridotto (area interamente USA, negozi non mappati o senza task).":"Tutti i Field Coach hanno un risultato.",list:mf});
+    live.push({lvl:mf.length?"warn":"ok",sc:"f",t:"Field Coach senza risultato inventari: "+mf.length,d:mf.length?"Il premio d'area non viene ridotto (area interamente USA — confermato —, negozi non mappati o senza task).":"Tutti i Field Coach hanno un risultato.",list:mf});
   }
   return items.concat(live);
 }
@@ -967,12 +967,13 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.93'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.94'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.94: Controllo Inventari + Accuracy — regole confermate dall'utente (negozi WIC con 0 task inviati = 0/4 = 0%; negozi senza Accuracy o senza task = nessuna riduzione; area FC interamente USA esclusa): nel pannello non compaiono più come avvisi da verificare.",
   "9.93: Import Inventari + Accuracy — ora legge le schede «Matrice negozi» (Completamento = Completed / Sended, WIC: Completed / 4 con tetto 100%; Accuracy), «Matrice FC» e «Eccezioni FC» (% Invio area = Sended / (Working days − Eccezioni FC senza END OF SEASON RETURNS), tetto 100%; % Completamento = Completed / Sended). Un nuovo import sostituisce il precedente. Nuovo pannello «Controllo Inventari + Accuracy» in Fonti Dati (Mensile e FC+VM): verifica incrociata dei totali FC con la somma dei negozi, colonne colorate del file ricalcolate, negozi USA esclusi, negozi/FC senza risultato; il check di completezza mostra ⚠ se ci sono avvisi. Il file ottobre 2026 ha la colonna «% DCC Sent corretta» (Matrice FC) errata (Working days corretti = Eccezioni + Sended): l'import usa il ricalcolo.",
   "9.92: Import Target QTY (dept store, mensile) — supporto al nuovo formato con colonne Mese / Store Id / Negozio / Country / Field Coach / Target pezzi (nov 2026): il Target pezzi è letto come target QTY, le righe di altri mesi vengono saltate. Il formato precedente (colonna Target QTY) resta supportato",
   "9.91: Import anagrafica estero (Workday) — supporto al nuovo export di consuntivo ottobre 2026: il BDG si legge dalle colonne dedicate Budget Amount / Budget Currency / Budget Frequency (prima: Compensation Plan + Amount). Controllo in più: la valuta del BDG deve coincidere con quella dell'ente. Il formato precedente resta supportato",
