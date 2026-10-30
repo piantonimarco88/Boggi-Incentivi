@@ -651,7 +651,7 @@ function loadFcVmSasArea(file){
       var nc=normName(fe.n+' '+fe.c),cn=normName(fe.c+' '+fe.n);
       nameLookup[nc]=fe.m;nameLookup[cn]=fe.m;
     });
-    var imported=0,matched=0,notFound=[];
+    var imported=0,matched=0,notFound=[],seenRows={},dupMatr=[];
     for(var ri2=hdrRow+1;ri2<json.length;ri2++){
       var row2=json[ri2];if(!row2)continue;var rawName=row2[hdr.name];if(rawName==null||String(rawName).trim()==='')continue;
       if(hdr.retY>=0){var ry=parseInt(row2[hdr.retY]);if(!isNaN(ry)&&ry!==CFG_YEAR)continue;}
@@ -659,6 +659,11 @@ function loadFcVmSasArea(file){
       imported++;
       var matr=nameLookup[normName(rawName)];
       if(!matr){notFound.push(String(rawName).trim());continue;}
+      // Nome ripetuto nel file: l'abbinamento è per nome (nessuna matricola), quindi l'ultima riga sovrascrive le precedenti. Lo segnalo a fine import.
+      var _svd=hdr.sasv>=0?parseFloat(row2[hdr.sasv]):NaN,_acd=hdr.acc>=0?parseFloat(row2[hdr.acc]):NaN,_vld=hdr.vel>=0?parseFloat(row2[hdr.vel]):NaN;
+      if(!seenRows[matr])seenRows[matr]=[];
+      seenRows[matr].push({r:ri2+1,sv:_svd,ac:_acd,vl:_vld});
+      if(seenRows[matr].length===2)dupMatr.push({m:matr,name:String(rawName).trim()});
       if(!FC_AREA_SAS[matr])FC_AREA_SAS[matr]={};
       if(hdr.acc>=0){var av=parseFloat(row2[hdr.acc]);if(!isNaN(av)){if(av>1)av/=100;FC_AREA_SAS[matr].acc=Math.max(0,Math.min(1,av));}}
       if(hdr.vel>=0){var vv=parseFloat(row2[hdr.vel]);if(!isNaN(vv)){if(vv>1)vv/=100;FC_AREA_SAS[matr].vel=Math.max(0,Math.min(1,vv));}}
@@ -668,6 +673,15 @@ function loadFcVmSasArea(file){
     }
     var msg='✅ SAS Area (Field Coach) importati: '+matched+' su '+imported+' righe.';
     if(notFound.length)msg+='\n\n⚠ Non abbinati ('+notFound.length+'):\n'+notFound.slice(0,10).join('\n')+(notFound.length>10?'\n...':'');
+    if(dupMatr.length){
+      var _pc=function(x){return isNaN(x)?'n/d':Math.round((x>1?x:x*100))+'%';};
+      msg+='\n\n⚠ NOME DUPLICATO nel file ('+dupMatr.length+') — l\'abbinamento è per nome, vale solo l\'ULTIMA riga; verifica quale è quella corretta (o rinomina una riga, es. suffisso _2) e reimporta:';
+      dupMatr.slice(0,10).forEach(function(d){
+        var rows=seenRows[d.m];
+        msg+='\n• '+d.name+': '+rows.map(function(x,i){return 'riga '+x.r+' = '+(isNaN(x.sv)?'n/d':'€'+x.sv.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2}))+' (acc '+_pc(x.ac)+', vel '+_pc(x.vl)+')'+(i===rows.length-1?' ← APPLICATA':'');}).join(' | ');
+      });
+      if(dupMatr.length>10)msg+='\n...';
+    }
     alert(msg);
     rC();rA();rSources();autoSave();
   }catch(ex){alert('Errore import SAS Area:\n'+ex.message);}},50);};
