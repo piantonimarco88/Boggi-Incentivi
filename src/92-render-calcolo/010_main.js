@@ -429,6 +429,13 @@ function exportStatsJsonStores(){
     // anche quando il salvagente non è rilevante, es. negozio già al target). Stessa formula
     // di isRidottoStore ma senza il gate sulla fascia — vedi src/88-calc-engine isRidottoStore.
     var syLy=MONTHLY_SYLY[sid];
+    // Coefficiente Inventari (da ott. 2026, solo SM/VSM): "applied" = coefficiente applicato,
+    // "nodata" = si applicherebbe ma il negozio non ha un risultato (es. senza task inviati),
+    // "na" = nessun SM/VSM nel negozio (o USA). null = coefficiente non ancora attivo nel mese.
+    var demActive=typeof demoltActive==="function"&&demoltActive();
+    var demR=demActive?DEMOLT_RESULT_STORE[String(sid)]:null;
+    var demApplies=demActive&&E.some(function(e){return String(e.si)===String(sid)&&demoltAppliesStore(e);});
+    var demStatus=!demActive?null:(!demApplies?"na":(demR&&demR.pct!=null?"applied":"nodata"));
     var parachuteOk=dp?((tg.qt||0)>0&&(cn.qc||0)>=(tg.qt||0)):((cn.sy||0)>(syLy||0)&&(syLy||0)>0);
     return{kind:"negozi",sid:sid,name:storeNames[sid],target:Math.round(info.to*ex),
       actual:Math.round((cn.sc||0)*ex),pctBase:pctBase,
@@ -441,7 +448,10 @@ function exportStatsJsonStores(){
       recValue:Math.round((info.recognized||0)*ex),applied:Math.round((info.used||0)*ex),
       esuberoSasPrec:Math.round((info.reserveIn||0)*ex),esuberoSasPrecUsed:Math.round(resInUsed*ex),
       sasReserveNext:Math.round((info.reserveOut||0)*ex),pctFinal:pctFinal,
-      esito:esito,esitoLabel:esitoLabel,determinante:determinante};
+      esito:esito,esitoLabel:esitoLabel,determinante:determinante,
+      demoltStatus:demStatus,demoltPct:demStatus==="applied"?demR.pct:null,
+      demoltCompl:demStatus==="applied"&&demR.compl!=null?demR.compl:null,
+      demoltAcc:demStatus==="applied"&&demR.acc!=null?demR.acc:null};
   });
   var columns=[
     {key:"kind",label:"Tipo",type:"mono"},
@@ -466,12 +476,15 @@ function exportStatsJsonStores(){
     {key:"esuberoSasPrecUsed",label:"Riserva SAS prec. usata",type:"eur-dash0"},
     {key:"sasReserveNext",label:"Riserva SAS riportata",type:"eur-dash0"},
     {key:"pctFinal",label:"% finale",type:"pctbar-badge"},
-    {key:"esito",label:"Esito",type:"esitochip"}
+    {key:"esito",label:"Esito",type:"esitochip"},
+    {key:"demoltPct",label:"Coef. Inventari (SM/VSM)",type:"pct0"},
+    {key:"demoltCompl",label:"Inventari — % completamento",type:"pct0"},
+    {key:"demoltAcc",label:"Inventari — Accuracy",type:"pct0"}
   ];
   var payload={
     meta:{kind:"negozi",title:"Dati per Statistiche",
       subtitle:"Negozi "+(REGION==="italia"?"Italia":"International")+" — Consuntivo "+getMonthYearLabel(),
-      generatedAt:new Date().toISOString(),source:"BoggiIncentivi",schemaVersion:2},
+      generatedAt:new Date().toISOString(),source:"BoggiIncentivi",schemaVersion:3},
     columns:columns,
     rows:rows
   };
@@ -492,6 +505,11 @@ function exportStatsJsonFcvm(){
     var em=esitoMap[r.esito]||["none",r.esito];
     var resInUsed=Math.min(r.totSasReserveIn||0,r.totSasUsed||0);
     var esuberoPrec=Math.round(r.totEsubero||0);
+    // Coefficiente Inventari (da ott. 2026, solo FC, riduce solo il premio d'area — non i BDG singoli):
+    // "applied" = applicato, "nodata" = FC senza risultato, "na" = VM (o coefficiente non attivo → null).
+    var demActive=typeof demoltActive==="function"&&demoltActive();
+    var demStatus=!demActive?null:(emp.j!=="FC"?"na":(r.demoltDr?"applied":"nodata"));
+    var demExRate=(emp.ex&&emp.ex!==1&&emp.ex>0)?emp.ex:getFcVmExRate(emp.cu);
     return{kind:"fcvm",name:emp.n+" "+emp.c,role:emp.j,nStores:(r.stores||[]).length,target:Math.round(r.totTarget||0),
       actual:Math.round(pureCons),
       esuberoPrec:esuberoPrec,esuberoPrecUsed:esuberoPrec,
@@ -502,7 +520,12 @@ function exportStatsJsonFcvm(){
       recValue:Math.round(r.totSasRec||0),applied:Math.round(r.totSasUsed||0),
       esuberoSasPrec:Math.round(r.totSasReserveIn||0),esuberoSasPrecUsed:Math.round(resInUsed),
       sasReserveNext:Math.round(r.totSasReserveOut||0),pctFinal:pctFinal,
-      esito:em[0],esitoLabel:em[1],determinante:determinante};
+      esito:em[0],esitoLabel:em[1],determinante:determinante,
+      demoltStatus:demStatus,demoltPct:demStatus==="applied"?r.demoltDr.pct:null,
+      demoltInvio:demStatus==="applied"&&r.demoltDr.invio!=null?r.demoltDr.invio:null,
+      demoltCompl:demStatus==="applied"&&r.demoltDr.compl!=null?r.demoltDr.compl:null,
+      premioAreaPre:demStatus==="applied"?Math.round((r.demoltPre||0)*demExRate*100)/100:null,
+      premioAreaPost:demStatus==="applied"?Math.round((r.premio_eur||0)*100)/100:null};
   });
   var columns=[
     {key:"kind",label:"Tipo",type:"mono"},
@@ -525,12 +548,17 @@ function exportStatsJsonFcvm(){
     {key:"esuberoSasPrecUsed",label:"Riserva SAS prec. usata",type:"eur-dash0"},
     {key:"sasReserveNext",label:"Riserva SAS riportata",type:"eur-dash0"},
     {key:"pctFinal",label:"% finale",type:"pctbar-badge"},
-    {key:"esito",label:"Esito",type:"esitochip"}
+    {key:"esito",label:"Esito",type:"esitochip"},
+    {key:"demoltPct",label:"Coef. Inventari (solo FC)",type:"pct0"},
+    {key:"demoltInvio",label:"Inventari — % invio area",type:"pct0"},
+    {key:"demoltCompl",label:"Inventari — % completamento",type:"pct0"},
+    {key:"premioAreaPre",label:"Premio area prima del coef. (EUR)",type:"eur-dash0"},
+    {key:"premioAreaPost",label:"Premio area dopo il coef. (EUR)",type:"eur-dash0"}
   ];
   var payload={
     meta:{kind:"fcvm",title:"Dati per Statistiche",
       subtitle:"Field Coach + VM — Consuntivo "+getMonthYearLabel(),
-      generatedAt:new Date().toISOString(),source:"BoggiIncentivi",schemaVersion:2},
+      generatedAt:new Date().toISOString(),source:"BoggiIncentivi",schemaVersion:3},
     columns:columns,
     rows:rows
   };

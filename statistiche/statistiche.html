@@ -5010,7 +5010,7 @@ function sasHandleFiles(fileList){
         if(!Array.isArray(json.rows)||!json.rows.length){alert('File "'+f.name+'": nessuna riga in "rows".');return;}
         const period=sasParsePeriod(json.meta);
         if(!period){alert('File "'+f.name+'": non riesco a determinare mese/anno dal subtitle (atteso "Consuntivo <Mese> <Anno>").');return;}
-        if(json.meta.schemaVersion!=null&&json.meta.schemaVersion!==1)console.warn('sasHandleFiles: schemaVersion inattesa per '+f.name,json.meta.schemaVersion);
+        if(json.meta.schemaVersion!=null&&json.meta.schemaVersion>3)console.warn('sasHandleFiles: schemaVersion inattesa per '+f.name,json.meta.schemaVersion);
         sasFiles[f.name]={kind,period,meta:json.meta,rows:json.rows,fname:f.name};
         sasRenderChips();sasPopulateMonths();renderSas();try{idbAutoSave();}catch(e2){}
       };
@@ -5370,13 +5370,23 @@ function renderSas(){
   const totReserveNext=rows.reduce((s,r)=>s+(r.sasReserveNext||0),0);
   const totEsubero=rows.reduce((s,r)=>s+(sasEsubero(r)||0),0);
   const det=rows.filter(r=>r.determinante).length;
+  // Coefficiente Inventari (da ott. 2026): tile solo se il file porta i dati (schemaVersion 3) e almeno una riga lo ha applicato.
+  const demApplied=rows.filter(r=>r.demoltStatus==='applied');
+  let demKpiHtml='';
+  if(demApplied.length){
+    const demRed=demApplied.filter(r=>r.demoltPct<1).length;
+    const demLoss=sasView==='fcvm'?demApplied.reduce((s,r)=>s+((r.premioAreaPre||0)-(r.premioAreaPost||0)),0):null;
+    demKpiHtml='<div class="kpi r"><div class="kpi-lbl">Coef. Inventari</div><div class="kpi-val">'+demRed+' <small style="font-size:.55em;color:#999">su '+demApplied.length+'</small></div><div class="kpi-sub">'
+      +(demLoss!=null?'premio area ridotto di € '+fmt(Math.round(demLoss)):'con premio ridotto')+'</div></div>';
+  }
   if(kpiEl)kpiEl.innerHTML=
     '<div class="kpi"><div class="kpi-lbl">'+(sasView==='negozi'?'Negozi':'Field Coach + VM')+'</div><div class="kpi-val">'+rows.length+'</div></div>'
     +'<div class="kpi a"><div class="kpi-lbl">SAS determinante</div><div class="kpi-val">'+det+'</div><div class="kpi-sub">portati a target dal SAS</div></div>'
     +'<div class="kpi p"><div class="kpi-lbl">Valore SAS riconosciuto</div><div class="kpi-val">€ '+fmt(totRec)+'</div></div>'
     +'<div class="kpi g"><div class="kpi-lbl">Applicato al fatturato</div><div class="kpi-val">€ '+fmt(totApplied)+'</div></div>'
     +'<div class="kpi"><div class="kpi-lbl">Riserva SAS riportata</div><div class="kpi-val">'+(hasReserveNext?'€ '+fmt(totReserveNext):'—')+'</div><div class="kpi-sub">per il mese prossimo</div></div>'
-    +'<div class="kpi"><div class="kpi-lbl">Esubero fatturato</div><div class="kpi-val">€ '+fmt(totEsubero)+'</div><div class="kpi-sub">disponibile questo mese</div></div>';
+    +'<div class="kpi"><div class="kpi-lbl">Esubero fatturato</div><div class="kpi-val">€ '+fmt(totEsubero)+'</div><div class="kpi-sub">disponibile questo mese</div></div>'
+    +demKpiHtml;
   if(cnEl)cnEl.textContent='('+rows.length+' di '+file.rows.length+')';
 
   const eu=v=>'€ '+fmt(Math.round(v||0));
@@ -5424,6 +5434,21 @@ function renderSas(){
     return rs.toFixed(1)+' <small style="color:#999" title="SY anno precedente non disponibile per questo negozio">(n/d)</small>';
   };
   const parStoreRows=sasView==='fcvm'?sasStoreRowsForMonth(file.period.monthKey):null;
+  // Coefficiente Inventari: undefined = file precedente allo schemaVersion 3 (dato non esportato, mai indovinato);
+  // null = coefficiente non ancora attivo nel mese; na = non si applica (VM, negozio senza SM/VSM); nodata = nessun risultato inventari.
+  const demCell=r=>{
+    const st=r.demoltStatus;
+    if(st===undefined)return{disp:'<span class="dash" title="File senza dati Coefficiente Inventari (export precedente alla v9.99 della app): riesportare il JSON dalla app incentivi.">n/d</span>',val:-2};
+    if(st===null)return{disp:'<span class="dash" title="Coefficiente Inventari non ancora attivo in questo mese (da ottobre 2026).">—</span>',val:-2};
+    if(st==='na')return{disp:'<span class="dash" title="'+(sasView==='fcvm'?'Il coefficiente si applica solo ai Field Coach, non ai VM.':'Nessun SM/VSM nel negozio: il coefficiente non si applica.')+'">—</span>',val:-1};
+    if(st==='nodata')return{disp:'<span class="dash" title="Nessun risultato inventari per questa riga: nessuna riduzione del premio.">senza dati</span>',val:-1};
+    const p=n=>n==null?'n/d':(Math.floor(n*10000+1e-6)/100).toFixed(2)+'%';
+    const tip=(sasView==='fcvm'
+      ?'% invio area '+p(r.demoltInvio)+' · % completamento '+p(r.demoltCompl)+(r.premioAreaPre!=null?'&#10;Premio area € '+fmt(Math.round(r.premioAreaPre))+' → € '+fmt(Math.round(r.premioAreaPost)):'')
+      :'% completamento '+p(r.demoltCompl)+' · Accuracy '+p(r.demoltAcc)+'&#10;Riduce tutte le voci di premio degli SM/VSM del negozio');
+    const pc=Math.round(r.demoltPct*100);
+    return{disp:'<span class="sas-par '+(r.demoltPct>=1?'ok':'ko')+'" title="'+tip+'">'+pc+'%</span>',val:r.demoltPct};
+  };
   const parCell=r=>{
     const p=sasParachute(r,sasView,parStoreRows), tip=agEsc(p.tip).replace(/"/g,'&quot;');
     if(p.ok==null)return{disp:'<span class="dash" title="'+tip+'">n/d</span>',val:null};
@@ -5448,7 +5473,9 @@ function renderSas(){
     {label:'% no SAS',align:'right',filter:'none'},{label:'Valore SAS',align:'right',filter:'none'},
     {label:'Ricon.',align:'right',filter:'none'},{label:'SAS prec.',align:'right',filter:'none'},{label:'SAS usata',align:'right',filter:'none'},
     {label:'Applicato',align:'right',filter:'none'},{label:'SAS succ.',align:'right',filter:'none'},{label:'% finale',align:'right',filter:'none'},
-    {label:'Esito',filter:'select'},{label:'BDG stor.',align:'right',filter:'none'},
+    {label:'Esito',filter:'select'},
+    {label:'Coef. Inv. <span class="info-tip down" data-tip="Coefficiente Inventari (da ottobre 2026): riduce il premio in base a % completamento inventari e Accuracy.&#10;Negozi: solo SM/VSM, su tutte le voci di premio. FC: solo FC, solo premio area (non i BDG singoli); VM esclusi.&#10;Richiede il JSON esportato dalla app v9.99 o successiva (altrimenti n/d).">i</span>',align:'right',filter:'none'},
+    {label:'BDG stor.',align:'right',filter:'none'},
   ]);
   // Ordine di default: Negozi → Store ID crescente; FC+VM → Ruolo (FC poi VM) con Nome alfabetico
   // dentro ciascun ruolo — il pre-ordinamento per nome qui sotto fa da tie-break stabile quando
@@ -5465,7 +5492,7 @@ function renderSas(){
       {disp:eu(r.sasValue),val:r.sasValue},{disp:Math.round(r.recPct)+'%',val:r.recPct},{disp:eud(r.esuberoSasPrec),val:r.esuberoSasPrec},{disp:eud(r.esuberoSasPrecUsed),val:r.esuberoSasPrecUsed},
       {disp:eud(r.applied),val:r.applied},{disp:eud(r.sasReserveNext),val:r.sasReserveNext},
       {disp:(r.determinante?'<span class="sas-badge">⚡SAS</span>':'')+bar(r.pctFinal*100,pctCls(r.pctFinal))+'<b>'+(r.pctFinal*100).toFixed(1)+'%</b>',val:r.pctFinal},
-      {disp:esitoChip(r),val:r.esito},bdgCell(r),
+      {disp:esitoChip(r),val:r.esito},demCell(r),bdgCell(r),
     ])};
   });
   const sasTblEl=document.getElementById('sasTbl');
@@ -5487,7 +5514,10 @@ function sasExport(){
       '% senza SAS':+((r.pctBase||0)*100).toFixed(1),'Valore SAS':Math.round(r.sasValue),
       'Riconosciuto %':r.recPct,'Esub. SAS prec.':Math.round(r.esuberoSasPrec||0),'Esub. SAS prec. usata':Math.round(r.esuberoSasPrecUsed||0),
       'Valore riconosciuto':Math.round(r.recValue),'Applicato':Math.round(r.applied),'Riserva SAS succ.':Math.round(r.sasReserveNext||0),
-      '% finale':+((r.pctFinal||0)*100).toFixed(1),'Esito':r.esitoLabel,'Determinante':r.determinante?'Sì':'No'});
+      '% finale':+((r.pctFinal||0)*100).toFixed(1),'Esito':r.esitoLabel,'Determinante':r.determinante?'Sì':'No'},
+      r.demoltStatus===undefined?{}:Object.assign({'Coef. Inventari %':r.demoltPct==null?'':Math.round(r.demoltPct*100),'Inventari % completamento':r.demoltCompl==null?'':+(r.demoltCompl*100).toFixed(2)},
+        sasView==='negozi'?{'Inventari Accuracy':r.demoltAcc==null?'':+(r.demoltAcc*100).toFixed(2)}
+          :{'Inventari % invio area':r.demoltInvio==null?'':+(r.demoltInvio*100).toFixed(2),'Premio area prima coef. EUR':r.premioAreaPre==null?'':r.premioAreaPre,'Premio area dopo coef. EUR':r.premioAreaPost==null?'':r.premioAreaPost}));
   });
   _writeXlsx(rows,'SAS Fatturato','BoggiPremi_SasFatturato_');
 }

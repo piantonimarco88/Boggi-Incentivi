@@ -88,14 +88,14 @@ function calcFcVmPremio(matr){
   if(isCons&&ov==='100'){esito='full';premioLC=emp.ib;}
   else if(isCons&&ov==='60'){esito='partial';premioLC=Math.round(emp.ib*FCVM_PARAMS.pct60*100)/100;}
   // ── Malattia / sospeso (solo consuntivo) ────────────────────────────────
-  var smFcvm=1;
+  var smFcvm=1,premioPreDemolt=null,demoltDr=null;
   if(isCons){
     if(emp.ps==="SI"){esito="sospeso";premioLC=0;smFcvm=0;}
     else{smFcvm=sickMult(emp.ml||0);premioLC=Math.round(premioLC*smFcvm*100)/100;}
     // Coefficiente Inventari (da ottobre 2026): riduce solo il premio d'area, solo FC (mai VM)
     if(typeof demoltActive==="function"&&demoltActive()&&emp.j==="FC"){
       var _dDr=DEMOLT_RESULT_FC[matr];
-      if(_dDr&&_dDr.pct!=null)premioLC=Math.round(premioLC*_dDr.pct*100)/100;
+      if(_dDr&&_dDr.pct!=null){premioPreDemolt=premioLC;demoltDr=_dDr;premioLC=Math.round(premioLC*_dDr.pct*100)/100;}
     }
   }
   var exRate=(emp.ex&&emp.ex!==1&&emp.ex>0)?emp.ex:getFcVmExRate(emp.cu);
@@ -129,7 +129,7 @@ function calcFcVmPremio(matr){
   var premioEur=Math.round(premioLC*exRate*100)/100;
   var totalPremioLC=premioLC+bdgPrize;
   var totalPremioEur=Math.round(totalPremioLC*exRate*100)/100;
-  return{premio:premioLC,premio_eur:premioEur,esito:esito,pct:pct,totTarget:totTarget,totCons:totCons,totEsubero:totEsubero,totConsWithEsub:totConsWithEsub,syOk:syOk,syLyArea:syLyArea,syAreaCy:syAreaCy,hasSyLy:hasSyLy,hasSyCy:hasSyCy,syAreaAvg:syAreaAvg,stores:detail,bdgPrize:bdgPrize,bdgPrizeEur:bdgPrizeEur,bdgDetail:bdgDetail,totalPremioLC:totalPremioLC,totalPremioEur:totalPremioEur,hasBdg:bdgDetail.length>0,totSasRec:totSasRec,totSasUsed:totSasUsed,totSasReserveIn:totSasReserveIn,totSasReserveOut:totSasReserveOut,totConsPreSas:totConsPreSas,sasAreaAcc:sasAreaAcc,sasAreaVel:sasAreaVel,sasAreaValRaw:sasAreaValRaw,sasAreaPctMatrix:sasAreaPctMatrix,ml:emp.ml||0,sm:smFcvm};
+  return{premio:premioLC,premio_eur:premioEur,esito:esito,pct:pct,totTarget:totTarget,totCons:totCons,totEsubero:totEsubero,totConsWithEsub:totConsWithEsub,syOk:syOk,syLyArea:syLyArea,syAreaCy:syAreaCy,hasSyLy:hasSyLy,hasSyCy:hasSyCy,syAreaAvg:syAreaAvg,stores:detail,bdgPrize:bdgPrize,bdgPrizeEur:bdgPrizeEur,bdgDetail:bdgDetail,totalPremioLC:totalPremioLC,totalPremioEur:totalPremioEur,hasBdg:bdgDetail.length>0,totSasRec:totSasRec,totSasUsed:totSasUsed,totSasReserveIn:totSasReserveIn,totSasReserveOut:totSasReserveOut,totConsPreSas:totConsPreSas,sasAreaAcc:sasAreaAcc,sasAreaVel:sasAreaVel,sasAreaValRaw:sasAreaValRaw,sasAreaPctMatrix:sasAreaPctMatrix,ml:emp.ml||0,sm:smFcvm,demoltPre:premioPreDemolt,demoltDr:demoltDr};
 }
 function getFcVmPool(){return Object.values(FC_EMP);}
 

@@ -215,12 +215,13 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 /*BUNDLE_INSERT:60-fcvm-state*/
 /*BUNDLE_INSERT:70-fcvm-calc*//*BUNDLE_INSERT:80-roles-config*/var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.98'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.99'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.99: Export «Dati per Statistiche» (Negozi e FC+VM, schemaVersion 3) — aggiunti i dati del Coefficiente Inventari: coefficiente applicato, % completamento, Accuracy (negozi) / % invio area (FC) e, per i FC, premio d'area prima e dopo il coefficiente. Da riesportare il JSON di ottobre per la dashboard Statistiche",
   "9.98: Pulsanti «Carica ...» — il selettore file non si apre più sulla cartella Download (dove poteva bloccarsi): parte dal Desktop e poi ricorda l'ultima cartella usata",
   "9.97: Import SAS Area FC+VM — se lo stesso nome compare più volte nel file (l'abbinamento è per nome, vale l'ultima riga) l'import ora lo segnala con le righe e i valori in conflitto, invece di sovrascrivere in silenzio",
   "9.95: Lettere — nel box Coefficiente Inventari i valori % (Accuracy, % Completamento, % Invio) sono mostrati con 2 decimali (es. 91,27% invece di 91%), troncati e non arrotondati per non sembrare dentro una fascia diversa da quella applicata",
