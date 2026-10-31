@@ -43,6 +43,12 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 .chip-drop{color:#b45309;background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:0 6px;font-weight:600;cursor:help}
 .curr-warn{font-size:11px;color:#d97706;background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:4px 10px;display:inline-flex;align-items:center;gap:5px;margin-top:6px}
 
+/* Barra Coefficiente Inventari (interruttore globale "come pagato" / "al lordo") */
+.coef-bar{display:none;align-items:center;gap:14px;flex-wrap:wrap;padding:8px 28px;background:#fffbeb;border-bottom:1px solid #fcd34d;font-size:12px;color:#92400e}
+.coef-bar.on{display:flex}
+.coef-bar.gross{background:#eff6ff;border-bottom-color:#93c5fd;color:#1d4ed8}
+.coef-bar .coef-t{font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.5px}
+.coef-bar .coef-warn{color:#b45309;font-weight:600}
 /* KPI */
 .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:13px;padding:18px 28px 0}
 .kpi{background:#fff;border-radius:12px;padding:16px 18px;border-left:4px solid #4f46e5;box-shadow:0 1px 5px rgba(0,0,0,.06)}
@@ -381,6 +387,9 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
     <input type="file" id="sfi" accept=".json" style="display:none" onchange="loadSession(event)">
   </div>
 </header>
+
+<!-- COEFFICIENTE INVENTARI: interruttore globale -->
+<div id="coefBar" class="coef-bar"></div>
 
 <!-- UPLOAD -->
 <div class="upload">
@@ -1183,6 +1192,7 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
    <div class="gloss-row"><div class="gloss-term">KPI premianti</div><div class="gloss-def">Pesi (somma 100%): <b>KPI principale 50%</b> · Subscription 35% · SAS 15%. Il KPI principale è <b>Shopper Yield</b> (dal 2025) o <b>UPT — Units Per Transaction</b> (2024). <b>CR</b> è monitorato ma non pagato.</div></div>
    <div class="gloss-row"><div class="gloss-term">Premio per KPI</div><div class="gloss-def"><span class="gloss-f">Base × Σ(peso dei KPI raggiunti)</span>. Un KPI è "raggiunto" se il consuntivo supera il target.</div></div>
    <div class="gloss-row"><div class="gloss-term">Moltiplicatori</div><div class="gloss-def">Fatturato (0 / 0,8 / 1,5) × Inventario (0 / 0,5 / 0,8 / 1). <span class="gloss-f">Premio finale = Premio KPI × molt.Fatturato × molt.Inventario</span>.</div></div>
+   <div class="gloss-row"><div class="gloss-term">Coefficiente inventari</div><div class="gloss-def">Da ottobre 2026 riduce i premi in base a % completamento inventari e Accuracy (negozi: solo SM/VSM, tutte le voci; FC: solo premio d'area). I file premi lo includono già. Interruttore in alto: <b>Come pagato</b> (valori reali) o <b>Al lordo</b> (premi senza riduzione, ricostruiti dai JSON statistiche del tab SAS → Fatturato). Il massimale non cambia; tutti i tab e Lament1 seguono la modalità scelta.</div></div>
    <div class="gloss-row"><div class="gloss-term">Periodi</div><div class="gloss-def">SS (primavera/estate) pagato ad agosto · FW/AI (autunno/inverno) pagato a febbraio dell'anno successivo.</div></div>
   </div>
 
@@ -1566,6 +1576,107 @@ function normalizeStores(){
   allData.forEach(r=>{const id=_storeId(r.store); if(id&&canon[id]) r.store=canon[id];});
 }
 
+// ═══════════════════════════════════════════════════════════════
+// ─── COEFFICIENTE INVENTARI (da ottobre 2026) — "come pagato" / "al lordo" ─────
+// I file premi riportano già i premi RIDOTTI dal coefficiente (SM/VSM: tutte le voci; FC: solo il
+// premio d'area). L'interruttore globale permette di vedere anche i premi AL LORDO, ricostruiti dai
+// JSON "Dati per Statistiche" (schemaVersion 3) già caricati nel tab SAS:
+//  · SM/VSM (righe mensili): premio e voci ÷ coefficiente del negozio (Store ID + mese);
+//  · FC (righe FC/VM): + (premio area prima − dopo) della persona/mese (le aree "_2" si sommano).
+// Il massimale non cambia. Ogni riga ricorda il fattore applicato (_cf, 1 = come pagato) così il cambio
+// di modalità è idempotente e compatibile con la riscalatura dei cambi (applyUniformRates).
+// Tutti i tab e gli strumenti di Lament1 leggono allData: si aggiornano da soli.
+// ═══════════════════════════════════════════════════════════════
+var coefMode=(function(){try{return localStorage.getItem('boggi_coef_mode')==='gross'?'gross':'paid';}catch(e){return 'paid';}})();
+var coefInfo={nSt:0,nFc:0,loss:0,missing:[],unmatched:[]};
+const COEF_FIRST_MK=202610;
+function coefIsSmRow(r){return r._tipo==='mensile'&&String(r.job||'').toUpperCase().indexOf('SM')>=0;}
+function coefLookup(){
+  const st={},fc={},stMonths=new Set(),fcMonths=new Set();
+  if(typeof sasFiles==='undefined')return {st,fc,stMonths,fcMonths};
+  Object.values(sasFiles).forEach(f=>{
+    const mk=f.period&&f.period.monthKey; if(!mk)return;
+    if(f.kind==='negozi')stMonths.add(mk); else if(f.kind==='fcvm')fcMonths.add(mk);
+    f.rows.forEach(x=>{
+      if(x.demoltStatus!=='applied'||!(x.demoltPct>0))return;
+      if(f.kind==='negozi'){(st[mk]||(st[mk]={}))[String(x.sid)]=x.demoltPct;}
+      else if(f.kind==='fcvm'){
+        const raw=String(x.name||'').replace(/_\d+$/,'').trim(), base=raw.toUpperCase();
+        const o=(fc[mk]||(fc[mk]={}))[base]||(fc[mk][base]={raw,delta:0});
+        o.delta+=(x.premioAreaPre||0)-(x.premioAreaPost||0);
+      }
+    });
+  });
+  return {st,fc,stMonths,fcMonths};
+}
+function applyCoefMode(){
+  const gross=coefMode==='gross', L=coefLookup();
+  const info={nSt:0,nFc:0,loss:0,missing:[],unmatched:[]};
+  // FC: abbina persona+mese a UNA riga FC/VM (se le righe sono più di una non si indovina: segnalato)
+  const fcDelta=new Map();
+  Object.keys(L.fc).forEach(mk=>Object.keys(L.fc[mk]).forEach(base=>{
+    const o=L.fc[mk][base]; if(!(o.delta>0))return;
+    const rows=sasMatchFcVmRows(o.raw).filter(r=>(r.monthKey||0)===+mk&&String(r.job||'').toUpperCase()==='FC');
+    if(rows.length===1)fcDelta.set(rows[0],o.delta); else info.unmatched.push(o.raw+' '+mkLabel(+mk));
+  }));
+  const missing=new Set();
+  allData.forEach(r=>{
+    const cur=r._cf||1; let want=1;
+    if(coefIsSmRow(r)){
+      const mk=r.monthKey||0, sid=_storeId(r.store), p=sid&&L.st[mk]?L.st[mk][sid]:null;
+      if(p>0&&p<1){want=1/p;info.nSt++;}
+      else if(mk>=COEF_FIRST_MK&&!L.stMonths.has(mk))missing.add(mk);
+    } else if(fcDelta.has(r)){
+      const E=(r.erogato||0)/cur;
+      if(E>0){want=(E+fcDelta.get(r))/E;info.nFc++;}
+    }
+    if(want!==1)info.loss+=((r.erogato||0)/cur)*(want-1);
+    const target=gross?want:1, ratio=target/cur;
+    if(Math.abs(ratio-1)>1e-12){
+      r.erogato*=ratio;
+      COMP.forEach(c=>{if(typeof r[c.k]==='number')r[c.k]*=ratio;});
+      r.pct=r.massimale>0?+((r.erogato/r.massimale)*100).toFixed(1):0;
+      if(Math.abs(target-1)<1e-12)delete r._cf; else r._cf=target;
+    }
+  });
+  info.missing=[...missing].sort((a,b)=>a-b);
+  coefInfo=info;
+  return info;
+}
+function renderCoefBar(){
+  const el=document.getElementById('coefBar'); if(!el)return;
+  const i=coefInfo, n=i.nSt+i.nFc, relevant=n>0||i.missing.length>0||i.unmatched.length>0;
+  if(!allData.length||!relevant){el.className='coef-bar';el.innerHTML='';return;}
+  const g=coefMode==='gross', eur='€ '+fmt(Math.round(i.loss));
+  const btn=(m,l)=>'<button class="l4l-btn'+(coefMode===m?' active':'')+'" onclick="setCoefMode(\''+m+'\')">'+l+'</button>';
+  let h='<span class="coef-t">Coefficiente inventari</span><div class="l4l-toggle" style="display:flex">'+btn('paid','Come pagato')+btn('gross','Al lordo')+'</div>';
+  if(n>0)h+='<span>'+(g?'Premi <b>al lordo</b> del coefficiente (ricostruiti dai JSON statistiche): <b>+'+eur+'</b> su '+n+' righe ('+i.nSt+' negozi SM/VSM, '+i.nFc+' FC).'
+    :'Premi <b>come pagati</b>: il coefficiente li ha ridotti di <b>'+eur+'</b> su '+n+' righe ('+i.nSt+' negozi SM/VSM, '+i.nFc+' FC).')+'</span>';
+  if(i.missing.length)h+='<span class="coef-warn">⚠ Mancano i JSON Negozi di '+i.missing.map(mkLabel).join(', ')+': per quei mesi il coefficiente non è ricostruibile (carica i JSON nel tab SAS → Fatturato).</span>';
+  if(i.unmatched.length)h+='<span class="coef-warn" title="'+agEsc(i.unmatched.join(', '))+'">⚠ '+i.unmatched.length+' FC non abbinati a una sola riga premi: lasciati come pagati.</span>';
+  el.className='coef-bar on'+(g?' gross':'');
+  el.innerHTML=h;
+}
+// Da chiamare quando cambiano i JSON statistiche (carica/rimuovi): ricalcola le righe e i tab aperti
+function coefSync(){
+  try{applyCoefMode();}catch(e){console.warn('applyCoefMode',e);}
+  try{renderCoefBar();}catch(e){}
+  try{if(window.AgentTools)AgentTools.setData(allData);}catch(e){}
+  try{if(allData.length)refresh();}catch(e){}
+  try{if(document.getElementById('tabCmp').style.display!=='none'){popCmpFilters();renderCmp();}}catch(e){}
+}
+function setCoefMode(m){
+  coefMode=(m==='gross')?'gross':'paid';
+  try{localStorage.setItem('boggi_coef_mode',coefMode);}catch(e){}
+  coefSync();
+}
+function coefAgentNote(){
+  const i=coefInfo,n=i.nSt+i.nFc;
+  if(!n)return '';
+  return '\nNOTA COEFFICIENTE INVENTARI: da ottobre 2026 i premi di SM/VSM (tutte le voci) e dei FC (solo premio d\'area) sono ridotti dal Coefficiente Inventari. Modalità attiva dei dati: '
+    +(coefMode==='gross'?'AL LORDO del coefficiente (ricostruito)':'COME PAGATO (già ridotti)')+' su '+n+' righe. Se il dato è rilevante per la risposta, dì quale modalità stai usando.';
+}
+
 function rebuild(){
   allData=Object.values(fileMap).flat();
   dedupData();
@@ -1573,6 +1684,7 @@ function rebuild(){
   resolveCrossRefEnte();
   fixFcVmLegacyRows();
   applyUniformRates();
+  try{applyCoefMode();renderCoefBar();}catch(e){console.warn('applyCoefMode',e);}
   try{ if(window.AgentTools) AgentTools.setData(allData); }catch(e){}
   try{ hashApply(); }catch(e){} // ripristina la vista da un link condiviso (#t=…) al primo load utile
   try{ importDiff(); }catch(e){} // confronto col caricamento precedente (mostrato solo su import nuovo)
@@ -5052,6 +5164,7 @@ function sasHandleFiles(fileList){
         if(json.meta.schemaVersion!=null&&json.meta.schemaVersion>3)console.warn('sasHandleFiles: schemaVersion inattesa per '+f.name,json.meta.schemaVersion);
         sasFiles[f.name]={kind,period,meta:json.meta,rows:json.rows,fname:f.name};
         sasRenderChips();sasPopulateMonths();renderSas();try{idbAutoSave();}catch(e2){}
+        coefSync();
       };
       rd.readAsText(f);
     } else if(ext==='xlsx'||ext==='xls'){
@@ -5071,7 +5184,7 @@ function sasHandleFiles(fileList){
   });
 }
 function sasDrop(ev){ev.preventDefault();sasHandleFiles(ev.dataTransfer.files);}
-function sasRemoveFile(fname){delete sasFiles[fname];sasRenderChips();sasPopulateMonths();renderSas();try{idbAutoSave();}catch(e){}}
+function sasRemoveFile(fname){delete sasFiles[fname];sasRenderChips();sasPopulateMonths();renderSas();try{idbAutoSave();}catch(e){}coefSync();}
 // Riconosce il file "TESTATA INCENTIVI FC+VM" (anagrafica assegnazione negozio→FC/VM) dalla firma
 // delle colonne. Escludiamo esplicitamente i file premi FC/VM nuovo formato, che hanno anche
 // "RUOLO" ma un tracciato diverso (PREMIO MAX LC, senza STORE ID/NOME STORE).
@@ -6245,7 +6358,7 @@ function agQuickModel(m){const i=document.getElementById('agModel');if(i){i.valu
 // opts.onText → streaming SSE: i delta di testo arrivano man mano. opts.noTools → solo narrazione (report).
 async function agCall(messages,opts){opts=opts||{};
   const body={model:(document.getElementById('agModel').value||'claude-haiku-4-5').trim(),max_tokens:opts.max||1600,
-    system:[{type:'text',text:opts.system||AG_SYS,cache_control:{type:'ephemeral'}}],messages};
+    system:[{type:'text',text:(opts.system||(AG_SYS+coefAgentNote())),cache_control:{type:'ephemeral'}}],messages};
   if(!opts.noTools)body.tools=AG_TOOLS;
   const url=document.getElementById('agProxy').value;
   if(!opts.onText){const r=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});const j=await r.json();if(j.error)throw new Error(j.error.message||JSON.stringify(j.error));return j;}
