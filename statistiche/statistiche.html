@@ -605,6 +605,11 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
         <button class="l4l-btn active" id="sasFDet-no" style="flex:1" onclick="sasSetDet(false)">No</button>
         <button class="l4l-btn" id="sasFDet-si" style="flex:1" onclick="sasSetDet(true)">Sì</button>
       </div></div>
+    <div class="fg"><label>Solo coef. inventari &lt; 100%</label>
+      <div class="l4l-toggle" style="display:flex">
+        <button class="l4l-btn active" id="sasFCoef-no" style="flex:1" onclick="sasSetCoef(false)">No</button>
+        <button class="l4l-btn" id="sasFCoef-si" style="flex:1" onclick="sasSetCoef(true)">Sì</button>
+      </div></div>
     <div class="fg"><label>Storico BDG — da <span class="info-tip" data-tip="Quante volte il premio BDG è stato raggiunto nell'intervallo scelto, per lo stesso negozio (Store ID) o la stessa persona FC/VM (match per nome, con fuzzy-matching per gli omonimi — stessa logica di Lament1). Riusa la definizione di 'raggiunto' già usata in Anno su Anno (Frequenza raggiungimento premi): erogato BDG > 0 sui mesi mensili dello storico caricato.&#10;'—' = nessuno storico trovato per quel negozio/persona nell'intervallo scelto.">i</span></label>
       <select id="sasBdgFrom" onchange="renderSas()" style="padding:4px 7px;border:1px solid #dde1ea;border-radius:6px;font-size:12px"></select></div>
     <div class="fg"><label>a</label>
@@ -2873,7 +2878,7 @@ function exportExcel(){
   ws['!cols']=Object.keys(rows[0]).map(k=>({wch:Math.max(k.length+2,12)}));
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'Premi Dipendenti');
-  XLSX.writeFile(wb,'BoggiPremi_Dipendenti_'+new Date().toISOString().split('T')[0]+'.xlsx');
+  XLSX.writeFile(wb,'BoggiPremi_Dipendenti_'+_coefFileTag()+new Date().toISOString().split('T')[0]+'.xlsx');
 }
 
 // ─── SAVE / LOAD SESSION ──────────────────────────────────────
@@ -3868,12 +3873,16 @@ function renderYoyDipTable(rows){
 }
 
 // ─── YOY EXPORT EXCEL ────────────────────────────────────────
-function _writeXlsx(rows,sheet,prefix){
+// Nei nomi dei file esportati: se i premi sono mostrati AL LORDO del coefficiente inventari lo si dichiara,
+// così un Excel al lordo non viene scambiato per i premi pagati. noCoefTag: export che non dipendono dai premi
+// (es. tab SAS → Fatturato, che legge i JSON statistiche).
+function _coefFileTag(){return (typeof coefMode!=='undefined'&&coefMode==='gross'&&coefInfo&&(coefInfo.nSt+coefInfo.nFc)>0)?'AlLordoCoefInv_':'';}
+function _writeXlsx(rows,sheet,prefix,noCoefTag){
   const ws=XLSX.utils.json_to_sheet(rows);
   ws['!cols']=Object.keys(rows[0]).map(k=>({wch:Math.max(k.length+2,12)}));
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,sheet);
-  XLSX.writeFile(wb,prefix+new Date().toISOString().split('T')[0]+'.xlsx');
+  XLSX.writeFile(wb,prefix+(noCoefTag?'':_coefFileTag())+new Date().toISOString().split('T')[0]+'.xlsx');
 }
 
 function exportYoyCompare(){
@@ -5306,6 +5315,13 @@ function sasSetView(v){
   sasPopulateAssignFilter();
   sasPopulateMonths();renderSas();
 }
+var sasOnlyCoef=false; // filtro "Solo coef. inventari < 100%": righe con coefficiente applicato e sotto il 100%
+function sasSetCoef(v){
+  sasOnlyCoef=!!v;
+  const no=document.getElementById('sasFCoef-no'),si=document.getElementById('sasFCoef-si');
+  if(no)no.classList.toggle('active',!v); if(si)si.classList.toggle('active',v);
+  renderSas();
+}
 function sasSetDet(v){
   const no=document.getElementById('sasFDet-no'),si=document.getElementById('sasFDet-si');
   if(no)no.classList.toggle('active',!v); if(si)si.classList.toggle('active',v);
@@ -5530,6 +5546,7 @@ function renderSas(){
       if(!asg||!fAssign.some(v=>(asg.fc||[]).includes(v)||(asg.vm||[]).includes(v)))return false;
     }
     if(onlyDet&&!r.determinante)return false;
+    if(sasOnlyCoef&&!(r.demoltStatus==='applied'&&r.demoltPct<1))return false;
     return true;
   });
 
@@ -5669,8 +5686,6 @@ function renderSas(){
     ])};
   });
   _sasDetail={file,rows:enrichedRows,view:sasView,syCell,parCell,bdgCell,demCell,eu,eud,bar,pctCls,esitoChip};
-  const sasTblEl=document.getElementById('sasTbl');
-  if(sasTblEl&&sasTblEl.classList) sasTblEl.classList.toggle('sas-neg-view',sasView==='negozi');
   // default: Negozi → Store ID crescente (col.0); FC+VM → Ruolo crescente (col.1, "FC" prima di
   // "VM"), con Nome alfabetico dentro ciascun ruolo grazie al pre-ordinamento sopra.
   makeSortTable('sasTbl','sas'+sasView,cols,trows,sasView==='negozi'?{i:0,dir:1}:{i:1,dir:1});
@@ -5834,7 +5849,7 @@ function sasExport(){
         sasView==='negozi'?{'Inventari Accuracy':r.demoltAcc==null?'':+(r.demoltAcc*100).toFixed(2)}
           :{'Inventari % invio area':r.demoltInvio==null?'':+(r.demoltInvio*100).toFixed(2),'Premio area prima coef. EUR':r.premioAreaPre==null?'':r.premioAreaPre,'Premio area dopo coef. EUR':r.premioAreaPost==null?'':r.premioAreaPost}));
   });
-  _writeXlsx(rows,'SAS Fatturato','BoggiPremi_SasFatturato_');
+  _writeXlsx(rows,'SAS Fatturato','BoggiPremi_SasFatturato_',true);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -6217,7 +6232,7 @@ function asstInit(){
 
 // ═══════════════════════════════════════════════════════════════
 // ─── AGENTE AI: STRUMENTI DETERMINISTICI (tool-use) ───────────
-// Inline di _agent_tools.js: 28 strumenti pure su allData. Espone window.AgentTools.
+// Inline di _agent_tools.js: 28 strumenti pure su allData + coefficiente_inventari (legge anche i JSON del tab SAS). Espone window.AgentTools.
 (function(g){
 'use strict';
 const MESI=['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'];
@@ -6329,6 +6344,46 @@ TOOLS.trend_gruppo=({ruolo,negozio,negozi,nazione,tipo_negozio,periodo_mesi,prem
 TOOLS.watch_list=({filtro,mesi_calo,periodo_mesi,limite})=>{const n=Math.min(36,periodo_mesi||12);const mc=Math.min(6,mesi_calo||3);const mx=maxMk();const from=mkAdd(mx,-(n-1));const pred=groupPred(filtro||{});const rows=DATA.filter(r=>{const mk=r.monthKey||0;return mk>=from&&mk<=mx&&pred(r)&&!isSem(r);});const byKey={};rows.forEach(r=>{const k=empKey(r);(byKey[k]||(byKey[k]={cognome:r.cognome,nome:r.nome,job:r.job,store:r.store,mesi:{}}));const mk=r.monthKey;(byKey[k].mesi[mk]||(byKey[k].mesi[mk]={er:0,rml:0}));byKey[k].mesi[mk].er+=(r.erogato||0);byKey[k].mesi[mk].rml+=(r.rml_period||0);});const alert=[];Object.values(byKey).forEach(e=>{const serie=Object.keys(e.mesi).map(Number).sort((a,b)=>a-b).map(mk=>({inc:e.mesi[mk].rml?e.mesi[mk].er/e.mesi[mk].rml*100:0}));if(serie.length<mc+1)return;let cons=0,maxCons=0;for(let i=1;i<serie.length;i++){if(serie[i].inc<serie[i-1].inc-0.1)cons++;else cons=0;maxCons=Math.max(maxCons,cons);}if(maxCons>=mc){const last=serie[serie.length-1],fst=serie[serie.length-Math.min(6,serie.length)];alert.push({dipendente:e.cognome+' '+e.nome,ruolo:e.job,negozio:e.store,mesi_calo_consecutivi:maxCons,incidenza_attuale_pct:r1(last.inc),variazione_pp:r1(last.inc-fst.inc)});}});alert.sort((x,y)=>x.variazione_pp-y.variazione_pp);return {n_totale:alert.length,parametri:{mesi_calo_minimi:mc,periodo_analizzato:n+' mesi'},watch_list:alert.slice(0,Math.min(20,limite||10))};};
 TOOLS.distribuzione_incidenza=({filtro,fasce,periodo_mesi,anno,tipo_premio})=>{const a={periodo_mesi,anno},tipo=tipo_premio||'tutti';const emps=aggByEmp(rowsIn(a,tipo,groupPred(filtro||{})));if(!emps.length)return{errore:'nessun dato'};const soglie=fasce||[0,5,10,15,20,30,100];const dist=[];for(let i=0;i<soglie.length-1;i++){const lo=soglie[i],hi=soglie[i+1];const n=emps.filter(e=>e.inc>=lo&&e.inc<hi).length;dist.push({fascia:lo+'%–'+hi+'%',n,percentuale:r1(emps.length?n/emps.length*100:0)});}const vals=emps.map(e=>e.inc).sort((x,y)=>x-y);return {gruppo_label:groupLabel(filtro||{}),periodo:periodLabel(a),n_dipendenti:emps.length,media_pct:r1(avg(emps,e=>e.inc)),mediana_pct:r1(vals[Math.floor(vals.length/2)]||0),min_pct:r1(vals[0]||0),max_pct:r1(vals[vals.length-1]||0),distribuzione:dist};};
 TOOLS.stima_nuovo_assunto=({ruolo,rml_mensile,negozio,tipo_negozio})=>{if(!ruolo)return{errore:'specifica il ruolo'};const job=ruolo.toUpperCase();const rml=+rml_mensile||BDG_BASE[job]||2000;const grp={ruolo:job};if(negozio)grp.negozio=negozio;if(tipo_negozio)grp.tipo_negozio=tipo_negozio;const emps=aggByEmp(rowsIn({},'tutti',groupPred(grp)));if(!emps.length)return{errore:'nessun dato storico per il ruolo '+job};const incMedia=avg(emps,e=>e.inc);const perPremio=ALLC.map(([k,l])=>({premio:l,incidenza_media_pct:r1(avg(emps,e=>e.compInc[k]||0)),atteso_mensile_eur:e0(rml*avg(emps,e=>e.compInc[k]||0)/100),leva_di_piano:LEVE.has(k)})).filter(p=>p.incidenza_media_pct>0.05);return {ruolo:job,rml_mensile_eur:rml,basato_su_n_dipendenti:emps.length,incidenza_media_attesa_pct:r1(incMedia),achievement_medio_pct:r1(avg(emps,e=>e.ach)),premio_mensile_atteso_eur:e0(rml*incMedia/100),per_premio:perPremio,nota:'BDG base di ruolo: '+(BDG_BASE[job]||200)+'€. Stima da frequenze storiche.'};};
+// Coefficiente inventari: legge gli STESSI dati del tab SAS → Fatturato (JSON statistiche caricati) e la
+// riduzione in € calcolata da applyCoefMode sulle righe premi (r._coef) → numeri identici a tab e barra.
+TOOLS.coefficiente_inventari=({negozio,cognome,nome,mese,anno})=>{
+  const files=(typeof sasFiles!=='undefined')?Object.values(sasFiles):[];
+  const withCoef=files.filter(f=>f.rows.some(x=>x.demoltStatus!==undefined));
+  if(!withCoef.length)return{errore:'nessun JSON statistiche con il Coefficiente Inventari caricato (tab SAS → Fatturato, export dall\'app 9.99 o successiva)'};
+  const MI=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
+  let mk=Math.max(...withCoef.map(f=>f.period.monthKey));
+  if(mese){const mi=typeof mese==='number'?mese:MI.findIndex(m=>m.startsWith(String(mese).toLowerCase().slice(0,3)))+1;if(mi>=1)mk=(anno||Math.floor(mk/100))*100+mi;}
+  const neg=withCoef.filter(f=>f.kind==='negozi'&&f.period.monthKey===mk).flatMap(f=>f.rows);
+  const fcv=withCoef.filter(f=>f.kind==='fcvm'&&f.period.monthKey===mk).flatMap(f=>f.rows);
+  if(!neg.length&&!fcv.length)return{errore:'nessun dato coefficiente per '+mkLabel(mk)};
+  const pc=v=>v==null?null:r1(v*100);
+  const stato=x=>x.demoltStatus==='applied'?'applicato':x.demoltStatus==='na'?'non si applica':x.demoltStatus==='nodata'?'senza dati inventari':'non attivo';
+  // riduzione in €: null (non 0) se i premi del mese non sono caricati — non si inventa uno zero
+  const hasPremi=DATA.some(r=>r.monthKey===mk);
+  const lossRows=pred=>hasPremi?DATA.filter(r=>r.monthKey===mk&&r._coef&&pred(r)).reduce((s,r)=>s+(r._coef.loss||0),0):null;
+  const eN=v=>v==null?null:e0(v);
+  const negOut=x=>({negozio:x.name,stato:stato(x),coefficiente_pct:pc(x.demoltPct),completamento_pct:pc(x.demoltCompl),accuracy_pct:pc(x.demoltAcc),
+    riduzione_premi_smvsm_eur:eN(lossRows(r=>(String(r.store||'').match(/^(\d{3,4})/)||[])[1]===String(x.sid)))});
+  const fcOut=x=>({persona:x.name,ruolo:x.role,stato:stato(x),coefficiente_pct:pc(x.demoltPct),invio_area_pct:pc(x.demoltInvio),completamento_pct:pc(x.demoltCompl),
+    premio_area_prima_eur:x.premioAreaPre==null?null:e0(x.premioAreaPre),premio_area_dopo_eur:x.premioAreaPost==null?null:e0(x.premioAreaPost)});
+  const base={mese:mkLabel(mk),modalita_dati:(typeof coefMode!=='undefined'&&coefMode==='gross')?'al lordo del coefficiente':'come pagato',
+    regola:'Negozi: solo SM/VSM, riduce tutte le voci di premio. FC: solo premio d\'area. VM, USA ed esclusi: non si applica.'};
+  if(negozio){const nu=String(negozio).toUpperCase();const x=neg.find(y=>String(y.sid)===nu||String(y.name||'').toUpperCase().includes(nu));
+    return x?Object.assign(base,negOut(x)):{errore:'negozio non trovato nel JSON di '+mkLabel(mk)+': '+negozio};}
+  if(cognome){const cu=String(cognome).toUpperCase(),nu=String(nome||'').toUpperCase();
+    const f=fcv.filter(y=>String(y.name||'').toUpperCase().split(/[\s_]+/).includes(cu)&&(!nu||String(y.name||'').toUpperCase().includes(nu)));
+    if(f.length)return Object.assign(base,{aree:f.map(fcOut)});
+    const e=resolveEmp(cognome,nome);if(!e.length)return{errore:'persona non trovata: '+cognome};
+    const sid=(String(e[0].store||'').match(/^(\d{3,4})/)||[])[1];const x=neg.find(y=>String(y.sid)===sid);
+    const smvsm=/SM/.test(String(e[0].job||'').toUpperCase());
+    return Object.assign(base,{dipendente:e[0].cognome+' '+e[0].nome,ruolo:e[0].job,negozio:e[0].store,si_applica_al_ruolo:smvsm,
+      negozio_coefficiente:x?negOut(x):null,riduzione_dipendente_eur:eN(lossRows(r=>empKey(r)===e[0].key))});}
+  const app=neg.filter(x=>x.demoltStatus==='applied'),fcA=fcv.filter(x=>x.demoltStatus==='applied');
+  return Object.assign(base,{negozi:{con_coefficiente:app.length,sotto_100:app.filter(x=>x.demoltPct<1).length,senza_dati:neg.filter(x=>x.demoltStatus==='nodata').length,non_si_applica:neg.filter(x=>x.demoltStatus==='na').length},
+    fc:{con_coefficiente:fcA.length,sotto_100:fcA.filter(x=>x.demoltPct<1).length,perdita_premio_area_eur:e0(fcA.reduce((q,x)=>q+((x.premioAreaPre||0)-(x.premioAreaPost||0)),0))},
+    riduzione_totale_premi_eur:eN(lossRows(()=>true)),premi_del_mese_caricati:hasPremi,
+    negozi_piu_penalizzati:app.slice().sort((a,b)=>a.demoltPct-b.demoltPct).slice(0,5).map(x=>({negozio:x.name,coefficiente_pct:pc(x.demoltPct)}))});
+};
 function run(name,args){const f=TOOLS[name];if(!f)return{errore:'strumento sconosciuto: '+name};try{return f(args||{});}catch(e){return{errore:'errore '+name+': '+e.message};}}
 g.AgentTools={setData,TOOLS,run};
 })(typeof window!=='undefined'?window:this);
@@ -6368,6 +6423,7 @@ const AG_TOOLS=[
  {name:'trend_gruppo',description:'Andamento mensile dell incidenza di un gruppo (migliora o peggiora?).',input_schema:{type:'object',properties:{ruolo:{type:'string'},negozio:{type:'string'},negozi:{type:'array',items:{type:'string'}},nazione:{type:'string'},tipo_negozio:{type:'string',enum:['dept','normali']},periodo_mesi:{type:'integer'},premio:{type:'string'}}}},
  {name:'watch_list',description:'Dipendenti in calo progressivo per N mesi consecutivi. Chi sta peggiorando?',input_schema:{type:'object',properties:{filtro:{type:'object'},mesi_calo:{type:'integer'},periodo_mesi:{type:'integer'},limite:{type:'integer'}}}},
  {name:'distribuzione_incidenza',description:'Distribuzione per fasce di incidenza (istogramma).',input_schema:{type:'object',properties:{filtro:{type:'object'},fasce:{type:'array',items:{type:'number'}},periodo_mesi:{type:'integer'},anno:{type:'integer'},tipo_premio:{type:'string'}}}},
+ {name:'coefficiente_inventari',description:'Coefficiente Inventari (da ottobre 2026): per un negozio, una persona (SM/VSM o FC) o riepilogo del mese. Coefficiente, % completamento/Accuracy (negozi) o % invio area (FC), riduzione del premio in €.',input_schema:{type:'object',properties:{negozio:{type:'string'},cognome:{type:'string'},nome:{type:'string'},mese:{type:'string'},anno:{type:'integer'}}}},
  {name:'stima_nuovo_assunto',description:'Premio mensile atteso per un nuovo assunto dato ruolo e RML.',input_schema:{type:'object',properties:{ruolo:{type:'string'},rml_mensile:{type:'number'},negozio:{type:'string'},tipo_negozio:{type:'string'}},required:['ruolo']}}
 ];
 // Config agente persistita (modello/proxy) in localStorage.
