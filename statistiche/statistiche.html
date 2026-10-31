@@ -103,6 +103,18 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 .tbl-scroll thead th .tbl-flt:focus{outline:none;border-color:#4f46e5}
 .tbl-scroll td.muted{color:#ddd}
 .tbl-scroll tbody td{padding:6px 7px;border-bottom:1px solid #f2f3f7;vertical-align:middle;white-space:nowrap}
+/* Tab SAS: tabella compatta (intestazioni su più righe, padding stretto, barre corte) per stare nella pagina senza scroll orizzontale */
+#sasTbl{overflow-x:auto}
+#sasTbl table{font-size:11px}
+#sasTbl thead th{padding:6px 3px;white-space:normal;line-height:1.25;vertical-align:bottom}
+#sasTbl thead th select.tbl-flt{width:72px}
+/* il tooltip dell'icona "i" nelle ultime colonne si ancora a destra: centrato uscirebbe dal bordo e creerebbe lo scroll orizzontale */
+#sasTbl thead th:nth-last-child(-n+3) .info-tip::after{left:auto;right:-4px;transform:none}
+#sasTbl tbody td{padding:6px 3px}
+#sasTbl tbody td:first-child{white-space:normal;min-width:110px}
+#sasTbl .sas-bar{width:14px;margin-right:3px}
+#sasTbl .sas-esito,#sasTbl .sas-par{padding:2px 6px;font-size:10px}
+#sasTbl .sas-badge{margin-right:3px;padding:1px 4px}
 .tbl-scroll tbody tr.dr:hover td{background:#f9fafc;cursor:pointer}
 .tbl-scroll tbody tr.dr.open td{background:#f5f4ff}
 .tbl-scroll tbody tr.xr td{padding:0;background:#fafbff}
@@ -145,22 +157,27 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 .sas-bdg-dot.missing{background:#9ca3af}
 /* Scheda negozio (popup quasi a tutta pagina, vista Negozi del tab SAS) */
 .modal-box.xl{max-width:96vw;width:96vw;height:94vh;max-height:94vh}
+/* compatta: tutto in una pagina, senza scroll (la barra compare solo se la finestra è davvero troppo piccola) */
+.modal-box.xl .modal-head{padding:8px 18px}
+.modal-box.xl .modal-body{padding:12px 20px;display:flex;flex-direction:column;gap:12px;overflow:auto}
+.modal-box.xl .modal-body>*{flex-shrink:0}
 .sd-link{color:#1d4ed8;font-weight:600;cursor:pointer;text-decoration:none}.sd-link:hover{text-decoration:underline}
-.sd-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
-.sd-name{font-size:24px;font-weight:700;color:#111;margin-right:6px}
+.sd-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sd-name{font-size:22px;font-weight:700;color:#111;margin-right:6px}
 .sd-meta{font-size:11px;color:#64748b;background:#f1f5f9;padding:3px 10px;border-radius:99px;font-weight:600}
-.sd-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:13px;margin-bottom:18px}
-.sd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;margin-bottom:18px}
-.sd-card{background:#fff;border:1px solid #eaecf0;border-radius:12px;padding:16px 18px;box-shadow:0 1px 5px rgba(0,0,0,.04)}
-.sd-card h4{font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
-.sd-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:7px 0;border-bottom:1px solid #f3f4f6;font-size:13px}
+.sd-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.sd-kpis .kpi{padding:9px 14px}.sd-kpis .kpi-val{font-size:18px;margin:2px 0 1px}
+.sd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.sd-card{background:#fff;border:1px solid #eaecf0;border-radius:12px;padding:10px 14px;box-shadow:0 1px 5px rgba(0,0,0,.04)}
+.sd-card h4{font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.sd-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:4px 0;border-bottom:1px solid #f3f4f6;font-size:12px}
 .sd-row:last-child{border-bottom:none}.sd-row>span:first-child{color:#777}.sd-row b{color:#111}
-.sd-note{font-size:11px;color:#999;margin-top:8px;line-height:1.5}
-.sd-months{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:11px;color:#555}
+.sd-note{font-size:10.5px;color:#999;margin-top:5px;line-height:1.4}
+.sd-months{display:flex;flex-wrap:wrap;gap:3px 12px;margin-top:6px;font-size:10.5px;color:#555}
 .sd-months span{display:inline-flex;align-items:center;gap:5px}
-.sd-hist{width:100%;border-collapse:collapse;font-size:12.5px}
-.sd-hist th{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:#999;text-align:right;padding:6px 10px;border-bottom:1px solid #eaecf0;font-weight:700}
-.sd-hist td{text-align:right;padding:7px 10px;border-bottom:1px solid #f3f4f6}
+.sd-hist{width:100%;border-collapse:collapse;font-size:12px}
+.sd-hist th{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:#999;text-align:right;padding:4px 8px;border-bottom:1px solid #eaecf0;font-weight:700}
+.sd-hist td{text-align:right;padding:3px 8px;border-bottom:1px solid #f3f4f6}
 .sd-hist th:first-child,.sd-hist td:first-child{text-align:left}
 .sd-hist tr.cur td{background:#f5f4ff;font-weight:700}
 .sas-badge{display:inline-flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;color:#b45309;background:#fffbeb;border:1px solid #fcd34d;padding:1px 6px;border-radius:6px;margin-right:5px}
