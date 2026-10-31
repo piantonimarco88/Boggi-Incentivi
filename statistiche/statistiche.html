@@ -175,6 +175,9 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 .sd-note{font-size:10.5px;color:#999;margin-top:5px;line-height:1.4}
 .sd-months{display:flex;flex-wrap:wrap;gap:3px 12px;margin-top:6px;font-size:10.5px;color:#555}
 .sd-months span{display:inline-flex;align-items:center;gap:5px}
+.sd-chips{display:flex;flex-wrap:wrap;gap:4px}
+.sd-chip{font-size:10.5px;background:#f1f5f9;color:#475569;border-radius:6px;padding:2px 7px;white-space:nowrap}
+.sd-chip b.good{color:#16a34a}.sd-chip b.warn{color:#b45309}.sd-chip b.bad{color:#dc2626}
 .sd-hist{width:100%;border-collapse:collapse;font-size:12px}
 .sd-hist th{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:#999;text-align:right;padding:4px 8px;border-bottom:1px solid #eaecf0;font-weight:700}
 .sd-hist td{text-align:right;padding:3px 8px;border-bottom:1px solid #f3f4f6}
@@ -5521,7 +5524,7 @@ function renderSas(){
   const trows=rows.map(r=>{
     const identCells=sasView==='negozi'
       ?[{disp:'<a class="sd-link" title="Apri la scheda completa del negozio" onclick="sasOpenStore(decodeURIComponent(\''+encodeURIComponent(String(r.sid))+'\'))">'+agEsc(sasStoreLabel(r))+'</a>',val:+r.sid||0}]
-      :[{disp:agEsc(r.name),val:r.name},{disp:'<span class="bjob">'+r.role+'</span>',val:r.role},{disp:r.nStores,val:r.nStores}];
+      :[{disp:'<a class="sd-link" title="Apri la scheda completa" onclick="sasOpenPerson(decodeURIComponent(\''+encodeURIComponent(String(r.name))+'\'))">'+agEsc(r.name)+'</a>',val:r.name},{disp:'<span class="bjob">'+r.role+'</span>',val:r.role},{disp:r.nStores,val:r.nStores}];
     return {cells:identCells.concat([
       {disp:eu(r.target),val:r.target},{disp:eu(r.actual),val:r.actual},{disp:eud(sasEsubero(r)),val:sasEsubero(r)},
       {disp:syCell(r),val:r.resultSY},parCell(r),
@@ -5544,13 +5547,26 @@ var _sasDetail=null; // contesto dell'ultimo renderSas: stessi helper di formatt
 // Nel JSON il nome comincia già con lo Store ID ("1101 JERMYN STREET"): se manca lo si antepone,
 // così la colonna ID separata non serve più.
 function sasStoreLabel(r){const n=String(r.name||''),sid=String(r.sid==null?'':r.sid);return sid&&n.indexOf(sid)!==0?(sid+' '+n).trim():n;}
+// Mattoncini condivisi dalle schede negozio e FC/VM
+const _sd={
+  v1:n=>n==null?'—':(+n).toFixed(1),
+  pc:n=>n==null?'—':(Math.floor(n*10000+1e-6)/100).toFixed(2).replace('.',',')+'%',
+  row:(l,v)=>'<div class="sd-row"><span>'+l+'</span><b>'+v+'</b></div>',
+  card:(t,body,note)=>'<div class="sd-card"><h4>'+t+'</h4>'+body+(note?'<div class="sd-note">'+note+'</div>':'')+'</div>',
+  kpi:(cls,l,v,sub)=>'<div class="kpi '+cls+'"><div class="kpi-lbl">'+l+'</div><div class="kpi-val">'+v+'</div>'+(sub?'<div class="kpi-sub">'+sub+'</div>':'')+'</div>'
+};
+function _sdShow(h,title){
+  document.getElementById('modalBody').innerHTML=h;
+  document.getElementById('modalTitle').textContent=title;
+  const box=document.getElementById('modalBox');if(box)box.classList.add('xl');
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+  if(modalChart){modalChart.destroy();modalChart=null;}
+}
 function sasOpenStore(sid){
   const c=_sasDetail; if(!c||c.view!=='negozi')return;
   const r=c.rows.find(x=>String(x.sid)===String(sid)); if(!r)return;
-  const v1=n=>n==null?'—':(+n).toFixed(1), pc=n=>n==null?'—':(Math.floor(n*10000+1e-6)/100).toFixed(2).replace('.',',')+'%';
-  const row=(l,v)=>'<div class="sd-row"><span>'+l+'</span><b>'+v+'</b></div>';
-  const card=(t,body,note)=>'<div class="sd-card"><h4>'+t+'</h4>'+body+(note?'<div class="sd-note">'+note+'</div>':'')+'</div>';
-  const kpi=(cls,l,v,sub)=>'<div class="kpi '+cls+'"><div class="kpi-lbl">'+l+'</div><div class="kpi-val">'+v+'</div>'+(sub?'<div class="kpi-sub">'+sub+'</div>':'')+'</div>';
+  const {v1,pc,row,card,kpi}=_sd;
   const asg=storeAssignMap[String(r.sid)]||{};
   const dept=typeof isDeptStore==='function'&&isDeptStore(r.sid);
   const par=sasParachute(r,'negozi',null), dem=c.demCell(r), hasDem=r.demoltStatus==='applied';
@@ -5604,12 +5620,68 @@ function sasOpenStore(sid){
         +((x.pctBase||0)*100).toFixed(1)+'%</td><td>'+((x.pctFinal||0)*100).toFixed(1)+'%</td><td>'+c.eud(x.applied)+'</td><td>'+(x.demoltStatus==='applied'?Math.round(x.demoltPct*100)+'%':'<span class="dash">—</span>')+'</td><td>'+c.esitoChip(x)+'</td></tr>';}).join('')
       +'</tbody></table></div>';
   }
-  document.getElementById('modalBody').innerHTML=h;
-  document.getElementById('modalTitle').textContent='Scheda negozio — '+c.file.period.label;
-  const box=document.getElementById('modalBox');if(box)box.classList.add('xl');
-  document.getElementById('modalOverlay').classList.add('open');
-  document.body.style.overflow='hidden';
-  if(modalChart){modalChart.destroy();modalChart=null;}
+  _sdShow(h,'Scheda negozio — '+c.file.period.label);
+}
+// Nel JSON la sotto-area di un FC/VM è "NOME_2": in schermo "NOME · area 2"
+function sasPersonLabel(n){const m=String(n||'').match(/^(.*?)_(\d+)$/);return m?m[1]+' · area '+m[2]:String(n||'');}
+// ── Scheda FC/VM (popup grande) ─────────────────────────────────────────────
+function sasOpenPerson(name){
+  const c=_sasDetail; if(!c||c.view!=='fcvm')return;
+  const r=c.rows.find(x=>String(x.name)===String(name)); if(!r)return;
+  const {v1,pc,row,card,kpi}=_sd;
+  const isFc=r.role==='FC', par=sasParachute(r,'fcvm',sasStoreRowsForMonth(c.file.period.monthKey)), dem=c.demCell(r), hasDem=r.demoltStatus==='applied';
+  const fc=c.pctCls(r.pctFinal), eur0=n=>'€ '+fmt(Math.round(n||0));
+  let h='<div class="sd-head"><span class="sd-name">'+agEsc(sasPersonLabel(r.name))+'</span><span class="bjob">'+agEsc(r.role||'')+'</span>'+c.esitoChip(r)
+    +(r.determinante?'<span class="sas-badge">⚡SAS determinante</span>':'')+'<span class="sd-meta">'+(r.nStores||0)+' negozi</span></div>';
+  h+='<div class="sd-kpis">'
+    +kpi('','Target area',eur0(r.target))
+    +kpi('','Consuntivo area',eur0(r.actual))
+    +kpi(fc==='good'?'g':(fc==='warn'?'a':'r'),'% finale',((r.pctFinal||0)*100).toFixed(1)+'%','con SAS ed esubero')
+    +kpi('p','% senza SAS',((r.pctBase||0)*100).toFixed(1)+'%')
+    +kpi('a','SAS applicato',eur0(r.applied))
+    +(hasDem?kpi(r.demoltPct<1?'r':'g','Coef. Inventari',Math.round(r.demoltPct*100)+'%',r.premioAreaPre!=null?'premio area '+eur0(r.premioAreaPre)+' → '+eur0(r.premioAreaPost):''):'')
+    +'</div><div class="sd-grid">';
+  h+=card('Fatturato area',
+    row('Target',eur0(r.target))+row('Consuntivo',eur0(r.actual))+row('Esubero mese precedente',c.eud(sasEsubero(r)))
+    +row('% senza SAS',c.bar((r.pctBase||0)*100,c.pctCls(r.pctBase))+((r.pctBase||0)*100).toFixed(1)+'%')
+    +row('% finale',c.bar((r.pctFinal||0)*100,fc)+((r.pctFinal||0)*100).toFixed(1)+'%')+row('Esito',c.esitoChip(r)));
+  h+=card(par.kind==='qty'?'Vendite — Qty e paracadute':'Vendite — SY e paracadute',
+    (par.kind==='qty'?row('Qty area',par.res)+row('Qty target',par.tgt):row('SY area',v1(r.resultSY))+row('SY anno precedente',v1(r.syLastYear!=null?r.syLastYear:r.targetSY)))
+    +row('Confronto',c.syCell(r))+row('Paracadute 60%',c.parCell(r).disp),agEsc(par.tip||''));
+  h+=card('SAS area',
+    row('Valore SAS',eur0(r.sasValue))+row('Riconosciuto',r.recPct==null?'—':Math.round(r.recPct)+'%')+row('Valore riconosciuto',eur0(r.recValue))
+    +row('Riserva SAS precedente',c.eud(r.esuberoSasPrec))+row('Riserva SAS usata',c.eud(r.esuberoSasPrecUsed))
+    +row('Applicato al fatturato',c.eud(r.applied))+row('Riserva SAS riportata',r.sasReserveNext==null?'—':c.eud(r.sasReserveNext)));
+  const naTxt=isFc?'non si applica (area interamente USA)':'non si applica (solo FC)';
+  h+=card('Coefficiente Inventari',
+    r.demoltStatus===undefined?row('Stato','<span class="dash">n/d</span>'):(r.demoltStatus===null?row('Stato','<span class="dash">non attivo</span>')
+    :row('Coefficiente',dem.disp)+(hasDem?row('% invio area',pc(r.demoltInvio))+row('% completamento',pc(r.demoltCompl))
+      +(r.premioAreaPre!=null?row('Premio area prima',eur0(r.premioAreaPre))+row('Premio area dopo',eur0(r.premioAreaPost)):''):row('Stato',r.demoltStatus==='na'?naTxt:'senza dati inventari (es. Polonia)'))),
+    r.demoltStatus===undefined?'File esportato prima della v9.99: riesportare il JSON dalla app incentivi.':'Riduce solo il premio d\u2019area del FC, non i BDG dei singoli negozi (da ottobre 2026).');
+  const b=r._bdg;
+  h+=card('BDG storico',
+    b?row('Esito pieno',b.pct+'%')+row('Mesi',b.n+' su '+b.N)
+      +'<div class="sd-months">'+(b.months||[]).map(m=>'<span><i class="sas-bdg-dot '+m.tier+'"></i>'+agEsc(m.label)+(m.tier==='partial'?' ('+m.pct+'%)':'')+'</span>').join('')+'</div>'
+      :'<div class="sd-note">Nessuno storico premi caricato per questa persona.</div>');
+  h+='</div>';
+  // negozi dell'area (mappa negozi↔FC/VM) con la % finale del mese se il JSON Negozi del mese è caricato
+  const sids=sasAssignedStores(r.name,r.role), stRows=sasStoreRowsForMonth(c.file.period.monthKey);
+  if(sids.length){
+    h+='<div class="sd-card"><h4>Negozi dell\u2019area ('+sids.length+')</h4><div class="sd-chips">'
+      +sids.slice().sort((a,b)=>(+a||0)-(+b||0)).map(sid=>{const x=stRows[sid];
+        return '<span class="sd-chip">'+agEsc(x?sasStoreLabel(x):sid)+(x?' <b class="'+c.pctCls(x.pctFinal)+'">'+((x.pctFinal||0)*100).toFixed(0)+'%</b>':'')+'</span>';}).join('')
+      +'</div></div>';
+  }
+  const hist=Object.values(sasFiles).filter(f=>f.kind==='fcvm').map(f=>({f,x:f.rows.find(y=>String(y.name)===String(r.name))})).filter(o=>o.x)
+    .sort((a,b)=>a.f.period.monthKey-b.f.period.monthKey);
+  if(hist.length>1){
+    h+='<div class="sd-card"><h4>Mesi caricati</h4><table class="sd-hist"><thead><tr><th>Mese</th><th>Target</th><th>Consuntivo</th><th>% senza SAS</th><th>% finale</th><th>SAS applicato</th><th>Coef. Inv.</th><th>Premio area</th><th>Esito</th></tr></thead><tbody>'
+      +hist.map(o=>{const x=o.x;return '<tr'+(o.f.period.monthKey===c.file.period.monthKey?' class="cur"':'')+'><td>'+agEsc(o.f.period.label)+'</td><td>'+eur0(x.target)+'</td><td>'+eur0(x.actual)+'</td><td>'
+        +((x.pctBase||0)*100).toFixed(1)+'%</td><td>'+((x.pctFinal||0)*100).toFixed(1)+'%</td><td>'+c.eud(x.applied)+'</td><td>'+(x.demoltStatus==='applied'?Math.round(x.demoltPct*100)+'%':'<span class="dash">—</span>')
+        +'</td><td>'+(x.demoltStatus==='applied'&&x.premioAreaPost!=null?eur0(x.premioAreaPost):'<span class="dash">—</span>')+'</td><td>'+c.esitoChip(x)+'</td></tr>';}).join('')
+      +'</tbody></table></div>';
+  }
+  _sdShow(h,'Scheda '+(isFc?'Field Coach':'VM')+' — '+c.file.period.label);
 }
 function sasExport(){
   const file=sasCurrentFile();if(!file){alert('Nessun dato da esportare per questo mese/vista.');return;}
