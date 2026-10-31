@@ -143,8 +143,26 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
 .sas-bdg-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0}
 .sas-bdg-dot.full{background:#16a34a}.sas-bdg-dot.partial{background:#f59e0b}.sas-bdg-dot.none{background:#ef4444}
 .sas-bdg-dot.missing{background:#9ca3af}
-/* Store ID (vista Negozi): 4 cifre, non serve la larghezza che l'header "STORE ID" richiederebbe di default */
-#sasTbl.sas-neg-view th:first-child,#sasTbl.sas-neg-view td:first-child{width:54px;max-width:54px}
+/* Scheda negozio (popup quasi a tutta pagina, vista Negozi del tab SAS) */
+.modal-box.xl{max-width:96vw;width:96vw;height:94vh;max-height:94vh}
+.sd-link{color:#1d4ed8;font-weight:600;cursor:pointer;text-decoration:none}.sd-link:hover{text-decoration:underline}
+.sd-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.sd-name{font-size:24px;font-weight:700;color:#111;margin-right:6px}
+.sd-meta{font-size:11px;color:#64748b;background:#f1f5f9;padding:3px 10px;border-radius:99px;font-weight:600}
+.sd-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:13px;margin-bottom:18px}
+.sd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;margin-bottom:18px}
+.sd-card{background:#fff;border:1px solid #eaecf0;border-radius:12px;padding:16px 18px;box-shadow:0 1px 5px rgba(0,0,0,.04)}
+.sd-card h4{font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.sd-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:7px 0;border-bottom:1px solid #f3f4f6;font-size:13px}
+.sd-row:last-child{border-bottom:none}.sd-row>span:first-child{color:#777}.sd-row b{color:#111}
+.sd-note{font-size:11px;color:#999;margin-top:8px;line-height:1.5}
+.sd-months{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:11px;color:#555}
+.sd-months span{display:inline-flex;align-items:center;gap:5px}
+.sd-hist{width:100%;border-collapse:collapse;font-size:12.5px}
+.sd-hist th{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:#999;text-align:right;padding:6px 10px;border-bottom:1px solid #eaecf0;font-weight:700}
+.sd-hist td{text-align:right;padding:7px 10px;border-bottom:1px solid #f3f4f6}
+.sd-hist th:first-child,.sd-hist td:first-child{text-align:left}
+.sd-hist tr.cur td{background:#f5f4ff;font-weight:700}
 .sas-badge{display:inline-flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;color:#b45309;background:#fffbeb;border:1px solid #fcd34d;padding:1px 6px;border-radius:6px;margin-right:5px}
 .sas-chip-file{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;background:#eff6ff;border:1px solid #93c5fd;color:#1d4ed8;border-radius:8px;padding:5px 10px}
 .sas-chip-file .x{cursor:pointer;color:#93c5fd;font-weight:800;margin-left:2px}
@@ -2450,6 +2468,7 @@ function expandKpi(){
 
 function closeModal(){
   document.getElementById('modalOverlay').classList.remove('open');
+  const _mb=document.getElementById('modalBox');if(_mb)_mb.classList.remove('xl');
   document.body.style.overflow='';
   if(modalChart){modalChart.destroy();modalChart=null;}
 }
@@ -5335,6 +5354,7 @@ function renderSas(){
     const withNaz=hrows.filter(h=>h._nazione).sort((a,b)=>(b.monthKey||0)-(a.monthKey||0))[0];
     r._nazione=withNaz?withNaz._nazione:null;
   });
+  const enrichedRows=rows; // tutte le righe del file (prima dei filtri), per la scheda negozio
   sasPopulateNazFilter(rows);
   sasPopulateAssignFilter();
 
@@ -5464,7 +5484,7 @@ function renderSas(){
   };
 
   const identCols=sasView==='negozi'
-    ?[{label:'ID',filter:'text'},{label:'Negozio',filter:'text'}]
+    ?[{label:'Negozio',filter:'text'}]
     :[{label:'Nome',filter:'text'},{label:'Ruolo',filter:'select'},{label:'N. Negozi',align:'right',filter:'none'}];
   const cols=identCols.concat([
     {label:'Target',align:'right',filter:'none'},{label:'Consuntivo',align:'right',filter:'none'},{label:'Esub. prec.',align:'right',filter:'none'},
@@ -5483,7 +5503,7 @@ function renderSas(){
   if(sasView!=='negozi') rows=rows.slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
   const trows=rows.map(r=>{
     const identCells=sasView==='negozi'
-      ?[{disp:r.sid,val:+r.sid||0},{disp:agEsc(r.name),val:r.name}]
+      ?[{disp:'<a class="sd-link" title="Apri la scheda completa del negozio" onclick="sasOpenStore(decodeURIComponent(\''+encodeURIComponent(String(r.sid))+'\'))">'+agEsc(sasStoreLabel(r))+'</a>',val:+r.sid||0}]
       :[{disp:agEsc(r.name),val:r.name},{disp:'<span class="bjob">'+r.role+'</span>',val:r.role},{disp:r.nStores,val:r.nStores}];
     return {cells:identCells.concat([
       {disp:eu(r.target),val:r.target},{disp:eu(r.actual),val:r.actual},{disp:eud(sasEsubero(r)),val:sasEsubero(r)},
@@ -5495,11 +5515,84 @@ function renderSas(){
       {disp:esitoChip(r),val:r.esito},demCell(r),bdgCell(r),
     ])};
   });
+  _sasDetail={file,rows:enrichedRows,view:sasView,syCell,parCell,bdgCell,demCell,eu,eud,bar,pctCls,esitoChip};
   const sasTblEl=document.getElementById('sasTbl');
   if(sasTblEl&&sasTblEl.classList) sasTblEl.classList.toggle('sas-neg-view',sasView==='negozi');
   // default: Negozi → Store ID crescente (col.0); FC+VM → Ruolo crescente (col.1, "FC" prima di
   // "VM"), con Nome alfabetico dentro ciascun ruolo grazie al pre-ordinamento sopra.
   makeSortTable('sasTbl','sas'+sasView,cols,trows,sasView==='negozi'?{i:0,dir:1}:{i:1,dir:1});
+}
+// ── Scheda negozio (popup grande) ───────────────────────────────────────────
+var _sasDetail=null; // contesto dell'ultimo renderSas: stessi helper di formattazione della tabella
+// Nel JSON il nome comincia già con lo Store ID ("1101 JERMYN STREET"): se manca lo si antepone,
+// così la colonna ID separata non serve più.
+function sasStoreLabel(r){const n=String(r.name||''),sid=String(r.sid==null?'':r.sid);return sid&&n.indexOf(sid)!==0?(sid+' '+n).trim():n;}
+function sasOpenStore(sid){
+  const c=_sasDetail; if(!c||c.view!=='negozi')return;
+  const r=c.rows.find(x=>String(x.sid)===String(sid)); if(!r)return;
+  const v1=n=>n==null?'—':(+n).toFixed(1), pc=n=>n==null?'—':(Math.floor(n*10000+1e-6)/100).toFixed(2).replace('.',',')+'%';
+  const row=(l,v)=>'<div class="sd-row"><span>'+l+'</span><b>'+v+'</b></div>';
+  const card=(t,body,note)=>'<div class="sd-card"><h4>'+t+'</h4>'+body+(note?'<div class="sd-note">'+note+'</div>':'')+'</div>';
+  const kpi=(cls,l,v,sub)=>'<div class="kpi '+cls+'"><div class="kpi-lbl">'+l+'</div><div class="kpi-val">'+v+'</div>'+(sub?'<div class="kpi-sub">'+sub+'</div>':'')+'</div>';
+  const asg=storeAssignMap[String(r.sid)]||{};
+  const dept=typeof isDeptStore==='function'&&isDeptStore(r.sid);
+  const par=sasParachute(r,'negozi',null), dem=c.demCell(r), hasDem=r.demoltStatus==='applied';
+  const metas=[];
+  if(r._nazione)metas.push(agEsc(r._nazione));
+  if(dept)metas.push('Dept store');
+  (asg.fc||[]).forEach(n=>metas.push('FC: '+agEsc(n)));(asg.vm||[]).forEach(n=>metas.push('VM: '+agEsc(n)));
+  let h='<div class="sd-head"><span class="sd-name">'+agEsc(sasStoreLabel(r))+'</span>'+c.esitoChip(r)+(r.determinante?'<span class="sas-badge">⚡SAS determinante</span>':'')
+    +metas.map(m=>'<span class="sd-meta">'+m+'</span>').join('')+'</div>';
+  const fc=c.pctCls(r.pctFinal);
+  h+='<div class="sd-kpis">'
+    +kpi('','Target','€ '+fmt(Math.round(r.target||0)))
+    +kpi('','Consuntivo','€ '+fmt(Math.round(r.actual||0)))
+    +kpi(fc==='good'?'g':(fc==='warn'?'a':'r'),'% finale',((r.pctFinal||0)*100).toFixed(1)+'%','con SAS ed esubero')
+    +kpi('p','% senza SAS',((r.pctBase||0)*100).toFixed(1)+'%')
+    +kpi('a','SAS applicato','€ '+fmt(Math.round(r.applied||0)))
+    +(hasDem?kpi(r.demoltPct<1?'r':'g','Coef. Inventari',Math.round(r.demoltPct*100)+'%','sul premio SM/VSM'):'')
+    +'</div><div class="sd-grid">';
+  h+=card('Fatturato',
+    row('Target','€ '+fmt(Math.round(r.target||0)))+row('Consuntivo','€ '+fmt(Math.round(r.actual||0)))
+    +row('Esubero mese precedente',c.eud(sasEsubero(r)))
+    +row('% senza SAS',c.bar((r.pctBase||0)*100,c.pctCls(r.pctBase))+((r.pctBase||0)*100).toFixed(1)+'%')
+    +row('% finale',c.bar((r.pctFinal||0)*100,fc)+((r.pctFinal||0)*100).toFixed(1)+'%')
+    +row('Esito',c.esitoChip(r)));
+  h+=card(dept?'Vendite — Qty e paracadute':'Vendite — SY e paracadute',
+    (dept?row('Qty risultato',r.resultQty==null?'—':r.resultQty)+row('Qty target',r.targetQty==null?'—':r.targetQty)
+         :row('SY risultato',v1(r.resultSY))+row('SY target',v1(r.targetSY))+row('SY anno precedente',v1(r.syLastYear)))
+    +row('Confronto',c.syCell(r))+row('Paracadute 60%',c.parCell(r).disp),
+    agEsc(par.tip||''));
+  h+=card('SAS',
+    row('Valore SAS','€ '+fmt(Math.round(r.sasValue||0)))+row('Riconosciuto',r.recPct==null?'—':Math.round(r.recPct)+'%')
+    +row('Valore riconosciuto','€ '+fmt(Math.round(r.recValue||0)))+row('Riserva SAS precedente',c.eud(r.esuberoSasPrec))
+    +row('Riserva SAS usata',c.eud(r.esuberoSasPrecUsed))+row('Applicato al fatturato',c.eud(r.applied))
+    +row('Riserva SAS riportata',r.sasReserveNext==null?'—':c.eud(r.sasReserveNext)));
+  h+=card('Coefficiente Inventari',
+    r.demoltStatus===undefined?row('Stato','<span class="dash">n/d</span>'):(r.demoltStatus===null?row('Stato','<span class="dash">non attivo</span>')
+    :row('Coefficiente',dem.disp)+(hasDem?row('% completamento',pc(r.demoltCompl))+row('Accuracy',pc(r.demoltAcc)):row('Stato',r.demoltStatus==='na'?'non si applica':'senza dati inventari'))),
+    r.demoltStatus===undefined?'File esportato prima della v9.99: riesportare il JSON dalla app incentivi.':'Riduce tutte le voci di premio degli SM/VSM del negozio (da ottobre 2026).');
+  const b=r._bdg;
+  h+=card('BDG storico',
+    b?row('Esito pieno',b.pct+'%')+row('Mesi',b.n+' su '+b.N)
+      +'<div class="sd-months">'+(b.months||[]).map(m=>'<span><i class="sas-bdg-dot '+m.tier+'"></i>'+agEsc(m.label)+(m.tier==='partial'?' ('+m.pct+'%)':'')+'</span>').join('')+'</div>'
+      :'<div class="sd-note">Nessuno storico premi caricato per questo negozio.</div>');
+  h+='</div>';
+  // storico mesi del negozio nei JSON caricati
+  const hist=Object.values(sasFiles).filter(f=>f.kind==='negozi').map(f=>({f,x:f.rows.find(y=>String(y.sid)===String(r.sid))})).filter(o=>o.x)
+    .sort((a,b)=>a.f.period.monthKey-b.f.period.monthKey);
+  if(hist.length>1){
+    h+='<div class="sd-card"><h4>Mesi caricati</h4><table class="sd-hist"><thead><tr><th>Mese</th><th>Target</th><th>Consuntivo</th><th>% senza SAS</th><th>% finale</th><th>SAS applicato</th><th>Coef. Inv.</th><th>Esito</th></tr></thead><tbody>'
+      +hist.map(o=>{const x=o.x;return '<tr'+(o.f.period.monthKey===c.file.period.monthKey?' class="cur"':'')+'><td>'+agEsc(o.f.period.label)+'</td><td>€ '+fmt(Math.round(x.target||0))+'</td><td>€ '+fmt(Math.round(x.actual||0))+'</td><td>'
+        +((x.pctBase||0)*100).toFixed(1)+'%</td><td>'+((x.pctFinal||0)*100).toFixed(1)+'%</td><td>'+c.eud(x.applied)+'</td><td>'+(x.demoltStatus==='applied'?Math.round(x.demoltPct*100)+'%':'<span class="dash">—</span>')+'</td><td>'+c.esitoChip(x)+'</td></tr>';}).join('')
+      +'</tbody></table></div>';
+  }
+  document.getElementById('modalBody').innerHTML=h;
+  document.getElementById('modalTitle').textContent='Scheda negozio — '+c.file.period.label;
+  const box=document.getElementById('modalBox');if(box)box.classList.add('xl');
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+  if(modalChart){modalChart.destroy();modalChart=null;}
 }
 function sasExport(){
   const file=sasCurrentFile();if(!file){alert('Nessun dato da esportare per questo mese/vista.');return;}
