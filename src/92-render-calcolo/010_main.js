@@ -506,9 +506,15 @@ function exportStatsJsonFcvm(){
     var resInUsed=Math.min(r.totSasReserveIn||0,r.totSasUsed||0);
     var esuberoPrec=Math.round(r.totEsubero||0);
     // Coefficiente Inventari (da ott. 2026, solo FC, riduce solo il premio d'area — non i BDG singoli):
-    // "applied" = applicato, "nodata" = FC senza risultato, "na" = VM (o coefficiente non attivo → null).
+    // "applied" = applicato, "nodata" = FC senza risultato (es. Polonia: nessun dato inventari),
+    // "na" = VM o FC con area interamente USA (o coefficiente non attivo → null).
     var demActive=typeof demoltActive==="function"&&demoltActive();
     var demStatus=!demActive?null:(emp.j!=="FC"?"na":(r.demoltDr?"applied":"nodata"));
+    // Area interamente USA: gli USA non hanno parametri inventariali (regola a parte, calcUSA) → "non si applica", non "senza dati".
+    if(demStatus==="nodata"){
+      var _fcSids=Object.keys(FC_MAP).filter(function(sid){var mp=FC_MAP[sid],a=Array.isArray(mp.fc)?mp.fc:(mp.fc?[mp.fc]:[]);return a.indexOf(emp.m)>=0;});
+      if(_fcSids.length&&_fcSids.every(function(sid){return isUSA(sid,{si:sid,cu:''});}))demStatus="na";
+    }
     var demExRate=(emp.ex&&emp.ex!==1&&emp.ex>0)?emp.ex:getFcVmExRate(emp.cu);
     return{kind:"fcvm",name:emp.n+" "+emp.c,role:emp.j,nStores:(r.stores||[]).length,target:Math.round(r.totTarget||0),
       actual:Math.round(pureCons),

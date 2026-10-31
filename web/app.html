@@ -967,12 +967,13 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.99'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.100'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.100: Export Statistiche FC+VM — i Field Coach con area interamente USA risultano «non si applica» (gli USA non hanno parametri inventariali) invece di «senza dati»",
   "9.99: Export «Dati per Statistiche» (Negozi e FC+VM, schemaVersion 3) — aggiunti i dati del Coefficiente Inventari: coefficiente applicato, % completamento, Accuracy (negozi) / % invio area (FC) e, per i FC, premio d'area prima e dopo il coefficiente. Da riesportare il JSON di ottobre per la dashboard Statistiche",
   "9.98: Pulsanti «Carica ...» — il selettore file non si apre più sulla cartella Download (dove poteva bloccarsi): parte dal Desktop e poi ricorda l'ultima cartella usata",
   "9.97: Import SAS Area FC+VM — se lo stesso nome compare più volte nel file (l'abbinamento è per nome, vale l'ultima riga) l'import ora lo segnala con le righe e i valori in conflitto, invece di sovrascrivere in silenzio",
@@ -2734,9 +2735,15 @@ function exportStatsJsonFcvm(){
     var resInUsed=Math.min(r.totSasReserveIn||0,r.totSasUsed||0);
     var esuberoPrec=Math.round(r.totEsubero||0);
     // Coefficiente Inventari (da ott. 2026, solo FC, riduce solo il premio d'area — non i BDG singoli):
-    // "applied" = applicato, "nodata" = FC senza risultato, "na" = VM (o coefficiente non attivo → null).
+    // "applied" = applicato, "nodata" = FC senza risultato (es. Polonia: nessun dato inventari),
+    // "na" = VM o FC con area interamente USA (o coefficiente non attivo → null).
     var demActive=typeof demoltActive==="function"&&demoltActive();
     var demStatus=!demActive?null:(emp.j!=="FC"?"na":(r.demoltDr?"applied":"nodata"));
+    // Area interamente USA: gli USA non hanno parametri inventariali (regola a parte, calcUSA) → "non si applica", non "senza dati".
+    if(demStatus==="nodata"){
+      var _fcSids=Object.keys(FC_MAP).filter(function(sid){var mp=FC_MAP[sid],a=Array.isArray(mp.fc)?mp.fc:(mp.fc?[mp.fc]:[]);return a.indexOf(emp.m)>=0;});
+      if(_fcSids.length&&_fcSids.every(function(sid){return isUSA(sid,{si:sid,cu:''});}))demStatus="na";
+    }
     var demExRate=(emp.ex&&emp.ex!==1&&emp.ex>0)?emp.ex:getFcVmExRate(emp.cu);
     return{kind:"fcvm",name:emp.n+" "+emp.c,role:emp.j,nStores:(r.stores||[]).length,target:Math.round(r.totTarget||0),
       actual:Math.round(pureCons),

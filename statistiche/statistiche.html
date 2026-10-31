@@ -5477,8 +5477,8 @@ function renderSas(){
     const st=r.demoltStatus;
     if(st===undefined)return{disp:'<span class="dash" title="File senza dati Coefficiente Inventari (export precedente alla v9.99 della app): riesportare il JSON dalla app incentivi.">n/d</span>',val:-2};
     if(st===null)return{disp:'<span class="dash" title="Coefficiente Inventari non ancora attivo in questo mese (da ottobre 2026).">—</span>',val:-2};
-    if(st==='na')return{disp:'<span class="dash" title="'+(sasView==='fcvm'?'Il coefficiente si applica solo ai Field Coach, non ai VM.':'Nessun SM/VSM nel negozio: il coefficiente non si applica.')+'">—</span>',val:-1};
-    if(st==='nodata')return{disp:'<span class="dash" title="Nessun risultato inventari per questa riga: nessuna riduzione del premio.">senza dati</span>',val:-1};
+    if(st==='na')return{disp:'<span class="dash" title="'+(sasView==='fcvm'?(r.role==='FC'?'Area interamente USA: gli USA non hanno parametri inventariali.':'Il coefficiente si applica solo ai Field Coach, non ai VM.'):'Nessun SM/VSM nel negozio: il coefficiente non si applica.')+'">—</span>',val:-1};
+    if(st==='nodata')return{disp:'<span class="dash" title="Nessun dato inventari per questa riga (es. Polonia): nessuna riduzione del premio.">senza dati</span>',val:-1};
     const p=n=>n==null?'n/d':(Math.floor(n*10000+1e-6)/100).toFixed(2)+'%';
     const tip=(sasView==='fcvm'
       ?'% invio area '+p(r.demoltInvio)+' · % completamento '+p(r.demoltCompl)+(r.premioAreaPre!=null?'&#10;Premio area € '+fmt(Math.round(r.premioAreaPre))+' → € '+fmt(Math.round(r.premioAreaPost)):'')

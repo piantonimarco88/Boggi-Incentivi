@@ -94,3 +94,18 @@ test("Negozi: applied (SM/VSM con risultato), nodata (SM senza risultato), na (n
   assert.strictEqual(by("1003").demoltStatus, "na"); // SSA: il coefficiente non si applica
   assert.strictEqual(by("1003").demoltPct, null);
 });
+
+test("FC: area interamente USA = na (non nodata); area non USA senza risultato = nodata", () => {
+  const c = ctx({ isUSA: (sid) => String(sid) === "900" });
+  c.FC_EMP = {
+    F1: { m: "F1", n: "STEFANO", c: "LEONARDI", j: "FC", ib: 1000, cu: "EUR", ex: 1, ps: "NO", ml: 0, bdg_stores: [] },
+    F2: { m: "F2", n: "JAKUB", c: "KOTUNIAK", j: "FC", ib: 1000, cu: "EUR", ex: 1, ps: "NO", ml: 0, bdg_stores: [] },
+  };
+  c.FC_MAP = { "900": { fc: ["F1"], vm: [] }, "500": { fc: ["F2"], vm: [] } };
+  c.FC_TARGETS = { "900": { to_eur: 100000 }, "500": { to_eur: 100000 } };
+  c.FC_RESULTS = { "900": { sc_eur: 105000 }, "500": { sc_eur: 105000 } };
+  c.exportStatsJsonFcvm();
+  const by = (n) => c.__out().rows.find((r) => r.name.indexOf(n) >= 0);
+  assert.strictEqual(by("LEONARDI").demoltStatus, "na");
+  assert.strictEqual(by("KOTUNIAK").demoltStatus, "nodata");
+});
