@@ -28,6 +28,8 @@ function ctx(globals) {
     setTimeout: () => {}, JSON: JSON, alert: () => {},
     Math: Math, Object: Object, Array: Array, String: String, isNaN: isNaN, Date: Date,
   }, globals));
+  // storeIsUSA vive in 88-calc-engine (non caricato qui): stessa regola sul solo isUSA del test
+  c.storeIsUSA = (sid) => c.isUSA(sid, { si: sid, cu: "" });
   vm.runInContext(src("50-params"), c);
   vm.runInContext(src("33-demolt-import"), c);
   vm.runInContext(src("70-fcvm-calc"), c);
@@ -108,4 +110,20 @@ test("FC: area interamente USA = na (non nodata); area non USA senza risultato =
   const by = (n) => c.__out().rows.find((r) => r.name.indexOf(n) >= 0);
   assert.strictEqual(by("LEONARDI").demoltStatus, "na");
   assert.strictEqual(by("KOTUNIAK").demoltStatus, "nodata");
+});
+
+// storeIsUSA (88-calc-engine): estratta dal sorgente e valutata da sola
+test("storeIsUSA: riconosce i negozi USA anche con USA_STORES/D.us vuoti (noti o con dipendenti in USD)", () => {
+  const code = fs.readFileSync(path.join(__dirname, "..", "src", "88-calc-engine", "010_main.js"), "utf8");
+  const pick = (re) => { const m = code.match(re); assert.ok(m, "non trovato: " + re); return m[0]; };
+  const c = vm.createContext({ D: { us: [] }, E: [{ si: "1350", cu: "USD" }, { si: "1101", cu: "GBP" }], Number, String, Array });
+  vm.runInContext("var USA_STORES=[];", c);
+  vm.runInContext(pick(/var USA_STORES_KNOWN=\[[^\]]*\];/), c);
+  vm.runInContext(pick(/function storeIsUSA\(sid\)\{[\s\S]*?\r?\n\}/), c);
+  assert.strictEqual(c.storeIsUSA("1321"), true);  // noto
+  assert.strictEqual(c.storeIsUSA(1341), true);    // noto (numero)
+  assert.strictEqual(c.storeIsUSA("1350"), true);  // dipendenti in USD
+  assert.strictEqual(c.storeIsUSA("1101"), false);
+  c.D.us = [1101];
+  assert.strictEqual(c.storeIsUSA("1101"), true);  // D.us corrente
 });

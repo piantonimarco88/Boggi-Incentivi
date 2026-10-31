@@ -1,6 +1,18 @@
 // === USA CONFIG ===
 var USA_STORES=D.us||[1321,1322,1323];
 function isUSA(si,e){if(e&&e.cu==="USD")return true;return USA_STORES.indexOf(Number(si))>=0}
+// Negozio USA a livello di NEGOZIO (export Statistiche/SAS, Coefficiente Inventari), dove non c'è un dipendente
+// da cui leggere la valuta. USA_STORES da solo non basta: è letto una volta all'avvio da D.us, si riempie solo
+// importando l'anagrafica USA e una sessione/autosave con D.us vuoto lo azzera (ott. 2026: due export dello stesso
+// mese con e senza 9 negozi USA). Si uniscono quindi: USA_STORES, D.us corrente, i negozi USA noti e i negozi con
+// dipendenti in USD.
+var USA_STORES_KNOWN=[1321,1322,1323,1331,1332,1333,1334,1335,1336,1337,1341];
+function storeIsUSA(sid){
+  var n=Number(sid),s=String(sid);
+  if(USA_STORES.indexOf(n)>=0||USA_STORES_KNOWN.indexOf(n)>=0)return true;
+  if(typeof D!=="undefined"&&D&&Array.isArray(D.us)&&D.us.indexOf(n)>=0)return true;
+  return typeof E!=="undefined"&&Array.isArray(E)&&E.some(function(e){return String(e.si)===s&&e.cu==="USD";});
+}
 // USA_DATA rimosso: usare D.usa direttamente per evitare riferimento stale dopo reset/localStorage
 // USA params per role: noTargetMult=% when target NOT hit, useStore=toggle store vs personal
 var USA_P={

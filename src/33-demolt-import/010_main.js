@@ -87,7 +87,7 @@ function demoltProcessInventari(sh){
     byStore[sid]=s;
     if(cc==="WIC")nWic++;
     var lbl=sid+" "+nm;
-    if(typeof isUSA==="function"&&isUSA(sid)){s.usa=true;usa.push(lbl);continue;}
+    if(typeof storeIsUSA==="function"?storeIsUSA(sid):(typeof isUSA==="function"&&isUSA(sid))){s.usa=true;usa.push(lbl);continue;}
     if(cU>=0){var fu=row[cU];
       if(compl!=null&&(typeof fu!=="number"||Math.abs(fu-compl)>0.0005))uMis.push(lbl+": file "+(typeof fu==="number"?_demoltPctStr(fu):fu)+" → ricalcolo "+_demoltPctStr(compl));}
     if(compl==null){noSent.push(lbl+" ("+(cc||"—")+")");}

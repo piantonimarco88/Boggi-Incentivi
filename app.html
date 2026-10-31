@@ -604,7 +604,7 @@ function demoltProcessInventari(sh){
     byStore[sid]=s;
     if(cc==="WIC")nWic++;
     var lbl=sid+" "+nm;
-    if(typeof isUSA==="function"&&isUSA(sid)){s.usa=true;usa.push(lbl);continue;}
+    if(typeof storeIsUSA==="function"?storeIsUSA(sid):(typeof isUSA==="function"&&isUSA(sid))){s.usa=true;usa.push(lbl);continue;}
     if(cU>=0){var fu=row[cU];
       if(compl!=null&&(typeof fu!=="number"||Math.abs(fu-compl)>0.0005))uMis.push(lbl+": file "+(typeof fu==="number"?_demoltPctStr(fu):fu)+" → ricalcolo "+_demoltPctStr(compl));}
     if(compl==null){noSent.push(lbl+" ("+(cc||"—")+")");}
@@ -967,12 +967,13 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.100'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.101'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.101: Negozi USA riconosciuti in modo stabile negli export Statistiche/SAS e nel Coefficiente Inventari (non dipende più da aver importato l'anagrafica USA in questa sessione)",
   "9.100: Export Statistiche FC+VM — i Field Coach con area interamente USA risultano «non si applica» (gli USA non hanno parametri inventariali) invece di «senza dati»",
   "9.99: Export «Dati per Statistiche» (Negozi e FC+VM, schemaVersion 3) — aggiunti i dati del Coefficiente Inventari: coefficiente applicato, % completamento, Accuracy (negozi) / % invio area (FC) e, per i FC, premio d'area prima e dopo il coefficiente. Da riesportare il JSON di ottobre per la dashboard Statistiche",
   "9.98: Pulsanti «Carica ...» — il selettore file non si apre più sulla cartella Download (dove poteva bloccarsi): parte dal Desktop e poi ricorda l'ultima cartella usata",
@@ -1462,6 +1463,18 @@ function loadConfig(evt){var f=evt.target.files[0];if(!f)return;var reader=new F
 // === USA CONFIG ===
 var USA_STORES=D.us||[1321,1322,1323];
 function isUSA(si,e){if(e&&e.cu==="USD")return true;return USA_STORES.indexOf(Number(si))>=0}
+// Negozio USA a livello di NEGOZIO (export Statistiche/SAS, Coefficiente Inventari), dove non c'è un dipendente
+// da cui leggere la valuta. USA_STORES da solo non basta: è letto una volta all'avvio da D.us, si riempie solo
+// importando l'anagrafica USA e una sessione/autosave con D.us vuoto lo azzera (ott. 2026: due export dello stesso
+// mese con e senza 9 negozi USA). Si uniscono quindi: USA_STORES, D.us corrente, i negozi USA noti e i negozi con
+// dipendenti in USD.
+var USA_STORES_KNOWN=[1321,1322,1323,1331,1332,1333,1334,1335,1336,1337,1341];
+function storeIsUSA(sid){
+  var n=Number(sid),s=String(sid);
+  if(USA_STORES.indexOf(n)>=0||USA_STORES_KNOWN.indexOf(n)>=0)return true;
+  if(typeof D!=="undefined"&&D&&Array.isArray(D.us)&&D.us.indexOf(n)>=0)return true;
+  return typeof E!=="undefined"&&Array.isArray(E)&&E.some(function(e){return String(e.si)===s&&e.cu==="USD";});
+}
 // USA_DATA rimosso: usare D.usa direttamente per evitare riferimento stale dopo reset/localStorage
 // USA params per role: noTargetMult=% when target NOT hit, useStore=toggle store vs personal
 var USA_P={
@@ -2506,7 +2519,7 @@ function exportSasJsonStores(){
   var storeNames={},storeEx={};
   E.forEach(function(e){if(e.si){if(!storeNames[e.si])storeNames[e.si]=e.s||String(e.si);if(storeEx[e.si]===undefined)storeEx[e.si]=e.ex||1;}});
   var sids=Object.keys(storeNames).filter(function(sid){
-    if(isUSA(sid,{si:sid,cu:''}))return false; // USA non usa la matrice SAS
+    if(storeIsUSA(sid))return false; // USA non usa la matrice SAS
     var info=storeSasInfo(sid);
     return info.active&&(info.to>0||info.base>0);
   });
@@ -2637,7 +2650,7 @@ function exportStatsJsonStores(){
   var storeNames={},storeEx={};
   E.forEach(function(e){if(e.si){if(!storeNames[e.si])storeNames[e.si]=e.s||String(e.si);if(storeEx[e.si]===undefined)storeEx[e.si]=e.ex||1;}});
   var sids=Object.keys(storeNames).filter(function(sid){
-    if(isUSA(sid,{si:sid,cu:''}))return false; // USA non usa la matrice SAS
+    if(storeIsUSA(sid))return false; // USA non usa la matrice SAS
     var info=storeSasInfo(sid);
     return info.active&&(info.to>0||info.base>0);
   });
@@ -2742,7 +2755,7 @@ function exportStatsJsonFcvm(){
     // Area interamente USA: gli USA non hanno parametri inventariali (regola a parte, calcUSA) → "non si applica", non "senza dati".
     if(demStatus==="nodata"){
       var _fcSids=Object.keys(FC_MAP).filter(function(sid){var mp=FC_MAP[sid],a=Array.isArray(mp.fc)?mp.fc:(mp.fc?[mp.fc]:[]);return a.indexOf(emp.m)>=0;});
-      if(_fcSids.length&&_fcSids.every(function(sid){return isUSA(sid,{si:sid,cu:''});}))demStatus="na";
+      if(_fcSids.length&&_fcSids.every(function(sid){return storeIsUSA(sid);}))demStatus="na";
     }
     var demExRate=(emp.ex&&emp.ex!==1&&emp.ex>0)?emp.ex:getFcVmExRate(emp.cu);
     return{kind:"fcvm",name:emp.n+" "+emp.c,role:emp.j,nStores:(r.stores||[]).length,target:Math.round(r.totTarget||0),

@@ -1630,7 +1630,9 @@ function applyCoefMode(){
       const E=(r.erogato||0)/cur;
       if(E>0){want=(E+fcDelta.get(r))/E;info.nFc++;}
     }
-    if(want!==1)info.loss+=((r.erogato||0)/cur)*(want-1);
+    // _coef: riduzione della riga (in € come pagato), indipendente dalla modalità — la usa l'Alert per la motivazione
+    if(want!==1){const l=((r.erogato||0)/cur)*(want-1);info.loss+=l;r._coef={loss:l,pct:coefIsSmRow(r)?1/want:null};}
+    else if(r._coef)delete r._coef;
     const target=gross?want:1, ratio=target/cur;
     if(Math.abs(ratio-1)>1e-12){
       r.erogato*=ratio;
@@ -1669,6 +1671,20 @@ function setCoefMode(m){
   coefMode=(m==='gross')?'gross':'paid';
   try{localStorage.setItem('boggi_coef_mode',coefMode);}catch(e){}
   coefSync();
+}
+// Righe da salvare (sessione / salvataggio automatico): SEMPRE "come pagato". Così un file salvato in modalità
+// lorda non viene letto come premi pagati da chi ha una versione precedente di questa pagina; alla
+// riapertura applyCoefMode() rimette la modalità scelta.
+function rowsAsPaid(rows){
+  return rows.map(r=>{
+    if(!r._cf)return r;
+    const k=1/r._cf, c=Object.assign({},r);
+    c.erogato=(r.erogato||0)*k;
+    COMP.forEach(x=>{if(typeof c[x.k]==='number')c[x.k]*=k;});
+    c.pct=c.massimale>0?+((c.erogato/c.massimale)*100).toFixed(1):0;
+    delete c._cf;
+    return c;
+  });
 }
 function coefAgentNote(){
   const i=coefInfo,n=i.nSt+i.nFc;
@@ -1756,7 +1772,7 @@ let _idbT=null;
 // storeAssignOverrideFiles va persistito per intero (fname -> mappa) così più override (es. TESTATA
 // Italia + International) sopravvivono entrambi al reload — il default statico STORE_ASSIGN_STATIC
 // non va mai persistito (si riottiene da solo ad ogni caricamento pagina, è già nel codice).
-function idbAutoSave(){clearTimeout(_idbT);_idbT=setTimeout(async()=>{try{const db=await idbOpen();db.transaction(IDB_STORE,'readwrite').objectStore(IDB_STORE).put({rows:allData,savedAt:new Date().toISOString(),sasFiles:(typeof sasFiles!=='undefined'?sasFiles:{}),storeAssignOverrideFiles:(typeof storeAssignOverrideFiles!=='undefined'?storeAssignOverrideFiles:{})},'current');}catch(e){console.warn('IDB save fallito',e);}},1500);}
+function idbAutoSave(){clearTimeout(_idbT);_idbT=setTimeout(async()=>{try{const db=await idbOpen();db.transaction(IDB_STORE,'readwrite').objectStore(IDB_STORE).put({rows:rowsAsPaid(allData),savedAt:new Date().toISOString(),sasFiles:(typeof sasFiles!=='undefined'?sasFiles:{}),storeAssignOverrideFiles:(typeof storeAssignOverrideFiles!=='undefined'?storeAssignOverrideFiles:{})},'current');}catch(e){console.warn('IDB save fallito',e);}},1500);}
 async function idbLoadSession(){try{const db=await idbOpen();return await new Promise(res=>{const r=db.transaction(IDB_STORE,'readonly').objectStore(IDB_STORE).get('current');r.onsuccess=()=>res(r.result||null);r.onerror=()=>res(null);});}catch(e){return null;}}
 async function idbClearSession(){try{const db=await idbOpen();db.transaction(IDB_STORE,'readwrite').objectStore(IDB_STORE).delete('current');}catch(e){}}
 async function tryRestoreSession(){
@@ -2872,7 +2888,7 @@ function saveSession(){
   // sasFiles (JSON del tab SAS → Fatturato) è un dataset indipendente da allData, prima non
   // veniva incluso nel salvataggio: chi ricaricava la sessione (o la condivideva con un collega)
   // si ritrovava il tab SAS → Fatturato vuoto anche se i dati erano già stati caricati in precedenza.
-  const session={version:'3.3',savedAt:new Date().toISOString(),fileNames:Object.keys(fileMap),rows:allData,sasFiles:(typeof sasFiles!=='undefined'?sasFiles:{})};
+  const session={version:'3.3',savedAt:new Date().toISOString(),fileNames:Object.keys(fileMap),rows:rowsAsPaid(allData),sasFiles:(typeof sasFiles!=='undefined'?sasFiles:{})};
   const blob=new Blob([JSON.stringify(session)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
@@ -4816,7 +4832,7 @@ function alertCompute(){
     if(!map[key]){
       map[key]={matricola:r.matricola||'',cognome:r.cognome||'',nome:r.nome||'',
                 store:r.store||'',job:r.job||'',_nazione:r._nazione||'',
-                erogato:0,rml:0,_rmlM:0,_rmlS:0,months:new Set(),bdgMonths:0,malattie:0};
+                erogato:0,rml:0,_rmlM:0,_rmlS:0,months:new Set(),bdgMonths:0,malattie:0,coefLoss:0,coefPct:null};
       CK_ALL.forEach(k=>map[key][k]=0);
     }
     const a=map[key];
@@ -4827,6 +4843,7 @@ function alertCompute(){
     if((r.cBdg||0)>0)a.bdgMonths++;
     CK_ALL.forEach(k=>a[k]+=(r[k]||0));
     a.malattie+=(r.malattie||0);
+    if(r._coef){a.coefLoss+=r._coef.loss||0;if(r._coef.pct!=null)a.coefPct=a.coefPct==null?r._coef.pct:Math.min(a.coefPct,r._coef.pct);}
     a.store=r.store||a.store; a.job=r.job||a.job; a._nazione=r._nazione||a._nazione;
   });
   const emps=Object.values(map).map(a=>{
@@ -4867,6 +4884,9 @@ function alertCompute(){
     const active=storeActive[e.store]||new Set();
     if((e.status==='sopra'||e.status==='sotto')&&peer){
       const under=e.status==='sotto';
+      // Coefficiente inventari: in vista "come pagato" è spesso la vera causa dell'incidenza bassa → prima motivazione
+      if(under&&coefMode!=='gross'&&e.coefLoss>=1)
+        e.reasons.push('Coefficiente inventari: premio ridotto di € '+fmt(Math.round(e.coefLoss))+(e.coefPct!=null?' (coefficiente '+Math.round(e.coefPct*100)+'%)':' (premio d\'area FC)')+' — passa a «Al lordo» per vedere l\'incidenza senza riduzione');
       if(e.dept) e.reasons.push('Negozio dept store: piano solo BDG/QTY (SY/Subscription non previsti)');
       if(active.has('cBdg')){
         if(under&&e.bdgFreq<peer.bdgFreq-15) e.reasons.push('BDG preso di rado: '+e.bdgFreq.toFixed(0)+'% dei mesi (media simili '+peer.bdgFreq.toFixed(0)+'%)');

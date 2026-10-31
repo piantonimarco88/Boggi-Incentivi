@@ -277,7 +277,7 @@ function exportSasJsonStores(){
   var storeNames={},storeEx={};
   E.forEach(function(e){if(e.si){if(!storeNames[e.si])storeNames[e.si]=e.s||String(e.si);if(storeEx[e.si]===undefined)storeEx[e.si]=e.ex||1;}});
   var sids=Object.keys(storeNames).filter(function(sid){
-    if(isUSA(sid,{si:sid,cu:''}))return false; // USA non usa la matrice SAS
+    if(storeIsUSA(sid))return false; // USA non usa la matrice SAS
     var info=storeSasInfo(sid);
     return info.active&&(info.to>0||info.base>0);
   });
@@ -408,7 +408,7 @@ function exportStatsJsonStores(){
   var storeNames={},storeEx={};
   E.forEach(function(e){if(e.si){if(!storeNames[e.si])storeNames[e.si]=e.s||String(e.si);if(storeEx[e.si]===undefined)storeEx[e.si]=e.ex||1;}});
   var sids=Object.keys(storeNames).filter(function(sid){
-    if(isUSA(sid,{si:sid,cu:''}))return false; // USA non usa la matrice SAS
+    if(storeIsUSA(sid))return false; // USA non usa la matrice SAS
     var info=storeSasInfo(sid);
     return info.active&&(info.to>0||info.base>0);
   });
@@ -513,7 +513,7 @@ function exportStatsJsonFcvm(){
     // Area interamente USA: gli USA non hanno parametri inventariali (regola a parte, calcUSA) → "non si applica", non "senza dati".
     if(demStatus==="nodata"){
       var _fcSids=Object.keys(FC_MAP).filter(function(sid){var mp=FC_MAP[sid],a=Array.isArray(mp.fc)?mp.fc:(mp.fc?[mp.fc]:[]);return a.indexOf(emp.m)>=0;});
-      if(_fcSids.length&&_fcSids.every(function(sid){return isUSA(sid,{si:sid,cu:''});}))demStatus="na";
+      if(_fcSids.length&&_fcSids.every(function(sid){return storeIsUSA(sid);}))demStatus="na";
     }
     var demExRate=(emp.ex&&emp.ex!==1&&emp.ex>0)?emp.ex:getFcVmExRate(emp.cu);
     return{kind:"fcvm",name:emp.n+" "+emp.c,role:emp.j,nStores:(r.stores||[]).length,target:Math.round(r.totTarget||0),
