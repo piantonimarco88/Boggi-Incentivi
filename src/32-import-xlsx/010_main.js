@@ -1087,7 +1087,7 @@ function resetEverything(){
   // Seasonal
   D.cs={};
   Object.keys(SEAS_TARGETS).forEach(function(k){
-    SEAS_TARGETS[k]={to:0,pr:null,sy:null,sas:SEAS_CFG.sasMaxHours||4,acc:SEAS_CFG.accTarget,qt:0};
+    SEAS_TARGETS[k]={to:0,pr:null,sy:null,sas:SEAS_CFG.sasMaxHours||4,acc:SEAS_CFG.accTarget,qt:0,up:null};
   });
   SEAS={};
   // FC+VM
@@ -1122,6 +1122,18 @@ function resetAllData(){
   try{if(typeof rStores==="function")rStores();}catch(ex){}
   try{rL();}catch(ex){}
   alert("✅ Tutti i dati svuotati.");
+}
+
+// Colonna UPT (Units Per Transaction) negli import seasonal (target e consuntivo, KPI Brian & Barry).
+// "upt" come parola intera (non dentro altre parole) oppure "units per ...". skipFcst esclude le
+// colonne forecast nei consuntivi (stessa guardia di fHP).
+function seasFindUptCol(headers,skipFcst){
+  for(var ci=0;ci<headers.length;ci++){
+    var h=headers[ci]; if(!h) continue;
+    if(skipFcst&&(h.indexOf("fcst")>=0||h.indexOf("forecast")>=0)) continue;
+    if(/(^|[^a-z])upt([^a-z]|$)/.test(h)||h.indexOf("units per")>=0||h.indexOf("unit per")>=0||h.indexOf("unità per")>=0||h.indexOf("pezzi per scontrino")>=0) return ci;
+  }
+  return -1;
 }
 
 // === TARGET EXCEL LOADER ===
@@ -1193,6 +1205,9 @@ function loadTargetExcel(file){
         if(cSubCol<0) cSubCol=fSeasCol("subscription","fidelity");
         var cQtyCol=fSeasCol("target qty","qty 2026","qty","pezzi");
         var cCrCol=fSeasCol("conversion rate","cr_","cr ","_cr","(cr)","\tcr","cr\t","cr,");if(cCrCol<0){for(var ci2=0;ci2<headers.length;ci2++){if(headers[ci2]==="cr"){cCrCol=ci2;break;}}}
+        // UPT (Units Per Transaction): target KPI dedicato Brian & Barry (da FW26). Colonna nel file pivot
+        // dei target oppure file dedicato (store id + UPT). Header "upt" come parola intera o "units per ...".
+        var cUptCol=seasFindUptCol(headers);
 
         // Determina formato
         if(cSalesCol>=0||cSyCol>=0){
@@ -1214,6 +1229,20 @@ function loadTargetExcel(file){
             if(bdgTo>0) SEAS_TARGETS[sid].to=Math.round(bdgTo*100)/100;
             if(sy!==null&&!isNaN(sy)) SEAS_TARGETS[sid].sy=Math.round(sy*1000000)/1000000;
             if(cr!==null&&!isNaN(cr)) SEAS_TARGETS[sid].cr=Math.round(cr*1000000)/1000000;
+            if(cUptCol>=0&&row[cUptCol]!=null){var upv=parseFloat(row[cUptCol]);if(!isNaN(upv)&&upv>0)SEAS_TARGETS[sid].up=Math.round(upv*1000000)/1000000;}
+            imported++;
+          }
+        } else if(cUptCol>=0){
+          // ── Formato UPT (Brian & Barry): target UPT per store ──
+          seasFormat="seas_upt";
+          for(var ri=hdrRow+1;ri<json0.length;ri++){
+            var row=json0[ri]; if(!row) continue;
+            var sid=row[cSeasSid]; if(!sid) continue;
+            sid=String(parseInt(sid)); if(sid==="NaN"||sid==="0") continue;
+            var uptVal=parseFloat(row[cUptCol]);
+            if(isNaN(uptVal)||uptVal<=0) continue;
+            if(!SEAS_TARGETS[sid]) SEAS_TARGETS[sid]={to:0,pr:null,sy:null,sas:SEAS_CFG.sasMaxHours||4,acc:SEAS_CFG.accTarget,qt:0,up:null};
+            SEAS_TARGETS[sid].up=Math.round(uptVal*1000000)/1000000;
             imported++;
           }
         } else if(cQtyCol>=0){
@@ -1252,7 +1281,7 @@ function loadTargetExcel(file){
           return;
         }
 
-        var seasLabel={seas_pivot:"Target KPI Seasonal (Fatturato + SY)",seas_fidelity:"Target Subscription Rate Seasonal",seas_qty_dept:"Target QTY Dept Store Seasonal"}[seasFormat]||"Target Seasonal";
+        var seasLabel={seas_pivot:"Target KPI Seasonal (Fatturato + SY"+(cUptCol>=0?" + UPT":"")+")",seas_fidelity:"Target Subscription Rate Seasonal",seas_qty_dept:"Target QTY Dept Store Seasonal",seas_upt:"Target UPT Seasonal (Brian & Barry)"}[seasFormat]||"Target Seasonal";
         alert(seasLabel+"\n\nNegozi aggiornati in SEAS_TARGETS: "+imported+"\nNegozi totali in SEAS_TARGETS: "+Object.keys(SEAS_TARGETS).length);
         rC();rA();rSources();autoSave();
         return;
@@ -1441,6 +1470,8 @@ function loadResultsExcel(file){
         var cSales=fHP("gross sales","gross_sales","sales after return");
         var cSY=fHP("sy gross","sy_gross","sy vat","sy gross vat");
         var cSub=fHP("subscription rate","subscription_rate");
+        // UPT (Units Per Transaction) consuntivo: KPI dedicato Brian & Barry (da FW26)
+        var cUpt=seasFindUptCol(headers,true);
         // CR (Conversion Rate) consuntivo: col H (index 7) nel file risultati mid-season
         var cCR=fHP("conversion rate","cr ","cr_","conversion_rate");
         // Inventario: "difference on cogs" = incidenza % inventariale
@@ -1456,7 +1487,8 @@ function loadResultsExcel(file){
         var cQtySales=fHP("qty sales","qty_sales","pezzi venduti","qty merch","qty after return");
 
         var seasConsType="unknown";
-        if(cSales>=0&&(cSY>=0||cSub>=0)) seasConsType="seas_main";     // fatturato + SY + subscription
+        if(cSales>=0&&(cSY>=0||cSub>=0)) seasConsType="seas_main";     // fatturato + SY + subscription (+ UPT)
+        else if(cUpt>=0&&cInvPct<0&&cAccVal<0&&cSasH<0) seasConsType="seas_upt"; // file dedicato UPT (Brian & Barry)
         else if(cInvPct>=0||cAccVal>=0)  seasConsType="seas_inv_acc";  // inventario % + accuracy (stesso file)
         else if(cSasH>=0)                seasConsType="seas_sas";       // SAS ore medie
         else if(cEsub>=0)                seasConsType="seas_inv_abs";   // esubero assoluto
@@ -1476,12 +1508,15 @@ function loadResultsExcel(file){
           // Ignora store con ID molto grande (canali digitali, Zalando, ecc.)
           if(parseInt(sid)>99999) continue;
 
-          if(!D.cs[sid]) D.cs[sid]={sc:0,es:0,sy:0,nf:0,s4:0,iv:null,av:null,qc:0,cr:null};
+          if(!D.cs[sid]) D.cs[sid]={sc:0,es:0,sy:0,nf:0,s4:0,iv:null,av:null,qc:0,cr:null,up:null};
 
-          if(seasConsType==="seas_main"){
+          if(seasConsType==="seas_upt"){
+            var vu=parseNum(row[cUpt]);if(!isNaN(vu)&&vu>0)D.cs[sid].up=vu;
+          } else if(seasConsType==="seas_main"){
             if(cSales>=0){var v=parseNum(row[cSales]);if(!isNaN(v)&&v>0)D.cs[sid].sc=Math.round(v);}
             if(cSY>=0){var v=parseNum(row[cSY]);if(!isNaN(v)&&v>0)D.cs[sid].sy=v;}
             if(cSub>=0){var v=parseNum(row[cSub]);if(!isNaN(v)&&v>0)D.cs[sid].nf=v;}
+            if(cUpt>=0){var vu2=parseNum(row[cUpt]);if(!isNaN(vu2)&&vu2>0)D.cs[sid].up=vu2;}
             // QTY Dept Store: stesso file "seas_main" a volte porta anche questa colonna
             // (es. "Qty Sales Merch After Returns 2026") — non solo il formato dedicato
             // seas_qty_dept, altrimenti resta sempre a 0 anche quando il dato c'è.
@@ -1510,7 +1545,7 @@ function loadResultsExcel(file){
           imported++;
         }
 
-        var seasLabels={"seas_main":"Fatturato + SY + Subscription Rate","seas_inv_acc":"Inventario (% su COGS) + Accuracy","seas_sas":"SAS (ore medie)","seas_inv_abs":"Inventario/Esubero (valore assoluto)","seas_qty_dept":"QTY Dept Store"};
+        var seasLabels={"seas_main":"Fatturato + SY + Subscription Rate"+(cUpt>=0?" + UPT":""),"seas_upt":"UPT (Brian & Barry)","seas_inv_acc":"Inventario (% su COGS) + Accuracy","seas_sas":"SAS (ore medie)","seas_inv_abs":"Inventario/Esubero (valore assoluto)","seas_qty_dept":"QTY Dept Store"};
         alert("Consuntivo Seasonal: "+seasLabels[seasConsType]+"\n\nNegozi aggiornati in D.c: "+imported);
         rC();rA();rSources();autoSave();
         return;

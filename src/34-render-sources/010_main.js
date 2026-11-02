@@ -49,6 +49,10 @@ function rSources(){try{
     var hasSeaCR=stKeys.some(function(k){return SEAS_TARGETS[k].cr!=null&&SEAS_TARGETS[k].cr>0});
     var hasDeptInt=REGION==="international"&&E.some(function(e){return isD(e.si)});
     var hasSeaQt=!hasDeptInt||stKeys.some(function(k){return(SEAS_TARGETS[k].qt||0)>0});
+    // Brian & Barry (Italia, da FW26): KPI UPT — target/consuntivo richiesti solo se ci sono SM/VSM B&B
+    var hasBBSeas=seasKpiHasBB();
+    var bbSids=hasBBSeas?E.filter(function(e){return isSMVSM(e)&&isBBSeasEmp(e);}).map(function(e){return String(e.si);}):[];
+    var hasSeaUpt=!hasBBSeas||bbSids.some(function(s){return SEAS_TARGETS[s]&&(SEAS_TARGETS[s].up||0)>0;});
 
     if(isMid){
       // Mid-season: richiede fatturato + CR (sbarramento), SY, sub. — NO inventario
@@ -60,6 +64,7 @@ function rSources(){try{
         {l:"Target SY",ok:hasSeaSY,v:hasSeaSY?"OK":"Da caricare"},
         {l:"Target Subscription Rate",ok:hasSeaPr,v:hasSeaPr?"OK":"Da caricare"}
       ];
+      if(hasBBSeas)checks.push({l:"Target UPT (Brian & Barry)",ok:hasSeaUpt,v:hasSeaUpt?"OK":"Da caricare"});
       if(!isP){
         var cKeys=Object.keys(D.cs||{});
         var hasSC=cKeys.some(function(k){return(D.cs[k].sc||0)>0});
@@ -74,6 +79,7 @@ function rSources(){try{
         checks.push({l:"Consuntivo Subscription Rate",ok:hasNF,v:hasNF?"OK":"Da caricare"});
         checks.push({l:"Consuntivo SAS",ok:hasSAS,v:hasSAS?"OK":"Da caricare"});
         checks.push({l:"Consuntivo Accuracy",ok:hasAV,v:hasAV?"OK":"Da caricare"});
+        if(hasBBSeas){var hasUP0=bbSids.some(function(s){return D.cs[s]&&(D.cs[s].up||0)>0;});checks.push({l:"Consuntivo UPT (Brian & Barry)",ok:hasUP0,v:hasUP0?"OK":"Da caricare"});}
         // Inventario NON richiesto in mid-season
         checks.push({l:"Inventario",ok:true,v:"Non richiesto (mid-season)"});
       }
@@ -86,6 +92,7 @@ function rSources(){try{
         {l:"Target SY",ok:hasSeaSY,v:hasSeaSY?"OK":"Da caricare"},
         {l:"Target Privilege",ok:hasSeaPr,v:hasSeaPr?"OK":"Da caricare"}
       ];
+      if(hasBBSeas)checks.push({l:"Target UPT (Brian & Barry)",ok:hasSeaUpt,v:hasSeaUpt?"OK":"Da caricare"});
       if(hasDeptInt) checks.push({l:"Target QTY Dept",ok:hasSeaQt,v:hasSeaQt?stKeys.filter(function(k){return(SEAS_TARGETS[k].qt||0)>0}).length+" neg.":"Da caricare"});
       if(!isP){
         var cKeys=Object.keys(D.cs||{});
@@ -101,6 +108,7 @@ function rSources(){try{
         checks.push({l:"Consuntivo Fatturato",ok:hasSC,v:hasSC?cKeys.length+" neg.":"Da caricare"});
         checks.push({l:"Consuntivo SY",ok:hasSY,v:hasSY?"OK":"Da caricare"});
         checks.push({l:"Consuntivo Privilege",ok:hasNF,v:hasNF?"OK":"Da caricare"});
+        if(hasBBSeas){var hasUP=bbSids.some(function(s){return D.cs[s]&&(D.cs[s].up||0)>0;});checks.push({l:"Consuntivo UPT (Brian & Barry)",ok:hasUP,v:hasUP?"OK":"Da caricare"});}
         checks.push({l:"Consuntivo Accuracy",ok:hasAV,v:hasAV?"OK":"Da caricare"});
         checks.push({l:"Risultato Inventariale",ok:hasIV||hasES,v:(hasIV||hasES)?"OK":"Da caricare"});
         checks.push({l:"SAS",ok:hasSAS,v:hasSAS?"OK":"Da caricare"});
@@ -265,6 +273,12 @@ function rSources(){try{
     var noAccParts=[];
     (SEAS_CFG.kpi_noacc||[]).forEach(function(k){if(k.weight>0)noAccParts.push(k.label+' '+Math.round(k.weight*100)+'% (soglia '+Math.round(k.threshold*100)+'%)')});
     if(noAccParts.length)sh+='<b>KPI No Accuracy:</b> '+noAccParts.join(' &nbsp;&#183;&nbsp; ')+'<br>';
+    // KPI Brian & Barry (Italia, da FW26)
+    if(REGION==="italia"&&seasBBPeriodActive()){
+      var bbParts=[];
+      (SEAS_CFG.kpi_bb||[]).forEach(function(k){if(k.weight>0)bbParts.push(k.label+' '+Math.round(k.weight*100)+'% (soglia '+Math.round(k.threshold*100)+'%)')});
+      if(bbParts.length)sh+='<b>KPI Brian &amp; Barry (store '+(SEAS_CFG.bbFrom||5000)+'&ndash;'+(SEAS_CFG.bbTo||5100)+'):</b> '+bbParts.join(' &nbsp;&#183;&nbsp; ')+'<br>';
+    }
         // Moltiplicatore fatturato
     sh+='<b>Molt. Fatturato:</b> ';
     var moltParts=[];

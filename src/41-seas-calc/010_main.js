@@ -101,6 +101,8 @@ function seasAutoData(e){
   var seas_pr  = stg.pr  !== undefined ? stg.pr  : (tg.pr  || 0);
   var seas_sas = stg.sas !== undefined ? stg.sas : (SEAS_CFG.sasMaxHours || 4);
   var seas_acc = SEAS_CFG.accTarget; // unico target Accuracy, configurabile — stg.acc è sempre 0.99 statico, mai sovrascritto da import
+  // Target UPT (solo KPI dedicato Brian & Barry, da FW26): da file target, nessun fallback mensile
+  var seas_upt = stg.up!==undefined&&stg.up!==null ? stg.up : 0;
 
   // Scostamento fatturato %: usa target seasonal (+ eventuale contributo SAS→fatturato, da SS26)
   var sasAddon=seasSasAddon(sid);
@@ -139,14 +141,18 @@ function seasAutoData(e){
     acc_pct=(cn.nf/seas_acc)*100;
   }
 
+  // UPT (Units Per Transaction): consuntivo cn.up vs target seasonal, più alto è meglio (come SY)
+  var upt_pct=0;
+  if(seas_upt>0&&cn.up!==undefined&&cn.up!==null){upt_pct=(cn.up/seas_upt)*100;}
+
   return {
     scost:scost, inv:inv,
-    sy_pct:sy_pct, sr_pct:sr_pct, sas_pct:sas_pct, acc_pct:acc_pct,
+    sy_pct:sy_pct, sr_pct:sr_pct, sas_pct:sas_pct, acc_pct:acc_pct, upt_pct:upt_pct,
     // CR per sbarramento mid-season
     cr_actual: cn.cr!==undefined&&cn.cr!==null ? cn.cr : null,
     cr_target: stg.cr!==undefined&&stg.cr!==null ? stg.cr : null,
     // Esponi anche i target usati per il rendering della lettera
-    seas_to:seas_to, seas_sy:seas_sy, seas_pr:seas_pr, seas_sas:seas_sas, seas_acc:seas_acc,
+    seas_to:seas_to, seas_sy:seas_sy, seas_pr:seas_pr, seas_sas:seas_sas, seas_acc:seas_acc, seas_upt:seas_upt,
     // Contributo SAS→fatturato già incluso in scost sopra — esposto per tab/lettere (unica fonte di verità)
     sasAddon:sasAddon
   };
@@ -195,17 +201,51 @@ function calcMidSeason(e){
 
 
 function seasGetKpiSet(e){
+  // Brian & Barry (Italia, da FW26): SY + Subscription + UPT, pesi dedicati
+  if(isBBSeasEmp(e)&&SEAS_CFG.kpi_bb) return SEAS_CFG.kpi_bb;
   var sf=STORE_FLAGS[String(e.si)]||{};
   if(sf.noSas) return SEAS_CFG.kpi_nosas;
   if(sf.noAcc) return SEAS_CFG.kpi_noacc;
   return SEAS_CFG.kpi;
 }
 function seasKpiActive(kdefKey, e){
-  // Returns false if this KPI is disabled for this store
+  // Returns false if this KPI is disabled for this store, or if it is not part of the
+  // KPI set of this employee (es. UPT solo Brian & Barry; SAS/Accuracy non per B&B)
+  if(!seasGetKpiSet(e).some(function(kd){return kd.k===kdefKey;})) return false;
   var sf=STORE_FLAGS[String(e.si)]||{};
   if(kdefKey==="sas" && sf.noSas) return false;
   if(kdefKey==="acc" && sf.noAcc) return false;
   return true;
+}
+// Definizione (peso/soglia) del KPI nel set effettivo del dipendente — fonte unica per tab/lettere/export
+function seasKpiDef(k, e){
+  var set=seasGetKpiSet(e);
+  for(var i=0;i<set.length;i++){if(set[i].k===k)return set[i];}
+  return {k:k,label:seasKpiLabel(k),threshold:0.995,weight:0};
+}
+// Colonne KPI per tabelle/export: KPI standard + KPI dedicati Brian & Barry (UPT) se in anagrafica
+// c'è almeno un SM/VSM B&B. onlyWeighted=true scarta i KPI con peso 0 (vista mid-season).
+function seasKpiHasBB(){
+  return Array.isArray(E)&&E.some(function(e){return isSMVSM(e)&&isBBSeasEmp(e);});
+}
+function seasKpiCols(onlyWeighted){
+  var cols=SEAS_CFG.kpi.filter(function(kd){return !onlyWeighted||kd.weight>0;});
+  if(seasKpiHasBB()){
+    (SEAS_CFG.kpi_bb||[]).forEach(function(kd){
+      if(onlyWeighted&&!(kd.weight>0))return;
+      if(!cols.some(function(c){return c.k===kd.k;}))cols.push(kd);
+    });
+  }
+  return cols;
+}
+// Etichetta peso per intestazioni di colonna: "50%" standard, "40%" + " · B&B 40%" se pesi B&B diversi
+function seasKpiWeightLabel(k){
+  var std=null,bb=null;
+  SEAS_CFG.kpi.forEach(function(kd){if(kd.k===k)std=kd;});
+  if(seasKpiHasBB())(SEAS_CFG.kpi_bb||[]).forEach(function(kd){if(kd.k===k)bb=kd;});
+  var s=std?Math.round(std.weight*100)+'%':'';
+  if(bb&&(!std||Math.round(bb.weight*100)!==Math.round(std.weight*100)))s+=(s?' · ':'')+'B&B '+Math.round(bb.weight*100)+'%';
+  return s||'—';
 }
 // Centralised seasonal KPI achievement logic:
 // SAS: lower is better (result must be < sasMaxHours → already binarised to 100/0 in seasAutoData)
@@ -274,5 +314,7 @@ function calcSeasonal(e){
 
 function seasKpiLabel(k){
   for(var i=0;i<SEAS_CFG.kpi.length;i++){if(SEAS_CFG.kpi[i].k===k)return SEAS_CFG.kpi[i].label;}
+  var bb=SEAS_CFG.kpi_bb||[];
+  for(var j=0;j<bb.length;j++){if(bb[j].k===k)return bb[j].label;}
   return k;
 }

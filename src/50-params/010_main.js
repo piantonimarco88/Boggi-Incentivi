@@ -106,6 +106,22 @@ function seasSasEligible(sid){
   var sf=STORE_FLAGS[String(sid)];
   return !(sf&&sf.noSas);
 }
+// === BRIAN & BARRY (SEASONAL, da FW26) =====================================
+// Per SM/VSM dei negozi Brian & Barry (store id SEAS_CFG.bbFrom…bbTo, solo Italia)
+// il premio seasonal usa 3 KPI dedicati (SY, Subscription Rate, UPT) con pesi
+// propri (SEAS_CFG.kpi_bb). Dalle stagioni precedenti a FW26 vale il set standard.
+var SEAS_BB_START_YEAR=2026, SEAS_BB_START_SEASON="FW";
+function seasBBPeriodActive(){
+  return _seasOrd(CFG_SEASON,CFG_YEAR)>=_seasOrd(SEAS_BB_START_SEASON,SEAS_BB_START_YEAR);
+}
+function isBBStoreId(sid){
+  var n=parseInt(sid,10);
+  if(isNaN(n))return false;
+  return n>=(SEAS_CFG.bbFrom||5000)&&n<=(SEAS_CFG.bbTo||5100);
+}
+function isBBSeasEmp(e){
+  return REGION==="italia"&&seasBBPeriodActive()&&isBBStoreId(e.si)&&!isD(e.si);
+}
 // Contributo SAS da aggiungere al fatturato stagionale verso il target. In LC.
 function seasSasAddon(sid){
   if(!seasSasPeriodActive()||!seasSasEligible(sid))return 0;
@@ -144,6 +160,16 @@ var SEAS_CFG = {
     {k:"sas", label:"Seek & Send",        weight:0.15, threshold:0.995},
     {k:"acc", label:"Accuracy",           weight:0.00, threshold:0.995}
   ],
+  // KPI dedicati Brian & Barry (SM/VSM Italia, store id bbFrom…bbTo, da FW26): SY + Subscription Rate + UPT.
+  // Niente SAS né Accuracy. Fatturato (M1) e Inventario (M2) restano il "cancello" dello step 2,
+  // identico ai negozi Boggi. Pesi e soglie editabili in Configurazione.
+  kpi_bb: [
+    {k:"sy",  label:"Shopper Yield",      weight:0.40, threshold:0.995},
+    {k:"sr",  label:"Subscription Rate",  weight:0.30, threshold:0.995},
+    {k:"upt", label:"UPT",                weight:0.30, threshold:0.995}
+  ],
+  bbFrom: 5000,             // primo store id Brian & Barry
+  bbTo: 5100,               // ultimo store id Brian & Barry
   molt_turnover: [
     {from:-Infinity, to:-1,    coeff:0.00, label:"< -1%"},
     {from:-1,        to:0,     coeff:0.80, label:"-1% a 0%"},

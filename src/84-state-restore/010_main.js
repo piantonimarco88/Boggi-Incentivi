@@ -13,6 +13,9 @@ if(window._autoState){try{
     if(as.seas_cfg.kpi)SEAS_CFG.kpi=as.seas_cfg.kpi;
     if(as.seas_cfg.kpi_nosas)SEAS_CFG.kpi_nosas=as.seas_cfg.kpi_nosas;
     if(as.seas_cfg.kpi_noacc)SEAS_CFG.kpi_noacc=as.seas_cfg.kpi_noacc;
+    if(as.seas_cfg.kpi_bb)SEAS_CFG.kpi_bb=as.seas_cfg.kpi_bb;
+    if(as.seas_cfg.bbFrom!==undefined)SEAS_CFG.bbFrom=as.seas_cfg.bbFrom;
+    if(as.seas_cfg.bbTo!==undefined)SEAS_CFG.bbTo=as.seas_cfg.bbTo;
     if(as.seas_cfg.molt_turnover){SEAS_CFG.molt_turnover=as.seas_cfg.molt_turnover.map(function(r){return{from:r.from===null?-Infinity:r.from,to:r.to===null?Infinity:r.to,coeff:r.coeff,label:r.label||""};})}
     if(as.seas_cfg.molt_inventario){SEAS_CFG.molt_inventario=as.seas_cfg.molt_inventario.map(function(r){return{from:r.from===null?-Infinity:r.from,to:r.to===null?Infinity:r.to,coeff:r.coeff,label:r.label||""};})}
   }

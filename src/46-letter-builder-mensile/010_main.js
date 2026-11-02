@@ -449,6 +449,7 @@ var SEAS_TR={
     sr_label:"FIDELIZZA / Subscription Rate",
     sas_label:"OTTIMIZZA / Seek & Send",
     acc_label:"ACCURACY",
+    upt_label:"INCREMENTA / UPT",
     tab_turnover:"TABELLA MOLTIPLICATORE STORE BUDGET",
     tab_inventory:"TABELLA MOLTIPLICATORE INVENTORY",
     bdg_monthly:"BUDGET INDIVIDUALE (MENSILE)",
@@ -506,6 +507,7 @@ var SEAS_TR={
     sr_label:"LOYALTY / Subscription Rate",
     sas_label:"OPTIMISE / Seek & Send",
     acc_label:"ACCURACY",
+    upt_label:"INCREASE / UPT",
     tab_turnover:"STORE BUDGET MULTIPLIER TABLE",
     tab_inventory:"INVENTORY MULTIPLIER TABLE",
     bdg_monthly:"INDIVIDUAL BUDGET (MONTHLY)",
@@ -563,6 +565,7 @@ var SEAS_TR={
     sr_label:"FIDÉLISER / Subscription Rate",
     sas_label:"OPTIMISER / Seek & Send",
     acc_label:"ACCURACY",
+    upt_label:"AUGMENTER / UPT",
     tab_turnover:"TABLE MULTIPLICATEUR BUDGET MAGASIN",
     tab_inventory:"TABLE MULTIPLICATEUR INVENTAIRE",
     bdg_monthly:"BUDGET INDIVIDUEL (MENSUEL)",
@@ -620,6 +623,7 @@ var SEAS_TR={
     sr_label:"BINDEN / Subscription Rate",
     sas_label:"OPTIMIEREN / Seek & Send",
     acc_label:"ACCURACY",
+    upt_label:"STEIGERN / UPT",
     tab_turnover:"MULTIPLIKATORTABELLE STORE BUDGET",
     tab_inventory:"MULTIPLIKATORTABELLE INVENTAR",
     bdg_monthly:"INDIVIDUELLES BUDGET (MONATLICH)",
@@ -677,6 +681,7 @@ var SEAS_TR={
     sr_label:"FIDELIZAR / Subscription Rate",
     sas_label:"OPTIMIZAR / Seek & Send",
     acc_label:"ACCURACY",
+    upt_label:"AUMENTAR / UPT",
     tab_turnover:"TABLA MULTIPLICADOR PRESUPUESTO TIENDA",
     tab_inventory:"TABLA MULTIPLICADOR INVENTARIO",
     bdg_monthly:"PRESUPUESTO INDIVIDUAL (MENSUAL)",
@@ -800,7 +805,7 @@ function buildSeasonalLetter(e){
     var achieved=isP||seasIsKpiAchieved(kdef,auto);
     var kpiAmt=Math.round(base*kdef.weight*100)/100;
     var earnedAmt=achieved?kpiAmt:0;
-    var kpiLabel=({sy:T.sy_label,sr:T.sr_label,sas:T.sas_label,acc:T.acc_label})[kdef.k]||kdef.label;
+    var kpiLabel=({sy:T.sy_label,sr:T.sr_label,sas:T.sas_label,acc:T.acc_label,upt:T.upt_label})[kdef.k]||kdef.label;
     var sid=String(e.si);
     var cn=D.cs&&D.cs[sid]?D.cs[sid]:{};
     var sid=String(e.si);
@@ -809,16 +814,18 @@ function buildSeasonalLetter(e){
     var seas_sy=auto?auto.seas_sy:(stgLet.sy||0);
     var seas_pr=auto?auto.seas_pr:(stgLet.pr||0);
     var seas_sas=auto?auto.seas_sas:(stgLet.sas||SEAS_CFG.sasMaxHours||4);
+    var seas_upt=auto?auto.seas_upt:(stgLet.up||0);
     var risultatoStr="—", varPctStr="—";
     if(!isP){
       if(kdef.k==="sy"){var r=cn.sy!==undefined?fDec(cn.sy,2):"—";risultatoStr=r;varPctStr=seas_sy>0?fDec(((cn.sy||0)/seas_sy-1)*100,1)+"%":"—";}
+      else if(kdef.k==="upt"){var r=cn.up!=null?fDec(cn.up,2):"—";risultatoStr=r;varPctStr=(seas_upt>0&&cn.up!=null)?fDec((cn.up/seas_upt-1)*100,1)+"%":"—";}
       else if(kdef.k==="sr"){var r=cn.nf!==undefined?fDec((cn.nf*100),2)+"%":"—";risultatoStr=r;varPctStr=seas_pr>0?fDec(((cn.nf||0)/seas_pr-1)*100,1)+"%":"—";}
       else if(kdef.k==="sas"){var sasH=cn.s4!==undefined?cn.s4:null;risultatoStr=sasH!==null?fDec(sasH,1)+'h':'—';varPctStr=sasH!==null?(sasH<seas_sas?'✓':'✗'):'—';}
       else if(kdef.k==="acc"){var r=cn.av!==undefined&&cn.av!==null?fDec((cn.av*100),2)+"%":"—";var seas_acc_v=auto?auto.seas_acc:SEAS_CFG.accTarget;risultatoStr=r;varPctStr=cn.av!=null?fDec((cn.av/seas_acc_v-1)*100,1)+"%":"—";}
     }
     h+='<div class="lt-kpi-row" style="grid-template-columns:'+kpiCols+';background:'+(achieved?"#f0fbf5":"#fff")+'">';
     h+='<span style="font-weight:600;color:#2c2925">'+esc(kpiLabel)+'</span>';
-    h+='<span style="text-align:right;font-size:10px;color:#6b6560">'+(({sy:(seas_sy>0?fDec(seas_sy,2):"\u2014"),sr:(seas_pr>0?fDec(seas_pr*100,2)+"%":"\u2014"),sas:"< "+fDec(seas_sas,0)+"h",acc:Math.round(SEAS_CFG.accTarget*1000)/10+"%"})[kdef.k]||"\u2014")+'</span>';
+    h+='<span style="text-align:right;font-size:10px;color:#6b6560">'+(({sy:(seas_sy>0?fDec(seas_sy,2):"\u2014"),sr:(seas_pr>0?fDec(seas_pr*100,2)+"%":"\u2014"),sas:"< "+fDec(seas_sas,0)+"h",acc:Math.round(SEAS_CFG.accTarget*1000)/10+"%",upt:(seas_upt>0?fDec(seas_upt,2):"\u2014")})[kdef.k]||"\u2014")+'</span>';
     h+='<span style="text-align:right;color:#5b6abf;font-weight:700">'+fDec((kdef.weight*100),0)+'%</span>';
     if(!isP){
       h+='<span style="text-align:right;font-weight:600;color:#2c2925">'+esc(risultatoStr)+'</span>';

@@ -221,6 +221,33 @@ function rT(){try{
   h+='<td style="padding:6px 10px;text-align:center;font-weight:800;color:'+(naWSum===100?'#2d7a3a':'#c0392b')+'" id="seas_wsum_na">'+naWSum+'%</td></tr>';
   h+='</tbody></table></div>';
 
+  // KPI Brian & Barry (SM/VSM Italia, da FW26)
+  var bbActive=REGION==="italia"&&seasBBPeriodActive();
+  h+='<div style="font-size:11px;font-weight:700;color:#5b6abf;margin:18px 0 6px;text-transform:uppercase;letter-spacing:1px">KPI &mdash; Pesi e Soglie BRIAN &amp; BARRY</div>';
+  h+='<div style="font-size:10px;color:#8a8680;margin-bottom:6px">Per SM/VSM dei negozi <b>Brian &amp; Barry</b> (Italia, dalla stagione <b>FW26</b>): 3 KPI dedicati (Shopper Yield, Subscription Rate, UPT). Restano il &ldquo;cancello&rdquo; dello step 2 il moltiplicatore Fatturato (turnover) e il moltiplicatore Inventario, come per i negozi Boggi. '+(bbActive?'<b style="color:#2d7a3a">Regola attiva per questa stagione/regione.</b>':'<b style="color:#a09a92">Non attiva ora (serve regione Italia e stagione FW26 o successive).</b>')+'</div>';
+  h+='<div class="cfg-row"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">Store ID Brian &amp; Barry</span><span style="font-size:9px;color:#a09a92">Intervallo di store id (inclusi) a cui si applicano i KPI dedicati</span></div>';
+  h+='<div style="display:flex;align-items:center;gap:4px"><input class="cfg-input" style="width:70px" type="number" id="seas_bbFrom" value="'+(SEAS_CFG.bbFrom||5000)+'" step="1" min="0"><span style="font-size:10px;color:#8a8680">&ndash;</span><input class="cfg-input" style="width:70px" type="number" id="seas_bbTo" value="'+(SEAS_CFG.bbTo||5100)+'" step="1" min="0"></div></div>';
+  h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed"><colgroup><col style="width:40%"><col style="width:18%"><col style="width:28%"><col style="width:14%"></colgroup><thead><tr style="background:#f5f2ee">';
+  h+='<th style="text-align:left;padding:6px 10px;font-weight:700;color:#6b6560">KPI</th>';
+  h+='<th style="text-align:center;padding:6px 10px;font-weight:700;color:#6b6560">Peso (%)</th>';
+  h+='<th style="text-align:center;padding:6px 10px;font-weight:700;color:#6b6560">Soglia raggiungimento (%)</th>';
+  h+='<th style="text-align:center;padding:6px 10px;font-weight:700;color:#6b6560">Peso attuale</th>';
+  h+='</tr></thead><tbody>';
+  var seasBbWeightSum=0;
+  (SEAS_CFG.kpi_bb||[]).forEach(function(kdef,ki){
+    seasBbWeightSum+=kdef.weight;
+    h+='<tr style="background:'+(ki%2?'#faf9f7':'#fff')+'">';
+    h+='<td style="padding:6px 10px;font-weight:600">'+esc(kdef.label)+'</td>';
+    h+='<td style="padding:4px 6px;text-align:center"><input class="cfg-input seas-kw-bb" style="width:65px;text-align:center" type="number" data-ki="'+ki+'" data-kfield="weight" value="'+(kdef.weight*100).toFixed(1)+'" step="0.5" min="0" max="100"></td>';
+    h+='<td style="padding:4px 6px;text-align:center"><input class="cfg-input seas-ks-bb" style="width:65px;text-align:center" type="number" data-ki="'+ki+'" data-kfield="threshold" value="'+(kdef.threshold*100).toFixed(1)+'" step="0.5" min="0" max="100"></td>';
+    h+='<td style="padding:6px 10px;text-align:center;font-weight:700;color:#5b6abf" id="seas_kw_disp_bb_'+ki+'">'+(kdef.weight*100).toFixed(0)+'%</td>';
+    h+='</tr>';
+  });
+  var bbWSum=Math.round(seasBbWeightSum*100);
+  h+='<tr style="background:#f0ece8"><td style="padding:6px 10px;font-weight:700">TOTALE</td><td colspan="2"></td>';
+  h+='<td style="padding:6px 10px;text-align:center;font-weight:800;color:'+(bbWSum===100?'#2d7a3a':'#c0392b')+'" id="seas_wsum_bb">'+bbWSum+'%</td></tr>';
+  h+='</tbody></table></div>';
+
   // Molt Turnover table
   h+='<div style="font-size:11px;font-weight:700;color:#cf8b4e;margin:18px 0 6px;text-transform:uppercase;letter-spacing:1px">Molt. Turnover &mdash; scostamento fatturato (%)</div>';
   h+='<div style="font-size:9px;color:#a09a92;margin-bottom:6px">Scostamento = (Consuntivo &minus; Budget) / Budget &times; 100</div>';
@@ -297,6 +324,35 @@ function rT(){try{
     SEAS_CFG.kpi_noacc[ki].threshold=parseFloat(inp.value)/100||0.995;
     markDirty();autoSave();rC();rA();
   };});
+  // KPI Brian & Barry: pesi, soglie, intervallo store id
+  document.querySelectorAll(".seas-kw-bb").forEach(function(inp){inp.onchange=function(){
+    var ki=parseInt(inp.getAttribute("data-ki"));
+    if(!SEAS_CFG.kpi_bb[ki])return;
+    SEAS_CFG.kpi_bb[ki].weight=parseFloat(inp.value)/100||0;
+    markDirty();autoSave();
+    var sum=0;SEAS_CFG.kpi_bb.forEach(function(k){sum+=k.weight;});
+    var sp=Math.round(sum*100);
+    var el=document.getElementById("seas_wsum_bb");
+    if(el){el.textContent=sp+"%";el.style.color=sp===100?"#2d7a3a":"#c0392b";}
+    var disp=document.getElementById("seas_kw_disp_bb_"+ki);
+    if(disp)disp.textContent=(SEAS_CFG.kpi_bb[ki].weight*100).toFixed(0)+"%";
+    rC();rA();
+  };});
+  document.querySelectorAll(".seas-ks-bb").forEach(function(inp){inp.onchange=function(){
+    var ki=parseInt(inp.getAttribute("data-ki"));
+    if(!SEAS_CFG.kpi_bb[ki])return;
+    SEAS_CFG.kpi_bb[ki].threshold=parseFloat(inp.value)/100||0.995;
+    markDirty();autoSave();rC();rA();
+  };});
+  ["seas_bbFrom","seas_bbTo"].forEach(function(id){
+    var el=document.getElementById(id);if(!el)return;
+    el.onchange=function(){
+      var v=parseInt(this.value,10);
+      if(isNaN(v)||v<0){this.value=id==="seas_bbFrom"?(SEAS_CFG.bbFrom||5000):(SEAS_CFG.bbTo||5100);return;}
+      if(id==="seas_bbFrom")SEAS_CFG.bbFrom=v;else SEAS_CFG.bbTo=v;
+      markDirty();autoSave();rC();rA();
+    };
+  });
   document.querySelectorAll(".seas-molt-coeff").forEach(function(inp){inp.onchange=function(){
     var tbl=inp.getAttribute("data-tbl"),idx=parseInt(inp.getAttribute("data-idx"));
     var t=tbl==="turnover"?SEAS_CFG.molt_turnover:SEAS_CFG.molt_inventario;

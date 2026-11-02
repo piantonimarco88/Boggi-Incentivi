@@ -4,7 +4,12 @@ function rASeasonal(){
 
   // ── Statistiche KPI (tutti i KPI incluso acc, weight=0 incluso per mostrarlo) ──
   var allKpiKeys=["sy","sr","sas","acc"];
-  var kpiColors={sy:"#5ba4cf",sr:"#5bb98c",sas:"#d4a94e",acc:"#9b6ec9"};
+  if(seasKpiHasBB())allKpiKeys.push("upt"); // KPI dedicato Brian & Barry (da FW26)
+  var kpiColors={sy:"#5ba4cf",sr:"#5bb98c",sas:"#d4a94e",acc:"#9b6ec9",upt:"#cf8b4e"};
+  // Definizione KPI per etichette/pesi di intestazione: set standard, altrimenti set Brian & Barry
+  function kdHead(k){
+    return SEAS_CFG.kpi.find(function(kd){return kd.k===k;})||(SEAS_CFG.kpi_bb||[]).find(function(kd){return kd.k===k;})||{k:k,label:k,weight:0};
+  }
   var kpiStats={};
   allKpiKeys.forEach(function(k){kpiStats[k]={eligible:0,achieved:0};});
 
@@ -52,7 +57,7 @@ function rASeasonal(){
       var hasKpi=kpiSet.some(function(kd){return kd.k===k;});
       if(!hasKpi)return;
       kpiStats[k].eligible++;
-      var achieved=isP||(seasIsKpiAchieved( SEAS_CFG.kpi.find(function(kd){return kd.k===k;})||{k:k,threshold:0.995,weight:0}, auto));
+      var achieved=isP||(seasIsKpiAchieved(seasKpiDef(k,e), auto));
       if(achieved) kpiStats[k].achieved++;
     });
 
@@ -100,8 +105,7 @@ function rASeasonal(){
       var hasKpi=kpiSet.some(function(kd){return kd.k===k;});
       if(!hasKpi)return;
       grp[key].kpi[k].elig++;
-      var kdef=SEAS_CFG.kpi.find(function(kd){return kd.k===k;})||{k:k,threshold:0.995,weight:0};
-      var achieved=isP||seasIsKpiAchieved(kdef,auto);
+      var achieved=isP||seasIsKpiAchieved(seasKpiDef(k,e),auto);
       if(achieved) grp[key].kpi[k].ach++;
     });
   });
@@ -142,11 +146,11 @@ function rASeasonal(){
     var st=kpiStats[k];if(!st||st.eligible===0)return;
     var pct=isP?100:Math.round(st.achieved/st.eligible*100);
     var col=kpiColors[k]||"#8a8680";
-    var kdef=SEAS_CFG.kpi.find(function(kd){return kd.k===k;})||{label:k,weight:0};
+    var kdef=kdHead(k);
     h+='<div class="wg-item">';
     h+='<div class="wg-val" style="color:'+col+'">'+pct+'%</div>';
     h+='<div class="wg-label">'+esc(kdef.label||k)+(kdef.weight>0?' ('+st.achieved+'/'+st.eligible+')':'')+'</div>';
-    h+='<div style="font-size:9px;color:#a09a92;margin-top:1px">Peso '+Math.round((kdef.weight||0)*100)+'%</div>';
+    h+='<div style="font-size:9px;color:#a09a92;margin-top:1px">Peso '+seasKpiWeightLabel(k)+'</div>';
     h+='<div class="wg-bar"><div class="wg-bar-fill" style="width:'+pct+'%;background:'+col+'"></div></div>';
     h+='</div>';
   });
@@ -187,9 +191,9 @@ function rASeasonal(){
   h+='<th style="text-align:left;padding:7px 10px;cursor:default">'+(aGseas==="fc"?"Field Coach":"Negozio")+'</th>';
   h+='<th style="text-align:center;padding:7px 8px;cursor:default">N</th>';
   allKpiKeys.forEach(function(k){
-    var kdef=SEAS_CFG.kpi.find(function(kd){return kd.k===k;})||{label:k,weight:0};
+    var kdef=kdHead(k);
     var col=kpiColors[k]||"#5b6abf";
-    h+='<th style="text-align:center;padding:7px 8px;cursor:default;color:'+col+'">'+esc((kdef.label||k).split(' ')[0])+'<br><span style="font-size:9px;font-weight:400">'+Math.round((kdef.weight||0)*100)+'%</span></th>';
+    h+='<th style="text-align:center;padding:7px 8px;cursor:default;color:'+col+'">'+esc((kdef.label||k).split(' ')[0])+'<br><span style="font-size:9px;font-weight:400">'+seasKpiWeightLabel(k)+'</span></th>';
   });
   h+='<th style="text-align:right;padding:7px 10px;cursor:default">Media</th>';
   h+='<th style="text-align:right;padding:7px 10px;cursor:default">Totale'+(isP?" Max":"")+'</th>';

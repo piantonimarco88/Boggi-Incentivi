@@ -40,8 +40,8 @@ function rCSeasMid(){
   h+='</select>';
   h+='<span style="font-size:11px;color:#8a8680">'+fl.length+' SM/VSM &middot; Tot mid-season: <b style="color:#c9a96e">'+fc(grandTotal,'EUR')+'</b></span></div>';
 
-  // KPI set (senza inventario — acc non escluso per ora)
-  var kpiCols=SEAS_CFG.kpi.filter(function(kd){return kd.weight>0;});
+  // KPI set (senza inventario — acc non escluso per ora) + KPI dedicati Brian & Barry (UPT)
+  var kpiCols=seasKpiCols(true);
 
   h+='<div class="scroll-wrap"><table id="stbl"><thead><tr>';
   h+='<th data-col="m">Matr.</th>';
@@ -53,7 +53,7 @@ function rCSeasMid(){
   h+='<th style="text-align:center;white-space:nowrap;color:#c9a96e">Sbarra.<br><span style="font-weight:400;font-size:9px">Fat+CR</span></th>';
   // KPI columns
   kpiCols.forEach(function(kdef){
-    h+='<th style="text-align:center;white-space:nowrap">'+esc(kdef.label.split(' ')[0])+'<br><span style="font-weight:400;font-size:9px">'+Math.round(kdef.weight*100)+'%</span></th>';
+    h+='<th style="text-align:center;white-space:nowrap">'+esc(kdef.label.split(' ')[0])+'<br><span style="font-weight:400;font-size:9px">'+seasKpiWeightLabel(kdef.k)+'</span></th>';
   });
   h+='<th class="r" style="white-space:nowrap">MAX 30%<br><span style="font-weight:400;font-size:9px">no boost</span></th>';
   h+='<th class="r" style="color:#c9a96e">MID-SEASON</th>';
@@ -110,7 +110,7 @@ function rCSeasMid(){
       var active=seasKpiActive(kdef.k,e);
       if(!active){h+='<td class="r mn gy">&mdash;</td>';return;}
       if(isP){h+='<td style="text-align:center" class="g b">&#10003;</td>';return;}
-      var achieved=sbarOk&&seasIsKpiAchieved(kdef,auto2);
+      var achieved=sbarOk&&seasIsKpiAchieved(seasKpiDef(kdef.k,e),auto2);
       var pctVal=(auto2&&auto2[kdef.k+'_pct']!==undefined)?auto2[kdef.k+'_pct']:0;
       h+='<td style="text-align:center">';
       h+='<div class="b" style="color:'+(achieved?'#2d7a3a':'#cf5b5b')+'">'+(achieved?'&#10003;':'&#10007;')+'</div>';
@@ -160,7 +160,7 @@ function exportMidSeasonExcel(){
   var isP=MODE==="preventivo";
   var smvsm=E.filter(function(e){return isSMVSM(e);});
   var stagione=CFG_SEASON+String(CFG_YEAR).slice(-2);
-  var kpiCols=SEAS_CFG.kpi.filter(function(kd){return kd.weight>0;});
+  var kpiCols=seasKpiCols(true);
 
   // Build header
   var headers=["STAGIONE","STORE ID","NEGOZIO","MATRICOLA","COGNOME","NOME","RUOLO","VALUTA",
@@ -170,7 +170,7 @@ function exportMidSeasonExcel(){
     headers.push("SBARRAMENTO FAT OK","SCOSTAMENTO FAT%","SBARRAMENTO CR OK","CR CONSUNTIVO","CR TARGET");
   }
   kpiCols.forEach(function(kd){
-    headers.push(kd.label.toUpperCase()+" (PESO "+Math.round(kd.weight*100)+"%)");
+    headers.push(kd.label.toUpperCase()+" (PESO "+seasKpiWeightLabel(kd.k)+")");
     if(!isP)headers.push(kd.label.toUpperCase()+" % RAGGIUNTO");
   });
   headers.push("KPI SCORE","MID-SEASON LC","MID-SEASON EUR","ESCLUSO");
@@ -206,11 +206,12 @@ function exportMidSeasonExcel(){
       if(!active||!inSet){r.push('N/A');if(!isP)r.push('');}
       else if(isP){
         r.push('SI (preventivo)');
-        kpiScore+=kd.weight;
+        kpiScore+=seasKpiDef(kd.k,e).weight;
       } else {
         var sbarOk=(auto&&auto.scost>=0);
-        var achieved=sbarOk&&seasIsKpiAchieved(kd,auto);
-        if(achieved)kpiScore+=kd.weight;
+        var kdM=seasKpiDef(kd.k,e);
+        var achieved=sbarOk&&seasIsKpiAchieved(kdM,auto);
+        if(achieved)kpiScore+=kdM.weight;
         r.push(achieved?'SI':'NO');
         // pct value
         var pct=auto&&auto[kd.k+'_pct']!==undefined?Math.round(auto[kd.k+'_pct']*100)/100:0;
@@ -335,11 +336,16 @@ function rCSeasonal(){
 
   h+='<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;padding:8px 12px;background:#f5f2ee;border-radius:6px;font-size:10px;color:#6b6560">';
   SEAS_CFG.kpi.forEach(function(kdef){h+='<span><b>'+esc(kdef.label)+'</b>: peso '+Math.round(kdef.weight*100)+'%</span>';});
+  if(seasKpiHasBB()){
+    h+='<span style="border-left:1px solid #d5d0c8;padding-left:12px"><b>Brian &amp; Barry</b>:';
+    (SEAS_CFG.kpi_bb||[]).forEach(function(kdef){h+=' '+esc(kdef.label)+' '+Math.round(kdef.weight*100)+'%';});
+    h+='</span>';
+  }
   h+='</div>';
 
 
 
-  var kpiCols=SEAS_CFG.kpi;
+  var kpiCols=seasKpiCols(false);
   h+='<div class="scroll-wrap"><table id="stbl"><thead><tr>';
   h+='<th data-col="m">Matr. <span class="arrow">&#9652;</span></th>';
   h+='<th data-col="c">Cognome <span class="arrow">&#9652;</span></th>';
@@ -348,7 +354,7 @@ function rCSeasonal(){
   h+='<th data-col="j" style="text-align:center">Ruolo</th>';
   h+='<th class="r" style="white-space:nowrap">MAX Premio<br><span style="font-weight:400;font-size:9px">RML&times;6&times;'+fDec(SEAS_CFG.basePct*100,0)+'%&times;'+fDec(Math.round(seasMoltTurnover(3.01)*seasMoltInventarioV(0)*100)/100,2)+'</span></th>';
   kpiCols.forEach(function(kdef){
-    h+='<th style="text-align:center;white-space:nowrap">'+esc(kdef.label.split(' ')[0])+'<br><span style="font-weight:400;font-size:9px">'+Math.round(kdef.weight*100)+'%</span></th>';
+    h+='<th style="text-align:center;white-space:nowrap">'+esc(kdef.label.split(' ')[0])+'<br><span style="font-weight:400;font-size:9px">'+seasKpiWeightLabel(kdef.k)+'</span></th>';
   });
   if(isP){
     h+='<th style="text-align:center;white-space:nowrap">M.Turn.<br><span style="font-weight:400;font-size:9px">(max)</span></th>';
@@ -443,7 +449,7 @@ function rCSeasonal(){
         } else {
           var auto=row.auto||{};
           var pctVal=auto[kdef.k+'_pct']!==undefined?auto[kdef.k+'_pct']:0;
-          var achieved=seasIsKpiAchieved(kdef,auto);
+          var achieved=seasIsKpiAchieved(seasKpiDef(kdef.k,e),auto);
           h+='<td style="text-align:center">';
           if(kdef.k==='sas'){
             var sid2=String(e.si);
@@ -517,7 +523,7 @@ function exportSeasonalExcel(){
   var isP=MODE==="preventivo";
   var smvsm=E.filter(function(e){return isSMVSM(e);});
   var stagione=CFG_SEASON+String(CFG_YEAR).slice(-2);
-  var kpiCols=SEAS_CFG.kpi;
+  var kpiCols=seasKpiCols(false);
   var maxM1=seasMoltTurnover(3.01), maxM2=seasMoltInventarioV(0);
 
   // ── Header ───────────────────────────────────────────────────
@@ -526,7 +532,7 @@ function exportSeasonalExcel(){
     "MAX PREMIO (base×boost_max)","DEPT STORE"];
   // KPI columns
   kpiCols.forEach(function(kd){
-    headers.push(kd.label.toUpperCase()+" (PESO "+Math.round(kd.weight*100)+"%)");
+    headers.push(kd.label.toUpperCase()+" (PESO "+seasKpiWeightLabel(kd.k)+")");
     if(!isP)headers.push(kd.label.toUpperCase()+" % RAGGIUNTO");
   });
   // Multiplier columns
@@ -566,10 +572,11 @@ function exportSeasonalExcel(){
       var active=seasKpiActive(kd.k,e);
       var inSet=kpiSet.some(function(x){return x.k===kd.k&&x.weight>0;});
       if(!active||!inSet){r.push('N/A');if(!isP)r.push('');return;}
-      if(isP){r.push('SI (preventivo)');kpiScore+=kd.weight;}
+      if(isP){r.push('SI (preventivo)');kpiScore+=seasKpiDef(kd.k,e).weight;}
       else{
-        var achieved=seasIsKpiAchieved(kd,auto);
-        if(achieved)kpiScore+=kd.weight;
+        var kdE=seasKpiDef(kd.k,e);
+        var achieved=seasIsKpiAchieved(kdE,auto);
+        if(achieved)kpiScore+=kdE.weight;
         r.push(achieved?'SI':'NO');
         var pct=auto&&auto[kd.k+'_pct']!==undefined?Math.round(auto[kd.k+'_pct']*100)/100:0;
         r.push(pct);

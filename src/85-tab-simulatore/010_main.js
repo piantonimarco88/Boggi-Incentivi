@@ -89,6 +89,9 @@ function _simCloneSeasCfg(cfg){
     kpi:cfg.kpi.map(function(k){return{k:k.k,label:k.label,weight:k.weight,threshold:k.threshold};}),
     kpi_nosas:cfg.kpi_nosas.map(function(k){return{k:k.k,label:k.label,weight:k.weight,threshold:k.threshold};}),
     kpi_noacc:cfg.kpi_noacc.map(function(k){return{k:k.k,label:k.label,weight:k.weight,threshold:k.threshold};}),
+    kpi_bb:(cfg.kpi_bb||[]).map(function(k){return{k:k.k,label:k.label,weight:k.weight,threshold:k.threshold};}),
+    bbFrom:cfg.bbFrom,
+    bbTo:cfg.bbTo,
     molt_turnover:cfg.molt_turnover.map(function(r){return{from:r.from,to:r.to,coeff:r.coeff,label:r.label||""};}),
     molt_inventario:cfg.molt_inventario.map(function(r){return{from:r.from,to:r.to,coeff:r.coeff,label:r.label||""};})
   };
@@ -326,7 +329,7 @@ function _rSimulatoreSeasonal(p10){
   _SIM_SEAS_CUR =_simCloneSeasCfg(SEAS_CFG);
   var isMid=SEASON_PERIOD==="mid";
   var modeLabel=isMid?"Mid-Season (30% KPI — no moltiplicatori)":"Full Season";
-  var activeKpis=SEAS_CFG.kpi.filter(function(kd){return kd.weight>0;});
+  var activeKpis=seasKpiCols(true);
 
   var h='<div style="padding:12px">';
   h+='<div style="background:#faf9f7;border:1px solid #e5e1db;border-radius:6px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#6b6560;line-height:1.5">';
@@ -403,7 +406,7 @@ function _rSimulatoreSeasonal(p10){
     var el=document.getElementById("simSeasKpi_"+kd.k);if(!el)return;
     el.oninput=function(){
       var v=parseFloat(this.value);
-      ["kpi","kpi_nosas","kpi_noacc"].forEach(function(sk){
+      ["kpi","kpi_nosas","kpi_noacc","kpi_bb"].forEach(function(sk){
         _SIM_SEAS_CUR[sk].forEach(function(k2){if(k2.k===kd.k)k2.threshold=v;});
       });
       var lab=document.getElementById("simSeasKpiVal_"+kd.k);if(lab)lab.textContent=(v*100).toFixed(1)+"%";
@@ -436,7 +439,7 @@ function _rSimulatoreSeasonal(p10){
     // Reset KPI thresholds
     activeKpis.forEach(function(kd){
       var origThr=kd.threshold;
-      for(var ki=0;ki<_SIM_SEAS_ORIG.kpi.length;ki++){if(_SIM_SEAS_ORIG.kpi[ki].k===kd.k){origThr=_SIM_SEAS_ORIG.kpi[ki].threshold;break;}}
+      ["kpi_bb","kpi"].forEach(function(sk){_SIM_SEAS_ORIG[sk].forEach(function(k3){if(k3.k===kd.k){origThr=k3.threshold;}});});
       var el2=document.getElementById("simSeasKpi_"+kd.k),lab2=document.getElementById("simSeasKpiVal_"+kd.k);
       if(el2)el2.value=origThr;if(lab2)lab2.textContent=(origThr*100).toFixed(1)+"%";
     });

@@ -79,6 +79,9 @@ function loadSession(input){
       if(state.seas_cfg.kpi)SEAS_CFG.kpi=state.seas_cfg.kpi;
       if(state.seas_cfg.kpi_nosas)SEAS_CFG.kpi_nosas=state.seas_cfg.kpi_nosas;
       if(state.seas_cfg.kpi_noacc)SEAS_CFG.kpi_noacc=state.seas_cfg.kpi_noacc;
+      if(state.seas_cfg.kpi_bb)SEAS_CFG.kpi_bb=state.seas_cfg.kpi_bb;
+      if(state.seas_cfg.bbFrom!==undefined)SEAS_CFG.bbFrom=state.seas_cfg.bbFrom;
+      if(state.seas_cfg.bbTo!==undefined)SEAS_CFG.bbTo=state.seas_cfg.bbTo;
       if(state.seas_cfg.molt_turnover){
         SEAS_CFG.molt_turnover=state.seas_cfg.molt_turnover.map(function(r){
           return{from:r.from===null?-Infinity:r.from,to:r.to===null?Infinity:r.to,coeff:r.coeff,label:r.label||""};
@@ -196,6 +199,9 @@ function loadConfig(evt){var f=evt.target.files[0];if(!f)return;var reader=new F
       if(cfg.seas_cfg.kpi)SEAS_CFG.kpi=cfg.seas_cfg.kpi;
       if(cfg.seas_cfg.kpi_nosas)SEAS_CFG.kpi_nosas=cfg.seas_cfg.kpi_nosas;
       if(cfg.seas_cfg.kpi_noacc)SEAS_CFG.kpi_noacc=cfg.seas_cfg.kpi_noacc;
+      if(cfg.seas_cfg.kpi_bb)SEAS_CFG.kpi_bb=cfg.seas_cfg.kpi_bb;
+      if(cfg.seas_cfg.bbFrom!==undefined)SEAS_CFG.bbFrom=cfg.seas_cfg.bbFrom;
+      if(cfg.seas_cfg.bbTo!==undefined)SEAS_CFG.bbTo=cfg.seas_cfg.bbTo;
       if(cfg.seas_cfg.molt_turnover){
         SEAS_CFG.molt_turnover=cfg.seas_cfg.molt_turnover.map(function(r){
           return{from:r.from===null?-Infinity:r.from,to:r.to===null?Infinity:r.to,coeff:r.coeff,label:r.label||""};
