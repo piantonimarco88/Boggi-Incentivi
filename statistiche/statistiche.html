@@ -5640,8 +5640,8 @@ function renderSas(){
     return{disp:'<span class="sas-par '+(r.demoltPct>=1?'ok':'ko')+'" title="'+tip+'">'+pc+'%</span>',val:r.demoltPct};
   };
   // Dettaglio dei due parametri del coefficiente (colonne accanto al coefficiente): negozi = completamento + Accuracy,
-  // FC = invio area + completamento. Troncati (non arrotondati) a 1 decimale come nelle lettere; "—" se non applicato/non esportato.
-  const demPart=v=>v==null?{disp:'<span class="dash">—</span>',val:-1}:{disp:(Math.floor(v*1000+1e-6)/10).toFixed(1)+'%',val:v};
+  // FC = invio area + completamento. Troncati (non arrotondati) a 2 decimali come nelle lettere; "—" se non applicato/non esportato.
+  const demPart=v=>v==null?{disp:'<span class="dash">—</span>',val:-1}:{disp:(Math.floor(v*10000+1e-6)/100).toFixed(2)+'%',val:v};
   const parCell=r=>{
     const p=sasParachute(r,sasView,parStoreRows), tip=agEsc(p.tip).replace(/"/g,'&quot;');
     if(p.ok==null)return{disp:'<span class="dash" title="'+tip+'">n/d</span>',val:null};
@@ -5707,8 +5707,8 @@ function sasStoreLabel(r){const n=String(r.name||''),sid=String(r.sid==null?'':r
 const _sd={
   v1:n=>n==null?'—':(+n).toFixed(1),
   pc:n=>n==null?'—':(Math.floor(n*10000+1e-6)/100).toFixed(2).replace('.',',')+'%',
-  // parametro del coefficiente nelle tabelle storico: troncato a 1 decimale come nella tabella del tab SAS; "—" se assente
-  pt:v=>v==null?'<span class="dash">—</span>':(Math.floor(v*1000+1e-6)/10).toFixed(1)+'%',
+  // parametro del coefficiente nelle tabelle storico: troncato a 2 decimali (come lettere e riquadri); "—" se assente
+  pt:v=>v==null?'<span class="dash">—</span>':(Math.floor(v*10000+1e-6)/100).toFixed(2).replace('.',',')+'%',
   row:(l,v)=>'<div class="sd-row"><span>'+l+'</span><b>'+v+'</b></div>',
   card:(t,body,note)=>'<div class="sd-card"><h4>'+t+'</h4>'+body+(note?'<div class="sd-note">'+note+'</div>':'')+'</div>',
   kpi:(cls,l,v,sub)=>'<div class="kpi '+cls+'"><div class="kpi-lbl">'+l+'</div><div class="kpi-val">'+v+'</div>'+(sub?'<div class="kpi-sub">'+sub+'</div>':'')+'</div>'
