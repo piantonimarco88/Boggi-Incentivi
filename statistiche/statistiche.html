@@ -5639,6 +5639,9 @@ function renderSas(){
     const pc=Math.round(r.demoltPct*100);
     return{disp:'<span class="sas-par '+(r.demoltPct>=1?'ok':'ko')+'" title="'+tip+'">'+pc+'%</span>',val:r.demoltPct};
   };
+  // Dettaglio dei due parametri del coefficiente (colonne accanto al coefficiente): negozi = completamento + Accuracy,
+  // FC = invio area + completamento. Troncati (non arrotondati) a 1 decimale come nelle lettere; "—" se non applicato/non esportato.
+  const demPart=v=>v==null?{disp:'<span class="dash">—</span>',val:-1}:{disp:(Math.floor(v*1000+1e-6)/10).toFixed(1)+'%',val:v};
   const parCell=r=>{
     const p=sasParachute(r,sasView,parStoreRows), tip=agEsc(p.tip).replace(/"/g,'&quot;');
     if(p.ok==null)return{disp:'<span class="dash" title="'+tip+'">n/d</span>',val:null};
@@ -5665,6 +5668,9 @@ function renderSas(){
     {label:'Applicato',align:'right',filter:'none'},{label:'SAS succ.',align:'right',filter:'none'},{label:'% finale',align:'right',filter:'none'},
     {label:'Esito',filter:'select'},
     {label:'Coef. Inv. <span class="info-tip down" data-tip="Coefficiente Inventari (da ottobre 2026): riduce il premio in base a % completamento inventari e Accuracy.&#10;Negozi: solo SM/VSM, su tutte le voci di premio. FC: solo FC, solo premio area (non i BDG singoli); VM esclusi.&#10;Richiede il JSON esportato dalla app v9.99 o successiva (altrimenti n/d).">i</span>',align:'right',filter:'none'},
+    ...(sasView==='negozi'
+      ?[{label:'Compl. inv. <span class="info-tip down" data-tip="% completamento inventari del negozio: Completed / Sended (negozi WIC: Completed / 4), max 100%.">i</span>',align:'right',filter:'none'},{label:'Accuracy inv.',align:'right',filter:'none'}]
+      :[{label:'Invio inv. <span class="info-tip down" data-tip="% invio inventari dell area: Σ Sended / Σ (giorni lavorativi − eccezioni FC), max 100%.">i</span>',align:'right',filter:'none'},{label:'Compl. inv.',align:'right',filter:'none'}]),
     {label:'BDG stor.',align:'right',filter:'none'},
   ]);
   // Ordine di default: Negozi → Store ID crescente; FC+VM → Ruolo (FC poi VM) con Nome alfabetico
@@ -5682,7 +5688,9 @@ function renderSas(){
       {disp:eu(r.sasValue),val:r.sasValue},{disp:Math.round(r.recPct)+'%',val:r.recPct},{disp:eud(r.esuberoSasPrec),val:r.esuberoSasPrec},{disp:eud(r.esuberoSasPrecUsed),val:r.esuberoSasPrecUsed},
       {disp:eud(r.applied),val:r.applied},{disp:eud(r.sasReserveNext),val:r.sasReserveNext},
       {disp:(r.determinante?'<span class="sas-badge">⚡SAS</span>':'')+bar(r.pctFinal*100,pctCls(r.pctFinal))+'<b>'+(r.pctFinal*100).toFixed(1)+'%</b>',val:r.pctFinal},
-      {disp:esitoChip(r),val:r.esito},demCell(r),bdgCell(r),
+      {disp:esitoChip(r),val:r.esito},demCell(r),
+      ...(sasView==='negozi'?[demPart(r.demoltCompl),demPart(r.demoltAcc)]:[demPart(r.demoltInvio),demPart(r.demoltCompl)]),
+      bdgCell(r),
     ])};
   });
   _sasDetail={file,rows:enrichedRows,view:sasView,syCell,parCell,bdgCell,demCell,eu,eud,bar,pctCls,esitoChip};
