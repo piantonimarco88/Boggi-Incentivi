@@ -5707,6 +5707,8 @@ function sasStoreLabel(r){const n=String(r.name||''),sid=String(r.sid==null?'':r
 const _sd={
   v1:n=>n==null?'—':(+n).toFixed(1),
   pc:n=>n==null?'—':(Math.floor(n*10000+1e-6)/100).toFixed(2).replace('.',',')+'%',
+  // parametro del coefficiente nelle tabelle storico: troncato a 1 decimale come nella tabella del tab SAS; "—" se assente
+  pt:v=>v==null?'<span class="dash">—</span>':(Math.floor(v*1000+1e-6)/10).toFixed(1)+'%',
   row:(l,v)=>'<div class="sd-row"><span>'+l+'</span><b>'+v+'</b></div>',
   card:(t,body,note)=>'<div class="sd-card"><h4>'+t+'</h4>'+body+(note?'<div class="sd-note">'+note+'</div>':'')+'</div>',
   kpi:(cls,l,v,sub)=>'<div class="kpi '+cls+'"><div class="kpi-lbl">'+l+'</div><div class="kpi-val">'+v+'</div>'+(sub?'<div class="kpi-sub">'+sub+'</div>':'')+'</div>'
@@ -5771,9 +5773,9 @@ function sasOpenStore(sid){
   const hist=Object.values(sasFiles).filter(f=>f.kind==='negozi').map(f=>({f,x:f.rows.find(y=>String(y.sid)===String(r.sid))})).filter(o=>o.x)
     .sort((a,b)=>a.f.period.monthKey-b.f.period.monthKey);
   if(hist.length>1){
-    h+='<div class="sd-card"><h4>Mesi caricati</h4><table class="sd-hist"><thead><tr><th>Mese</th><th>Target</th><th>Consuntivo</th><th>% senza SAS</th><th>% finale</th><th>SAS applicato</th><th>Coef. Inv.</th><th>Esito</th></tr></thead><tbody>'
+    h+='<div class="sd-card"><h4>Mesi caricati</h4><table class="sd-hist"><thead><tr><th>Mese</th><th>Target</th><th>Consuntivo</th><th>% senza SAS</th><th>% finale</th><th>SAS applicato</th><th>Coef. Inv.</th><th>Compl. inv.</th><th>Accuracy inv.</th><th>Esito</th></tr></thead><tbody>'
       +hist.map(o=>{const x=o.x;return '<tr'+(o.f.period.monthKey===c.file.period.monthKey?' class="cur"':'')+'><td>'+agEsc(o.f.period.label)+'</td><td>€ '+fmt(Math.round(x.target||0))+'</td><td>€ '+fmt(Math.round(x.actual||0))+'</td><td>'
-        +((x.pctBase||0)*100).toFixed(1)+'%</td><td>'+((x.pctFinal||0)*100).toFixed(1)+'%</td><td>'+c.eud(x.applied)+'</td><td>'+(x.demoltStatus==='applied'?Math.round(x.demoltPct*100)+'%':'<span class="dash">—</span>')+'</td><td>'+c.esitoChip(x)+'</td></tr>';}).join('')
+        +((x.pctBase||0)*100).toFixed(1)+'%</td><td>'+((x.pctFinal||0)*100).toFixed(1)+'%</td><td>'+c.eud(x.applied)+'</td><td>'+(x.demoltStatus==='applied'?Math.round(x.demoltPct*100)+'%':'<span class="dash">—</span>')+'</td><td>'+_sd.pt(x.demoltCompl)+'</td><td>'+_sd.pt(x.demoltAcc)+'</td><td>'+c.esitoChip(x)+'</td></tr>';}).join('')
       +'</tbody></table></div>';
   }
   _sdShow(h,'Scheda negozio — '+c.file.period.label);
@@ -5831,10 +5833,10 @@ function sasOpenPerson(name){
   const hist=Object.values(sasFiles).filter(f=>f.kind==='fcvm').map(f=>({f,x:f.rows.find(y=>String(y.name)===String(r.name))})).filter(o=>o.x)
     .sort((a,b)=>a.f.period.monthKey-b.f.period.monthKey);
   if(hist.length>1){
-    h+='<div class="sd-card"><h4>Mesi caricati</h4><table class="sd-hist"><thead><tr><th>Mese</th><th>Target</th><th>Consuntivo</th><th>% senza SAS</th><th>% finale</th><th>SAS applicato</th><th>Coef. Inv.</th><th>Premio area</th><th>Esito</th></tr></thead><tbody>'
+    h+='<div class="sd-card"><h4>Mesi caricati</h4><table class="sd-hist"><thead><tr><th>Mese</th><th>Target</th><th>Consuntivo</th><th>% senza SAS</th><th>% finale</th><th>SAS applicato</th><th>Coef. Inv.</th><th>Invio inv.</th><th>Compl. inv.</th><th>Premio area</th><th>Esito</th></tr></thead><tbody>'
       +hist.map(o=>{const x=o.x;return '<tr'+(o.f.period.monthKey===c.file.period.monthKey?' class="cur"':'')+'><td>'+agEsc(o.f.period.label)+'</td><td>'+eur0(x.target)+'</td><td>'+eur0(x.actual)+'</td><td>'
         +((x.pctBase||0)*100).toFixed(1)+'%</td><td>'+((x.pctFinal||0)*100).toFixed(1)+'%</td><td>'+c.eud(x.applied)+'</td><td>'+(x.demoltStatus==='applied'?Math.round(x.demoltPct*100)+'%':'<span class="dash">—</span>')
-        +'</td><td>'+(x.demoltStatus==='applied'&&x.premioAreaPost!=null?eur0(x.premioAreaPost):'<span class="dash">—</span>')+'</td><td>'+c.esitoChip(x)+'</td></tr>';}).join('')
+        +'</td><td>'+_sd.pt(x.demoltInvio)+'</td><td>'+_sd.pt(x.demoltCompl)+'</td><td>'+(x.demoltStatus==='applied'&&x.premioAreaPost!=null?eur0(x.premioAreaPost):'<span class="dash">—</span>')+'</td><td>'+c.esitoChip(x)+'</td></tr>';}).join('')
       +'</tbody></table></div>';
   }
   _sdShow(h,'Scheda '+(isFc?'Field Coach':'VM')+' — '+c.file.period.label);
