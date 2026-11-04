@@ -386,9 +386,9 @@ function exportMailtoLinks(){
   w.document.write(html);w.document.close();
 }
 
-// Matricola per i tracciati Zucchetti: toglie le lettere iniziali; per i dipendenti Italia (non FC/VM) sempre 7 cifre
-// (l'import anagrafica la conserva com'e' nell'Excel, quindi qui si riporta a 7 con zeri a sinistra)
-function tracciatoMatr(m,isFc){var n=String(m==null?"":m).replace(/^[A-Za-z]+/,"");if(!isFc&&REGION==="italia"&&/^\d+$/.test(n))n=n.padStart(7,"0");return n;}
+// Matricola per i tracciati Zucchetti. Italia: identica a quella dell'anagrafica (e delle lettere), nessun taglio/padding.
+// Estero: toglie le lettere iniziali (comportamento storico).
+function tracciatoMatr(m){var s=String(m==null?"":m);return REGION==="italia"?s:s.replace(/^[A-Za-z]+/,"");}
 
 // Export Tracciato Lettere for Zucchetti import (no headers)
 function exportTracciatoLettere(){
@@ -401,7 +401,7 @@ function exportTracciatoLettere(){
   pool.forEach(function(e){
     if(!isFcvm&&SEAS&&SEAS[e.m]&&SEAS[e.m].excluded)return;
     if(!isFcvm&&e.ps==="SI")return;
-    var matrNum=tracciatoMatr(e.m,isFcvm);
+    var matrNum=tracciatoMatr(e.m);
     var filename=getEmpPdfFilename(e);
     var cols=[
       "FILENAME="+filename,
@@ -459,7 +459,7 @@ function exportTracciatoPagamenti(){
       var val=isP?e.ib:((r.hasBdg?r.totalPremioEur:r.premio_eur)||0);
       var rounded=Math.round(val);
       if(rounded<=0)return;
-      var matrNum=tracciatoMatr(e.m,true);
+      var matrNum=tracciatoMatr(e.m);
       var importo=String(rounded*100);
       while(importo.length<3)importo="0"+importo;
       rows.push(["000001",matrNum,mmaa,aaaammgg,"PAG","PREMIO DI RISULTATO",225,importo]);

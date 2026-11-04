@@ -148,6 +148,20 @@ function wdParseAnagrafica(json,hdrRow,W,o){
   return{imported:imported,errors:errors};
 }
 
+// Italia: la matricola dell'anagrafica (E[].m) e' la fonte di verita' e non viene mai modificata.
+// Per i file secondari (malattie, articoli, Visual) ritorna la matricola ESATTA dell'anagrafica a cui il valore
+// del file corrisponde: prima confronto identico, poi (solo se univoco) confronto sulle cifre senza zeri iniziali
+// (es. "A0002134" o "2134" -> "0002134"). Se nessun dipendente corrisponde ritorna il valore del file invariato.
+function matrItResolve(raw){
+  var s=String(raw==null?"":raw).trim();if(!s)return "";
+  var i,n=(typeof E!=="undefined"&&E)?E.length:0;
+  for(i=0;i<n;i++){if(String(E[i].m)===s)return String(E[i].m);}
+  var d=s.replace(/[^0-9]/g,"").replace(/^0+/,"");if(!d)return s;
+  var hit=null,cnt=0;
+  for(i=0;i<n;i++){var k=String(E[i].m).replace(/[^0-9]/g,"").replace(/^0+/,"");if(k===d){hit=String(E[i].m);cnt++;}}
+  return cnt===1?hit:s;
+}
+
 // === LOAD ANAGRAFICA FROM EXCEL ===
 // Nuovo formato HR (foglio "db"): C(2)=dipendente, D(3)=cognome, E(4)=nome, H(7)=data_assunzione,
 // I(8)=data_cessazione, O(14)=CODICE_INTERNO (e.rl/salary), P(15)=AZIENDA_PER_COSTI (e.ib/budget),
@@ -1792,10 +1806,10 @@ function loadResultsExcel(file){
         var matched=0,notFound=0,skipped=0;
         for(var ri=dataStart;ri<json.length;ri++){
           var row=json[ri];if(!row)continue;
-          // Accetta sia "0002134" che "A0002134" — strips tutto tranne cifre
-          var rawMatr=String(row[cMatr]||"").trim().replace(/[^0-9]/g,"");
+          // Abbinamento alla matricola dell'anagrafica (invariata): identica, oppure stesse cifre se univoco
+          var rawMatr=String(row[cMatr]||"").trim();
           if(!rawMatr){skipped++;continue;}
-          var matr=rawMatr.padStart(7,"0");
+          var matr=matrItResolve(rawMatr);
           var days=Math.round(parseNum(String(row[cGiorni]||"0")));
           var found=false;
           for(var j=0;j<E.length;j++){
@@ -1814,9 +1828,9 @@ function loadResultsExcel(file){
         var matched=0,notFound=0,skipped=0;
         for(var ri=dataStart;ri<json.length;ri++){
           var row=json[ri];if(!row)continue;
-          var rawMatr=String(row[cMatrI]||"").trim().replace(/[^0-9]/g,"");
+          var rawMatr=String(row[cMatrI]||"").trim();
           if(!rawMatr){skipped++;continue;}
-          var matr=rawMatr.padStart(7,"0");
+          var matr=matrItResolve(rawMatr);
           var importo=parseNum(String(row[cImportoI]||"0"));
           if(importo<=0){skipped++;continue;}
           var found=false;

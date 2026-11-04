@@ -173,9 +173,9 @@ function loadVisualExcel(input){
     var rowCount=0;
     for(var ri=hdrRow+1;ri<json.length;ri++){
       var row=json[ri];if(!row)continue;
-      var rawMatr=String(row[hdr.matr]||'').trim().replace(/[^0-9]/g,'');
+      var rawMatr=String(row[hdr.matr]||'').trim();
       if(!rawMatr)continue;
-      var matr=rawMatr.padStart(7,'0');
+      var matr=matrItResolve(rawMatr);// matricola dell'anagrafica (invariata) se corrisponde
       var bdgAmt=parseFloat(String(row[hdr.bdg]||'0').replace(',','.').replace(/[^0-9.\-]/g,''))||0;
       if(bdgAmt<=0)continue;
       // Normalizza SID: converti a intero per rimuovere zeri iniziali e parti decimali

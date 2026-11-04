@@ -993,12 +993,13 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.104'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.105'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.105: Italia — la matricola dell'anagrafica Excel è la fonte di verità: identica in import, lettere e tracciati Zucchetti (nessun padding/taglio/rimozione lettere). I file secondari (malattie, articoli, Visual) si abbinano alla matricola dell'anagrafica; inserimento manuale senza modifiche",
   "9.104: Tracciati Zucchetti Italia (lettere e pagamenti) — la matricola (IDEMPLOY / colonna matricola) esce sempre a 7 cifre con zeri a sinistra, anche se nell'anagrafica è più corta; FC/VM invariati",
   "9.103: Import anagrafica Italia — la matricola viene importata esattamente come nell'Excel (nessun padding a 7 cifre, nessuna pulizia dei caratteri né esclusione per formato); restano invariate tutte le altre regole",
   "9.102: Seasonal FW26 Italia — SM/VSM Brian & Barry (store 5000-5100) con 3 KPI dedicati: Shopper Yield, Subscription Rate e UPT, con tabella pesi/soglie editabile in Configurazione. Fatturato e Inventario restano il cancello come per i negozi Boggi. Adattati calcolo, tab, lettere, mid-season ed export; i file target/consuntivo seasonal possono ora portare la colonna UPT",
@@ -5208,9 +5209,9 @@ function loadVisualExcel(input){
     var rowCount=0;
     for(var ri=hdrRow+1;ri<json.length;ri++){
       var row=json[ri];if(!row)continue;
-      var rawMatr=String(row[hdr.matr]||'').trim().replace(/[^0-9]/g,'');
+      var rawMatr=String(row[hdr.matr]||'').trim();
       if(!rawMatr)continue;
-      var matr=rawMatr.padStart(7,'0');
+      var matr=matrItResolve(rawMatr);// matricola dell'anagrafica (invariata) se corrisponde
       var bdgAmt=parseFloat(String(row[hdr.bdg]||'0').replace(',','.').replace(/[^0-9.\-]/g,''))||0;
       if(bdgAmt<=0)continue;
       // Normalizza SID: converti a intero per rimuovere zeri iniziali e parti decimali
@@ -6946,6 +6947,20 @@ function wdParseAnagrafica(json,hdrRow,W,o){
   return{imported:imported,errors:errors};
 }
 
+// Italia: la matricola dell'anagrafica (E[].m) e' la fonte di verita' e non viene mai modificata.
+// Per i file secondari (malattie, articoli, Visual) ritorna la matricola ESATTA dell'anagrafica a cui il valore
+// del file corrisponde: prima confronto identico, poi (solo se univoco) confronto sulle cifre senza zeri iniziali
+// (es. "A0002134" o "2134" -> "0002134"). Se nessun dipendente corrisponde ritorna il valore del file invariato.
+function matrItResolve(raw){
+  var s=String(raw==null?"":raw).trim();if(!s)return "";
+  var i,n=(typeof E!=="undefined"&&E)?E.length:0;
+  for(i=0;i<n;i++){if(String(E[i].m)===s)return String(E[i].m);}
+  var d=s.replace(/[^0-9]/g,"").replace(/^0+/,"");if(!d)return s;
+  var hit=null,cnt=0;
+  for(i=0;i<n;i++){var k=String(E[i].m).replace(/[^0-9]/g,"").replace(/^0+/,"");if(k===d){hit=String(E[i].m);cnt++;}}
+  return cnt===1?hit:s;
+}
+
 // === LOAD ANAGRAFICA FROM EXCEL ===
 // Nuovo formato HR (foglio "db"): C(2)=dipendente, D(3)=cognome, E(4)=nome, H(7)=data_assunzione,
 // I(8)=data_cessazione, O(14)=CODICE_INTERNO (e.rl/salary), P(15)=AZIENDA_PER_COSTI (e.ib/budget),
@@ -8590,10 +8605,10 @@ function loadResultsExcel(file){
         var matched=0,notFound=0,skipped=0;
         for(var ri=dataStart;ri<json.length;ri++){
           var row=json[ri];if(!row)continue;
-          // Accetta sia "0002134" che "A0002134" — strips tutto tranne cifre
-          var rawMatr=String(row[cMatr]||"").trim().replace(/[^0-9]/g,"");
+          // Abbinamento alla matricola dell'anagrafica (invariata): identica, oppure stesse cifre se univoco
+          var rawMatr=String(row[cMatr]||"").trim();
           if(!rawMatr){skipped++;continue;}
-          var matr=rawMatr.padStart(7,"0");
+          var matr=matrItResolve(rawMatr);
           var days=Math.round(parseNum(String(row[cGiorni]||"0")));
           var found=false;
           for(var j=0;j<E.length;j++){
@@ -8612,9 +8627,9 @@ function loadResultsExcel(file){
         var matched=0,notFound=0,skipped=0;
         for(var ri=dataStart;ri<json.length;ri++){
           var row=json[ri];if(!row)continue;
-          var rawMatr=String(row[cMatrI]||"").trim().replace(/[^0-9]/g,"");
+          var rawMatr=String(row[cMatrI]||"").trim();
           if(!rawMatr){skipped++;continue;}
-          var matr=rawMatr.padStart(7,"0");
+          var matr=matrItResolve(rawMatr);
           var importo=parseNum(String(row[cImportoI]||"0"));
           if(importo<=0){skipped++;continue;}
           var found=false;
@@ -8896,7 +8911,6 @@ function _manSaveE(){
   var m=_manV("manM"),cogn=_manV("manC").toUpperCase(),nome=_manV("manN").toUpperCase(),job=_manV("manJ");
   var si=parseInt(_manV("manSi"));
   if(!m||!cogn||!nome)return _manFail("Matricola, cognome e nome sono obbligatori.");
-  if(isIT){m=m.replace(/[^0-9]/g,"");if(!m)return _manFail("Matricola non valida (solo cifre).");m=m.padStart(7,"0");}
   if(E.some(function(e){return String(e.m)===m}))return _manFail("Matricola "+m+" già presente in anagrafica.");
   if(isNaN(si)||si<=0)return _manFail("Inserisci uno Store ID valido.");
   if(isIT&&si>(seas?4999:6500))return _manFail("Store "+si+" escluso"+(seas?" (seasonal: solo store ≤ 4999).":" (store > 6500, sede/ufficio)."));
@@ -9926,9 +9940,9 @@ function exportMailtoLinks(){
   w.document.write(html);w.document.close();
 }
 
-// Matricola per i tracciati Zucchetti: toglie le lettere iniziali; per i dipendenti Italia (non FC/VM) sempre 7 cifre
-// (l'import anagrafica la conserva com'e' nell'Excel, quindi qui si riporta a 7 con zeri a sinistra)
-function tracciatoMatr(m,isFc){var n=String(m==null?"":m).replace(/^[A-Za-z]+/,"");if(!isFc&&REGION==="italia"&&/^\d+$/.test(n))n=n.padStart(7,"0");return n;}
+// Matricola per i tracciati Zucchetti. Italia: identica a quella dell'anagrafica (e delle lettere), nessun taglio/padding.
+// Estero: toglie le lettere iniziali (comportamento storico).
+function tracciatoMatr(m){var s=String(m==null?"":m);return REGION==="italia"?s:s.replace(/^[A-Za-z]+/,"");}
 
 // Export Tracciato Lettere for Zucchetti import (no headers)
 function exportTracciatoLettere(){
@@ -9941,7 +9955,7 @@ function exportTracciatoLettere(){
   pool.forEach(function(e){
     if(!isFcvm&&SEAS&&SEAS[e.m]&&SEAS[e.m].excluded)return;
     if(!isFcvm&&e.ps==="SI")return;
-    var matrNum=tracciatoMatr(e.m,isFcvm);
+    var matrNum=tracciatoMatr(e.m);
     var filename=getEmpPdfFilename(e);
     var cols=[
       "FILENAME="+filename,
@@ -9999,7 +10013,7 @@ function exportTracciatoPagamenti(){
       var val=isP?e.ib:((r.hasBdg?r.totalPremioEur:r.premio_eur)||0);
       var rounded=Math.round(val);
       if(rounded<=0)return;
-      var matrNum=tracciatoMatr(e.m,true);
+      var matrNum=tracciatoMatr(e.m);
       var importo=String(rounded*100);
       while(importo.length<3)importo="0"+importo;
       rows.push(["000001",matrNum,mmaa,aaaammgg,"PAG","PREMIO DI RISULTATO",225,importo]);

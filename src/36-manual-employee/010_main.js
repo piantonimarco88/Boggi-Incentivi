@@ -114,7 +114,6 @@ function _manSaveE(){
   var m=_manV("manM"),cogn=_manV("manC").toUpperCase(),nome=_manV("manN").toUpperCase(),job=_manV("manJ");
   var si=parseInt(_manV("manSi"));
   if(!m||!cogn||!nome)return _manFail("Matricola, cognome e nome sono obbligatori.");
-  if(isIT){m=m.replace(/[^0-9]/g,"");if(!m)return _manFail("Matricola non valida (solo cifre).");m=m.padStart(7,"0");}
   if(E.some(function(e){return String(e.m)===m}))return _manFail("Matricola "+m+" già presente in anagrafica.");
   if(isNaN(si)||si<=0)return _manFail("Inserisci uno Store ID valido.");
   if(isIT&&si>(seas?4999:6500))return _manFail("Store "+si+" escluso"+(seas?" (seasonal: solo store ≤ 4999).":" (store > 6500, sede/ufficio)."));
