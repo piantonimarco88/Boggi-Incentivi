@@ -243,12 +243,9 @@ function loadAnagraficaExcel(file){
         var itImported=[],itErrors=[];
         for(var ri=hdrRow+1;ri<json.length;ri++){
           var row=json[ri];if(!row)continue;
-          // Matricola — pad to 7 chars with leading zeros
-          var rawMatr=String(row[ZC.matr]||"").trim();
-          if(!rawMatr)continue;
-          rawMatr=rawMatr.replace(/[^0-9]/g,"");
-          if(!rawMatr){itErrors.push({row:ri+1,name:"",reason:"Matricola non valida: "+row[ZC.matr]});continue}
-          var matricola=rawMatr.padStart(7,"0");
+          // Matricola — esattamente come nell'Excel (nessuna normalizzazione/padding/esclusione sul formato)
+          var matricola=String(row[ZC.matr]==null?"":row[ZC.matr]).trim();
+          if(!matricola)continue;
 
           var cognome=String(row[ZC.cogn]||"").trim().toUpperCase();
           var nome=String(row[ZC.nome]||"").trim().toUpperCase();
