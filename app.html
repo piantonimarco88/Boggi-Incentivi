@@ -993,12 +993,13 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.103'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.104'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.104: Tracciati Zucchetti Italia (lettere e pagamenti) — la matricola (IDEMPLOY / colonna matricola) esce sempre a 7 cifre con zeri a sinistra, anche se nell'anagrafica è più corta; FC/VM invariati",
   "9.103: Import anagrafica Italia — la matricola viene importata esattamente come nell'Excel (nessun padding a 7 cifre, nessuna pulizia dei caratteri né esclusione per formato); restano invariate tutte le altre regole",
   "9.102: Seasonal FW26 Italia — SM/VSM Brian & Barry (store 5000-5100) con 3 KPI dedicati: Shopper Yield, Subscription Rate e UPT, con tabella pesi/soglie editabile in Configurazione. Fatturato e Inventario restano il cancello come per i negozi Boggi. Adattati calcolo, tab, lettere, mid-season ed export; i file target/consuntivo seasonal possono ora portare la colonna UPT",
   "9.101: Negozi USA riconosciuti in modo stabile negli export Statistiche/SAS e nel Coefficiente Inventari (non dipende più da aver importato l'anagrafica USA in questa sessione)",
@@ -9925,6 +9926,10 @@ function exportMailtoLinks(){
   w.document.write(html);w.document.close();
 }
 
+// Matricola per i tracciati Zucchetti: toglie le lettere iniziali; per i dipendenti Italia (non FC/VM) sempre 7 cifre
+// (l'import anagrafica la conserva com'e' nell'Excel, quindi qui si riporta a 7 con zeri a sinistra)
+function tracciatoMatr(m,isFc){var n=String(m==null?"":m).replace(/^[A-Za-z]+/,"");if(!isFc&&REGION==="italia"&&/^\d+$/.test(n))n=n.padStart(7,"0");return n;}
+
 // Export Tracciato Lettere for Zucchetti import (no headers)
 function exportTracciatoLettere(){
   var isFcvm=PRIZE_MODE==="fcvm";
@@ -9936,7 +9941,7 @@ function exportTracciatoLettere(){
   pool.forEach(function(e){
     if(!isFcvm&&SEAS&&SEAS[e.m]&&SEAS[e.m].excluded)return;
     if(!isFcvm&&e.ps==="SI")return;
-    var matrNum=e.m.replace(/^[A-Za-z]+/,"");
+    var matrNum=tracciatoMatr(e.m,isFcvm);
     var filename=getEmpPdfFilename(e);
     var cols=[
       "FILENAME="+filename,
@@ -9994,7 +9999,7 @@ function exportTracciatoPagamenti(){
       var val=isP?e.ib:((r.hasBdg?r.totalPremioEur:r.premio_eur)||0);
       var rounded=Math.round(val);
       if(rounded<=0)return;
-      var matrNum=e.m.replace(/^[A-Za-z]+/,"");
+      var matrNum=tracciatoMatr(e.m,true);
       var importo=String(rounded*100);
       while(importo.length<3)importo="0"+importo;
       rows.push(["000001",matrNum,mmaa,aaaammgg,"PAG","PREMIO DI RISULTATO",225,importo]);
@@ -10011,7 +10016,7 @@ function exportTracciatoPagamenti(){
     E.forEach(function(e){
       // Escludi dipendenti con premio sospeso
       if(SEAS&&SEAS[e.m]&&SEAS[e.m].excluded)return;
-      var matrNum=e.m.replace(/^[A-Za-z]+/,"");
+      var matrNum=tracciatoMatr(e.m);
       var val=isMidExp?calcMidSeason(e):calcSeasonal(e);
       var rounded=Math.round(val);
       if(rounded<=0)return;
@@ -10044,7 +10049,7 @@ function exportTracciatoPagamenti(){
   ];
   E.forEach(function(e){
     if(e.ps==="SI")return;
-    var matrNum=e.m.replace(/^[A-Za-z]+/,"");
+    var matrNum=tracciatoMatr(e.m);
     var sm=sickMult(e.ml);
     var _agg=AGG[e.m]||{};
     premi.forEach(function(p){
