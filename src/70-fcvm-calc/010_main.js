@@ -12,6 +12,11 @@ function calcFcVmPremio(matr){
     if(emp.j==="VM"&&vmArr.indexOf(matr)>=0)stores.push(sid);
   });
   if(!stores.length&&!(emp.bdg_stores&&emp.bdg_stores.length))return{premio:0,premio_eur:0,esito:"no_stores",stores:[],totTarget:0,totCons:0,pct:0,syOk:false,totSyCy:0,totSyLy:0};
+  // SAS spento per l'intera area: tutti i negozi (non BDG) del FC/VM hanno il toggle "Escludi SAS".
+  // Un FC/VM con almeno un negozio attivo per il SAS usa il dato Area del file invariato (aggregato
+  // QWRT, non scomponibile per negozio); senza nessun negozio attivo la sezione SAS sparisce
+  // (preventivo: calcoli+lettera) e la riga del file SAS Area viene ignorata (consuntivo).
+  var sasAreaOff=stores.length>0&&stores.every(function(sid){return !!(FC_STORE_FLAGS[sid]&&FC_STORE_FLAGS[sid].excl_sas);});
   var totTarget=0,totCons=0,detail=[],totSasUsed=0,totSasReserveOut=0;
   // Aggregati SY LY (da FC_SYLY)
   var totSalesLy=0,totFootfallLy=0,hasSyLy=false;
@@ -57,7 +62,7 @@ function calcFcVmPremio(matr){
   // l'esubero, cap 100%, avanzo→riserva. I negozi BDG extra (bdg_stores) restano invece
   // a SAS per-negozio, vedi loop più sotto.
   var totSasRec=0,totSasReserveIn=0,sasAreaAcc=null,sasAreaVel=null,sasAreaValRaw=0,sasAreaPctMatrix=null;
-  if(isCons&&sasNewActive()){
+  if(isCons&&sasNewActive()&&!sasAreaOff){
     var areaSas=FC_AREA_SAS[matr]||{};
     sasAreaAcc=areaSas.acc!=null?areaSas.acc:null;sasAreaVel=areaSas.vel!=null?areaSas.vel:null;sasAreaValRaw=areaSas.sasv_eur||0;sasAreaPctMatrix=sasMatrixPct(areaSas.acc,areaSas.vel);
     totSasRec=sasRecognizedValue(areaSas.acc,areaSas.vel,areaSas.sasv_eur||0);
@@ -110,7 +115,8 @@ function calcFcVmPremio(matr){
       var prevBdg=FC_PREV_RESULTS[String(b.sid)]||{};
       var esubBdg=isCons&&(prevBdg.to_eur||0)>0?Math.max(0,(prevBdg.sc_eur||0)-(prevBdg.to_eur||0)):0;
       // SAS riconosciuto del negozio (da Luglio 2026): colma il gap al target, cap 100%
-      var sasOn=isCons&&sasNewActive(),sasUsedB=0,sasRecB=0,sasResInB=0,sasResOutB=0;
+      // Negozio BDG extra con "Escludi SAS": niente SAS riconosciuto/riserva per il suo premio singolo
+      var sasOn=isCons&&sasNewActive()&&!(FC_STORE_FLAGS[b.sid]&&FC_STORE_FLAGS[b.sid].excl_sas),sasUsedB=0,sasRecB=0,sasResInB=0,sasResOutB=0;
       if(sasOn){
         sasRecB=sasRecognizedValue(cn.acc,cn.vel,cn.sasv_eur||0);
         sasResInB=cn.sasr_eur||0;
@@ -129,7 +135,7 @@ function calcFcVmPremio(matr){
   var premioEur=Math.round(premioLC*exRate*100)/100;
   var totalPremioLC=premioLC+bdgPrize;
   var totalPremioEur=Math.round(totalPremioLC*exRate*100)/100;
-  return{premio:premioLC,premio_eur:premioEur,esito:esito,pct:pct,totTarget:totTarget,totCons:totCons,totEsubero:totEsubero,totConsWithEsub:totConsWithEsub,syOk:syOk,syLyArea:syLyArea,syAreaCy:syAreaCy,hasSyLy:hasSyLy,hasSyCy:hasSyCy,syAreaAvg:syAreaAvg,stores:detail,bdgPrize:bdgPrize,bdgPrizeEur:bdgPrizeEur,bdgDetail:bdgDetail,totalPremioLC:totalPremioLC,totalPremioEur:totalPremioEur,hasBdg:bdgDetail.length>0,totSasRec:totSasRec,totSasUsed:totSasUsed,totSasReserveIn:totSasReserveIn,totSasReserveOut:totSasReserveOut,totConsPreSas:totConsPreSas,sasAreaAcc:sasAreaAcc,sasAreaVel:sasAreaVel,sasAreaValRaw:sasAreaValRaw,sasAreaPctMatrix:sasAreaPctMatrix,ml:emp.ml||0,sm:smFcvm,demoltPre:premioPreDemolt,demoltDr:demoltDr};
+  return{premio:premioLC,premio_eur:premioEur,esito:esito,pct:pct,totTarget:totTarget,totCons:totCons,totEsubero:totEsubero,totConsWithEsub:totConsWithEsub,syOk:syOk,syLyArea:syLyArea,syAreaCy:syAreaCy,hasSyLy:hasSyLy,hasSyCy:hasSyCy,syAreaAvg:syAreaAvg,stores:detail,bdgPrize:bdgPrize,bdgPrizeEur:bdgPrizeEur,bdgDetail:bdgDetail,totalPremioLC:totalPremioLC,totalPremioEur:totalPremioEur,hasBdg:bdgDetail.length>0,sasAreaOff:sasAreaOff,totSasRec:totSasRec,totSasUsed:totSasUsed,totSasReserveIn:totSasReserveIn,totSasReserveOut:totSasReserveOut,totConsPreSas:totConsPreSas,sasAreaAcc:sasAreaAcc,sasAreaVel:sasAreaVel,sasAreaValRaw:sasAreaValRaw,sasAreaPctMatrix:sasAreaPctMatrix,ml:emp.ml||0,sm:smFcvm,demoltPre:premioPreDemolt,demoltDr:demoltDr};
 }
 function getFcVmPool(){return Object.values(FC_EMP);}
 

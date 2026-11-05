@@ -92,7 +92,8 @@ function rCFcvm(){
       var _resInUsedFc=Math.min(r.totSasReserveIn||0,r.totSasUsed||0);
       var _resInExpFc=(r.totSasReserveIn||0)-_resInUsedFc;
       var _tipFcSas='Riconosciuto da matrice: '+fc(Math.round(r.totSasRec||0),'EUR')+' \u2014 Applicato al fatturato: '+fc(Math.round(r.totSasUsed||0),'EUR')+((r.totSasReserveIn||0)>0?(' \u2014 Riserva mese prec.: '+fc(Math.round(r.totSasReserveIn),'EUR')+' (usata '+fc(Math.round(_resInUsedFc),'EUR')+(_resInExpFc>0?(', scaduta '+fc(Math.round(_resInExpFc),'EUR')):'')+')'):'')+((r.totSasReserveOut||0)>0?(' \u2014 Riserva riportata: '+fc(Math.round(r.totSasReserveOut),'EUR')):'');
-      h+='<td style="text-align:right;font-weight:700;color:#a07d2c" title="'+esc(_tipFcSas)+'">'+((r.totSasUsed||0)>0?fc(Math.round(r.totSasUsed),'EUR'):'\u2014')+'</td>';
+      if(r.sasAreaOff)_tipFcSas='SAS escluso: tutti i negozi dell\'area hanno "Escludi SAS" attivo (riga del file SAS Area ignorata)';
+      h+='<td style="text-align:right;font-weight:700;color:#a07d2c" title="'+esc(_tipFcSas)+'">'+(r.sasAreaOff?'<span style="color:#b0a99f;font-size:9px;font-weight:600">SAS off</span>':((r.totSasUsed||0)>0?fc(Math.round(r.totSasUsed),'EUR'):'\u2014'))+'</td>';
     }
     if(!isP){
       var consCol=r.totConsWithEsub>0?'#2c2925':'#b0a99f';

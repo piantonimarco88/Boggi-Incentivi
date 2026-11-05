@@ -44,7 +44,8 @@ function buildFcVmLetter(emp){
   // \u2500\u2500 SAS \u2192 fatturato (da Luglio 2026): stesso blocco del negozio mensile
   // (sasLetterBlock), con evidenza cella matrice + acc/vel/valore grezzo,
   // ma soglia "raggiunto" propria di FC+VM (soglia100, non quella BDG mensile) \u2500\u2500
-  if(typeof sasNewActive==='function'&&sasNewActive()){
+  // r.sasAreaOff: tutti i negozi dell'area con "Escludi SAS" → nessun box SAS (né preventivo né consuntivo)
+  if(typeof sasNewActive==='function'&&sasNewActive()&&!r.sasAreaOff){
     var _areaInfo=null;
     if(!isP){
       _areaInfo={

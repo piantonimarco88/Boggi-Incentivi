@@ -353,8 +353,9 @@ function exportSasJsonFcvm(){
       // actual = consuntivo PURO (esubero e SAS esclusi): invariante
       // pctFinal*target = actual+esubero+applied (arrotondamenti a parte).
       actual:Math.round(pureCons),esubero:Math.round(r.totEsubero||0),targetSY:r.syLyArea!=null?r.syLyArea:null,resultSY:r.syAreaCy!=null?r.syAreaCy:null,
-      pctBase:pctBase,sasValue:Math.round((FC_AREA_SAS[emp.m]||{}).sasv_eur||0),
-      recPct:sasMatrixPct((FC_AREA_SAS[emp.m]||{}).acc,(FC_AREA_SAS[emp.m]||{}).vel)!=null?Math.round(sasMatrixPct((FC_AREA_SAS[emp.m]||{}).acc,(FC_AREA_SAS[emp.m]||{}).vel)*100):null,
+      // sasAreaValRaw/sasAreaPctMatrix da calcFcVmPremio: già 0/null se l'area ha SAS escluso (tutti i negozi "Escludi SAS")
+      pctBase:pctBase,sasValue:Math.round(r.sasAreaValRaw||0),
+      recPct:r.sasAreaPctMatrix!=null?Math.round(r.sasAreaPctMatrix*100):null,
       recValue:Math.round(r.totSasRec||0),applied:Math.round(r.totSasUsed||0),
       esuberoSasPrec:Math.round(r.totSasReserveIn||0),esuberoSasPrecUsed:Math.round(resInUsed),
       sasReserveNext:Math.round(r.totSasReserveOut||0),pctFinal:pctFinal,
@@ -521,8 +522,8 @@ function exportStatsJsonFcvm(){
       esuberoPrec:esuberoPrec,esuberoPrecUsed:esuberoPrec,
       targetSY:r.syLyArea!=null?r.syLyArea:null,resultSY:r.syAreaCy!=null?r.syAreaCy:null,
       syLastYear:r.syLyArea!=null?r.syLyArea:null,
-      pctBase:pctBase,sasValue:Math.round((FC_AREA_SAS[emp.m]||{}).sasv_eur||0),
-      recPct:sasMatrixPct((FC_AREA_SAS[emp.m]||{}).acc,(FC_AREA_SAS[emp.m]||{}).vel)!=null?Math.round(sasMatrixPct((FC_AREA_SAS[emp.m]||{}).acc,(FC_AREA_SAS[emp.m]||{}).vel)*100):null,
+      pctBase:pctBase,sasValue:Math.round(r.sasAreaValRaw||0),
+      recPct:r.sasAreaPctMatrix!=null?Math.round(r.sasAreaPctMatrix*100):null,
       recValue:Math.round(r.totSasRec||0),applied:Math.round(r.totSasUsed||0),
       esuberoSasPrec:Math.round(r.totSasReserveIn||0),esuberoSasPrecUsed:Math.round(resInUsed),
       sasReserveNext:Math.round(r.totSasReserveOut||0),pctFinal:pctFinal,

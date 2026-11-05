@@ -891,7 +891,8 @@ function rStoresFcvm(){
 
   var h='<div class="wg"><div class="wg-title">&#128205; Negozi FC+VM — Esclusioni Calcolo</div>';
   h+='<div style="font-size:10px;color:#8a8680;margin-bottom:10px">';
-  h+='Usa i toggle per escludere un negozio dal calcolo fatturato e/o SY di area. ';
+  h+='Usa i toggle per escludere un negozio dal calcolo fatturato, SY e/o SAS di area. ';
+  h+='<b>Escludi SAS</b>: se <u>tutti</u> i negozi di un FC/VM hanno il SAS escluso, per quel FC/VM sparisce la sezione SAS (calcoli e lettera) e la riga del file SAS Area viene ignorata; se almeno un negozio resta attivo vale il dato Area del file. ';
   h+='<span style="background:#d4edda;color:#155724;padding:2px 6px;border-radius:3px;font-size:9px;font-weight:700">L4L</span> = presente sia in LY che CY. ';
   h+='<span style="background:#cce5ff;color:#004085;padding:2px 6px;border-radius:3px;font-size:9px;font-weight:700">NEW</span> = solo CY (non in LY).</div>';
 
@@ -904,6 +905,7 @@ function rStoresFcvm(){
   h+='<th style="padding:6px 10px;text-align:center">STATO</th>';
   h+='<th style="padding:6px 10px;text-align:center">ESCLUDI FATT.</th>';
   h+='<th style="padding:6px 10px;text-align:center">ESCLUDI SY</th>';
+  h+='<th style="padding:6px 10px;text-align:center">ESCLUDI SAS</th>';
   h+='<th style="padding:6px 10px;text-align:center">ESCLUDI ENTRAMBI</th>';
   h+='</tr></thead><tbody>';
 
@@ -965,6 +967,13 @@ function rStoresFcvm(){
     h+='<span style="width:32px;height:18px;border-radius:9px;background:'+(flg.excl_sy?'#2d7a3a':'#d5d0c8')+';position:relative;display:block;transition:background .2s">';
     h+='<span style="width:14px;height:14px;border-radius:7px;background:#fff;position:absolute;top:2px;left:'+(flg.excl_sy?'16px':'2px')+';transition:left .2s"></span></span></label>';
     h+='</td>';
+    // Toggle Escludi SAS
+    h+='<td style="padding:5px 10px;text-align:center">';
+    h+='<label class="ps-toggle" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px">';
+    h+='<input type="checkbox" '+(flg.excl_sas?'checked':'')+' data-sid="'+esc(sid)+'" data-flag="excl_sas" onchange="toggleFcVmStoreFlag(this)" style="display:none">';
+    h+='<span style="width:32px;height:18px;border-radius:9px;background:'+(flg.excl_sas?'#2d7a3a':'#d5d0c8')+';position:relative;display:block;transition:background .2s">';
+    h+='<span style="width:14px;height:14px;border-radius:7px;background:#fff;position:absolute;top:2px;left:'+(flg.excl_sas?'16px':'2px')+';transition:left .2s"></span></span></label>';
+    h+='</td>';
     // Toggle Escludi Entrambi
     h+='<td style="padding:5px 10px;text-align:center">';
     var bothOn=!!(flg.excl_fatt&&flg.excl_sy);
@@ -981,11 +990,13 @@ function rStoresFcvm(){
   // Summary esclusioni attive
   var nExclFatt=Object.values(FC_STORE_FLAGS).filter(function(f){return f.excl_fatt;}).length;
   var nExclSy=Object.values(FC_STORE_FLAGS).filter(function(f){return f.excl_sy;}).length;
+  var nExclSas=Object.values(FC_STORE_FLAGS).filter(function(f){return f.excl_sas;}).length;
   h+='<div class="wg" id="fcvm-excl-summary-wrap"><div class="wg-title">Esclusioni</div><div id="fcvm-excl-summary">';
-  if(nExclFatt>0||nExclSy>0){
+  if(nExclFatt>0||nExclSy>0||nExclSas>0){
     h+='<div style="display:flex;gap:10px;flex-wrap:wrap">';
     if(nExclFatt>0)h+='<div style="background:#fef6f0;border:1px solid #f8d7da;border-radius:5px;padding:6px 12px;font-size:10px;font-weight:600;color:#721c24">&#128196; '+nExclFatt+' store esclus'+(nExclFatt===1?'o':'i')+' da fatturato</div>';
     if(nExclSy>0)h+='<div style="background:#fff3e0;border:1px solid #ffe0b2;border-radius:5px;padding:6px 12px;font-size:10px;font-weight:600;color:#e65100">&#128200; '+nExclSy+' store esclus'+(nExclSy===1?'o':'i')+' da SY</div>';
+    if(nExclSas>0)h+='<div style="background:#fff8e1;border:1px solid #ffe08a;border-radius:5px;padding:6px 12px;font-size:10px;font-weight:600;color:#8a6d00">&#128202; '+nExclSas+' store esclus'+(nExclSas===1?'o':'i')+' da SAS</div>';
     h+='<button onclick="clearFcVmFlags()" class="exp-btn btn-red" style="font-size:10px">&#8635; Reset esclusioni</button>';
     h+='</div>';
   }
@@ -1000,6 +1011,7 @@ function toggleFcVmStoreFlag(input){
   if(!FC_STORE_FLAGS[sid])FC_STORE_FLAGS[sid]={excl_fatt:false,excl_sy:false};
   if(flag==='excl_fatt')FC_STORE_FLAGS[sid].excl_fatt=input.checked;
   else if(flag==='excl_sy')FC_STORE_FLAGS[sid].excl_sy=input.checked;
+  else if(flag==='excl_sas')FC_STORE_FLAGS[sid].excl_sas=input.checked;
   else if(flag==='excl_both'){FC_STORE_FLAGS[sid].excl_fatt=input.checked;FC_STORE_FLAGS[sid].excl_sy=input.checked;}
 
   var flg=FC_STORE_FLAGS[sid]||{};
@@ -1015,7 +1027,7 @@ function toggleFcVmStoreFlag(input){
     // Aggiorna tutti e tre i toggle nella riga
     row.querySelectorAll('input[type="checkbox"][data-flag]').forEach(function(cb){
       var f=cb.getAttribute('data-flag');
-      var on=(f==='excl_fatt'&&flg.excl_fatt)||(f==='excl_sy'&&flg.excl_sy)||(f==='excl_both'&&flg.excl_fatt&&flg.excl_sy);
+      var on=(f==='excl_fatt'&&flg.excl_fatt)||(f==='excl_sy'&&flg.excl_sy)||(f==='excl_sas'&&flg.excl_sas)||(f==='excl_both'&&flg.excl_fatt&&flg.excl_sy);
       cb.checked=on;
       // Aggiorna lo span (track del toggle)
       var track=cb.nextElementSibling;
@@ -1030,13 +1042,15 @@ function toggleFcVmStoreFlag(input){
   // Aggiorna il riepilogo esclusioni in fondo (se esiste)
   var nExclFatt=Object.values(FC_STORE_FLAGS).filter(function(f){return f.excl_fatt;}).length;
   var nExclSy=Object.values(FC_STORE_FLAGS).filter(function(f){return f.excl_sy;}).length;
+  var nExclSas=Object.values(FC_STORE_FLAGS).filter(function(f){return f.excl_sas;}).length;
   var summaryEl=document.getElementById('fcvm-excl-summary');
   if(summaryEl){
     var sh='';
-    if(nExclFatt>0||nExclSy>0){
+    if(nExclFatt>0||nExclSy>0||nExclSas>0){
       sh+='<div style="display:flex;gap:10px;flex-wrap:wrap">';
       if(nExclFatt>0)sh+='<div style="background:#fef6f0;border:1px solid #f8d7da;border-radius:5px;padding:6px 12px;font-size:10px;font-weight:600;color:#721c24">&#128196; '+nExclFatt+' store esclus'+(nExclFatt===1?'o':'i')+' da fatturato</div>';
       if(nExclSy>0)sh+='<div style="background:#fff3e0;border:1px solid #ffe0b2;border-radius:5px;padding:6px 12px;font-size:10px;font-weight:600;color:#e65100">&#128200; '+nExclSy+' store esclus'+(nExclSy===1?'o':'i')+' da SY</div>';
+      if(nExclSas>0)sh+='<div style="background:#fff8e1;border:1px solid #ffe08a;border-radius:5px;padding:6px 12px;font-size:10px;font-weight:600;color:#8a6d00">&#128202; '+nExclSas+' store esclus'+(nExclSas===1?'o':'i')+' da SAS</div>';
       sh+='<button onclick="clearFcVmFlags()" class="exp-btn btn-red" style="font-size:10px">&#8635; Reset esclusioni</button>';
       sh+='</div>';
     }
