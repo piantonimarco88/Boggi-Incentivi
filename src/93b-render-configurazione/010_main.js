@@ -56,7 +56,7 @@ function rT(){try{
     // si applica solo al ruolo Field Coach, mai ai Visual Merchandiser (vedi 88-calc-engine/70-fcvm-calc)
     h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">&#128203; Coefficiente Inventari &mdash; Area (FC)</div>';
     if(!demoltActive())h+='<div style="font-size:10px;color:#a07d2c;background:#fff8ee;border:1px solid #f0e2c4;border-radius:5px;padding:6px 10px;margin-bottom:8px">Attivo da '+MONTH_NAMES.IT[DEMOLT_CUTOFF_MONTH]+' '+DEMOLT_CUTOFF_YEAR+' &mdash; i valori qui sotto si possono già impostare in anticipo.</div>';
-    h+='<div style="font-size:10px;color:#8a8680;margin-bottom:8px">Riduce il premio d\'area in base a % Invio (&Sigma; sended/&Sigma; working days) e % Completamento (&Sigma; completed/&Sigma; sended) aggregati sull\'area &mdash; si applica solo al ruolo <b>Field Coach</b>, mai ai Visual Merchandiser.</div>';
+    h+='<div style="font-size:10px;color:#8a8680;margin-bottom:8px">Riduce il premio d\'area in base a % Invio («% DCC Sent corretta») e % Completamento («% DCC Executed») lette dalla scheda Matrice FC del file &mdash; si applica solo al ruolo <b>Field Coach</b>, mai ai Visual Merchandiser.</div>';
     var _dab=DEMOLT_MATRIX_FC.bpA,_dbb=DEMOLT_MATRIX_FC.bpB;
     h+='<div style="font-size:10px;font-weight:700;color:#6b6560;text-align:center;margin:6px 0 2px">% COMPLETAMENTO (asse orizzontale) →</div>';
     h+='<table style="width:100%;border-collapse:collapse;table-layout:fixed;margin:0 0 8px"><thead><tr><th style="width:130px;font-size:9px;font-weight:700;color:#6b6560;padding:3px 8px;text-align:right;white-space:nowrap;vertical-align:bottom">% INVIO<br>(asse verticale) ↓</th>';

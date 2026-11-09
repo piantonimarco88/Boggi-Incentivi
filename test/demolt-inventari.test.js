@@ -39,85 +39,83 @@ const HF = ["Field Coach", "Working days ", "Sended tasks ", "Completed tasks ",
   "Eccezioni FC senza END OF SEASON RETURNS", "% DCC Sent corretta"];
 const HE = ["Exception Day", "Country Id", "Store Id", "Store Description", "Store Type", "Field Coach", "Inventory Reason"];
 
-test("negozio DCC: completamento = completed/sended, accuracy dal file", () => {
+test("negozio: completamento e accuracy letti direttamente dal file (nessun ricalcolo)", () => {
   const c = ctx();
-  const r = run(c, { negozi: neg([["1", "A", "MARIO ROSSI", "DCC", 0.99, 15, 15, 15, 1]]) });
+  // completed/sended = 15/15 = 100%, ma il file dice 0.85 → si usa 0.85
+  const r = run(c, { negozi: neg([["1", "A", "MARIO ROSSI", "DCC", 0.99, 15, 15, 15, 0.85]]) });
   assert.strictEqual(r.nStore, 1);
   const s = get(c, "DEMOLT_RESULT_STORE")["1"];
-  assert.strictEqual(s.compl, 1);
-  assert.strictEqual(s.pct, 1); // ≥90% × ≥98%
+  assert.strictEqual(s.compl, 0.85);
+  assert.strictEqual(s.acc, 0.99);
+  assert.strictEqual(s.pct, 0.9); // compl 70-90% x acc ≥98%
 });
 
-test("negozio WIC: denominatore fisso 4, tetto al 100%", () => {
+test("negozio WIC: si usa il valore del file, anche se i task non tornano", () => {
   const c = ctx();
   run(c, { negozi: neg([
-    ["1", "A", "MARIO ROSSI", "WIC", 0.99, 4, 3, 3, 0.75],   // 3/4
-    ["2", "B", "MARIO ROSSI", "WIC", 0.99, 8, 8, 5, 1],      // 5/4 → 100%
+    ["1", "A", "MARIO ROSSI", "WIC", 0.99, 4, 3, 3, 0.75],
+    ["2", "B", "MARIO ROSSI", "WIC", 0.99, 8, 8, 5, 1],
   ]) });
   const st = get(c, "DEMOLT_RESULT_STORE");
   assert.strictEqual(st["1"].compl, 0.75);
   assert.strictEqual(st["2"].compl, 1);
 });
 
-test("negozio senza task inviati (#DIV/0! nel file) o senza Accuracy: nessun risultato, segnalato", () => {
+test("negozio con % DCC Executed errore/vuota (#DIV/0!) o senza Accuracy: nessun risultato, segnalato", () => {
   const c = ctx();
   const r = run(c, { negozi: neg([
     ["1", "A", "MARIO ROSSI", "DCC", 0.99, 0, 0, 0, "#ERR"],
     ["2", "B", "MARIO ROSSI", "DCC", "-", 15, 15, 0, 0],
   ]) });
   assert.strictEqual(r.nStore, 0);
-  assert.ok(r.items.some((i) => /senza task inviati/.test(i.t)));
+  assert.ok(r.items.some((i) => /senza «% DCC Executed corretta»/.test(i.t)));
   assert.ok(r.items.some((i) => /senza Accuracy/.test(i.t)));
 });
 
-test("colonna «% DCC Executed corretta» del file diversa dal ricalcolo → errore", () => {
+test("colonna «% DCC Executed corretta» mancante → errore esplicito", () => {
   const c = ctx();
-  const r = run(c, { negozi: neg([["1", "A", "MARIO ROSSI", "DCC", 0.99, 15, 10, 5, 0.9]]) });
-  const it = r.items.find((i) => /Executed corretta/.test(i.t));
-  assert.strictEqual(it.lvl, "err");
+  const r = run(c, { negozi: [["Store Id", "Accuracy"], [1, 0.99]] });
+  assert.ok(r.error);
 });
 
-test("negozi USA esclusi dal coefficiente e dall'aggregato FC", () => {
+test("negozi USA esclusi dal coefficiente", () => {
   const c = ctx();
   run(c, { negozi: neg([
     ["1", "A", "MARIO ROSSI", "DCC", 0.99, 10, 10, 10, 1],
     ["9", "NY", "MARIO ROSSI", "DCC", 0.9, 10, 10, 0, 0],
   ]) });
   assert.ok(!get(c, "DEMOLT_RESULT_STORE")["9"]);
-  assert.strictEqual(get(c, "DEMOLT_RESULT_FC")["M1"].compl, 1); // 10/10, USA fuori
 });
 
-test("FC: invio = sended / (working days − eccezioni), EOS RETURNS non conta, tetto 100%", () => {
+test("FC: invio = «% DCC Sent corretta» e completamento = «% DCC Executed» letti dalla Matrice FC", () => {
   const c = ctx();
-  const ecc = [HE,
-    ["2026-10-01", 210, 1, "A", "x", "MARIO ROSSI", "STAFF"],
-    ["2026-10-02", 210, 1, "A", "x", "MARIO ROSSI", "STAFF"],
-    ["2026-10-03", 210, 2, "B", "x", "MARIO ROSSI", "END OF SEASON RETURNS"], // escluso
-  ];
-  // wd 20, sent 18, eccezioni 2 → 18/18 = 100%; senza sottrazione sarebbe 90%
-  run(c, { negozi: neg([["1", "A", "MARIO ROSSI", "DCC", 0.99, 10, 9, 9, 1], ["2", "B", "MARIO ROSSI", "DCC", 0.99, 10, 9, 8, 8 / 9]]), ecc });
+  const negozi = neg([["1", "A", "MARIO ROSSI", "DCC", 0.99, 68, 34, 25, 25 / 34]]);
+  // come Scalisi: M = 73,53%, Q = 94,44% (valore del file, preso così com'è)
+  const fc = [HF, ["MARIO ROSSI", 68, 34, 25, 0.7353, 2, 0.9444]];
+  const r = run(c, { negozi, fc });
+  assert.strictEqual(r.nFc, 1);
   const f = get(c, "DEMOLT_RESULT_FC")["M1"];
-  assert.strictEqual(f.invio, 1);
-  assert.ok(Math.abs(f.compl - 17 / 18) < 1e-9);
+  assert.strictEqual(f.invio, 0.9444);
+  assert.strictEqual(f.compl, 0.7353);
+  assert.strictEqual(f.pct, 0.6); // invio 80-95% x completamento <80%
 });
 
-test("Matrice FC: colonna Q errata (=Sended/(Eccezioni+Sended)) segnalata, totali coerenti", () => {
+test("FC: area interamente USA → nessun coefficiente; FC assente dalla scheda → avviso", () => {
   const c = ctx();
-  const negozi = neg([["1", "A", "MARIO ROSSI", "DCC", 0.99, 45, 39, 35, 35 / 39]]);
-  // Q del file = 100% con 0 eccezioni, ma 39/45 = 86,7%
-  const fc = [HF, ["MARIO ROSSI", 45, 39, 35, 35 / 39, 0, 1]];
-  const r = run(c, { negozi, fc, ecc: [HE] });
-  assert.strictEqual(r.items.find((i) => /Sent corretta/.test(i.t)).lvl, "warn");
-  assert.strictEqual(r.items.find((i) => /totali = somma/.test(i.t)).lvl, "ok");
-  assert.ok(Math.abs(get(c, "DEMOLT_RESULT_FC")["M1"].invio - 39 / 45) < 1e-9);
+  const negozi = neg([["9", "NY", "MARIO ROSSI", "DCC", 0.9, 10, 10, 10, 1]]);
+  const fc = [HF, ["MARIO ROSSI", 10, 10, 10, 1, 0, 1]];
+  assert.strictEqual(run(c, { negozi, fc }).nFc, 0);
+  const c2 = ctx();
+  const r2 = run(c2, { negozi: neg([["1", "A", "MARIO ROSSI", "DCC", 0.99, 10, 10, 10, 1]]), fc: [HF, ["ALTRO NOME", 10, 10, 10, 1, 0, 1]] });
+  assert.strictEqual(r2.nFc, 0);
+  assert.ok(r2.items.some((i) => /non trovati nella Matrice FC/.test(i.t)));
 });
 
-test("Matrice FC: totali diversi dalla somma dei negozi → errore", () => {
+test("FC: % mancante/errore nella Matrice FC → nessuna riduzione, segnalato", () => {
   const c = ctx();
-  const negozi = neg([["1", "A", "MARIO ROSSI", "DCC", 0.99, 45, 39, 35, 35 / 39]]);
-  const fc = [HF, ["MARIO ROSSI", 45, 40, 35, 35 / 40, 0, 40 / 45]];
-  const r = run(c, { negozi, fc, ecc: [HE] });
-  assert.strictEqual(r.items.find((i) => /totali = somma/.test(i.t)).lvl, "err");
+  const r = run(c, { negozi: neg([["1", "A", "MARIO ROSSI", "DCC", 0.99, 10, 10, 10, 1]]), fc: [HF, ["MARIO ROSSI", 10, 10, 10, "#ERR", 0, 1]] });
+  assert.strictEqual(r.nFc, 0);
+  assert.ok(r.items.some((i) => /% mancante/.test(i.t)));
 });
 
 test("un nuovo import sostituisce il precedente", () => {

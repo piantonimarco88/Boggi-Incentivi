@@ -215,12 +215,13 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 /*BUNDLE_INSERT:60-fcvm-state*/
 /*BUNDLE_INSERT:70-fcvm-calc*//*BUNDLE_INSERT:80-roles-config*/var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.107'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.108'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.108: Coefficiente Inventari — l'import legge direttamente le % già presenti nel file, senza ricalcoli: negozi = «Accuracy» e «% DCC Executed corretta» (Matrice negozi), FC = «% DCC Executed» e «% DCC Sent corretta» (Matrice FC)",
   "9.107: Lettere — le note degli override manuali 60%/100% precisano «prima del Coefficiente Inventari» quando il coefficiente riduce il premio (calcolo invariato: l'override vale già prima del coefficiente)",
   "9.106: FC+VM — nuova colonna «Escludi SAS» nel tab Negozi. Se tutti i negozi di un FC/VM hanno il SAS escluso: nessuna sezione SAS in calcoli e lettera (preventivo e consuntivo) e la riga del file SAS Area viene ignorata (valore, matrice e riserva); con almeno un negozio attivo vale il dato Area del file. Vale anche per i negozi BDG extra",
   "9.105: Italia — la matricola dell'anagrafica Excel è la fonte di verità: identica in import, lettere e tracciati Zucchetti (nessun padding/taglio/rimozione lettere). I file secondari (malattie, articoli, Visual) si abbinano alla matricola dell'anagrafica; inserimento manuale senza modifiche",
