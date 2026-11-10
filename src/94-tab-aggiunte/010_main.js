@@ -108,6 +108,7 @@ function rAgg(){
   document.querySelectorAll("#p5 input[data-m]").forEach(function(inp){
     inp.onchange=function(){
       var m=inp.getAttribute("data-m"),k=inp.getAttribute("data-k"),v=parseFloat(inp.value)||0;
+      if(v<0){alert("Importo negativo non ammesso nelle aggiunte: valore non salvato.");v=0;}
       if(v>0){if(!AGG[m])AGG[m]={};AGG[m][k]=v;}
       else{if(AGG[m]){delete AGG[m][k];if(!Object.keys(AGG[m]).some(function(kk){return AGG[m][kk]>0;}))delete AGG[m];}}
       var _sw3=document.querySelector("#p5 .scroll-wrap");
@@ -170,14 +171,17 @@ function loadVisualExcel(input){
     if(hdr.matr<0||hdr.bdg<0){alert('Colonne MATRICOLA o BDG non trovate.\n\nColonne rilevate:\n'+(json[hdrRow]||[]).join(', '));return;}
     // Salva per-negozio: VL[matr] = [{sid, amt}, ...]
     VL={};
-    var rowCount=0;
+    var rowCount=0,negRows=[];
     for(var ri=hdrRow+1;ri<json.length;ri++){
       var row=json[ri];if(!row)continue;
       var rawMatr=String(row[hdr.matr]||'').trim();
       if(!rawMatr)continue;
       var matr=matrItResolve(rawMatr);// matricola dell'anagrafica (invariata) se corrisponde
-      var bdgAmt=parseFloat(String(row[hdr.bdg]||'0').replace(',','.').replace(/[^0-9.\-]/g,''))||0;
-      if(bdgAmt<=0)continue;
+      // parseNum: formato italiano letto correttamente (prima "1.234,56" diventava 1,234)
+      var bdgAmt=parseNum(row[hdr.bdg]);
+      // Importi negativi non ammessi: scartati e segnalati (prima scartati in silenzio)
+      if(bdgAmt<0){negRows.push('riga '+(ri+1)+' · matr. '+rawMatr+' · '+bdgAmt);continue;}
+      if(bdgAmt===0)continue;
       // Normalizza SID: converti a intero per rimuovere zeri iniziali e parti decimali
       var _rawSid=hdr.sid>=0?String(row[hdr.sid]||'').trim():'';
       var storeSid=_rawSid?(function(){var _pi=parseInt(_rawSid);return isNaN(_pi)?_rawSid:String(_pi);}()):'';
@@ -187,7 +191,8 @@ function loadVisualExcel(input){
     }
     var empCount=Object.keys(VL).length;
     var _sidInfo=hdr.sid>=0?('col.'+hdr.sid+' \u2714'):'NON TROVATA \u26a0 (il premio per negozio non sar\u00e0 calcolabile)';
-    alert('Visual In Store caricato!\n\n'+empCount+' dipendenti \u00b7 '+rowCount+' righe elaborate\nColonne: MATR=col.'+hdr.matr+' | SID='+_sidInfo+' | BDG=col.'+hdr.bdg);
+    alert('Visual In Store caricato!\n\n'+empCount+' dipendenti \u00b7 '+rowCount+' righe elaborate\nColonne: MATR=col.'+hdr.matr+' | SID='+_sidInfo+' | BDG=col.'+hdr.bdg+
+      (negRows.length?'\n\n⚠ '+negRows.length+' righe con importo NEGATIVO scartate (non ammesse):\n• '+negRows.slice(0,15).join('\n• ')+(negRows.length>15?'\n… e altre '+(negRows.length-15):''):''));
     autoSave();rSources();rC();
   }catch(ex){alert('Errore lettura Visual: '+ex.message);}};reader.readAsArrayBuffer(f);
 }

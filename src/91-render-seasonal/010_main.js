@@ -753,8 +753,8 @@ function loadSeasonalSasPeriodExcel(input,period){
       sid=String(parseInt(sid));if(sid==="NaN")continue;
       if(!D.cs[sid])D.cs[sid]={sc:0,es:0,sy:0,nf:0,s4:0,iv:null,av:null,qc:0,cr:null};
       var acc=null,vel=null,val=null;
-      if(c.acc>=0){var av=parseNum(row[c.acc]);if(!isNaN(av)){if(av>1)av=av/100;if(av<0)av=0;if(av>1)av=1;acc=av;}}
-      if(c.vel>=0){var vv=parseNum(row[c.vel]);if(!isNaN(vv)){if(vv>1)vv=vv/100;if(vv<0)vv=0;if(vv>1)vv=1;vel=vv;}}
+      if(c.acc>=0){var av=parseRatio(row[c.acc]);if(!isNaN(av)){if(av>1)av=av/100;if(av<0)av=0;if(av>1)av=1;acc=av;}}
+      if(c.vel>=0){var vv=parseRatio(row[c.vel]);if(!isNaN(vv)){if(vv>1)vv=vv/100;if(vv<0)vv=0;if(vv>1)vv=1;vel=vv;}}
       if(c.valLc>=0){var sv=parseNum(row[c.valLc]);if(!isNaN(sv))val=sv;}
       D.cs[sid][accField]=acc;D.cs[sid][velField]=vel;D.cs[sid][valField]=val;
       D.cs[sid][recField]=sasRecognizedValue(acc,vel,val);

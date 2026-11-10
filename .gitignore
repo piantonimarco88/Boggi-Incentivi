@@ -58,6 +58,22 @@ statistiche/_*.html
 statistiche/_*.js
 statistiche/_*.md
 
+# ===== Segreti (chiavi API) =====
+# Mai in repo: il repository GitHub e` pubblico.
+statistiche/Api Key*.txt
+*api*key*.txt
+*API*Key*.txt
+.env
+
+# ===== Demoltiplicatore — dati reali (PII) =====
+# Si versiona solo lo strumento (kpi_inventari.html) e la presentazione.
+demoltiplicatore/*.xlsx
+demoltiplicatore/*.json
+
+# ===== Esempi / anteprime con nomi di persone =====
+dashboard_sas_*_esempio.html
+preview_dashboard_sas.html
+
 # ===== OS =====
 Thumbs.db
 ehthumbs.db

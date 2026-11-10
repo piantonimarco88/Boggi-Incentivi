@@ -276,7 +276,7 @@ function _renderFcVmList(filter){
       el.onclick=function(){
         var m=this.getAttribute('data-m');
         var lc=document.getElementById('lc');
-        if(lc&&FC_EMP[m])lc.innerHTML=buildFcVmLetter(FC_EMP[m]);
+        if(lc&&FC_EMP[m]){lc.innerHTML=buildFcVmLetter(FC_EMP[m]);_LT_SHOWN_M=m;}
       };
     });
   }
@@ -288,6 +288,6 @@ function sLFcvm(matr){
   if(det&&FC_EMP[matr]){det.innerHTML=buildFcVmLetter(FC_EMP[matr]);det.scrollIntoView({behavior:'smooth',block:'start'});return;}
   // Altrimenti tab Lettera
   var lc=document.getElementById('lc');
-  if(lc&&FC_EMP[matr])lc.innerHTML=buildFcVmLetter(FC_EMP[matr]);
+  if(lc&&FC_EMP[matr]){lc.innerHTML=buildFcVmLetter(FC_EMP[matr]);_LT_SHOWN_M=matr;}
 }
 

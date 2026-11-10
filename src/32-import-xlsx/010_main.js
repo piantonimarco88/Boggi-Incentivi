@@ -21,7 +21,10 @@ function normalizeJob(raw){
 // Parse number from string, handling thousand separators (1,234.56 or 1.234,56)
 function parseNum(s){
   if(typeof s==="number")return s;
-  s=String(s||"0").trim().replace(/[^\d.,\-]/g,"");
+  var raw=String(s||"0").trim();
+  // Formato contabile: (1.234,56) = negativo
+  var neg=/^\(.*\)$/.test(raw);
+  s=raw.replace(/[^\d.,\-]/g,"");
   if(!s||s==="0")return 0;
   // If both . and , present: last one is decimal separator
   var lastDot=s.lastIndexOf("."),lastComma=s.lastIndexOf(",");
@@ -29,12 +32,30 @@ function parseNum(s){
     if(lastComma>lastDot){s=s.replace(/\./g,"").replace(",",".")}// 1.234,56 -> 1234.56
     else{s=s.replace(/,/g,"")}// 1,234.56 -> 1234.56
   }else if(lastComma>=0){
-    // Only comma: check if it's thousands (1,000) or decimal (1,5)
-    var parts=s.split(",");
-    if(parts.length===2&&parts[1].length===3)s=s.replace(",","");// 2,900 -> 2900
-    else s=s.replace(",",".");// 1,5 -> 1.5
+    // Solo virgola: migliaia solo se a gruppi di 3 e senza zero iniziale
+    // (2,900 -> 2900; 1,234,567 -> 1234567), altrimenti decimale (1,5 -> 1.5; 0,125 -> 0.125)
+    if(/^-?[1-9]\d{0,2}(,\d{3})+$/.test(s))s=s.replace(/,/g,"");
+    else s=s.replace(",",".");
+  }else if(lastDot>=0){
+    // Solo punto, regola italiana: punto = migliaia se a gruppi di 3 senza zero
+    // iniziale (1.500 -> 1500; 1.234.567 -> 1234567), altrimenti decimale (12.5; 0.125)
+    if(/^-?[1-9]\d{0,2}(\.\d{3})+$/.test(s))s=s.replace(/\./g,"");
   }
-  return parseFloat(s)||0;
+  var n=parseFloat(s)||0;
+  return neg?-Math.abs(n):n;
+}
+
+// Rapporti e percentuali (UPT, CR, accuracy, % SAS, % digital...): un solo separatore
+// e` SEMPRE decimale, mai migliaia ("1.856" UPT -> 1.856; "12,345" -> 12.345).
+// Con entrambi i separatori vale parseNum (l'ultimo e` il decimale).
+function parseRatio(s){
+  if(typeof s==="number")return s;
+  var t=String(s==null?"":s).trim();
+  if(t.indexOf(".")>=0&&t.indexOf(",")>=0)return parseNum(t);
+  var neg=/^\(.*\)$/.test(t);
+  t=t.replace(/[^\d.,\-]/g,"").replace(",",".");
+  var n=parseFloat(t)||0;
+  return neg?-Math.abs(n):n;
 }
 
 // === WORKDAY: nuovo export HR (estero dal preventivo ottobre 2026, poi Italia) ===
@@ -1405,7 +1426,7 @@ function loadTargetExcel(file){
         if(type==="main_target"||type==="turnover_only"){
           if(cSales>=0){var v=parseNum(row[cSales]);if(v>0)D.t[sid].to=Math.round(v)}
           if(cSY>=0){var v=parseNum(row[cSY]);if(v>0)D.t[sid].sy=v}
-          if(cCR>=0){var v=parseNum(row[cCR]);if(v>0)D.t[sid].cr=v}
+          if(cCR>=0){var v=parseRatio(row[cCR]);if(v>0)D.t[sid].cr=v}
         }else if(type==="fidelity"){
           if(cSub>=0){var v=parseNum(row[cSub]);if(v>0)D.t[sid].pr=v}
         }else if(type==="dept_qty"){
@@ -1522,12 +1543,12 @@ function loadResultsExcel(file){
           if(!D.cs[sid]) D.cs[sid]={sc:0,es:0,sy:0,nf:0,s4:0,iv:null,av:null,qc:0,cr:null,up:null};
 
           if(seasConsType==="seas_upt"){
-            var vu=parseNum(row[cUpt]);if(!isNaN(vu)&&vu>0)D.cs[sid].up=vu;
+            var vu=parseRatio(row[cUpt]);if(!isNaN(vu)&&vu>0)D.cs[sid].up=vu;
           } else if(seasConsType==="seas_main"){
             if(cSales>=0){var v=parseNum(row[cSales]);if(!isNaN(v)&&v>0)D.cs[sid].sc=Math.round(v);}
             if(cSY>=0){var v=parseNum(row[cSY]);if(!isNaN(v)&&v>0)D.cs[sid].sy=v;}
             if(cSub>=0){var v=parseNum(row[cSub]);if(!isNaN(v)&&v>0)D.cs[sid].nf=v;}
-            if(cUpt>=0){var vu2=parseNum(row[cUpt]);if(!isNaN(vu2)&&vu2>0)D.cs[sid].up=vu2;}
+            if(cUpt>=0){var vu2=parseRatio(row[cUpt]);if(!isNaN(vu2)&&vu2>0)D.cs[sid].up=vu2;}
             // QTY Dept Store: stesso file "seas_main" a volte porta anche questa colonna
             // (es. "Qty Sales Merch After Returns 2026") — non solo il formato dedicato
             // seas_qty_dept, altrimenti resta sempre a 0 anche quando il dato c'è.
@@ -1536,15 +1557,15 @@ function loadResultsExcel(file){
             // il fallback "colonna H" prendeva Gross Sales in file senza una vera colonna CR,
             // es. CONSUNTIVO SS26.xlsx). Se non c'è una colonna CR nel file, resta assente:
             // meglio "dato mancante" che un numero sbagliato usato per lo sbarramento Mid-Season.
-            if(cCR>=0&&row[cCR]!=null){var cv=parseNum(row[cCR]);if(!isNaN(cv)&&cv>0)D.cs[sid].cr=cv;}
+            if(cCR>=0&&row[cCR]!=null){var cv=parseRatio(row[cCR]);if(!isNaN(cv)&&cv>0)D.cs[sid].cr=cv;}
           } else if(seasConsType==="seas_inv_acc"){
-            if(cInvPct>=0){var v=parseNum(row[cInvPct]);if(!isNaN(v))D.cs[sid].iv=v;}
-            if(cAccVal>=0){var v=parseNum(row[cAccVal]);if(!isNaN(v)&&v>0)D.cs[sid].av=v;}
+            if(cInvPct>=0){var v=parseRatio(row[cInvPct]);if(!isNaN(v))D.cs[sid].iv=v;}
+            if(cAccVal>=0){var v=parseRatio(row[cAccVal]);if(!isNaN(v)&&v>0)D.cs[sid].av=v;}
           } else if(seasConsType==="seas_sas"){
             if(cSasH>=0){
               var raw=row[cSasH];
               if(raw!==null&&raw!==undefined&&String(raw).trim()!=="-"){
-                var v=parseNum(raw);
+                var v=parseRatio(raw);
                 if(!isNaN(v)&&v>=0) D.cs[sid].s4=v;
               }
             }
@@ -1697,8 +1718,8 @@ function loadResultsExcel(file){
           var totSales=cTotSales>=0?parseNum(row[cTotSales]):0;
           var esubero=cEsubero>=0?parseNum(row[cEsubero]):0;
           D.c[sid].sc=Math.round(totSales-esubero);D.c[sid].es=Math.round(esubero);
-          if(cDigital>=0){D.c[sid].pd=parseNum(row[cDigital])}
-          if(cCR>=0){D.c[sid].cr=parseNum(row[cCR])}
+          if(cDigital>=0){D.c[sid].pd=parseRatio(row[cDigital])}
+          if(cCR>=0){D.c[sid].cr=parseRatio(row[cCR])}
           if(cSY>=0){D.c[sid].sy=parseNum(row[cSY])}
           if(cSub>=0){D.c[sid].nf=parseNum(row[cSub])}
           if(cQty>=0){D.c[sid].qc=Math.round(parseNum(row[cQty]))}
@@ -1762,7 +1783,7 @@ function loadResultsExcel(file){
           if(!D.c[sid])D.c[sid]={sc:0,es:0,pd:0,cr:0,sy:0,nf:0,qc:0,s4:0,dv:0};
           if(cS4>=0){var s4v=parseNum(row[cS4]);if(!isNaN(s4v))D.c[sid].s4=Math.round(s4v);}
           if(cSa>=0){
-            var av=parseNum(row[cSa]);
+            var av=parseRatio(row[cSa]);
             if(!isNaN(av)){
               // Accept either 0..1 or 0..100
               if(av>1)av=av/100;
@@ -1771,7 +1792,7 @@ function loadResultsExcel(file){
             }
           }
           if(cVel>=0){
-            var vv=parseNum(row[cVel]);
+            var vv=parseRatio(row[cVel]);
             if(!isNaN(vv)){if(vv>1)vv=vv/100;if(vv<0)vv=0;if(vv>1)vv=1;D.c[sid].vel=vv;withVel++;}
           }
           if(cValLc>=0){var sv=parseNum(row[cValLc]);if(!isNaN(sv)){D.c[sid].sasv=sv;withVal++;}}

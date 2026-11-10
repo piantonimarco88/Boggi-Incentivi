@@ -38,7 +38,8 @@ test("Italia: aggiunge riga E con i campi dell'import", () => {
   c.D.t["1201"] = { nm: "x" };
   assert.strictEqual(vm.runInContext("_manSaveE()", c), true);
   const e = c.E[0];
-  assert.strictEqual(e.m, "0012345");
+  // v9.105: la matricola resta identica a quella inserita (nessun padding)
+  assert.strictEqual(e.m, "12345");
   assert.strictEqual(e.s, "1201 MILANO CORSO");
   assert.strictEqual(e.c, "ROSSI");
   assert.strictEqual(e.ib, 2500);

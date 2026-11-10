@@ -287,8 +287,8 @@ function buildLetter(e){
       h+="</div>"}}
 
   if(isP){var prevT={"ITALIANO":"Di seguito il premio massimo potenziale per ","INGLESE":"Below is the maximum potential bonus for ","FRANCESE":"Ci-dessous le bonus potentiel maximum pour ","TEDESCO":"Nachfolgend der maximale potenzielle Bonus f\u00fcr ","SPAGNOLO":"A continuaci\u00f3n el bono potencial m\u00e1ximo para "};
-    h+='<div style="font-size:12px;font-weight:700;color:#856404;margin-bottom:16px;background:#fff3cd;padding:10px 14px;border-radius:6px">'+(prevT[lang]||prevT.INGLESE)+mN+" 2026</div>"}
-  else h+='<div style="font-size:12px;font-weight:700;color:#2c2925;margin-bottom:16px">'+esc(tr(e,"results",mN))+" "+mN+" 2026 "+esc(tr(e,"and_inc",""))+"</div>";
+    h+='<div style="font-size:12px;font-weight:700;color:#856404;margin-bottom:16px;background:#fff3cd;padding:10px 14px;border-radius:6px">'+(prevT[lang]||prevT.INGLESE)+mN+" "+CFG_YEAR+"</div>"}
+  else h+='<div style="font-size:12px;font-weight:700;color:#2c2925;margin-bottom:16px">'+esc(tr(e,"results",mN))+" "+mN+" "+CFG_YEAR+" "+esc(tr(e,"and_inc",""))+"</div>";
 
   var sN=0;var pdLabel=isP?"INCENTIVE MAX":tr(e,"inc_paid","INCENTIVE PAID");
   if(isOn(e.j,"rb")){sN++;var val=getVal(e,"rb"),p=val>0,vS=Math.round(val*sm);h+=secHd(sN,tr(e,"turnover","TURNOVER TARGET"),p,isP);
@@ -1064,11 +1064,37 @@ function getLetterPool(){
   return E.filter(function(e){return !(SEAS&&SEAS[e.m]&&SEAS[e.m].excluded)&&e.ps!=="SI";});
 }
 function getLetterCount(){return getLetterPool().length;}
-function getLetterMatricola(i){var pool=getLetterPool();return pool[i]?pool[i].m:null;}
+// «Stampa PDF» singolo dell'exe: l'exe cerca l'indice confrontando le matricole come
+// sottostringhe dell'HTML visualizzato e, senza match, usa 0 -> poteva stampare la
+// persona sbagliata (es. 12345_2 -> 12345). Senza ricompilare l'exe distinguiamo i due casi:
+// il ciclo «Salva tutti i PDF» chiama SEMPRE getLetterMatricola(i) subito prima di
+// getLetterHtmlForPrint(i); il PDF singolo no. Quindi, se la chiamata non e` preceduta da
+// getLetterMatricola con lo stesso indice, si stampa il dipendente visualizzato nel tab Lettera.
+var _LT_SHOWN_M=null;   // matricola del dipendente visualizzato in #lc
+var _LT_BATCH_I=null;   // indice appena richiesto da getLetterMatricola (ciclo batch)
+function getLetterMatricola(i){var pool=getLetterPool();var m=pool[i]?pool[i].m:null;_LT_BATCH_I=m?i:null;return m;}
+// Dipendente visualizzato nel tab Lettera, solo se la lettera mostrata e` ancora la sua
+function _letterShownEmp(){
+  if(typeof _LT_SHOWN_M==="undefined"||!_LT_SHOWN_M)return null;
+  var lc=typeof document!=="undefined"&&document.getElementById?document.getElementById("lc"):null;
+  if(!lc||!lc.innerHTML||lc.innerHTML.indexOf(_LT_SHOWN_M)<0)return null;
+  if(PRIZE_MODE==="fcvm")return (typeof FC_EMP!=="undefined"&&FC_EMP[_LT_SHOWN_M])||null;
+  for(var k=0;k<E.length;k++)if(E[k].m===_LT_SHOWN_M)return E[k];
+  return null;
+}
+// true se la chiamata corrente viene dal ciclo batch (consuma il marcatore)
+function _letterIsBatchCall(i){
+  var b=(typeof _LT_BATCH_I!=="undefined"&&_LT_BATCH_I===i);
+  _LT_BATCH_I=null;
+  return b;
+}
 
 function getLetterHtmlForPrint(i){
   var pool=getLetterPool();
   var e=pool[i];
+  return getLetterHtmlForEmp(e);
+}
+function getLetterHtmlForEmp(e){
   if(!e)return null;
   var isSeasonal=PRIZE_MODE==="seasonal";
   var letterHtml=isSeasonal?buildSeasonalLetterAuto(e):(isUSA(e.si,e)?buildLetterUSA(e):buildLetter(e));
@@ -1086,7 +1112,7 @@ function getLetterHtmlForPrint(i){
 function sL(mm){
   var e;for(var i=0;i<E.length;i++){if(E[i].m===mm){e=E[i];break}}if(!e)return;
   if(PRIZE_MODE==="seasonal"){
-    document.getElementById("lc").innerHTML=buildSeasonalLetterAuto(e);
+    document.getElementById("lc").innerHTML=buildSeasonalLetterAuto(e);_LT_SHOWN_M=e.m;
     return;
   }
   var miss=canProduceLetter();
@@ -1094,7 +1120,7 @@ function sL(mm){
     alert("Impossibile generare la lettera.\n\nDati mancanti:\n\u2022 "+miss.join("\n\u2022 ")+"\n\nCarica i dati dalla tab Fonti Dati.");
     return;
   }
-  document.getElementById("lc").innerHTML=isUSA(e.si,e)?buildLetterUSA(e):buildLetter(e);
+  document.getElementById("lc").innerHTML=isUSA(e.si,e)?buildLetterUSA(e):buildLetter(e);_LT_SHOWN_M=e.m;
 }
 try{ rL(); }catch(_e){ try{setTimeout(rL,0)}catch(_e2){} }
 

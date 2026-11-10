@@ -215,12 +215,13 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 /*BUNDLE_INSERT:60-fcvm-state*/
 /*BUNDLE_INSERT:70-fcvm-calc*//*BUNDLE_INSERT:80-roles-config*/var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.108'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.109'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.109: Import — i numeri scritti come testo in formato italiano sono letti correttamente («1.500» = 1500, «0,125» = 0,125; UPT/CR/% sempre decimali). Lettere — l'anno segue il mese/anno configurato (non più 2026 fisso). «Stampa PDF» singolo stampa sempre il dipendente visualizzato. Soglie FC+VM salvate in sessione e configurazione. Aggiunte negative non ammesse: segnalate (Visual e inserimento manuale)",
   "9.108: Coefficiente Inventari — l'import legge direttamente le % già presenti nel file, senza ricalcoli: negozi = «Accuracy» e «% DCC Executed corretta» (Matrice negozi), FC = «% DCC Executed» e «% DCC Sent corretta» (Matrice FC)",
   "9.107: Lettere — le note degli override manuali 60%/100% precisano «prima del Coefficiente Inventari» quando il coefficiente riduce il premio (calcolo invariato: l'override vale già prima del coefficiente)",
   "9.106: FC+VM — nuova colonna «Escludi SAS» nel tab Negozi. Se tutti i negozi di un FC/VM hanno il SAS escluso: nessuna sezione SAS in calcoli e lettera (preventivo e consuntivo) e la riga del file SAS Area viene ignorata (valore, matrice e riserva); con almeno un negozio attivo vale il dato Area del file. Vale anche per i negozi BDG extra",
@@ -351,9 +352,12 @@ var LOAD_RESULTS={}; // id -> {found:bool, sheet:string, cols:[], rows:int}
 // ── getLetterHtmlForPrint patch ───────────────────────────────
 var _glhfp=getLetterHtmlForPrint;
 getLetterHtmlForPrint=function(i){
+  // «Stampa PDF» singolo (chiamata non preceduta da getLetterMatricola(i)): stampa il
+  // dipendente visualizzato nel tab Lettera, non quello trovato per sottostringa dall'exe
+  var shown=_letterIsBatchCall(i)?null:_letterShownEmp();
   if(PRIZE_MODE==='fcvm'){
     // STESSO pool di getLetterMatricola/getLetterFilename (esclude i sospesi): con getFcVmPool() i PDF dopo un sospeso uscivano con il contenuto del collega successivo
-    var pool=getLetterPool(),e=pool[i];if(!e)return null;
+    var pool=getLetterPool(),e=shown||pool[i];if(!e)return null;
     var lh=buildFcVmLetter(e);
     var css=document.querySelector('style')?document.querySelector('style').textContent:'';
     return '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'+css+
@@ -361,6 +365,7 @@ getLetterHtmlForPrint=function(i){
       'html,body{margin:0;padding:0;background:#fff}@page{size:A4;margin:10mm}'+
       '<'+'/style><'+'/head><body>'+lh+'<'+'/body><'+'/html>';
   }
+  if(shown)return getLetterHtmlForEmp(shown);
   return _glhfp(i);
 };
 /*BUNDLE_INSERT:35-validation*/

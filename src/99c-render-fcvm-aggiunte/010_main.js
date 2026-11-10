@@ -52,6 +52,7 @@ function rAggFcvm(){
     inp.onchange=function(){
       var m=inp.getAttribute("data-fcvagg");
       var v=parseFloat(inp.value)||0;
+      if(v<0){alert("Importo negativo non ammesso nelle aggiunte: valore non salvato.");v=0;}
       if(v>0)AGG_FCVM[m]=v;
       else delete AGG_FCVM[m];
       rAggFcvm();
