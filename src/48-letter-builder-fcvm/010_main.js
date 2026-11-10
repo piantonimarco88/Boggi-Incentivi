@@ -22,7 +22,8 @@ function buildFcVmLetter(emp){
   // Header
   h+='<div class="lt-top"><div class="lt-logo">'+getBrandLogoImgFcvm(emp)+'</div>';
   h+='<div style="text-align:right"><div style="font-size:13px;color:#c9a96e;font-weight:700;letter-spacing:2px">FC + VM INCENTIVE PLAN</div>';
-  h+='<div style="font-size:11px;color:#8a8680">'+MONTH_NAMES.IT[CFG_MONTH]+' '+CFG_YEAR+(isP?' \u2014 PREVENTIVO':'')+'</div></div></div>';
+  // mese e \u00abpreventivo\u00bb nella lingua della lettera (prima sempre in italiano)
+  h+='<div style="font-size:11px;color:#8a8680">'+getMonthName(lang)+' '+CFG_YEAR+(isP?' \u2014 '+((typeof SEAS_TR!=="undefined"&&SEAS_TR[lang]&&SEAS_TR[lang].forecast)||'FORECAST'):'')+'</div></div></div>';
 
   // Greeting + info box
   h+='<div class="lt-body">';
@@ -37,7 +38,8 @@ function buildFcVmLetter(emp){
 
   // Regole incentivo
   h+='<div style="background:#faf9f7;border:1px solid #e5e1db;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:10px;color:#4e4b48">';
-  h+='<div style="font-weight:700;color:#2c2925;margin-bottom:6px;font-size:11px">INCENTIVE RULES</div>';
+  var _rulesT={ITALIANO:'REGOLE INCENTIVO',INGLESE:'INCENTIVE RULES',FRANCESE:'RÈGLES DE L’INCITATION',TEDESCO:'ANREIZREGELN',SPAGNOLO:'REGLAS DEL INCENTIVO'};
+  h+='<div style="font-weight:700;color:#2c2925;margin-bottom:6px;font-size:11px">'+(_rulesT[lang]||_rulesT.INGLESE)+'</div>';
   h+='<div style="margin-bottom:3px">\u2022 '+esc(T.r1)+'</div>';
   h+='<div>\u2022 '+esc(T.r2)+'</div></div>';
 

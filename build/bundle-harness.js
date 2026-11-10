@@ -96,7 +96,7 @@ function loadBundle(opts) {
     // FileReader: i test impostano app.nextFileText prima di chiamare un loadXxx(input)
     FileReader: function () {
       const r = this;
-      r.readAsText = r.readAsArrayBuffer = r.readAsBinaryString = function () {
+      r.readAsText = r.readAsArrayBuffer = r.readAsBinaryString = r.readAsDataURL = function () {
         r.result = app.nextFileText;
         if (typeof r.onload === "function") r.onload({ target: { result: app.nextFileText } });
       };

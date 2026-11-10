@@ -1,10 +1,26 @@
 // Cartella base PDF memorizzata dopo "Salva Tutti i PDF" (C# BtnSaveAllPDF_Click)
 // evita che l'utente debba riselezionare la cartella ogni volta
 var _pdfSaveBaseFolder=null;
+var _pdfBatchTs=null; // inizio dell'ultimo «Salva tutti i PDF» in questa sessione (null = non noto)
+// Riga informativa sull'eta` dei PDF: l'exe non comunica la data dei file, quindi si mostra
+// l'orario dell'ultimo «Salva tutti i PDF» di questa sessione (se c'e`) e si ricorda di
+// rigenerarli dopo modifiche a dati o aggiunte.
+function _pdfAgeNote(){
+  if(_pdfBatchTs)return "«Salva tutti i PDF» avviato alle "+_pdfBatchTs.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})+": se dopo hai modificato dati o aggiunte, rigenera i PDF prima di inviare.";
+  return "Data dei PDF non nota in questa sessione: assicurati che siano stati rigenerati dopo l'ultima modifica a dati o aggiunte.";
+}
+// Tabella elenco destinatari per le verifiche prima dell'invio
+function _sendListTable(head,rows){
+  var th=head.map(function(x){return '<th style="padding:5px 8px;font-size:10px;color:#8a8680;font-weight:600;text-align:left;position:sticky;top:0;background:#2c2925">'+x+'</th>';}).join('');
+  var tr=rows.map(function(r){return '<tr style="border-top:1px solid #3d3a36">'+r.map(function(c,i){
+    return '<td style="padding:5px 8px;font-size:11px;color:'+(c&&c.color?c.color:'#e0dbd4')+(i===0?';white-space:nowrap':'')+';word-break:break-all">'+(c&&c.html!=null?c.html:esc(c==null?'':String(c)))+'</td>';}).join('')+'</tr>';}).join('');
+  return '<div style="max-height:230px;overflow-y:auto;border:1px solid #3d3a36;border-radius:8px;margin:10px 0;text-align:left"><table style="width:100%;border-collapse:collapse">'+'<tr>'+th+'</tr>'+tr+'</table></div>';
+}
 if(window.chrome&&window.chrome.webview){
   window.chrome.webview.addEventListener('message',function(ev){
     if(typeof ev.data==='string'&&ev.data.startsWith('pdfBaseFolderSet:')){
       _pdfSaveBaseFolder=ev.data.slice('pdfBaseFolderSet:'.length);
+      _pdfBatchTs=new Date(); // l'exe avvisa all'inizio di «Salva tutti i PDF»: orario mostrato prima dell'invio
     }
   });
 }
@@ -254,12 +270,18 @@ function _empShowPreflight(folder,targets,noEmail,res){
   h+=row(noEmail.length===0?OK:WARN,noEmail.length===0?'#5bb98c':'#e8b34b','Email',
     targets.length+' valide'+(noEmail.length?' · '+noEmail.length+' senza email (saltati)':''));
   h+=row(OK,'#5bb98c','Oggetto',esc(_empSubject()));
+  h+=row(_pdfBatchTs?OK:WARN,_pdfBatchTs?'#5bb98c':'#e8b34b','Data PDF',esc(_pdfAgeNote()));
+  // Elenco completo nome -> email -> PDF: si conferma con il pulsante di invio
+  h+=_sendListTable(['Dipendente','Email','PDF'],targets.map(function(e){
+    var fn=getEmpPdfFilename(e),miss=!!missingSet[fn];
+    return [(e.c||'')+' '+(e.n||''),e.mp,{html:(miss?'&#10005; ':'&#10003; ')+esc(fn)+(miss?' — mancante, non inviata':''),color:miss?'#cf5b5b':'#a09a92'}];
+  }).concat(noEmail.map(function(e){return [(e.c||'')+' '+(e.n||''),{html:'&#9888; senza email — saltato',color:'#e8b34b'},''];})));
   h+='<div style="background:#1f1c19;border-radius:8px;padding:10px 12px;margin:12px 0;text-align:left">'+
      '<div style="font-size:10px;color:#6b6560;margin-bottom:4px">Anteprima corpo email</div>'+
      '<div style="font-size:11px;color:#a09a92;line-height:1.5">'+esc(_empBody(targets[0],false).substring(0,280)).replace(/\n/g,'<br>')+'</div></div>';
   h+='<div style="display:flex;gap:8px;justify-content:center;margin-top:6px">'+
      '<button id="empPfCancel" style="'+_EMP_BTN+'">Annulla</button>'+
-     '<button id="empPfSend" style="'+_EMP_BTN_GOLD+(sendable.length===0?';opacity:.35;cursor:default':'')+'">&#128231; Invia '+sendable.length+' email</button></div>';
+     '<button id="empPfSend" style="'+_EMP_BTN_GOLD+(sendable.length===0?';opacity:.35;cursor:default':'')+'">&#128231; Confermo e invio '+sendable.length+' email</button></div>';
   var ov=_empOverlay(h,540);
   var pre=[];
   noEmail.forEach(function(e){pre.push({e:e,ok:false,skipped:true,reason:'Email mancante',retryable:false});});
@@ -277,7 +299,7 @@ function _empShowPreflight(folder,targets,noEmail,res){
 function _empSendLoop(folder,queue,preResults){
   var total=queue.length,done=0;
   var results=preResults.slice();
-  var lastOk=true,lastErr='';
+  var lastOk=null,lastErr=''; // null = nessun esito ricevuto dall'exe per questo invio
   var paused=false,resumeIdx=0;
   var h='';
   h+='<div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:16px">&#128231; Invio email</div>';
@@ -296,7 +318,10 @@ function _empSendLoop(folder,queue,preResults){
       else{lastOk=false;lastErr=r.indexOf('err:')===0?r.slice(4):r;}
     } else if(ev.data==='mailDone'){
       var e=queue[done];
-      if(e){results.push({e:e,ok:lastOk,skipped:false,reason:lastOk?'Inviata':lastErr,retryable:!lastOk});logMailSent(e.m,e.mp,lastOk?'sent':'error');}
+      if(e){
+        if(lastOk===null){results.push({e:e,ok:false,unknown:true,skipped:false,reason:'Passata a Outlook, esito non confermato',retryable:false});logMailSent(e.m,e.mp,'unconfirmed');}
+        else{results.push({e:e,ok:lastOk,skipped:false,reason:lastOk?'Inviata':lastErr,retryable:!lastOk});logMailSent(e.m,e.mp,lastOk?'sent':'error');}
+      }
       done++;
       var bar=document.getElementById('empBar'),cnt=document.getElementById('empCount');
       if(bar)bar.style.width=Math.round(done/total*100)+'%';
@@ -313,7 +338,7 @@ function _empSendLoop(folder,queue,preResults){
   function next(i){
     if(i>=total){cleanup();_empShowResults(folder,results);return;}
     var e=queue[i];
-    lastOk=true;lastErr='';
+    lastOk=null;lastErr='';
     var lbl=document.getElementById('empLabel');
     if(lbl)lbl.textContent=e.c+' '+e.n+' → '+e.mp;
     window.chrome.webview.postMessage({type:'sendOutlookMailDirect',to:e.mp||'',subject:_empSubject(),body:_empBody(e,false),pdfFolder:folder,pdfName:getEmpPdfFilename(e)});
@@ -331,32 +356,36 @@ function _empSendLoop(folder,queue,preResults){
 }
 
 // Tabella esiti: errori in alto, retry mirato sui soli falliti, export CSV
-function _empShowResults(folder,results){
+// opts: {title, noRetry}; r.unknown = passata a Outlook ma senza conferma di invio dall'exe
+function _empShowResults(folder,results,opts){
+  opts=opts||{};
   var sent=results.filter(function(r){return r.ok;}).length;
-  var failed=results.filter(function(r){return !r.ok&&!r.skipped;});
+  var unknown=results.filter(function(r){return r.unknown;});
+  var failed=results.filter(function(r){return !r.ok&&!r.skipped&&!r.unknown;});
   var skipped=results.filter(function(r){return r.skipped;});
   function stat(n,label,color){
     return '<div style="background:#1f1c19;border-radius:8px;padding:10px 18px;min-width:72px"><div style="font-size:20px;font-weight:800;color:'+color+'">'+n+'</div><div style="font-size:10px;color:#8a8680">'+label+'</div></div>';
   }
   var sorted=results.slice().sort(function(a,b){
-    var ra=a.ok?2:(a.skipped?1:0),rb=b.ok?2:(b.skipped?1:0);
+    var ra=a.ok?3:(a.unknown?2:(a.skipped?1:0)),rb=b.ok?3:(b.unknown?2:(b.skipped?1:0));
     return ra-rb;
   });
   var rows=sorted.map(function(r){
-    var col=r.ok?'#5bb98c':(r.skipped?'#e8b34b':'#cf5b5b');
-    var icon=r.ok?'&#10003;':(r.skipped?'&#9888;':'&#10005;');
+    var col=r.ok?'#5bb98c':(r.unknown?'#a09a92':(r.skipped?'#e8b34b':'#cf5b5b'));
+    var icon=r.ok?'&#10003;':(r.unknown?'?':(r.skipped?'&#9888;':'&#10005;'));
     return '<tr style="border-top:1px solid #3d3a36">'+
       '<td style="padding:6px 8px;font-size:11px;color:#a09a92;font-family:Consolas,monospace;white-space:nowrap">'+esc(r.e.m)+'</td>'+
       '<td style="padding:6px 8px;font-size:11px;color:#e0dbd4">'+esc((r.e.c||'')+' '+(r.e.n||''))+'</td>'+
       '<td style="padding:6px 8px;font-size:11px;color:'+col+'">'+icon+' '+esc(r.reason||'')+'</td></tr>';
   }).join('');
   var h='';
-  h+='<div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:14px">Invio completato</div>';
+  h+='<div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:14px">'+esc(opts.title||'Invio completato')+'</div>';
   h+='<div style="display:flex;gap:10px;justify-content:center;margin-bottom:14px">'+
-     stat(sent,'Inviate','#5bb98c')+stat(failed.length,'Errori','#cf5b5b')+stat(skipped.length,'Saltate','#e8b34b')+'</div>';
+     stat(sent,'Inviate','#5bb98c')+(unknown.length?stat(unknown.length,'Non confermate','#a09a92'):'')+stat(failed.length,'Errori','#cf5b5b')+stat(skipped.length,'Saltate','#e8b34b')+'</div>'+
+     (unknown.length?'<div style="font-size:10px;color:#a09a92;margin:-6px 0 12px">Non confermate: le email sono passate a Outlook, ma questa versione dell\'exe non comunica se l\'invio \u00e8 riuscito. Controlla in Outlook la cartella Posta inviata.</div>':'');
   h+='<div style="max-height:260px;overflow-y:auto;border:1px solid #3d3a36;border-radius:8px"><table style="width:100%;border-collapse:collapse;text-align:left">'+rows+'</table></div>';
   h+='<div style="display:flex;gap:8px;justify-content:center;margin-top:14px">'+
-     (failed.length?'<button id="empRetry" style="'+_EMP_BTN_GOLD+'">&#8635; Riprova '+failed.length+' falliti</button>':'')+
+     (failed.length&&!opts.noRetry?'<button id="empRetry" style="'+_EMP_BTN_GOLD+'">&#8635; Riprova '+failed.length+' falliti</button>':'')+
      '<button id="empCsv" style="'+_EMP_BTN+'">&#128190; Esporta log CSV</button>'+
      '<button id="empClose" style="'+_EMP_BTN+'">Chiudi</button></div>';
   var ov=_empOverlay(h,560);
@@ -364,7 +393,7 @@ function _empShowResults(folder,results){
   document.getElementById('empCsv').onclick=function(){
     var csv='﻿matricola;cognome;nome;email;esito;dettaglio\n';
     results.forEach(function(r){
-      csv+=[r.e.m,r.e.c||'',r.e.n||'',r.e.mp||'',r.ok?'INVIATA':(r.skipped?'SALTATA':'ERRORE'),(r.reason||'').replace(/;/g,',')].join(';')+'\n';
+      csv+=[r.e.m,r.e.c||'',r.e.n||'',r.e.mp||'',r.ok?'INVIATA':(r.unknown?'NON CONFERMATA':(r.skipped?'SALTATA':'ERRORE')),(r.reason||'').replace(/;/g,',')].join(';')+'\n';
     });
     var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
     var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='log_invio_'+getPdfSubfolder().fileBase+'.csv';

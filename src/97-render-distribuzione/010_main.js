@@ -766,6 +766,7 @@ function openFcZipEmail(fcKey){
 }
 
 // Invia mail ai Field Coach tramite overlay (ZIP gia' salvati su disco)
+var _fcZipConfirmed=false; // true solo per la chiamata subito dopo «Confermo e invio»
 function sendFcZipEmails(){
   var folderName=MODE==="preventivo"?"preventivo":"consuntivo";
   var psf=getPdfSubfolder();
@@ -785,6 +786,39 @@ function sendFcZipEmails(){
   var subj="BOGGI INCENTIVE PROGRAM - "+period+" - "+typeLabel+" - Area Letters";
   var bodyTxt="Dear Field Coach,\n\nPlease find attached the "+typeLabel.toLowerCase()+" incentive letters for your area for "+period+".\n\nBest regards";
   var total=fcKeys.length,done=0,errors=0;
+  // === Verifica prima dell'invio (v9.112): elenco FC -> email -> ZIP da confermare ===
+  if(!_fcZipConfirmed){
+    var nLet={};pool.forEach(function(e){if(e.mf&&e.mf.indexOf('@')>0){var k=e.mf.split('@')[0];nLet[k]=(nLet[k]||0)+1;}});
+    var inMem=fcKeys.filter(function(k){return !!_fcZipBlobs[k];}).length;
+    var ph='<div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:2px">Invia ZIP ai Field Coach</div>'+
+      '<div style="font-size:11px;color:#a09a92;margin-bottom:10px">Verifica prima dell\'invio: ogni Field Coach riceve le lettere di tutti i dipendenti del suo elenco</div>'+
+      '<div style="font-size:11px;color:#e0dbd4;text-align:left;margin-bottom:4px"><b>Oggetto:</b> '+esc(subj)+'</div>'+
+      '<div style="font-size:11px;color:#e0dbd4;text-align:left;margin-bottom:4px"><b>ZIP:</b> '+(inMem===total?'tutti in memoria (generati in questa sessione)':(inMem+' in memoria, gli altri da una cartella che sceglierai'))+'</div>'+
+      '<div style="font-size:11px;color:#e8b34b;text-align:left">'+esc(typeof _pdfAgeNote==='function'?_pdfAgeNote():'')+'</div>'+
+      _sendListTable(['Field Coach','Email','ZIP','Lettere'],fcKeys.map(function(k){return [k,fcMap[k].email,fcMap[k].fileName+(_fcZipBlobs[k]?'':' (da disco)'),String(nLet[k]||0)];}))+
+      '<div style="display:flex;gap:8px;justify-content:center;margin-top:6px">'+
+      '<button id="fcPfCancel" style="'+_EMP_BTN+'">Annulla</button>'+
+      '<button id="fcPfSend" style="'+_EMP_BTN_GOLD+'">&#128231; Confermo e invio '+total+' email</button></div>';
+    var pov=_empOverlay(ph,620);
+    document.getElementById('fcPfCancel').onclick=function(){document.body.removeChild(pov);};
+    document.getElementById('fcPfSend').onclick=function(){document.body.removeChild(pov);_fcZipConfirmed=true;sendFcZipEmails();};
+    return;
+  }
+  _fcZipConfirmed=false;
+  // Esito per Field Coach: mailResult:ok / mailResult:err:... dall'exe; senza esito = «non confermata»
+  // (l'invio da memoria/base64 dell'exe attuale non comunica l'esito)
+  var results=[],_fcLast=null;
+  function _fcRecord(fcKey,m){
+    var e={m:fcKey,c:'Field Coach',n:'',mp:m.email};
+    if(_fcLast===null){results.push({e:e,ok:false,unknown:true,skipped:false,reason:'Passata a Outlook, esito non confermato'});logMailSent(fcKey,m.email,'unconfirmed');}
+    else if(_fcLast.ok){results.push({e:e,ok:true,skipped:false,reason:'Inviata'});logMailSent(fcKey,m.email,'sent');}
+    else{errors++;results.push({e:e,ok:false,skipped:false,reason:_fcLast.err||'Errore Outlook'});logMailSent(fcKey,m.email,'error');}
+    _fcLast=null;
+  }
+  function _fcShowEnd(cancelled){
+    _fcEmlCleanup();
+    _empShowResults(null,results,{title:cancelled?'Invio Field Coach annullato ('+done+'/'+total+')':'Invio email Field Coach',noRetry:true});
+  }
   // === Overlay ===
   var ov=document.createElement("div");
   ov.style.cssText="position:fixed;top:0;left:0;right:0;bottom:0;background:#1a1714;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif";
@@ -808,6 +842,7 @@ function sendFcZipEmails(){
   var _fcEmlWvHandler=null;
   if(window.chrome&&window.chrome.webview){
     _fcEmlWvHandler=function(ev){
+      if(typeof ev.data==='string'&&ev.data.indexOf('mailResult:')===0){var rr=ev.data.slice(11);_fcLast=rr==='ok'?{ok:true}:{ok:false,err:rr.indexOf('err:')===0?rr.slice(4):rr};return;}
       if(ev.data==='mailDone'&&_fcEmlCallback){var cb=_fcEmlCallback;_fcEmlCallback=null;cb();}
     };
     window.chrome.webview.addEventListener('message',_fcEmlWvHandler);
@@ -825,19 +860,16 @@ function sendFcZipEmails(){
   };
   // Percorso 1: blob in memoria → base64 → temp file (evita File.Exists su path OneDrive)
   function sendNextBlob(i){
-    if(window._fcEmlCancelled){_fcEmlCleanup();alert('Invio annullato. Email inviate: '+done+'/'+total+'.');return;}
+    if(window._fcEmlCancelled){_fcShowEnd(true);return;}
     if(window._fcEmlPaused){_resumeState={i:i,folder:null,blob:true};return;}
-    if(i>=fcKeys.length){
-      _fcEmlCleanup();
-      alert('✅ '+done+' email inviate ai Field Coach su '+total+'.'+(errors>0?'\n⚠️ '+errors+' errori. Controlla la barra di stato.':''));
-      return;
-    }
+    if(i>=fcKeys.length){_fcShowEnd(false);return;}
     var fcKey=fcKeys[i];
     var m=fcMap[fcKey];
     var blob=_fcZipBlobs[fcKey];
     document.getElementById('fcEmlLabel').textContent=fcKey+' → '+m.email;
-    if(!blob){errors++;sendNextBlob(i+1);return;}
+    if(!blob){errors++;results.push({e:{m:fcKey,c:'Field Coach',n:'',mp:m.email},ok:false,skipped:true,reason:'ZIP non disponibile in memoria'});sendNextBlob(i+1);return;}
     _fcEmlCallback=function(){
+      _fcRecord(fcKey,m);
       done++;
       document.getElementById('fcEmlBar').style.width=Math.round(done/total*100)+'%';
       document.getElementById('fcEmlCount').textContent=done+' / '+total;
@@ -846,28 +878,27 @@ function sendFcZipEmails(){
     var reader=new FileReader();
     reader.onload=function(ev2){
       var b64=ev2.target.result.split(',')[1];
+      _fcLast=null;
       window.chrome.webview.postMessage({type:'sendOutlookMailBase64',to:m.email,subject:subj,body:bodyTxt,pdfBase64:b64,pdfName:m.fileName});
     };
     reader.readAsDataURL(blob);
   }
   // Percorso 2: fallback da disco (blob non in memoria — sessione precedente)
   function sendNext(i,zipFolder){
-    if(window._fcEmlCancelled){_fcEmlCleanup();alert('Invio annullato. Email inviate: '+done+'/'+total+'.');return;}
+    if(window._fcEmlCancelled){_fcShowEnd(true);return;}
     if(window._fcEmlPaused){_resumeState={i:i,folder:zipFolder,blob:false};return;}
-    if(i>=fcKeys.length){
-      _fcEmlCleanup();
-      alert('✅ '+done+' email inviate ai Field Coach su '+total+'.'+(errors>0?'\n⚠️ '+errors+' errori (ZIP non trovati o problemi Outlook). Controlla la barra di stato.':''));
-      return;
-    }
+    if(i>=fcKeys.length){_fcShowEnd(false);return;}
     var fcKey=fcKeys[i];
     var m=fcMap[fcKey];
     document.getElementById('fcEmlLabel').textContent=fcKey+' → '+m.email;
     _fcEmlCallback=function(){
+      _fcRecord(fcKey,m);
       done++;
       document.getElementById('fcEmlBar').style.width=Math.round(done/total*100)+'%';
       document.getElementById('fcEmlCount').textContent=done+' / '+total;
       sendNext(i+1,zipFolder);
     };
+    _fcLast=null;
     window.chrome.webview.postMessage({type:'sendOutlookMailDirect',to:m.email,subject:subj,body:bodyTxt,pdfFolder:zipFolder,pdfName:m.fileName});
   }
   // Se i blob sono tutti in memoria: invia direttamente senza selezionare cartella

@@ -508,10 +508,13 @@ namespace BoggiIncentivi
                         File.WriteAllBytes(tempPath, Convert.FromBase64String(pdfBase64));
                         await Task.Run(() => SendOutlookMailDirect(to, subject, body, tempPath));
                         SetStatus($"Email inviata: {to}");
+                        // Esito per l'app (ZIP Field Coach): prima mancava, l'app non sapeva se l'invio era riuscito
+                        WebView.CoreWebView2.PostWebMessageAsString("mailResult:ok");
                     }
                     catch (Exception ex)
                     {
                         SetStatus("Errore invio mail: " + ex.Message);
+                        WebView.CoreWebView2.PostWebMessageAsString("mailResult:err:" + ex.Message.Replace("\n", " "));
                     }
                     finally
                     {
@@ -611,7 +614,12 @@ namespace BoggiIncentivi
             thread.SetApartmentState(ApartmentState.STA);
             thread.Start();
             thread.Join();
-            if (comEx != null) throw comEx;
+            if (comEx != null)
+            {
+                // Audit: anche gli invii falliti restano tracciati (prima solo quelli riusciti)
+                LogEmailEvent("error: " + comEx.Message, to, subject, pdfPath);
+                throw comEx;
+            }
             // Audit (#8): mail consegnata a Outlook (Send() ritornato senza eccezioni).
             LogEmailEvent("sent", to, subject, pdfPath);
         }
