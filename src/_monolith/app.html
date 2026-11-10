@@ -216,12 +216,13 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 /*BUNDLE_INSERT:60-fcvm-state*/
 /*BUNDLE_INSERT:70-fcvm-calc*//*BUNDLE_INSERT:80-roles-config*/var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.114'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.115'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.115: Seasonal Italia — l'import anagrafica (e l'inserimento manuale) ora include gli store Brian & Barry 5000-5100 da FW26: prima li scartava come «store > 4999», quindi i KPI dedicati (SY, Subscription, UPT) non si applicavano a nessuno. Gli altri store > 4999 restano esclusi",
   "9.114: Nuova barra a passi sopra i tab — Import → Verifica → Calcolo → PDF → Invio, con lo stato di ognuno (fonti caricate, avvisi, totale premi, PDF da rigenerare dopo una modifica ai dati, email inviate/errori). Clicca un passo per vedere il dettaglio e andare al tab giusto; i tab restano come prima",
   "9.113: Workgame — un'unica formula per calcolo, lettere, analisi, export e tracciato; per chi ha il BDG in TRASFERTE ora è pagato nel cod. 380 (prima mancava nel tracciato). Configurazione — nuove sezioni «Cambi valuta» (modificabili, con data di validità), «Date di attivazione regole» (SAS, USA, Coefficiente Inventari) e coefficienti Seasonal (mid-season, mesi stagione, QTY Dept), tutti salvati in sessione e configurazione; dopo un reset l'app parte dal mese corrente. Librerie (Excel, ZIP, PDF) incluse nell'app e aggiornate: niente più caricamento da internet",
   "9.112: Invio email — prima di inviare compare l'elenco completo dipendente → email → PDF (o Field Coach → email → ZIP con il numero di lettere) da confermare; al termine la tabella esiti distingue inviate, errori e «non confermate» (prima gli ZIP ai Field Coach risultavano sempre inviati). Lettere — etichette nella lingua della lettera (preventivo mensile, mese e titoli FC+VM), valuta del dipendente nelle formule SAS/DCC, corretto un refuso nel disclaimer inglese; logo Boggi alleggerito (lettere da 1,1 MB a 40 KB, aspetto invariato)",

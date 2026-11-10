@@ -119,6 +119,11 @@ function isBBStoreId(sid){
   if(isNaN(n))return false;
   return n>=(SEAS_CFG.bbFrom||5000)&&n<=(SEAS_CFG.bbTo||5100);
 }
+// Italia, anagrafica seasonal: oltre 4999 i centri di costo sono esclusi (sedi/uffici/altri brand),
+// tranne gli store Brian & Barry (bbFrom...bbTo) dalla stagione in cui hanno i KPI dedicati.
+function itSeasStoreAllowed(n){
+  return n<=4999||(seasBBPeriodActive()&&isBBStoreId(n));
+}
 function isBBSeasEmp(e){
   return REGION==="italia"&&seasBBPeriodActive()&&isBBStoreId(e.si)&&!isD(e.si);
 }

@@ -404,8 +404,8 @@ function loadAnagraficaExcel(file){
             itErrors.push({row:ri+1,name:fullName,reason:"Centro di costo '"+cdcRaw+"' non numerico \u2014 escluso (sede/ufficio)"});
             continue;
           }
-          if(cdcNum>(PRIZE_MODE==="seasonal"?4999:6500)){
-            itErrors.push({row:ri+1,name:fullName,reason:"Centro di costo "+cdcNum+" escluso"+(PRIZE_MODE==="seasonal"?" (seasonal: solo store \u2264 4999)":"")});
+          if(PRIZE_MODE==="seasonal"?!itSeasStoreAllowed(cdcNum):cdcNum>6500){
+            itErrors.push({row:ri+1,name:fullName,reason:"Centro di costo "+cdcNum+" escluso"+(PRIZE_MODE==="seasonal"?" (seasonal: solo store \u2264 4999 e Brian & Barry "+(SEAS_CFG.bbFrom||5000)+"\u2013"+(SEAS_CFG.bbTo||5100)+" da FW26)":"")});
             continue;
           }
           var cdcDesc=String(row[ZC.cdcDesc]||"").trim();

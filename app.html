@@ -925,6 +925,11 @@ function isBBStoreId(sid){
   if(isNaN(n))return false;
   return n>=(SEAS_CFG.bbFrom||5000)&&n<=(SEAS_CFG.bbTo||5100);
 }
+// Italia, anagrafica seasonal: oltre 4999 i centri di costo sono esclusi (sedi/uffici/altri brand),
+// tranne gli store Brian & Barry (bbFrom...bbTo) dalla stagione in cui hanno i KPI dedicati.
+function itSeasStoreAllowed(n){
+  return n<=4999||(seasBBPeriodActive()&&isBBStoreId(n));
+}
 function isBBSeasEmp(e){
   return REGION==="italia"&&seasBBPeriodActive()&&isBBStoreId(e.si)&&!isD(e.si);
 }
@@ -1421,12 +1426,13 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.114'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.115'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.115: Seasonal Italia — l'import anagrafica (e l'inserimento manuale) ora include gli store Brian & Barry 5000-5100 da FW26: prima li scartava come «store > 4999», quindi i KPI dedicati (SY, Subscription, UPT) non si applicavano a nessuno. Gli altri store > 4999 restano esclusi",
   "9.114: Nuova barra a passi sopra i tab — Import → Verifica → Calcolo → PDF → Invio, con lo stato di ognuno (fonti caricate, avvisi, totale premi, PDF da rigenerare dopo una modifica ai dati, email inviate/errori). Clicca un passo per vedere il dettaglio e andare al tab giusto; i tab restano come prima",
   "9.113: Workgame — un'unica formula per calcolo, lettere, analisi, export e tracciato; per chi ha il BDG in TRASFERTE ora è pagato nel cod. 380 (prima mancava nel tracciato). Configurazione — nuove sezioni «Cambi valuta» (modificabili, con data di validità), «Date di attivazione regole» (SAS, USA, Coefficiente Inventari) e coefficienti Seasonal (mid-season, mesi stagione, QTY Dept), tutti salvati in sessione e configurazione; dopo un reset l'app parte dal mese corrente. Librerie (Excel, ZIP, PDF) incluse nell'app e aggiornate: niente più caricamento da internet",
   "9.112: Invio email — prima di inviare compare l'elenco completo dipendente → email → PDF (o Field Coach → email → ZIP con il numero di lettere) da confermare; al termine la tabella esiti distingue inviate, errori e «non confermate» (prima gli ZIP ai Field Coach risultavano sempre inviati). Lettere — etichette nella lingua della lettera (preventivo mensile, mese e titoli FC+VM), valuta del dipendente nelle formule SAS/DCC, corretto un refuso nel disclaimer inglese; logo Boggi alleggerito (lettere da 1,1 MB a 40 KB, aspetto invariato)",
@@ -7844,8 +7850,8 @@ function loadAnagraficaExcel(file){
             itErrors.push({row:ri+1,name:fullName,reason:"Centro di costo '"+cdcRaw+"' non numerico \u2014 escluso (sede/ufficio)"});
             continue;
           }
-          if(cdcNum>(PRIZE_MODE==="seasonal"?4999:6500)){
-            itErrors.push({row:ri+1,name:fullName,reason:"Centro di costo "+cdcNum+" escluso"+(PRIZE_MODE==="seasonal"?" (seasonal: solo store \u2264 4999)":"")});
+          if(PRIZE_MODE==="seasonal"?!itSeasStoreAllowed(cdcNum):cdcNum>6500){
+            itErrors.push({row:ri+1,name:fullName,reason:"Centro di costo "+cdcNum+" escluso"+(PRIZE_MODE==="seasonal"?" (seasonal: solo store \u2264 4999 e Brian & Barry "+(SEAS_CFG.bbFrom||5000)+"\u2013"+(SEAS_CFG.bbTo||5100)+" da FW26)":"")});
             continue;
           }
           var cdcDesc=String(row[ZC.cdcDesc]||"").trim();
@@ -9653,7 +9659,7 @@ function _manSaveE(){
   if(!m||!cogn||!nome)return _manFail("Matricola, cognome e nome sono obbligatori.");
   if(E.some(function(e){return String(e.m)===m}))return _manFail("Matricola "+m+" già presente in anagrafica.");
   if(isNaN(si)||si<=0)return _manFail("Inserisci uno Store ID valido.");
-  if(isIT&&si>(seas?4999:6500))return _manFail("Store "+si+" escluso"+(seas?" (seasonal: solo store ≤ 4999).":" (store > 6500, sede/ufficio)."));
+  if(isIT&&(seas?!itSeasStoreAllowed(si):si>6500))return _manFail("Store "+si+" escluso"+(seas?" (seasonal: solo store ≤ 4999 e Brian & Barry "+(SEAS_CFG.bbFrom||5000)+"–"+(SEAS_CFG.bbTo||5100)+" da FW26).":" (store > 6500, sede/ufficio)."));
   if(seas&&SEASON_PERIOD==="mid"&&REGION==="international"&&isD(si))return _manFail("Dept store ("+si+") escluso dal Mid-Season — premio solo a fine stagione.");
   var sdesc=_manV("manS"),sname=sdesc;
   if(!sname)sname=_manStoreName(si);

@@ -116,7 +116,7 @@ function _manSaveE(){
   if(!m||!cogn||!nome)return _manFail("Matricola, cognome e nome sono obbligatori.");
   if(E.some(function(e){return String(e.m)===m}))return _manFail("Matricola "+m+" già presente in anagrafica.");
   if(isNaN(si)||si<=0)return _manFail("Inserisci uno Store ID valido.");
-  if(isIT&&si>(seas?4999:6500))return _manFail("Store "+si+" escluso"+(seas?" (seasonal: solo store ≤ 4999).":" (store > 6500, sede/ufficio)."));
+  if(isIT&&(seas?!itSeasStoreAllowed(si):si>6500))return _manFail("Store "+si+" escluso"+(seas?" (seasonal: solo store ≤ 4999 e Brian & Barry "+(SEAS_CFG.bbFrom||5000)+"–"+(SEAS_CFG.bbTo||5100)+" da FW26).":" (store > 6500, sede/ufficio)."));
   if(seas&&SEASON_PERIOD==="mid"&&REGION==="international"&&isD(si))return _manFail("Dept store ("+si+") escluso dal Mid-Season — premio solo a fine stagione.");
   var sdesc=_manV("manS"),sname=sdesc;
   if(!sname)sname=_manStoreName(si);

@@ -14,6 +14,10 @@ const vm = require("vm");
 const SRC = fs.readFileSync(path.join(__dirname, "..", "src", "36-manual-employee", "010_main.js"), "utf8");
 const NUM = fs.readFileSync(path.join(__dirname, "..", "src", "32-import-xlsx", "010_main.js"), "utf8");
 const parseNumSrc = NUM.slice(NUM.indexOf("function parseNum"), NUM.indexOf("// === LOAD ANAGRAFICA FROM EXCEL"));
+// Helper reali di src/50-params: _seasOrd + regola Brian & Barry (itSeasStoreAllowed, seasBBPeriodActive, isBBStoreId)
+const PAR = fs.readFileSync(path.join(__dirname, "..", "src", "50-params", "010_main.js"), "utf8");
+const seasHelpersSrc = PAR.slice(PAR.indexOf("function _seasOrd"), PAR.indexOf("\n", PAR.indexOf("function _seasOrd"))) + "\n" +
+  PAR.slice(PAR.indexOf("var SEAS_BB_START_YEAR"), PAR.indexOf("function isBBSeasEmp"));
 
 function ctx(g, fields) {
   const dom = {};
@@ -26,8 +30,10 @@ function ctx(g, fields) {
     isD: () => false, esc: s => String(s == null ? "" : s), sanitizeCF: s => String(s || "").toUpperCase(),
     syncFcExRates() {}, updateHeaderCount() {},
     document: { getElementById: id => dom[id] || null },
+    CFG_SEASON: "FW", CFG_YEAR: 2026, SEAS_CFG: { bbFrom: 5000, bbTo: 5100 },
   }, g));
   vm.runInContext(parseNumSrc, c);
+  vm.runInContext(seasHelpersSrc, c);
   vm.runInContext(SRC, c);
   c.__dom = dom;
   return c;
@@ -75,9 +81,20 @@ test("Internazionale: richiede ente e stipendio, applica valuta", () => {
   assert.strictEqual(c.E[0].m, "ABC1");
 });
 
-test("Seasonal: store > 4999 escluso in Italia", () => {
+test("Seasonal: store > 4999 escluso in Italia (tranne Brian & Barry 5000-5100 da FW26)", () => {
   const c = ctx({ PRIZE_MODE: "seasonal" }, { manM: "1", manC: "A", manN: "B", manJ: "SM", manSi: "5200", manS: "N", manIb: "100" });
   assert.strictEqual(vm.runInContext("_manSaveE()", c), false);
+  // Brian & Barry: ammesso in FW26 (con target caricato)
+  const b = ctx({ PRIZE_MODE: "seasonal" }, { manM: "2", manC: "A", manN: "B", manJ: "SM", manSi: "5002", manS: "BB MILANO", manIb: "100" });
+  b.SEAS_TARGETS["5002"] = { to: 100000 };
+  assert.strictEqual(vm.runInContext("_manSaveE()", b), true);
+  assert.strictEqual(b.E[0].si, 5002);
+  // prima di FW26 resta escluso
+  const ss = ctx({ PRIZE_MODE: "seasonal", CFG_SEASON: "SS" }, { manM: "3", manC: "A", manN: "B", manJ: "SM", manSi: "5002", manS: "BB MILANO", manIb: "100" });
+  assert.strictEqual(vm.runInContext("_manSaveE()", ss), false);
+  // fuori range B&B (5101) escluso anche in FW26
+  const o = ctx({ PRIZE_MODE: "seasonal" }, { manM: "4", manC: "A", manN: "B", manJ: "SM", manSi: "5101", manS: "N", manIb: "100" });
+  assert.strictEqual(vm.runInContext("_manSaveE()", o), false);
 });
 
 test("FC+VM: AREA su più store, rimozione e riapplicazione dopo re-import", () => {
