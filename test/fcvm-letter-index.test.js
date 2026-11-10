@@ -12,8 +12,9 @@ const path = require("path");
 const vm = require("vm");
 
 const ROOT = path.join(__dirname, "..");
-const LETTER = fs.readFileSync(path.join(ROOT, "src", "46-letter-builder-mensile", "010_main.js"), "utf8");
-const MONO = fs.readFileSync(path.join(ROOT, "src", "_monolith", "app.html"), "utf8");
+// fine riga normalizzati: il checkout Windows puo` avere CRLF (autocrlf)
+const LETTER = fs.readFileSync(path.join(ROOT, "src", "46-letter-builder-mensile", "010_main.js"), "utf8").replace(/\r\n/g, "\n");
+const MONO = fs.readFileSync(path.join(ROOT, "src", "_monolith", "app.html"), "utf8").replace(/\r\n/g, "\n");
 
 // estrae la patch "getLetterHtmlForPrint patch" dal monolite
 const start = MONO.indexOf("var _glhfp=getLetterHtmlForPrint;");

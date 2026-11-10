@@ -1122,7 +1122,7 @@ function sL(mm){
   }
   document.getElementById("lc").innerHTML=isUSA(e.si,e)?buildLetterUSA(e):buildLetter(e);_LT_SHOWN_M=e.m;
 }
-try{ rL(); }catch(_e){ try{setTimeout(rL,0)}catch(_e2){} }
+try{ rL(); }catch(_e){ try{_afterScripts(rL)}catch(_e2){} }
 
 </script>
 <script>

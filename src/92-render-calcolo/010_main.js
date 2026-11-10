@@ -105,8 +105,8 @@ function rC(){
   _ovToggle("data-ov-rid","ov_rid");
   _ovToggle("data-ov-wg","ov_wg");
 }
-try{ rC(); }catch(_e){ try{setTimeout(rC,0)}catch(_e2){} }
-try{ updateAggiunteTabVisibility(); }catch(_e){ try{setTimeout(updateAggiunteTabVisibility,0)}catch(_e2){} }
+try{ rC(); }catch(_e){ try{_afterScripts(rC)}catch(_e2){} }
+try{ updateAggiunteTabVisibility(); }catch(_e){ try{_afterScripts(updateAggiunteTabVisibility)}catch(_e2){} }
 
 // === EXPORT EXCEL (matching TESTATA template) ===
 function exportExcel(){

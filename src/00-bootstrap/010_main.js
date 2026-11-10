@@ -1,6 +1,15 @@
 "use strict";
 var D_DEFAULT=JSON.parse(document.getElementById("jdata").textContent);
 var AUTO_VERSION=3;// bump this when state format changes
+// Esegue fn quando TUTTI gli <script> della pagina sono stati eseguiti (DOMContentLoaded).
+// I primi render (rC, rA, rT...) partono durante il parsing e possono usare funzioni definite in
+// <script> successivi: prima il ritentativo era setTimeout(0), che puo` scattare TRA un blocco
+// <script> e il successivo e fallire di nuovo (es. "pdfRowBtn is not defined").
+function _afterScripts(fn){
+  try{if(typeof document!=="undefined"&&document.readyState==="loading"&&document.addEventListener){
+    document.addEventListener("DOMContentLoaded",function(){try{fn()}catch(e){if(typeof console!=="undefined")console.error(e)}},{once:true});return;}}catch(_e){}
+  setTimeout(fn,0);
+}
 
 // === STATE PERSISTENCE BRIDGE (v8.22+) ===
 // Priorita`:

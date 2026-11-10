@@ -94,4 +94,4 @@ function rA(){
 // se eseguito a parse-time del primo <script>, quella funzione non esiste ancora
 // e l'eccezione bloccherebbe il resto del blocco (compresa la var ENTE_CU).
 // Defer al successivo tick: a quel punto tutti gli <script> sono stati eseguiti.
-try{ if(typeof renderMonitorSection==="function") rA(); else setTimeout(rA,0); }catch(_e){ try{setTimeout(rA,0)}catch(_e2){} }
+try{ if(typeof renderMonitorSection==="function") rA(); else _afterScripts(rA); }catch(_e){ try{_afterScripts(rA)}catch(_e2){} }
