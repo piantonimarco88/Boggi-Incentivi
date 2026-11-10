@@ -18,10 +18,10 @@ function rASeasonal(){
   function calcSeasonalForAnalysis(e){
     // Dept stores: BDG×6 + QTY (50%), nessun boost
     if(isD(e.si)){
-      var bdg6=Math.round((e.ib||0)*6*100)/100;
-      return Math.round((bdg6+bdg6*0.5)*100)/100;
+      var bdg6=Math.round((e.ib||0)*seasSemMonths()*100)/100;
+      return Math.round((bdg6+bdg6*seasDeptQtyPct())*100)/100;
     }
-    var rlSem=(e.rl||0)*6;
+    var rlSem=(e.rl||0)*seasSemMonths();
     var base=rlSem*SEAS_CFG.basePct;
     var kpiSet=seasGetKpiSet(e);
     var kpiScore=0;

@@ -19,6 +19,26 @@ function _applyFcvmParams(p){
   for(var k in FCVM_PARAMS)if(FCVM_PARAMS.hasOwnProperty(k)&&typeof p[k]==="number"&&isFinite(p[k]))FCVM_PARAMS[k]=p[k];
 }
 
+// Cambi valuta da sessione/configurazione: solo cambi numerici > 0; valuta e data facoltative.
+function _applyEnteCu(t){
+  if(!t||typeof t!=="object")return;
+  for(var k in t){var c=t[k];if(!c||!(typeof c.ex==="number"&&c.ex>0))continue;
+    var cur=ENTE_CU[k]||{};ENTE_CU[k]={cu:String(c.cu||cur.cu||"EUR"),ex:c.ex,from:typeof c.from==="string"?c.from:(cur.from||"")};}
+}
+
+// Date di attivazione delle regole (Configurazione): [anno, mese] per SAS nuova policy,
+// USA nuova logica e Coefficiente Inventari. Valori validi: anno 2020-2100, mese 1-12.
+function _ruleCfgGet(){return {sas:[SAS_NEW_START_YEAR,SAS_NEW_START_MONTH],usa:[USA_NEW_START_YEAR,USA_NEW_START_MONTH],demolt:[DEMOLT_CUTOFF_YEAR,DEMOLT_CUTOFF_MONTH]};}
+function _applyRuleCfg(r){
+  if(!r||typeof r!=="object")return;
+  var ok=function(a){return Array.isArray(a)&&a[0]>=2020&&a[0]<=2100&&a[1]>=1&&a[1]<=12&&a[0]%1===0&&a[1]%1===0;};
+  if(ok(r.sas)){SAS_NEW_START_YEAR=r.sas[0];SAS_NEW_START_MONTH=r.sas[1];}
+  if(ok(r.usa)){USA_NEW_START_YEAR=r.usa[0];USA_NEW_START_MONTH=r.usa[1];}
+  if(ok(r.demolt)){DEMOLT_CUTOFF_YEAR=r.demolt[0];DEMOLT_CUTOFF_MONTH=r.demolt[1];}
+}
+var _origRC=null; // impostato quando tutti gli <script> sono caricati (le variabili stanno in moduli diversi)
+_afterScripts(function(){_origRC=JSON.stringify(_ruleCfgGet());});
+
 function saveSession(){
   try{
     _flushDigMobInputs();
@@ -35,7 +55,7 @@ function saveSession(){
       monthly_syly:MONTHLY_SYLY,
       fc_emp:FC_EMP,fc_map:FC_MAP,fc_targets:FC_TARGETS,fc_results:FC_RESULTS,
       fc_syly:FC_SYLY,fc_store_flags:FC_STORE_FLAGS,agg_fcvm:AGG_FCVM,
-      fc_overrides:FC_OVERRIDES,fc_prev_results:FC_PREV_RESULTS,fc_area_sas:FC_AREA_SAS,fcvm_params:FCVM_PARAMS,
+      fc_overrides:FC_OVERRIDES,fc_prev_results:FC_PREV_RESULTS,fc_area_sas:FC_AREA_SAS,fcvm_params:FCVM_PARAMS,ente_cu:ENTE_CU,rule_cfg:_ruleCfgGet(),
       monitor_snaps:MONITOR_SNAPS,mail_log:MAIL_LOG,import_stamps:(typeof IMPORT_STAMPS!=="undefined"?IMPORT_STAMPS:{}),
       ts:new Date().toISOString()
     };
@@ -68,7 +88,7 @@ function _sessionResetData(){
 }
 var _SESSION_CFG_KEYS={tc:"ruoli e KPI",params:"parametri premi",fcvm_params:"soglie FC+VM",sas_matrix:"matrice SAS",
   demolt_matrix_store:"matrice inventari negozi",demolt_matrix_fc:"matrice inventari FC",seas_cfg:"configurazione seasonal",
-  seas_targets:"target seasonal",store_flags:"flag negozi",usa_p:"parametri USA"};
+  seas_targets:"target seasonal",store_flags:"flag negozi",usa_p:"parametri USA",ente_cu:"cambi valuta",rule_cfg:"date di attivazione regole"};
 function loadSession(input){
   var f=input.files[0];if(!f)return;input.value="";
   var reader=new FileReader();reader.onload=function(ev){try{
@@ -101,6 +121,8 @@ function loadSession(input){
     if(state.sick50!==undefined)SICK_50=state.sick50;if(state.sick0!==undefined)SICK_0=state.sick0;
     if(state.params){if(state.params.digMin!==undefined&&state.params.digMinClassic===undefined){state.params.digMinClassic=state.params.digMin;state.params.digMinMobility=state.params.digMin+0.02}for(var k in state.params)if(PARAMS.hasOwnProperty(k))PARAMS[k]=state.params[k]}
     if(state.fcvm_params)_applyFcvmParams(state.fcvm_params);
+    if(state.ente_cu)_applyEnteCu(state.ente_cu);
+    if(state.rule_cfg)_applyRuleCfg(state.rule_cfg);
     if(state.agg)AGG=state.agg;if(state.vl)VL=state.vl;if(state.usa_p){for(var r in state.usa_p)USA_P[r]=state.usa_p[r]}
     if(state.cfg_month)CFG_MONTH=state.cfg_month;if(state.cfg_year)CFG_YEAR=state.cfg_year;if(state.cfg_pdf_path!==undefined)CFG_PDF_PATH=state.cfg_pdf_path;if(state.cfg_season)CFG_SEASON=state.cfg_season;
     if(state.store_flags){STORE_FLAGS={};for(var sid in state.store_flags)STORE_FLAGS[sid]=state.store_flags[sid]}
@@ -118,6 +140,7 @@ function loadSession(input){
       if(state.seas_cfg.kpi_bb)SEAS_CFG.kpi_bb=state.seas_cfg.kpi_bb;
       if(state.seas_cfg.bbFrom!==undefined)SEAS_CFG.bbFrom=state.seas_cfg.bbFrom;
       if(state.seas_cfg.bbTo!==undefined)SEAS_CFG.bbTo=state.seas_cfg.bbTo;
+      ["midPct","semMonths","deptQtyPct"].forEach(function(k){if(typeof state.seas_cfg[k]==="number")SEAS_CFG[k]=state.seas_cfg[k];});
       if(state.seas_cfg.molt_turnover){
         SEAS_CFG.molt_turnover=state.seas_cfg.molt_turnover.map(function(r){
           return{from:r.from===null?-Infinity:r.from,to:r.to===null?Infinity:r.to,coeff:r.coeff,label:r.label||""};
@@ -165,7 +188,7 @@ function loadSession(input){
     document.getElementById("modeP").className="gbtn"+(MODE==="preventivo"?" on":"");document.getElementById("modeC").className="gbtn"+(MODE==="consuntivo"?" on":"");
     document.getElementById("regInt").className="gbtn"+(REGION==="international"?" on":"");document.getElementById("regIt").className="gbtn"+(REGION==="italia"?" on":"");
     updateHeader();updateHeaderCount();
-    _origTC=JSON.stringify(TC);_origS50=SICK_50;_origS0=SICK_0;_origP=JSON.stringify(PARAMS);_origUSA=JSON.stringify(USA_P);_origMonth=CFG_MONTH;_origYear=CFG_YEAR;_origPdfPath=CFG_PDF_PATH;_origSeason=CFG_SEASON;_origSF=JSON.stringify(STORE_FLAGS);_origSeasCfg=JSON.stringify(SEAS_CFG);_origPrizeMode=PRIZE_MODE;_origSeasonPeriod=SEASON_PERIOD;_origSasMatrix=JSON.stringify(SAS_MATRIX);_origDemoltMatrixStore=JSON.stringify(DEMOLT_MATRIX_STORE);_origDemoltMatrixFc=JSON.stringify(DEMOLT_MATRIX_FC);
+    _origTC=JSON.stringify(TC);_origS50=SICK_50;_origS0=SICK_0;_origP=JSON.stringify(PARAMS);_origUSA=JSON.stringify(USA_P);_origMonth=CFG_MONTH;_origYear=CFG_YEAR;_origPdfPath=CFG_PDF_PATH;_origSeason=CFG_SEASON;_origSF=JSON.stringify(STORE_FLAGS);_origCU=JSON.stringify(ENTE_CU);_origRC=JSON.stringify(_ruleCfgGet());_origSeasCfg=JSON.stringify(SEAS_CFG);_origPrizeMode=PRIZE_MODE;_origSeasonPeriod=SEASON_PERIOD;_origSasMatrix=JSON.stringify(SAS_MATRIX);_origDemoltMatrixStore=JSON.stringify(DEMOLT_MATRIX_STORE);_origDemoltMatrixFc=JSON.stringify(DEMOLT_MATRIX_FC);
     var loadMsg;
     if(PRIZE_MODE==="fcvm"){
       var fcvmCount=Object.keys(FC_EMP).length;
@@ -182,14 +205,14 @@ function loadSession(input){
 }
 
 // Save/Dirty
-var _origTC=JSON.stringify(TC),_origS50=SICK_50,_origS0=SICK_0,_origP=JSON.stringify(PARAMS),_origUSA=JSON.stringify(USA_P),_origMonth=CFG_MONTH,_origYear=CFG_YEAR,_origPdfPath=CFG_PDF_PATH,_origSeason=CFG_SEASON,_origSF=JSON.stringify(STORE_FLAGS),_origSeasCfg=JSON.stringify(SEAS_CFG),_origPrizeMode=PRIZE_MODE,_origSeasonPeriod=SEASON_PERIOD,_origSasMatrix=JSON.stringify(SAS_MATRIX),_origDemoltMatrixStore=JSON.stringify(DEMOLT_MATRIX_STORE),_origDemoltMatrixFc=JSON.stringify(DEMOLT_MATRIX_FC);
-function markDirty(){var dirty=JSON.stringify(TC)!==_origTC||SICK_50!==_origS50||SICK_0!==_origS0||JSON.stringify(PARAMS)!==_origP||JSON.stringify(USA_P)!==_origUSA||CFG_MONTH!==_origMonth||CFG_YEAR!==_origYear||CFG_PDF_PATH!==_origPdfPath||CFG_SEASON!==_origSeason||JSON.stringify(STORE_FLAGS)!==_origSF||JSON.stringify(SEAS_CFG)!==_origSeasCfg||JSON.stringify(SAS_MATRIX)!==_origSasMatrix||JSON.stringify(DEMOLT_MATRIX_STORE)!==_origDemoltMatrixStore||JSON.stringify(DEMOLT_MATRIX_FC)!==_origDemoltMatrixFc||PRIZE_MODE!==_origPrizeMode||SEASON_PERIOD!==_origSeasonPeriod;document.getElementById("saveBar").className="save-bar"+(dirty?" show":"");var cnt=document.querySelector(".cnt");if(cnt)cnt.style.paddingBottom=dirty?"60px":""}
+var _origTC=JSON.stringify(TC),_origS50=SICK_50,_origS0=SICK_0,_origP=JSON.stringify(PARAMS),_origUSA=JSON.stringify(USA_P),_origMonth=CFG_MONTH,_origYear=CFG_YEAR,_origPdfPath=CFG_PDF_PATH,_origSeason=CFG_SEASON,_origSF=JSON.stringify(STORE_FLAGS),_origCU=null/* impostato in 32-import-xlsx dopo ENTE_CU (blocco <script> successivo) */,_origSeasCfg=JSON.stringify(SEAS_CFG),_origPrizeMode=PRIZE_MODE,_origSeasonPeriod=SEASON_PERIOD,_origSasMatrix=JSON.stringify(SAS_MATRIX),_origDemoltMatrixStore=JSON.stringify(DEMOLT_MATRIX_STORE),_origDemoltMatrixFc=JSON.stringify(DEMOLT_MATRIX_FC);
+function markDirty(){var dirty=JSON.stringify(TC)!==_origTC||SICK_50!==_origS50||SICK_0!==_origS0||JSON.stringify(PARAMS)!==_origP||JSON.stringify(USA_P)!==_origUSA||CFG_MONTH!==_origMonth||CFG_YEAR!==_origYear||CFG_PDF_PATH!==_origPdfPath||CFG_SEASON!==_origSeason||JSON.stringify(STORE_FLAGS)!==_origSF||JSON.stringify(ENTE_CU)!==_origCU||(_origRC!==null&&JSON.stringify(_ruleCfgGet())!==_origRC)||JSON.stringify(SEAS_CFG)!==_origSeasCfg||JSON.stringify(SAS_MATRIX)!==_origSasMatrix||JSON.stringify(DEMOLT_MATRIX_STORE)!==_origDemoltMatrixStore||JSON.stringify(DEMOLT_MATRIX_FC)!==_origDemoltMatrixFc||PRIZE_MODE!==_origPrizeMode||SEASON_PERIOD!==_origSeasonPeriod;document.getElementById("saveBar").className="save-bar"+(dirty?" show":"");var cnt=document.querySelector(".cnt");if(cnt)cnt.style.paddingBottom=dirty?"60px":""}
 function saveConfig(){
   _flushDigMobInputs();
-  var cfg={tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,seas_cfg:SEAS_CFG,sas_matrix:SAS_MATRIX,demolt_matrix_store:DEMOLT_MATRIX_STORE,demolt_matrix_fc:DEMOLT_MATRIX_FC,usa_p:USA_P,store_flags:STORE_FLAGS,fcvm_params:FCVM_PARAMS,cfg_month:CFG_MONTH,cfg_year:CFG_YEAR,cfg_pdf_path:CFG_PDF_PATH,cfg_season:CFG_SEASON,saved:new Date().toISOString()};
+  var cfg={tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,seas_cfg:SEAS_CFG,sas_matrix:SAS_MATRIX,demolt_matrix_store:DEMOLT_MATRIX_STORE,demolt_matrix_fc:DEMOLT_MATRIX_FC,usa_p:USA_P,store_flags:STORE_FLAGS,fcvm_params:FCVM_PARAMS,ente_cu:ENTE_CU,rule_cfg:_ruleCfgGet(),cfg_month:CFG_MONTH,cfg_year:CFG_YEAR,cfg_pdf_path:CFG_PDF_PATH,cfg_season:CFG_SEASON,saved:new Date().toISOString()};
   var blob=new Blob([JSON.stringify(cfg,null,2)],{type:"application/json"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="boggi_config_"+_sessionFileTag()+".json";a.click();
-  _origTC=JSON.stringify(TC);_origS50=SICK_50;_origS0=SICK_0;_origP=JSON.stringify(PARAMS);_origUSA=JSON.stringify(USA_P);_origMonth=CFG_MONTH;_origYear=CFG_YEAR;_origPdfPath=CFG_PDF_PATH;_origSeason=CFG_SEASON;_origSF=JSON.stringify(STORE_FLAGS);_origSeasCfg=JSON.stringify(SEAS_CFG);_origPrizeMode=PRIZE_MODE;_origSeasonPeriod=SEASON_PERIOD;_origSasMatrix=JSON.stringify(SAS_MATRIX);_origDemoltMatrixStore=JSON.stringify(DEMOLT_MATRIX_STORE);_origDemoltMatrixFc=JSON.stringify(DEMOLT_MATRIX_FC);document.getElementById("saveBar").className="save-bar";autoSave()}
-function discardChanges(){TC=JSON.parse(_origTC);SICK_50=_origS50;SICK_0=_origS0;PARAMS=JSON.parse(_origP);USA_P=JSON.parse(_origUSA);CFG_MONTH=_origMonth;CFG_YEAR=_origYear;CFG_PDF_PATH=_origPdfPath;CFG_SEASON=_origSeason;STORE_FLAGS=JSON.parse(_origSF);SEAS_CFG=JSON.parse(_origSeasCfg);SAS_MATRIX=JSON.parse(_origSasMatrix);DEMOLT_MATRIX_STORE=JSON.parse(_origDemoltMatrixStore);DEMOLT_MATRIX_FC=JSON.parse(_origDemoltMatrixFc);PRIZE_MODE=_origPrizeMode;SEASON_PERIOD=_origSeasonPeriod;document.getElementById("saveBar").className="save-bar";setPrizeMode(PRIZE_MODE);setSeasonPeriod(SEASON_PERIOD);rT();rC()}
+  _origTC=JSON.stringify(TC);_origS50=SICK_50;_origS0=SICK_0;_origP=JSON.stringify(PARAMS);_origUSA=JSON.stringify(USA_P);_origMonth=CFG_MONTH;_origYear=CFG_YEAR;_origPdfPath=CFG_PDF_PATH;_origSeason=CFG_SEASON;_origSF=JSON.stringify(STORE_FLAGS);_origCU=JSON.stringify(ENTE_CU);_origRC=JSON.stringify(_ruleCfgGet());_origSeasCfg=JSON.stringify(SEAS_CFG);_origPrizeMode=PRIZE_MODE;_origSeasonPeriod=SEASON_PERIOD;_origSasMatrix=JSON.stringify(SAS_MATRIX);_origDemoltMatrixStore=JSON.stringify(DEMOLT_MATRIX_STORE);_origDemoltMatrixFc=JSON.stringify(DEMOLT_MATRIX_FC);document.getElementById("saveBar").className="save-bar";autoSave()}
+function discardChanges(){TC=JSON.parse(_origTC);SICK_50=_origS50;SICK_0=_origS0;PARAMS=JSON.parse(_origP);USA_P=JSON.parse(_origUSA);CFG_MONTH=_origMonth;CFG_YEAR=_origYear;CFG_PDF_PATH=_origPdfPath;CFG_SEASON=_origSeason;STORE_FLAGS=JSON.parse(_origSF);ENTE_CU=JSON.parse(_origCU);if(_origRC)_applyRuleCfg(JSON.parse(_origRC));SEAS_CFG=JSON.parse(_origSeasCfg);SAS_MATRIX=JSON.parse(_origSasMatrix);DEMOLT_MATRIX_STORE=JSON.parse(_origDemoltMatrixStore);DEMOLT_MATRIX_FC=JSON.parse(_origDemoltMatrixFc);PRIZE_MODE=_origPrizeMode;SEASON_PERIOD=_origSeasonPeriod;document.getElementById("saveBar").className="save-bar";setPrizeMode(PRIZE_MODE);setSeasonPeriod(SEASON_PERIOD);rT();rC()}
 function loadConfig(evt){var f=evt.target.files[0];if(!f)return;var reader=new FileReader();
   reader.onload=function(ev){try{
     var txt=ev.target.result;
@@ -218,6 +241,8 @@ function loadConfig(evt){var f=evt.target.files[0];if(!f)return;var reader=new F
       for(var k in cfg.params)if(PARAMS.hasOwnProperty(k))PARAMS[k]=cfg.params[k]
     }
     if(cfg.fcvm_params)_applyFcvmParams(cfg.fcvm_params);
+    if(cfg.ente_cu)_applyEnteCu(cfg.ente_cu);
+    if(cfg.rule_cfg)_applyRuleCfg(cfg.rule_cfg);
     if(cfg.demolt_matrix_store){
       if(cfg.demolt_matrix_store.grid)DEMOLT_MATRIX_STORE.grid=cfg.demolt_matrix_store.grid;
       if(cfg.demolt_matrix_store.bpA)DEMOLT_MATRIX_STORE.bpA=cfg.demolt_matrix_store.bpA;
@@ -243,6 +268,7 @@ function loadConfig(evt){var f=evt.target.files[0];if(!f)return;var reader=new F
       if(cfg.seas_cfg.kpi_bb)SEAS_CFG.kpi_bb=cfg.seas_cfg.kpi_bb;
       if(cfg.seas_cfg.bbFrom!==undefined)SEAS_CFG.bbFrom=cfg.seas_cfg.bbFrom;
       if(cfg.seas_cfg.bbTo!==undefined)SEAS_CFG.bbTo=cfg.seas_cfg.bbTo;
+      ["midPct","semMonths","deptQtyPct"].forEach(function(k){if(typeof cfg.seas_cfg[k]==="number")SEAS_CFG[k]=cfg.seas_cfg[k];});
       if(cfg.seas_cfg.molt_turnover){
         SEAS_CFG.molt_turnover=cfg.seas_cfg.molt_turnover.map(function(r){
           return{from:r.from===null?-Infinity:r.from,to:r.to===null?Infinity:r.to,coeff:r.coeff,label:r.label||""};
@@ -261,7 +287,7 @@ function loadConfig(evt){var f=evt.target.files[0];if(!f)return;var reader=new F
     if(cfg.season_period){SEASON_PERIOD=cfg.season_period;setSeasonPeriod(SEASON_PERIOD);}
     // Always sync preventivo/consuntivo buttons
     if(cfg.mode){document.getElementById("modeP").className="gbtn"+(cfg.mode==="preventivo"?" on":"");document.getElementById("modeC").className="gbtn"+(cfg.mode==="consuntivo"?" on":"");}
-    _origTC=JSON.stringify(TC);_origS50=SICK_50;_origS0=SICK_0;_origP=JSON.stringify(PARAMS);_origUSA=JSON.stringify(USA_P);_origMonth=CFG_MONTH;_origYear=CFG_YEAR;_origPdfPath=CFG_PDF_PATH;_origSeason=CFG_SEASON;_origSF=JSON.stringify(STORE_FLAGS);_origSeasCfg=JSON.stringify(SEAS_CFG);_origPrizeMode=PRIZE_MODE;_origSeasonPeriod=SEASON_PERIOD;_origSasMatrix=JSON.stringify(SAS_MATRIX);_origDemoltMatrixStore=JSON.stringify(DEMOLT_MATRIX_STORE);_origDemoltMatrixFc=JSON.stringify(DEMOLT_MATRIX_FC);
+    _origTC=JSON.stringify(TC);_origS50=SICK_50;_origS0=SICK_0;_origP=JSON.stringify(PARAMS);_origUSA=JSON.stringify(USA_P);_origMonth=CFG_MONTH;_origYear=CFG_YEAR;_origPdfPath=CFG_PDF_PATH;_origSeason=CFG_SEASON;_origSF=JSON.stringify(STORE_FLAGS);_origCU=JSON.stringify(ENTE_CU);_origRC=JSON.stringify(_ruleCfgGet());_origSeasCfg=JSON.stringify(SEAS_CFG);_origPrizeMode=PRIZE_MODE;_origSeasonPeriod=SEASON_PERIOD;_origSasMatrix=JSON.stringify(SAS_MATRIX);_origDemoltMatrixStore=JSON.stringify(DEMOLT_MATRIX_STORE);_origDemoltMatrixFc=JSON.stringify(DEMOLT_MATRIX_FC);
     document.getElementById("saveBar").className="save-bar";updateHeader();rT();rC();rA();rSources();rAgg();if(typeof rStores==="function")rStores();autoSave();alert("Configurazione caricata!");
   }catch(ex){alert("Errore nel file: "+ex.message)}};reader.readAsText(f)}
 

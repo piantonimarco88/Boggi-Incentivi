@@ -20,7 +20,7 @@ function rA(){
     if(isOn(e.j,"rs"))g.sy+=getVal(e,"rs")*sm*ex;if(isOn(e.j,"rp"))g.p+=getVal(e,"rp")*sm*ex;
     if(isOn(e.j,"rsa"))g.sa+=getVal(e,"rsa")*sm*ex;if(PARAMS.artEnabled&&isOn(e.j,"ra"))g.ar+=getVal(e,"ra")*sm*ex;
     g.vi+=getVal(e,"vi")*sm*ex;
-    if(MODE==="consuntivo"&&e.ov_wg==="SI"&&isOn(e.j,"rb"))g.wg+=Math.round(e.ib*(PARAMS.workgamePct||0)*100)/100*ex;
+    g.wg+=workgameAmt(e)*ex;
     var ml=e.ml||0;totalMl+=ml;if(ml>0)mlCount++;if(ml>=SICK_50&&ml<SICK_0)ml50++;if(ml>=SICK_0)ml0++});
   var arr=[];for(var k in gr){var v=gr[k];arr.push({nm:k,n:v.n,t:v.t,b:v.b,d:v.d,sy:v.sy,p:v.p,sa:v.sa,ar:v.ar,vi:v.vi,ag:v.ag,wg:v.wg,av:v.n>0?v.t/v.n:0,ml:v.n>0?v.ml/v.n:0})}
   arr.sort(function(a,b){var va=a[aSort.col]||0,vb=b[aSort.col]||0;if(typeof va==="string")return va.toLowerCase()<vb.toLowerCase()?-aSort.dir:aSort.dir;return(va-vb)*aSort.dir});

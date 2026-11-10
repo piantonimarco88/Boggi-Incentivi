@@ -130,7 +130,7 @@ function exportExcel(){
     var rcs=isOn(e.j,"rcs")?(getVal(e,"rcs")||0)*sm:0;
     var ra=PARAMS.artEnabled&&isOn(e.j,"ra")?getVal(e,"ra")*sm:0;
     var vi=(getVal(e,"vi")||0)*sm,pq=isOn(e.j,"pq")?(getVal(e,"pq")||0)*sm:0;
-    var wg=(MODE==="consuntivo"&&e.ov_wg==="SI"&&isOn(e.j,"rb"))?Math.round(e.ib*(PARAMS.workgamePct||0)*100)/100:0;
+    var wg=workgameAmt(e);
     var at=aggTotal(e.m);
     // Add aggiunte per-KPI
     var ag=AGG[e.m]||{};
@@ -237,9 +237,10 @@ function exportExcelConsuntivoIT(){
     var rbCalc=isOn(e.j,"rb")?getVal(e,"rb")*sm:0;
     var rb=e.ibFromAY?0:rbCalc;
     var rbn=e.ibFromAY?rbCalc:0;
-    // Workgame: nessun codice payroll dedicato — confluisce nel cod. 225 (PREMIO DI RISULTATO),
-    // stessa logica di exportTracciatoPagamenti(). Qui non c'è colonna TOTALE che lo raccolga.
-    if(!e.ibFromAY&&MODE==="consuntivo"&&e.ov_wg==="SI"&&isOn(e.j,"rb"))rb+=Math.round(e.ib*(PARAMS.workgamePct||0)*100)/100;
+    // Workgame: nessun codice payroll dedicato — segue il BDG: cod. 225 (PREMIO DI RISULTATO,
+    // colonna BDG LORDO) oppure, per chi ha il BDG in TRASFERTE (ibFromAY), cod. 380 (colonna
+    // BDG NETTO). Stessa logica di exportTracciatoPagamenti(). Prima per ibFromAY veniva escluso.
+    if(!e.ibFromAY)rb+=workgameAmt(e);else rbn+=workgameAmt(e);
     var rd=isOn(e.j,"rd")?getVal(e,"rd")*sm:0;
     var rs=isOn(e.j,"rs")?getVal(e,"rs")*sm:0;
     var rp=isOn(e.j,"rp")?getVal(e,"rp")*sm:0;

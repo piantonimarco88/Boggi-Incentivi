@@ -115,7 +115,7 @@ function saveAllPDFs(){
 // then assemble pages in jsPDF manually — bypassing the viewport-height limit of html2canvas.
 function saveAllPDFsZip(){
   if(typeof JSZip==="undefined"){alert("Libreria JSZip non caricata.");return}
-  if(typeof html2pdf==="undefined"){alert("Libreria html2pdf non caricata.");return}
+  if(typeof html2canvas==="undefined"||!(window.jspdf||window.jsPDF)){alert("Librerie html2canvas/jsPDF non caricate.");return}
   var miss=canProduceLetter();
   if(miss.length>0){alert("Impossibile generare le lettere.\n\nDati mancanti:\n\u2022 "+miss.join("\n\u2022 ")+"\n\nCarica i dati dalla tab Fonti Dati.");return}
   var isSeasonal=PRIZE_MODE==="seasonal";

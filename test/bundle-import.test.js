@@ -122,6 +122,27 @@ test("vendite USA: senza colonna negozio il cognome deve essere unico tra tutti 
   assert.match(alert, /1 righe NON abbinate perché ambigue.*SMITH J\./s);
 });
 
+test("SheetJS vera (src/vendor-xlsx): un file .xlsx scritto e riletto passa dall'import dell'app", () => {
+  const fs = require("fs"), path = require("path");
+  const app = loadBundle({ manualTimers: true });
+  const dir = path.join(__dirname, "..", "src", "vendor-xlsx");
+  const lib = fs.readdirSync(dir).filter(f => /^010_/.test(f))[0];
+  app.run(fs.readFileSync(path.join(dir, lib), "utf8"));            // carica la libreria vera nel contesto
+  assert.strictEqual(app.run("XLSX.version"), "0.20.3");
+  app.run(`PRIZE_MODE="mensile";MODE="consuntivo";CFG_YEAR=2026;CFG_MONTH=11;REGION="international";
+    E=[{m:"U1",c:"SMITH",n:"JOHN",si:1321,cu:"USD",ps:"NO"},{m:"U3",c:"BROWN",n:"MARY",si:1321,cu:"USD",ps:"NO"}];D.usa={};
+    var wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["Employee ID","Employee Last Name","Employee First Name","Store","Gross Sales"],
+      ["x1","Smith","John",1321,1234.56],["x2","Brown","Mary",1321,"2.000,50"]]),"Sales");
+    var __buf=XLSX.write(wb,{type:"array",bookType:"xlsx"});`);
+  app.nextFileText = app.run("__buf");
+  app.run("loadResultsExcel({name:'usa_sales_novembre_2026.xlsx'})");
+  app.flushTimers();
+  const usa = JSON.parse(app.run("JSON.stringify(D.usa)"));
+  assert.strictEqual(usa.U1.ps, 1234.56);
+  assert.strictEqual(usa.U3.ps, 2000.5, "numero come testo in formato italiano");
+});
+
 test("vendite USA: Employee ID uguale alla matricola ha la precedenza", () => {
   const { usa } = usaImport([H, ["U2", "SMITH", "X", 1321, "700"]]);
   assert.strictEqual(usa.U2.ps, 700);

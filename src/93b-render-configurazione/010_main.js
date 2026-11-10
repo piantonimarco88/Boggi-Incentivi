@@ -80,7 +80,7 @@ function rT(){try{
     h+='<div class="cfg-row"><span class="cfg-label">Giorni per 50%</span><input class="cfg-input" type="number" id="sick50_fcvm" value="'+SICK_50+'" min="1" max="30"></div>';
     h+='<div class="cfg-row"><span class="cfg-label">Giorni per 0%</span><input class="cfg-input" type="number" id="sick0_fcvm" value="'+SICK_0+'" min="1" max="31"></div>';
     h+='<div style="font-size:10px;color:#8a8680;margin-top:8px;padding:8px 12px;background:#faf9f7;border-radius:5px;border:1px solid #e5e1db">Assenze &ge; <b>'+SICK_50+'gg</b> → 50% del premio &nbsp;&#183;&nbsp; Assenze &ge; <b>'+SICK_0+'gg</b> → 0%</div></div>';
-    document.getElementById("p3").innerHTML=h;
+    document.getElementById("p3").innerHTML=h+cfgRatesSectionHtml()+cfgRulesSectionHtml();cfgRatesBind();cfgRulesBind();
     // Bindings
     var selM=document.getElementById("cfgMonth2");
     if(selM)selM.onchange=function(){CFG_MONTH=parseInt(this.value);markDirty();updateHeader();rC();rA();rT();};
@@ -261,7 +261,7 @@ function rT(){try{
 
 
   // --- Close seasonal early-return path ---
-  document.getElementById("p3").innerHTML=h;
+  document.getElementById("p3").innerHTML=h+cfgRatesSectionHtml()+cfgRulesSectionHtml();cfgRatesBind();cfgRulesBind();
   // Seasonal-only bindings
   var seasBase2=document.getElementById("seas_basePct");
   if(seasBase2)seasBase2.onchange=function(){SEAS_CFG.basePct=parseFloat(this.value)/100||0.2;markDirty();autoSave();rC();rA();};
@@ -562,7 +562,7 @@ function rT(){try{
 
   h+='<div class="wb"><div style="font-size:11px;font-weight:700;color:#856404;margin-bottom:4px">\u26a0</div><div style="font-size:11px;color:#856404;line-height:1.5">Le modifiche ai parametri e toggle si applicano immediatamente ai calcoli e alle lettere.</div></div>';
 
-  document.getElementById("p3").innerHTML=h;
+  document.getElementById("p3").innerHTML=h+cfgRatesSectionHtml()+cfgRulesSectionHtml();cfgRatesBind();cfgRulesBind();
   document.getElementById("sick50").onchange=function(){SICK_50=parseInt(this.value)||1;markDirty();rC();rA();rT()};
   // KPI variants toggle
   var togKPI=document.getElementById("toggleKPI");if(togKPI)togKPI.onclick=function(){var rows=document.querySelectorAll(".kpi-variant");var show=rows.length>0&&rows[0].style.display==="none";rows.forEach(function(r){r.style.display=show?"":"none"});togKPI.textContent=show?"Nascondi varianti \u25b2":"Mostra varianti \u25bc"};
@@ -709,3 +709,85 @@ function usaRow(role,key,l,d,dv,u,step){return'<div class="cfg-row"><div style="
 // Defer per evitare race con funzioni definite in <script> successivi (vedi nota in 93-render-analisi).
 try{ rT(); }catch(_e){ try{_afterScripts(rT)}catch(_e2){} }
 try{ updateHeader(); }catch(_e){ try{_afterScripts(updateHeader)}catch(_e2){} }
+
+// === Cambi valuta in Configurazione (v9.113) =================================
+// ENTE_CU (32-import-xlsx) resta la tabella di partenza; qui diventa visibile e modificabile,
+// con una data «valido dal», e viene salvata in sessione e nel file di configurazione.
+// Si usa quando il file del mese non porta il cambio reale. Modificando un cambio l'app
+// chiede se applicarlo ai dipendenti gia` caricati di quell'ente (FC+VM lo legge sempre da qui).
+function cfgRatesSectionHtml(){
+  // al primo disegno (durante il caricamento) ENTE_CU puo` non essere ancora assegnata
+  if(typeof ENTE_CU==="undefined"||!ENTE_CU)return "";
+  var keys=Object.keys(ENTE_CU).filter(function(k){return ENTE_CU[k]&&ENTE_CU[k].cu!=="EUR";}).sort();
+  if(!keys.length)return "";
+  var cnt={};(E||[]).forEach(function(e){var k=String(e.en);cnt[k]=(cnt[k]||0)+1;});
+  var h='<div class="wg" style="margin-bottom:20px"><div class="wg-title">\ud83d\udcb1 Cambi valuta (valuta locale \u2192 EUR)</div>';
+  h+='<div style="font-size:10px;color:#8a8680;margin-bottom:8px">Usati quando il file del mese non riporta il cambio. Se ne modifichi uno, ti viene chiesto se applicarlo ai dipendenti gi\u00e0 caricati di quell\'ente. Ente 209 (CHF): 1,3756 \u00e8 il valore storico dell\'app; lo strumento Statistiche usa 1,10.</div>';
+  h+='<table style="width:100%;border-collapse:collapse;font-size:11px"><tr style="color:#8a8680;text-align:left"><th style="padding:4px">Ente</th><th style="padding:4px">Valuta</th><th style="padding:4px">1 unit\u00e0 = EUR</th><th style="padding:4px">Valido dal</th><th style="padding:4px">Dipendenti</th></tr>';
+  keys.forEach(function(k){var c=ENTE_CU[k],lbl=(D.tr&&D.tr[k]&&D.tr[k].d)?D.tr[k].d:"";
+    h+='<tr style="border-top:1px solid #eae7e1"><td style="padding:4px">'+esc(k)+(lbl&&lbl!==c.cu?' <span style="color:#a09a92">'+esc(lbl)+'</span>':'')+'</td><td style="padding:4px">'+esc(c.cu)+'</td>'+
+      '<td style="padding:4px"><input class="cfg-input" style="width:100px" type="number" step="0.00001" min="0" data-cu-ex="'+esc(k)+'" value="'+c.ex+'"></td>'+
+      '<td style="padding:4px"><input class="cfg-input" style="width:130px" type="date" data-cu-from="'+esc(k)+'" value="'+esc(c.from||"")+'"></td>'+
+      '<td style="padding:4px;color:#8a8680">'+(cnt[k]||0)+'</td></tr>';});
+  return h+'</table></div>';
+}
+function cfgRatesBind(){
+  document.querySelectorAll("input[data-cu-ex]").forEach(function(inp){inp.onchange=function(){
+    var k=inp.getAttribute("data-cu-ex"),v=parseFloat(String(inp.value).replace(",","."));
+    if(!(v>0)||!ENTE_CU[k]){alert("Cambio non valido.");rT();return;}
+    ENTE_CU[k].ex=v;
+    var emps=(E||[]).filter(function(e){return String(e.en)===k&&e.cu===ENTE_CU[k].cu&&e.ex!==v;});
+    if(emps.length&&confirm("Applicare il cambio "+v+" "+ENTE_CU[k].cu+"\u2192EUR ai "+emps.length+" dipendenti dell'ente "+k+" gi\u00e0 caricati?\n\nSe scegli Annulla il nuovo cambio vale solo per i prossimi import."))
+      emps.forEach(function(e){e.ex=v;});
+    markDirty();autoSave();rC();rA();rT();
+  };});
+  document.querySelectorAll("input[data-cu-from]").forEach(function(inp){inp.onchange=function(){
+    var k=inp.getAttribute("data-cu-from");if(!ENTE_CU[k])return;
+    ENTE_CU[k].from=inp.value||"";markDirty();autoSave();
+  };});
+}
+
+// === Date di attivazione regole e coefficienti seasonal (v9.113) ============
+// Prima scritti nel codice: ora modificabili qui e salvati in sessione/configurazione
+// (rule_cfg e seas_cfg). Default = valori storici.
+function cfgRulesSectionHtml(){
+  if(typeof SAS_NEW_START_YEAR==="undefined"||typeof USA_NEW_START_YEAR==="undefined"||typeof DEMOLT_CUTOFF_YEAR==="undefined"||SAS_NEW_START_YEAR==null||USA_NEW_START_YEAR==null||DEMOLT_CUTOFF_YEAR==null)return "";
+  var MN=["","Gen","Feb","Mar","Apr","Mag","Giu","Lug","Ago","Set","Ott","Nov","Dic"];
+  function sel(id,y,m){
+    var s='<select class="cfg-input" style="width:80px" data-rule-m="'+id+'">';
+    for(var i=1;i<=12;i++)s+='<option value="'+i+'"'+(i===m?' selected':'')+'>'+MN[i]+'</option>';
+    return s+'</select> <input class="cfg-input" style="width:75px" type="number" min="2020" max="2100" data-rule-y="'+id+'" value="'+y+'">';
+  }
+  var r=_ruleCfgGet();
+  var row=function(l,d,ctl){return '<div class="cfg-row"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">'+l+'</span><span style="font-size:10px;color:#8a8680">'+d+'</span></div><div style="display:flex;gap:4px;align-items:center">'+ctl+'</div></div>';};
+  var h='<div class="wg" style="margin-bottom:20px"><div class="wg-title">\ud83d\udcc6 Date di attivazione regole</div>';
+  h+='<div style="font-size:10px;color:#8a8680;margin-bottom:6px">Dal mese indicato in poi vale la regola nuova; prima resta la precedente.</div>';
+  h+=row("SAS nuova policy","SAS \u2192 fatturato (mensile e FC+VM); SAS individuale ritirato",sel("sas",r.sas[0],r.sas[1]));
+  h+=row("USA nuova logica","Vendite personali \u00d7 rate/bonus target + trimestrale",sel("usa",r.usa[0],r.usa[1]));
+  h+=row("Coefficiente Inventari","Riduzione premio SM/VSM e FC in base agli inventari",sel("demolt",r.demolt[0],r.demolt[1]));
+  h+='</div>';
+  h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">\ud83c\udfc6 Seasonal \u2014 coefficienti</div>';
+  h+=row("Quota mid-season","Parte del premio di stagione pagata a met\u00e0 stagione",'<input class="cfg-input" style="width:75px" type="number" step="1" min="0" max="100" data-seas-coef="midPct" data-pct="1" value="'+Math.round(seasMidPct()*1000)/10+'"> %');
+  h+=row("Mesi della stagione","Retribuzione e BDG Dept di stagione = mensile \u00d7 mesi",'<input class="cfg-input" style="width:75px" type="number" step="1" min="1" max="12" data-seas-coef="semMonths" value="'+seasSemMonths()+'">');
+  h+=row("QTY Dept","Premio QTY = % del BDG Dept di stagione",'<input class="cfg-input" style="width:75px" type="number" step="1" min="0" max="200" data-seas-coef="deptQtyPct" data-pct="1" value="'+Math.round(seasDeptQtyPct()*1000)/10+'"> %');
+  return h+'</div>';
+}
+function cfgRulesBind(){
+  function upd(id){
+    var m=document.querySelector('[data-rule-m="'+id+'"]'),y=document.querySelector('[data-rule-y="'+id+'"]');
+    if(!m||!y)return;var o={};o[id]=[parseInt(y.value,10),parseInt(m.value,10)];
+    var before=JSON.stringify(_ruleCfgGet());_applyRuleCfg(o);
+    if(JSON.stringify(_ruleCfgGet())===before){alert("Data non valida (anno 2020-2100).");}
+    markDirty();autoSave();rC();rA();rT();
+  }
+  ["sas","usa","demolt"].forEach(function(id){
+    var m=document.querySelector('[data-rule-m="'+id+'"]'),y=document.querySelector('[data-rule-y="'+id+'"]');
+    if(m)m.onchange=function(){upd(id);};if(y)y.onchange=function(){upd(id);};
+  });
+  document.querySelectorAll("input[data-seas-coef]").forEach(function(inp){inp.onchange=function(){
+    var k=inp.getAttribute("data-seas-coef"),v=parseFloat(String(inp.value).replace(",","."));
+    if(isNaN(v)){rT();return;}
+    if(inp.getAttribute("data-pct"))v=v/100;
+    SEAS_CFG[k]=v;markDirty();autoSave();rC();rA();rT();
+  };});
+}

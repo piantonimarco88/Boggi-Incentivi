@@ -138,6 +138,10 @@ function _seasRangeLabel(r){
 }
 var SEAS_CFG = {
   basePct: 0.20,            // % retribuzione semestrale (base incentivo)
+  // v9.113: coefficienti prima scritti nel codice, ora in Configurazione (e in sessione)
+  midPct: 0.30,             // quota del premio di stagione pagata al mid-season
+  semMonths: 6,             // mesi della stagione (retribuzione e BDG Dept = mensile x mesi)
+  deptQtyPct: 0.5,          // premio QTY Dept = % del BDG Dept di stagione
   sasMaxHours: 4,           // SAS raggiunto se ore medie < sasMaxHours (meno è meglio)
   accTarget: 0.99,          // Target Accuracy — unica fonte di verità (SEAS_TARGETS[sid].acc è sempre 0.99 di default, nessun import lo sovrascrive per-negozio)
   kpi: [

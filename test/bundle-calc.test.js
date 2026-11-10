@@ -152,6 +152,38 @@ test("Coefficiente Inventari: da ottobre 2026 riduce le voci SM/VSM in consuntiv
   assert.strictEqual(nov.T002.kpi.rb, ago.T002.kpi.rb);
 });
 
+test("Workgame: stesso importo in calcolo, analisi, export e tracciato; con BDG in TRASFERTE va nel cod. 380", () => {
+  const app = loadBundle();
+  app.run(`PRIZE_MODE="mensile";REGION="italia";MODE="consuntivo";CFG_YEAR=2026;CFG_MONTH=11;
+    STORE_FLAGS={};initStoreFlags();D.t={"1201":{to:100000}};D.c={"1201":{sc:105000}};MONTHLY_SYLY={};
+    DEMOLT_RESULT_STORE={};VL={};AGG={};PARAMS.workgamePct=0.3;
+    E=[{m:"7000001",c:"A",n:"A",f:"SA",j:"SA",si:1201,s:"1201 T",ib:500,rl:500,en:210,cu:"EUR",ex:1,ml:0,ps:"NO",ov_wg:"SI"},
+       {m:"7000002",c:"B",n:"B",f:"SA",j:"SA",si:1201,s:"1201 T",ib:500,rl:500,en:210,cu:"EUR",ex:1,ml:0,ps:"NO",ov_wg:"SI",ibFromAY:true},
+       {m:"7000003",c:"C",n:"C",f:"SA",j:"SA",si:1201,s:"1201 T",ib:500,rl:500,en:210,cu:"EUR",ex:1,ml:0,ps:"NO"}];`);
+  assert.strictEqual(app.run("workgameAmt(E[0])"), 150);
+  assert.strictEqual(app.run("workgameAmt(E[2])"), 0);
+  assert.strictEqual(app.run("workgameAmt(E[0],'preventivo')"), 0);
+  // totale: chi ha il Workgame prende 150 in piu` del collega identico senza
+  assert.strictEqual(app.run("Math.round((calcE(E[0])-calcE(E[2]))*100)/100"), 150);
+  assert.strictEqual(app.run("Math.round((calcE(E[1])-calcE(E[2]))*100)/100"), 150);
+  // tracciato pagamenti Zucchetti: BDG+Workgame nel 225, oppure nel 380 per chi ha il BDG in TRASFERTE
+  app.run("exportTracciatoPagamenti()");
+  const lines = app.lastBlobText().split("\n").map(l => l.split(";"));
+  const bdgOf = (m, cod) => lines.filter(r => r[1] === m && r[6] === String(cod)).map(r => parseInt(r[7], 10) / 100);
+  const base = bdgOf("7000003", 225)[0];
+  assert.deepStrictEqual(bdgOf("7000001", 225), [base + 150]);
+  assert.deepStrictEqual(bdgOf("7000002", 225), [], "BDG in TRASFERTE: niente nel 225");
+  assert.deepStrictEqual(bdgOf("7000002", 380), [base + 150], "Workgame pagato nel 380 insieme al BDG (prima mancava)");
+  // export Excel consuntivo IT: colonna BDG LORDO (11) o BDG NETTO (12)
+  app.run(`var __rows=null;XLSX={utils:{aoa_to_sheet:function(r){__rows=r;return {}},book_new:function(){return {}},book_append_sheet:function(){}},writeFile:function(){}};
+    exportExcelConsuntivoIT();`);
+  const rows = JSON.parse(app.run("JSON.stringify(__rows)"));
+  const r = m => rows.find(x => x[3] === m);
+  assert.strictEqual(r("7000001")[11] - r("7000003")[11], 150);
+  assert.strictEqual(r("7000002")[11], 0);
+  assert.strictEqual(r("7000002")[12], base + 150);
+});
+
 test("premi congelati: tutti gli scenari coincidono con test/fixtures/calc-golden.json", () => {
   const app = freshApp();
   const out = {};

@@ -282,7 +282,13 @@ function isRidotto(e){
   return isRidottoStore(String(e.si));
 }
 // calcE: normal calc + aggiunte. Returns 0 if premio sospeso in consuntivo
-function calcE(e){if(MODE==="consuntivo"&&e.ps==="SI")return 0;if(isUSA(e.si,e)){if(MODE==="preventivo")return 0;return calcUSA(e)+aggTotal(e.m);}var t=0,sm=sickMult(e.ml);IT.forEach(function(it){if(it.k==="vi")return;if(it.k==="ra"&&!PARAMS.artEnabled)return;if(isOn(e.j,it.k))t+=getVal(e,it.k)});t+=getVal(e,"vi");var result=Math.round(t*sm*100)/100+aggTotal(e.m);if(MODE==="consuntivo"&&e.ov_wg==="SI"&&isOn(e.j,"rb"))result+=Math.round(e.ib*(PARAMS.workgamePct||0)*100)/100;return result}
+function calcE(e){if(MODE==="consuntivo"&&e.ps==="SI")return 0;if(isUSA(e.si,e)){if(MODE==="preventivo")return 0;return calcUSA(e)+aggTotal(e.m);}var t=0,sm=sickMult(e.ml);IT.forEach(function(it){if(it.k==="vi")return;if(it.k==="ra"&&!PARAMS.artEnabled)return;if(isOn(e.j,it.k))t+=getVal(e,it.k)});t+=getVal(e,"vi");var result=Math.round(t*sm*100)/100+aggTotal(e.m);result+=workgameAmt(e);return result}
+// Workgame (v9.113): UNICA formula, usata da calcolo, tab, analisi, monitor, lettera, export e
+// tracciato pagamenti (prima ricopiata in 7 punti). In consuntivo, con la spunta Workgame e il
+// BDG attivo per il ruolo: % workgame del BDG nominale, al centesimo, fuori da malattia e
+// Coefficiente Inventari. mode: per il Monitor che ricalcola snapshot di un altro periodo.
+function workgameOn(e,mode){return (mode||MODE)==="consuntivo"&&!!e&&e.ov_wg==="SI"&&isOn(e.j,"rb");}
+function workgameAmt(e,mode){return workgameOn(e,mode)?Math.round((e.ib||0)*(PARAMS.workgamePct||0)*100)/100:0;}
 function toEUR(val,e){return(val||0)*(e.ex||1)}
 function calcEUR(e){return toEUR(calcE(e),e)}
 function gRC(j,f){if(f==="STK"||j==="STK"||(j&&(j.indexOf("STOCK")>=0||j.indexOf("ATOCK")>=0)))return"Stock Associate/Runner";if(f==="SM"||(j&&j.indexOf("SM")>=0&&j.indexOf("VSM")<0))return"Store Manager";if(f==="VSM"||(j&&j.indexOf("VSM")>=0))return"Vice Store Manager";if(f==="SSA"||f==="SSAP")return"Senior Sales Advisor";if(f==="JSA")return"Junior Sales Advisor";if(j&&j.indexOf("SCS")>=0)return"Addetto Cassa";return"Sales Advisor"}

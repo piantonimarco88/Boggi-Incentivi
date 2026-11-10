@@ -48,8 +48,7 @@ function _buildMensileSnap(){
       // BDG (rb): include tutti i dipendenti (ibFromAY inclusi — il flag cambia solo il codice
       // Zucchetti 225→380, non l'importo del premio che calcE calcola ugualmente)
       rb=isOn(e.j,"rb")?getVal(e,"rb")*sm:0;
-      if(oldMode==="consuntivo"&&e.ov_wg==="SI"&&isOn(e.j,"rb"))
-        rb+=Math.round(e.ib*(PARAMS.workgamePct||0)*100)/100;
+      rb+=workgameAmt(e,oldMode);
       var ag=AGG[e.m]||{};
       vi+=(ag.vi||0);rd+=(ag.rd||0);rp+=(ag.rp||0);rs+=(ag.rs||0);
       ra+=(ag.ra||0);rsa+=(ag.rsa||0);rdc+=(ag.rdc||0);

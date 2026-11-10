@@ -101,8 +101,18 @@ function expandInserts(content) {
     if (files.length === 0) {
       throw new Error("BUNDLE_INSERT:" + dirName + " — nessun file in " + path.relative(ROOT, dir));
     }
+    const isVendor = dirName.indexOf("vendor-") === 0;
     return files.map(f => {
       const c = fs.readFileSync(f, "utf8");
+      if (isVendor) {
+        // Librerie di terzi minificate: niente guardia mojibake (le tabelle codepage di
+        // SheetJS la farebbero scattare), ma controllo che l'inserimento dentro <script>
+        // sia sicuro: "</script" chiuderebbe il tag, "<!--" + "<script" altera il parsing.
+        if (/<\/script/i.test(c) || (/<!--/.test(c) && /<script/i.test(c))) {
+          throw new Error("Libreria " + path.relative(ROOT, f) + " non inseribile in <script> (contiene </script o <!-- e <script): va incapsulata.");
+        }
+        return c;
+      }
       const hits = checkEncoding(c, path.relative(ROOT, f));
       if (hits.length) {
         throw new Error("ENCODING CORROTTO (mojibake) rilevato:\n" + hits.join("\n") +

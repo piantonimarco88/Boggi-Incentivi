@@ -104,6 +104,40 @@ test("Carica configurazione: non tocca aggiunte e Visual (dati del mese)", () =>
   assert.deepStrictEqual(JSON.parse(app.run("JSON.stringify(VL)")), { S001: [{ sid: "1201", amt: 150 }] });
 });
 
+test("cambi valuta, date di attivazione e coefficienti seasonal: salvati e ricaricati da sessione e configurazione", () => {
+  const app = loadBundle();
+  app.run(SETUP);
+  app.run(`ENTE_CU["211"].ex=1.2;ENTE_CU["211"].from="2026-11-01";
+    _applyRuleCfg({sas:[2026,8],usa:[2027,1],demolt:[2026,12]});
+    SEAS_CFG.midPct=0.25;SEAS_CFG.semMonths=5;SEAS_CFG.deptQtyPct=0.4;`);
+  const snap = () => JSON.parse(app.run(`JSON.stringify({cu:ENTE_CU["211"],r:_ruleCfgGet(),m:[seasMidPct(),seasSemMonths(),seasDeptQtyPct()],sas:sasNewActive()})`));
+  const before = snap();
+  assert.deepStrictEqual(before.r, { sas: [2026, 8], usa: [2027, 1], demolt: [2026, 12] });
+  for (const how of ["saveSession", "saveConfig"]) {
+    app.run(how + "()");
+    const file = app.lastBlobText();
+    app.run(`ENTE_CU["211"]={cu:"GBP",ex:1.1692};_applyRuleCfg({sas:[2026,7],usa:[2026,9],demolt:[2026,10]});
+      SEAS_CFG.midPct=0.30;SEAS_CFG.semMonths=6;SEAS_CFG.deptQtyPct=0.5;`);
+    app.nextFileText = file;
+    app.run(how === "saveSession" ? "loadSession({files:[{}],value:''})" : "loadConfig({target:{files:[{}],value:''}})");
+    assert.deepStrictEqual(snap(), before, how);
+  }
+  // valori non validi ignorati
+  app.run(`_applyRuleCfg({sas:[1999,13]});_applyEnteCu({"211":{ex:-1},"209":{ex:"x"}});`);
+  assert.deepStrictEqual(snap(), before);
+});
+
+test("Configurazione: cambiando un cambio l'app propone di applicarlo ai dipendenti gia` caricati", () => {
+  const app = loadBundle({ confirm: true });
+  app.run(`PRIZE_MODE="mensile";REGION="international";MODE="consuntivo";
+    E=[{m:"G1",en:211,cu:"GBP",ex:1.1692,si:1101,j:"SA",f:"SA",ps:"NO"},{m:"G2",en:211,cu:"GBP",ex:1.1692,si:1101,j:"SA",f:"SA",ps:"NO"},
+       {m:"C1",en:209,cu:"CHF",ex:1.3756,si:1001,j:"SA",f:"SA",ps:"NO"}];
+    rT();var __in={value:"1.25",getAttribute:function(){return "211"}};
+    document.querySelectorAll=function(sel){return sel==="input[data-cu-ex]"?[__in]:[]};cfgRatesBind();__in.onchange();`);
+  assert.deepStrictEqual(JSON.parse(app.run("JSON.stringify(E.map(function(e){return e.ex}))")), [1.25, 1.25, 1.3756]);
+  assert.strictEqual(app.run("ENTE_CU['211'].ex"), 1.25);
+});
+
 test("Carica sessione: un file che non e` una sessione viene rifiutato senza toccare i dati", () => {
   const app = loadBundle();
   app.run(SETUP);

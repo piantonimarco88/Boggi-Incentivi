@@ -6,9 +6,9 @@ function buildSeasonalLetterAuto(e){
 function buildMidSeasonLetter(e){
   var cu=e.cu||"EUR";
   var isP=MODE==="preventivo";
-  var rlSem=(e.rl||0)*6;
+  var rlSem=(e.rl||0)*seasSemMonths();
   var base=rlSem*SEAS_CFG.basePct;           // RML×6×20%
-  var midBase=Math.round(base*0.30*100)/100; // 30% del max KPI semestrale
+  var midBase=Math.round(base*seasMidPct()*100)/100; // 30% del max KPI semestrale
   var kpiSet=seasGetKpiSet(e);
   var auto=isP?null:seasAutoData(e);
   var lang=trLang(e);
@@ -22,7 +22,7 @@ function buildMidSeasonLetter(e){
     if(!seasKpiActive(kdef.k,e))return;
     kpiScoreMax+=kdef.weight;
   });
-  var midMax=Math.round(base*0.30*kpiScoreMax*100)/100; // max erogabile mid
+  var midMax=Math.round(base*seasMidPct()*kpiScoreMax*100)/100; // max erogabile mid
 
   // Sbarramento (solo consuntivo)
   var sbarOk=true;
@@ -45,7 +45,7 @@ function buildMidSeasonLetter(e){
   } else if(sbarOk){
     kpiSet.forEach(function(kdef){
       if(!seasKpiActive(kdef.k,e))return;
-      if(seasIsKpiAchieved(kdef,auto)) kpiEarned+=Math.round(base*0.30*kdef.weight*100)/100;
+      if(seasIsKpiAchieved(kdef,auto)) kpiEarned+=Math.round(base*seasMidPct()*kdef.weight*100)/100;
     });
     kpiEarned=Math.round(kpiEarned*100)/100;
   }
@@ -108,7 +108,7 @@ function buildMidSeasonLetter(e){
   kpiSet.forEach(function(kdef){
     if(kdef.weight===0)return;
     var achieved=isP||(sbarOk&&seasIsKpiAchieved(kdef,auto));
-    var kpiAmt=Math.round(base*0.30*kdef.weight*100)/100;
+    var kpiAmt=Math.round(base*seasMidPct()*kdef.weight*100)/100;
     var earnedAmt=achieved?kpiAmt:0;
     var kpiLabel=({sy:T.sy_label,sr:T.sr_label,sas:T.sas_label,acc:T.acc_label,upt:T.upt_label})[kdef.k]||kdef.label;
 

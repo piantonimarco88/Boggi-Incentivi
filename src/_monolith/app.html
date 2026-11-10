@@ -5,11 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Boggi Milano - Sistema Incentivazione V5.8</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<!-- Librerie incluse nel bundle (src/vendor-*), non piu` da CDN: l'app non dipende da internet
+     ne' da terzi per il codice. html2pdf rimosso (non usato). -->
+<script data-lib="xlsx">/*BUNDLE_INSERT:vendor-xlsx*/</script>
+<script data-lib="jszip">/*BUNDLE_INSERT:vendor-jszip*/</script>
+<script data-lib="jspdf">/*BUNDLE_INSERT:vendor-jspdf*/</script>
+<script data-lib="html2canvas">/*BUNDLE_INSERT:vendor-html2canvas*/</script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'DM Sans',sans-serif;background:#f5f4f1;color:#4e4b48;font-size:13px}
@@ -215,12 +216,13 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 /*BUNDLE_INSERT:60-fcvm-state*/
 /*BUNDLE_INSERT:70-fcvm-calc*//*BUNDLE_INSERT:80-roles-config*/var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.112'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.113'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.113: Workgame — un'unica formula per calcolo, lettere, analisi, export e tracciato; per chi ha il BDG in TRASFERTE ora è pagato nel cod. 380 (prima mancava nel tracciato). Configurazione — nuove sezioni «Cambi valuta» (modificabili, con data di validità), «Date di attivazione regole» (SAS, USA, Coefficiente Inventari) e coefficienti Seasonal (mid-season, mesi stagione, QTY Dept), tutti salvati in sessione e configurazione; dopo un reset l'app parte dal mese corrente. Librerie (Excel, ZIP, PDF) incluse nell'app e aggiornate: niente più caricamento da internet",
   "9.112: Invio email — prima di inviare compare l'elenco completo dipendente → email → PDF (o Field Coach → email → ZIP con il numero di lettere) da confermare; al termine la tabella esiti distingue inviate, errori e «non confermate» (prima gli ZIP ai Field Coach risultavano sempre inviati). Lettere — etichette nella lingua della lettera (preventivo mensile, mese e titoli FC+VM), valuta del dipendente nelle formule SAS/DCC, corretto un refuso nel disclaimer inglese; logo Boggi alleggerito (lettere da 1,1 MB a 40 KB, aspetto invariato)",
   "9.111: Sessioni — «Carica sessione» parte da dati vuoti (niente più dati della sessione corrente mescolati a quella caricata) e indica la configurazione non presente nel file; «Carica configurazione» non tocca più aggiunte e Visual. Import — colonne riconosciute per priorità e anno in corso (es. «cr 2026» e non «cr 2025»), foglio del mese esatto, vendite USA abbinate sul solo cognome solo se unico nel negozio. Nuovo riquadro «Controlli sui dati caricati» in Fonti Dati e in coda a ogni import: file di un altro mese, dati caricati in un mese precedente, matricole duplicate, negozi senza target o consuntivo",
   "9.110: Avvio — corretti due errori all'apertura con dati salvati (tabelle Calcolo premi e Analisi a volte non disegnate subito). Rilasci più sicuri: ogni versione viene pubblicata solo se superano i test sull'app completa, e una versione può essere annullata o riportata a una precedente senza reinstallare l'app",
@@ -263,7 +265,8 @@ var APP_CHANGELOG=[
   "9.72: Lettera FC+VM — fix larghezza dei box Premio maturato/Coefficiente Inventari/Premio da erogare (area): un padding extra li restringeva rispetto al resto della lettera",
   "9.71: Export JSON statistiche FC+VM (stats_fcvm_*) — aggiunto il campo syLastYear (SY anno precedente), già presente per i negozi, per il confronto anno su anno sul salvagente 60%"
 ];
-var CFG_MONTH=5,CFG_YEAR=2026,CFG_PDF_PATH="",CFG_SEASON="FW";
+// mese iniziale = mese corrente (prima fisso a maggio 2026); poi si sceglie in Configurazione
+var CFG_MONTH=new Date().getMonth()+1,CFG_YEAR=new Date().getFullYear(),CFG_PDF_PATH="",CFG_SEASON="FW";
 /*BUNDLE_INSERT:82-month-labels*/
 /*BUNDLE_INSERT:84-state-restore*/
 /*BUNDLE_INSERT:86-session-io*//*BUNDLE_INSERT:88-calc-engine*//*BUNDLE_INSERT:89-roles-render*//*BUNDLE_INSERT:91-app-init*/

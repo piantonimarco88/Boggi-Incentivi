@@ -167,7 +167,7 @@ function seasAutoData(e){
 // - Riduce il totale seasonal (viene detratto in calcSeasonal quando SEAS[e.m].midPaid > 0)
 function calcMidSeason(e){
   if(isD(e.si)) return 0; // dept store: logica separata, no mid-season
-  var rlSem=(e.rl||0)*6;
+  var rlSem=(e.rl||0)*seasSemMonths();
   var base=rlSem*SEAS_CFG.basePct;
   var kpiSet=seasGetKpiSet(e);
   var isP=MODE==="preventivo";
@@ -187,7 +187,7 @@ function calcMidSeason(e){
       if(!seasKpiActive(kdef.k,e)) return;
       if(seasIsKpiAchieved(kdef,auto)) kpiScore+=kdef.weight;
     });
-    return Math.round(base*0.30*kpiScore*100)/100;
+    return Math.round(base*seasMidPct()*kpiScore*100)/100;
   } else {
     // Preventivo: mostra il massimo erogabile (tutti i KPI a target, nessun boost)
     var kpiScoreMax=0;
@@ -195,7 +195,7 @@ function calcMidSeason(e){
       if(!seasKpiActive(kdef.k,e)) return;
       kpiScoreMax+=kdef.weight;
     });
-    return Math.round(base*0.30*kpiScoreMax*100)/100;
+    return Math.round(base*seasMidPct()*kpiScoreMax*100)/100;
   }
 }
 
@@ -265,13 +265,17 @@ function seasIsKpiAchieved(kdef, auto){
 // 25/08/2026, corretto in v9.56 (poi con paracadute a doppia soglia, rimosso qui
 // su richiesta esplicita). Fonte unica per tabella Calcolo Premi (calcSeasonal)
 // e lettera (buildSeasonalDeptLetter).
+// Coefficienti seasonal (SEAS_CFG, modificabili in Configurazione); default = valori storici
+function seasMidPct(){var v=SEAS_CFG&&SEAS_CFG.midPct;return (typeof v==="number"&&v>=0&&v<=1)?v:0.30;}
+function seasSemMonths(){var v=SEAS_CFG&&SEAS_CFG.semMonths;return (typeof v==="number"&&v>0&&v<=12)?v:6;}
+function seasDeptQtyPct(){var v=SEAS_CFG&&SEAS_CFG.deptQtyPct;return (typeof v==="number"&&v>=0&&v<=2)?v:0.5;}
 function calcSeasonalDeptInfo(e){
   var sid=String(e.si);
   var stg=SEAS_TARGETS[sid]||{};
   var cn=(D.cs&&D.cs[sid])||{};
   var isP=MODE==="preventivo";
-  var bdg6=Math.round((e.ib||0)*6*100)/100;
-  var qty6=Math.round(bdg6*0.5*100)/100;
+  var bdg6=Math.round((e.ib||0)*seasSemMonths()*100)/100;
+  var qty6=Math.round(bdg6*seasDeptQtyPct()*100)/100;
   function mult(pct,hasTarget){if(!hasTarget)return 0;return pct>=PARAMS.bdg100?1:0;}
   var toTarget=stg.to||0;
   var toActual=(cn.sc||0)+(cn.es||0)+(typeof seasSasAddon==="function"?seasSasAddon(sid):0);
@@ -291,7 +295,7 @@ function calcSeasonal(e){
   if(isD(e.si)){
     return calcSeasonalDeptInfo(e).tot;
   }
-  var rlSem=(e.rl||0)*6;
+  var rlSem=(e.rl||0)*seasSemMonths();
   var base=rlSem*SEAS_CFG.basePct;
   var kpiScore=0;
   var kpiSet=seasGetKpiSet(e);

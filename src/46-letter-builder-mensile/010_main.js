@@ -378,8 +378,8 @@ function buildLetter(e){
     h+=secPd("TOTAL ADJUSTMENTS",Math.round(at),cu,true);h+="</div></div>"}
 
   // WORKGAME section
-  if(MODE==="consuntivo"&&e.ov_wg==="SI"&&isOn(e.j,"rb")){
-    var wgAmt=Math.round(e.ib*(PARAMS.workgamePct||0));
+  if(workgameOn(e)){
+    var wgAmt=Math.round(workgameAmt(e)); // stessa formula di calcolo e tracciato, mostrata all'euro
     var wgLbls={"ITALIANO":"WORKGAME - BONUS AGGIUNTIVO","INGLESE":"WORKGAME - ADDITIONAL BONUS","FRANCESE":"WORKGAME - BONUS SUPPLEMENTAIRE","TEDESCO":"WORKGAME - ZUSATZBONUS","SPAGNOLO":"WORKGAME - BONO ADICIONAL"};
     var wgDesc={"ITALIANO":"Hai raggiunto l'obiettivo Workgame del mese. Il bonus corrisponde al "+Math.round((PARAMS.workgamePct||0)*100)+"% del tuo premio BDG nominale.","INGLESE":"You have achieved the Workgame target for the month. The bonus corresponds to "+Math.round((PARAMS.workgamePct||0)*100)+"% of your personal BDG prize.","FRANCESE":"Vous avez atteint l'objectif Workgame du mois. Le bonus correspond a "+Math.round((PARAMS.workgamePct||0)*100)+"% de votre prime BDG personnelle.","TEDESCO":"Sie haben das Workgame-Ziel des Monats erreicht. Der Bonus entspricht "+Math.round((PARAMS.workgamePct||0)*100)+"% Ihrer personlichen BDG-Pramie.","SPAGNOLO":"Has alcanzado el objetivo Workgame del mes. El bono corresponde al "+Math.round((PARAMS.workgamePct||0)*100)+"% de tu premio BDG personal."};
     var wgLang=trLang(e);
@@ -720,7 +720,7 @@ function tSeas(e, key, fb){
 function buildSeasonalLetter(e){
   var cu=e.cu||"EUR";
   var isP=MODE==="preventivo";
-  var rlSem=(e.rl||0)*6;
+  var rlSem=(e.rl||0)*seasSemMonths();
   var base=rlSem*SEAS_CFG.basePct;
   var kpiSet=seasGetKpiSet(e);
   var auto=isP?null:seasAutoData(e);
@@ -754,7 +754,7 @@ function buildSeasonalLetter(e){
   var seasonalMax=Math.round(kpiIncentiveMax*maxM1*maxM2*100)/100;
 
   // MID SEASON values: 30% of max
-  var midPct=0.30;
+  var midPct=seasMidPct(); // stessa quota del calcolo (prima 0.30 scritto anche qui)
   var midMax=Math.round(kpiIncentiveMax*midPct*100)/100;
   // Importo realmente erogato a mid-season (importato da loadMidSeasonPaidExcel), da detrarre a saldo.
   // seasonalNet usa calcSeasonal() come unica fonte di verità (stessa cifra di tab/export:

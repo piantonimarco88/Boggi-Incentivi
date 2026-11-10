@@ -1,5 +1,6 @@
 // === CURRENCY & FC LOOKUP BY ENTE ===
 var ENTE_CU={"209":{cu:"CHF",ex:1.3756},"211":{cu:"GBP",ex:1.1692},"213":{cu:"EUR",ex:1},"215":{cu:"EUR",ex:1},"216":{cu:"EUR",ex:1},"217":{cu:"EUR",ex:1},"219":{cu:"EUR",ex:1},"220":{cu:"HKD",ex:0.11764},"221":{cu:"EUR",ex:1},"222":{cu:"EUR",ex:1},"223":{cu:"SGD",ex:0.68603},"224":{cu:"SEK",ex:0.08836},"226":{cu:"HUF",ex:0.00253},"228":{cu:"EUR",ex:1},"230":{cu:"EUR",ex:1},"231":{cu:"EUR",ex:1},"240":{cu:"DKK",ex:0.13},"241":{cu:"USD",ex:0.9},"245":{cu:"USD",ex:0.9},"900":{cu:"EUR",ex:1}};
+_origCU=JSON.stringify(ENTE_CU); // stato iniziale per «modifiche non salvate» (dichiarata in 86-session-io)
 var ENTE_FC={};
 
 // === JOB TITLE PARSER: take first recognized role from cell ===

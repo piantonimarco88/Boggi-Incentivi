@@ -517,8 +517,7 @@ function exportTracciatoPagamenti(){
       if(p.k==="rb"){
         if(!e.ibFromAY&&isOn(e.j,p.k)){
           val=getVal(e,p.k)*sm;
-          if(MODE==="consuntivo"&&e.ov_wg==="SI")
-            val+=Math.round(e.ib*(PARAMS.workgamePct||0)*100)/100;
+          val+=workgameAmt(e); // Workgame nel cod. 225 insieme al BDG
         }
         // Aggiunta manuale BDG Lordo (non ibFromAY: va in BDG; ibFromAY: il BDG va a TRASFERTE)
         if(!e.ibFromAY)val+=(_agg.rb||0);
@@ -529,6 +528,7 @@ function exportTracciatoPagamenti(){
       } else if(p.cod===380){
         if(e.ibFromAY){
           val=getVal(e,"rb")*sm;
+          val+=workgameAmt(e); // v9.113: Workgame di chi ha il BDG in TRASFERTE -> cod. 380 (prima non pagato)
           val+=(_agg.rb||0); // aggiunta BDG per ibFromAY confluisce in TRASFERTE
         } else {
           val=(e.rbn||0)>0?(e.rbn||0):0;

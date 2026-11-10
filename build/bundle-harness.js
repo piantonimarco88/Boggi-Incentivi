@@ -29,7 +29,8 @@ const _cache = {};
 
 function readBundle(file) {
   if (!_cache[file]) {
-    const html = fs.readFileSync(file, "utf8");
+    // i blocchi delle librerie (<script data-lib>) non si eseguono: nei test XLSX/jsPDF sono finti
+    const html = fs.readFileSync(file, "utf8").replace(/<script data-lib="[^"]*">[\s\S]*?<\/script>/g, "");
     const jdata = (html.match(/id="jdata">([\s\S]*?)<\/script>/) || [])[1] || "{}";
     // solo gli script inline eseguibili (non i <script src> CDN, non il JSON jdata)
     const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
