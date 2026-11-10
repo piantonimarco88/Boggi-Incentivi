@@ -191,8 +191,8 @@ function loadVisualExcel(input){
     }
     var empCount=Object.keys(VL).length;
     var _sidInfo=hdr.sid>=0?('col.'+hdr.sid+' \u2714'):'NON TROVATA \u26a0 (il premio per negozio non sar\u00e0 calcolabile)';
-    alert('Visual In Store caricato!\n\n'+empCount+' dipendenti \u00b7 '+rowCount+' righe elaborate\nColonne: MATR=col.'+hdr.matr+' | SID='+_sidInfo+' | BDG=col.'+hdr.bdg+
-      (negRows.length?'\n\n⚠ '+negRows.length+' righe con importo NEGATIVO scartate (non ammesse):\n• '+negRows.slice(0,15).join('\n• ')+(negRows.length>15?'\n… e altre '+(negRows.length-15):''):''));
+    alert(importDone("visual","Visual In Store",(f&&f.name),'Visual In Store caricato!\n\n'+empCount+' dipendenti \u00b7 '+rowCount+' righe elaborate\nColonne: MATR=col.'+hdr.matr+' | SID='+_sidInfo+' | BDG=col.'+hdr.bdg+
+      (negRows.length?'\n\n⚠ '+negRows.length+' righe con importo NEGATIVO scartate (non ammesse):\n• '+negRows.slice(0,15).join('\n• ')+(negRows.length>15?'\n… e altre '+(negRows.length-15):''):'')));
     autoSave();rSources();rC();
   }catch(ex){alert('Errore lettura Visual: '+ex.message);}};reader.readAsArrayBuffer(f);
 }

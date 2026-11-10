@@ -252,3 +252,57 @@ function runValidationsAndReport(title){
   showValidationReport(title||"Verifica dati caricati",combined);
   return combined;
 }
+
+// === Riepilogo controlli dopo ogni import (non bloccante) ===================
+// Ogni import riuscito registra un «timbro» (IMPORT_STAMPS) con il mese configurato al
+// momento dell'import e il mese letto dal nome del file. I controlli segnalano, senza
+// bloccare:
+//  - file il cui nome indica un mese diverso da quello configurato;
+//  - dati importati quando il mese configurato era un altro (es. inventari di ottobre
+//    ancora attivi a novembre perche` il file non e` stato ricaricato);
+//  - matricole duplicate, negozi con dipendenti senza target, negozi senza consuntivo;
+//  - colonne scelte in modo ambiguo o lette da posizione fissa (HDR_NOTES dell'import).
+// Il riepilogo e` aggiunto al messaggio di fine import e mostrato in cima a Fonti Dati.
+var IMPORT_STAMPS={}; // src -> {label,file,m,y,fm,ts}
+function _monthLbl(m,y){var n=(typeof MONTH_NAMES_IT!=="undefined"&&MONTH_NAMES_IT[m])||String(m);return n.charAt(0).toUpperCase()+n.slice(1)+(y?" "+y:"");}
+function importChecks(){
+  var out=[],k,s;
+  for(k in IMPORT_STAMPS){s=IMPORT_STAMPS[k];if(!s)continue;
+    if(s.fm&&s.fm!==CFG_MONTH)out.push({lvl:"warn",t:"«"+s.label+"»: il file «"+s.file+"» sembra di "+_monthLbl(s.fm)+", il mese configurato è "+_monthLbl(CFG_MONTH,CFG_YEAR)+"."});
+    else if(s.m&&(s.m!==CFG_MONTH||s.y!==CFG_YEAR))out.push({lvl:"warn",t:"«"+s.label+"» è stato caricato quando il mese configurato era "+_monthLbl(s.m,s.y)+": se è cambiato mese, ricarica il file."});
+  }
+  if(PRIZE_MODE!=="fcvm"&&typeof E!=="undefined"&&E.length){
+    var seen={},dup=[];
+    E.forEach(function(e){var m=String(e.m);if(seen[m])dup.push(m);seen[m]=1;});
+    if(dup.length)out.push({lvl:"err",t:dup.length+" matricole duplicate in anagrafica: "+dup.slice(0,10).join(", ")+(dup.length>10?"…":"")+"."});
+    var hasT=Object.keys(D.t||{}).length>0,hasC=Object.keys(D.c||{}).some(function(x){return (D.c[x].sc||0)>0;});
+    var sids={};E.forEach(function(e){if(e.ps!=="SI"&&!(typeof isUSA==="function"&&isUSA(e.si,e)))sids[String(e.si)]=1;});
+    if(hasT){var noT=Object.keys(sids).filter(function(x){return !(D.t[x]&&D.t[x].to>0);});
+      if(noT.length)out.push({lvl:"warn",t:noT.length+" negozi con dipendenti ma senza target di fatturato: "+noT.slice(0,12).join(", ")+(noT.length>12?"…":"")+" (premio di negozio = 0)."});}
+    if(MODE==="consuntivo"&&hasC){var noC=Object.keys(sids).filter(function(x){return D.t[x]&&D.t[x].to>0&&!((D.c[x]||{}).sc>0);});
+      if(noC.length)out.push({lvl:"warn",t:noC.length+" negozi con target ma senza consuntivo di fatturato: "+noC.slice(0,12).join(", ")+(noC.length>12?"…":"")+"."});}
+  }
+  return out;
+}
+// Da chiamare a fine import riuscito: registra il timbro e restituisce il messaggio
+// dell'import con in coda le note dell'import (extra + HDR_NOTES) e i controlli generali.
+function importDone(src,label,fileName,msg,extra){
+  var fname=fileName||"";
+  IMPORT_STAMPS[src]={label:label,file:fname,m:CFG_MONTH,y:CFG_YEAR,fm:(typeof monthFromName==="function"?monthFromName(fname):0),ts:new Date().toISOString()};
+  var notes=(extra||[]).concat(typeof HDR_NOTES!=="undefined"?HDR_NOTES:[]);
+  if(typeof HDR_NOTES!=="undefined")HDR_NOTES=[];
+  var chk=importChecks();
+  var txt=msg||"";
+  if(notes.length)txt+="\n\n\u2139 Note su questo file:\n\u2022 "+notes.slice(0,12).join("\n\u2022 ")+(notes.length>12?"\n\u2026 e altre "+(notes.length-12):"");
+  if(chk.length)txt+="\n\n\u26a0 Controlli (non bloccanti):\n\u2022 "+chk.map(function(c){return c.t}).join("\n\u2022 ");
+  try{if(typeof rSources==="function")rSources();}catch(_e){}
+  return txt;
+}
+// Riquadro in cima a Fonti Dati
+function importChecksBoxHtml(){
+  var chk=importChecks();if(!chk.length)return "";
+  var h='<div class="wg" style="border-left:4px solid #e0a800;border-radius:0;background:#fffbea;margin-bottom:12px">';
+  h+='<div class="wg-title" style="color:#856404">\u26a0 Controlli sui dati caricati <span style="font-weight:400;font-size:10px;color:#8a8680">(non bloccanti)</span></div><ul style="margin:6px 0 0 18px;padding:0;font-size:11px;color:#5c4a00">';
+  chk.forEach(function(c){h+='<li style="margin:2px 0'+(c.lvl==="err"?';color:#a32d2d;font-weight:600':'')+'">'+esc(c.t)+'</li>';});
+  return h+'</ul></div>';
+}

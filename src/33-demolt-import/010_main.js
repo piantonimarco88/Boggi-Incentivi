@@ -158,7 +158,7 @@ function loadDemoltInventario(file){
       if(typeof rAFcvm==="function")rAFcvm();
     }
     var nW=res.items.filter(function(i){return i.lvl==="warn";}).length,nE=res.items.filter(function(i){return i.lvl==="err";}).length;
-    alert("Inventari + Accuracy: "+res.nStore+" negozi"+(res.nFc>0?", "+res.nFc+" Field Coach":"")+" valorizzati.\n"+(nE+nW>0?"⚠ "+nE+" errori, "+nW+" avvisi: vedi il pannello «Controllo Inventari + Accuracy» in Fonti Dati.":"Controlli di coerenza: tutti superati."));
+    alert(importDone("inventari","Inventari + Accuracy",(file&&file.name),"Inventari + Accuracy: "+res.nStore+" negozi"+(res.nFc>0?", "+res.nFc+" Field Coach":"")+" valorizzati.\n"+(nE+nW>0?"⚠ "+nE+" errori, "+nW+" avvisi: vedi il pannello «Controllo Inventari + Accuracy» in Fonti Dati.":"Controlli di coerenza: tutti superati.")));
   }catch(ex){alert("Errore lettura file inventari:\n"+ex.message);}},50);};
   reader.readAsArrayBuffer(file);
 }

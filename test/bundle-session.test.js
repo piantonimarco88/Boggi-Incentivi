@@ -54,6 +54,56 @@ test("Salva -> Carica sessione: premi e configurazione identici", () => {
   assert.deepStrictEqual(app.alerts.filter(a => /errore/i.test(a)), [], "nessun errore mostrato");
 });
 
+test("Carica sessione vecchia (senza alcune chiavi): i dati correnti non si mescolano", () => {
+  const app = loadBundle();
+  app.run(SETUP);
+  // dati "di un altro mese" presenti in memoria prima del caricamento
+  app.run(`FC_AREA_SAS={"FC9":{acc:0.9}};MAIL_LOG=[{m:"S001"}];SEAS={"S001":{midPaid:100}};
+           SEAS_TARGETS["9999"]={to:1};`);
+  const old = { _type: "boggi_session", v: 2, ts: "2026-01-31T10:00:00Z",
+    D: { e: [{ m: "V001", c: "VECCHIO", n: "UNO", f: "SA", j: "SA", si: 1201, s: "1201 TEST", ib: 400, rl: 400, en: 210, cu: "EUR", ex: 1, ml: 0, ps: "NO" }],
+         t: { "1201": { to: 50000 } }, c: { "1201": { sc: 60000 } } },
+    mode: "consuntivo", cfg_month: 1, cfg_year: 2026, seas_targets: { "1201": { to: 123 } } };
+  app.nextFileText = JSON.stringify(old);
+  app.run("loadSession({files:[{name:'vecchia.json'}],value:''})");
+  const s = JSON.parse(app.run(`JSON.stringify({E:E.map(function(e){return e.m}),agg:AGG,vl:VL,demolt:DEMOLT_RESULT_STORE,
+    fcsas:FC_AREA_SAS,mail:MAIL_LOG,seas:SEAS,st:Object.keys(SEAS_TARGETS),fcvm:FCVM_PARAMS.soglia100,month:CFG_MONTH})`));
+  assert.deepStrictEqual(s.E, ["V001"]);
+  assert.deepStrictEqual(s.agg, {});          // prima restava AGG della sessione corrente
+  assert.deepStrictEqual(s.vl, {});
+  assert.deepStrictEqual(s.demolt, {});       // prima restava il Coefficiente Inventari corrente
+  assert.deepStrictEqual(s.fcsas, {});
+  assert.deepStrictEqual(s.mail, []);
+  assert.deepStrictEqual(s.seas, {});
+  assert.deepStrictEqual(s.st, ["1201"]);     // target seasonal sostituiti, non fusi
+  assert.strictEqual(s.fcvm, 0.98);           // configurazione assente nel file: resta quella attuale
+  assert.strictEqual(s.month, 1);
+  const msg = app.alerts[app.alerts.length - 1];
+  assert.match(msg, /Non presenti nel file \(mantenuti i valori attuali\):.*soglie FC\+VM/);
+});
+
+test("Salva sessione registra la versione dell'app", () => {
+  const app = loadBundle();
+  app.run(SETUP);
+  app.run("saveSession()");
+  assert.strictEqual(JSON.parse(app.lastBlobText()).app_version, app.run("APP_VERSION"));
+});
+
+test("Carica configurazione: non tocca aggiunte e Visual (dati del mese)", () => {
+  const app = loadBundle();
+  app.run(SETUP);
+  app.run("saveConfig()");
+  const cfg = JSON.parse(app.lastBlobText());
+  assert.strictEqual(cfg.agg, undefined, "il file di configurazione non contiene piu` le aggiunte");
+  assert.strictEqual(cfg.vl, undefined);
+  // file di configurazione VECCHIO che contiene ancora agg/vl
+  cfg.agg = { ZZZ: { rb: 999 } }; cfg.vl = { ZZZ: [{ sid: "1201", amt: 999 }] };
+  app.nextFileText = JSON.stringify(cfg);
+  app.run("loadConfig({target:{files:[{name:'config.json'}],value:''}})");
+  assert.deepStrictEqual(JSON.parse(app.run("JSON.stringify(AGG)")), { S002: { rb: 30 } });
+  assert.deepStrictEqual(JSON.parse(app.run("JSON.stringify(VL)")), { S001: [{ sid: "1201", amt: 150 }] });
+});
+
 test("Carica sessione: un file che non e` una sessione viene rifiutato senza toccare i dati", () => {
   const app = loadBundle();
   app.run(SETUP);

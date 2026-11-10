@@ -1,5 +1,5 @@
 function rSources(){try{
-  if(PRIZE_MODE==="fcvm"){document.getElementById("p4").innerHTML=rSourcesFcvm();return;}
+  if(PRIZE_MODE==="fcvm"){document.getElementById("p4").innerHTML=(typeof importChecksBoxHtml==="function"?importChecksBoxHtml():"")+rSourcesFcvm();return;}
   var isP=MODE==="preventivo",sh="";
   var isSeasonal=PRIZE_MODE==="seasonal";
 
@@ -305,7 +305,7 @@ function rSources(){try{
     sh+='</div>';
   }
   sh+='</div>';
-  document.getElementById("p4").innerHTML=sh;
+  document.getElementById("p4").innerHTML=(typeof importChecksBoxHtml==="function"?importChecksBoxHtml():"")+sh;
   // Connectors toggle
   var togC=document.getElementById("toggleConn");if(togC)togC.onclick=function(){var bd=document.getElementById("connBody");if(bd){var vis=bd.style.display==="none";bd.style.display=vis?"":"none";togC.textContent=vis?"Comprimi \u25b2":"Espandi \u25bc"}};
 

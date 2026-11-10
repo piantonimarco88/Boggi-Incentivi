@@ -710,7 +710,7 @@ function loadDemoltInventario(file){
       if(typeof rAFcvm==="function")rAFcvm();
     }
     var nW=res.items.filter(function(i){return i.lvl==="warn";}).length,nE=res.items.filter(function(i){return i.lvl==="err";}).length;
-    alert("Inventari + Accuracy: "+res.nStore+" negozi"+(res.nFc>0?", "+res.nFc+" Field Coach":"")+" valorizzati.\n"+(nE+nW>0?"⚠ "+nE+" errori, "+nW+" avvisi: vedi il pannello «Controllo Inventari + Accuracy» in Fonti Dati.":"Controlli di coerenza: tutti superati."));
+    alert(importDone("inventari","Inventari + Accuracy",(file&&file.name),"Inventari + Accuracy: "+res.nStore+" negozi"+(res.nFc>0?", "+res.nFc+" Field Coach":"")+" valorizzati.\n"+(nE+nW>0?"⚠ "+nE+" errori, "+nW+" avvisi: vedi il pannello «Controllo Inventari + Accuracy» in Fonti Dati.":"Controlli di coerenza: tutti superati.")));
   }catch(ex){alert("Errore lettura file inventari:\n"+ex.message);}},50);};
   reader.readAsArrayBuffer(file);
 }
@@ -972,12 +972,13 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.110'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.111'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.111: Sessioni — «Carica sessione» parte da dati vuoti (niente più dati della sessione corrente mescolati a quella caricata) e indica la configurazione non presente nel file; «Carica configurazione» non tocca più aggiunte e Visual. Import — colonne riconosciute per priorità e anno in corso (es. «cr 2026» e non «cr 2025»), foglio del mese esatto, vendite USA abbinate sul solo cognome solo se unico nel negozio. Nuovo riquadro «Controlli sui dati caricati» in Fonti Dati e in coda a ogni import: file di un altro mese, dati caricati in un mese precedente, matricole duplicate, negozi senza target o consuntivo",
   "9.110: Avvio — corretti due errori all'apertura con dati salvati (tabelle Calcolo premi e Analisi a volte non disegnate subito). Rilasci più sicuri: ogni versione viene pubblicata solo se superano i test sull'app completa, e una versione può essere annullata o riportata a una precedente senza reinstallare l'app",
   "9.109: Import — i numeri scritti come testo in formato italiano sono letti correttamente («1.500» = 1500, «0,125» = 0,125; UPT/CR/% sempre decimali). Lettere — l'anno segue il mese/anno configurato (non più 2026 fisso). «Stampa PDF» singolo stampa sempre il dipendente visualizzato. Soglie FC+VM salvate in sessione e configurazione. Aggiunte negative non ammesse: segnalate (Visual e inserimento manuale)",
   "9.108: Coefficiente Inventari — l'import legge direttamente le % già presenti nel file, senza ricalcoli: negozi = «Accuracy» e «% DCC Executed corretta» (Matrice negozi), FC = «% DCC Executed» e «% DCC Sent corretta» (Matrice FC)",
@@ -1283,7 +1284,7 @@ function saveSession(){
     _flushDigMobInputs();
     try{usaQRecord()}catch(exq){}
     var state={
-      _type:"boggi_session",v:AUTO_VERSION,
+      _type:"boggi_session",v:AUTO_VERSION,app_version:(typeof APP_VERSION!=="undefined"?APP_VERSION:""),
       D:{e:E,t:D.t,c:D.c,cs:D.cs,s:D.s,v:D.v,tr:D.tr,usa:D.usa,uq:D.uq,us:D.us,d:D.d,vl:D.vl,ur:D.ur},
       tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,
       seas:SEAS,seas_cfg:SEAS_CFG,seas_targets:SEAS_TARGETS,sas_matrix:SAS_MATRIX,
@@ -1295,7 +1296,7 @@ function saveSession(){
       fc_emp:FC_EMP,fc_map:FC_MAP,fc_targets:FC_TARGETS,fc_results:FC_RESULTS,
       fc_syly:FC_SYLY,fc_store_flags:FC_STORE_FLAGS,agg_fcvm:AGG_FCVM,
       fc_overrides:FC_OVERRIDES,fc_prev_results:FC_PREV_RESULTS,fc_area_sas:FC_AREA_SAS,fcvm_params:FCVM_PARAMS,
-      monitor_snaps:MONITOR_SNAPS,mail_log:MAIL_LOG,
+      monitor_snaps:MONITOR_SNAPS,mail_log:MAIL_LOG,import_stamps:(typeof IMPORT_STAMPS!=="undefined"?IMPORT_STAMPS:{}),
       ts:new Date().toISOString()
     };
     var json=JSON.stringify(state);
@@ -1307,13 +1308,39 @@ function saveSession(){
     document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(a.href);
   }catch(ex){alert("Errore nel salvataggio: "+ex.message)}
 }
+// Carica sessione: i DATI del mese ripartono da zero prima del caricamento, cosi` una
+// sessione (anche vecchia, con meno chiavi) non si mescola con i dati della sessione
+// corrente (prima: FC area SAS, inventari, aggiunte... restavano quelli attuali).
+// La CONFIGURAZIONE (ruoli, parametri, matrici) assente nel file resta quella attuale
+// ed e` elencata nel messaggio finale.
+function _sessionResetData(){
+  var d0={};try{d0=JSON.parse(document.getElementById("jdata").textContent)||{}}catch(_e){}
+  ["t","c","cs","s","v","usa","uq","d","vl","ur"].forEach(function(k){
+    D[k]=d0[k]!==undefined?JSON.parse(JSON.stringify(d0[k])):(Array.isArray(D[k])?[]:{});
+  });
+  E=[];
+  AGG={};VL={};SEAS={};MONTHLY_SYLY={};
+  DEMOLT_RESULT_STORE={};DEMOLT_RESULT_FC={};DEMOLT_CHECK=null;
+  FC_EMP={};FC_MAP={};FC_TARGETS={};FC_RESULTS={};FC_SYLY={};FC_STORE_FLAGS={};
+  AGG_FCVM={};FC_OVERRIDES={};FC_PREV_RESULTS={};FC_AREA_SAS={};
+  MAIL_LOG=[];
+  if(typeof IMPORT_STAMPS!=="undefined")IMPORT_STAMPS={};
+}
+var _SESSION_CFG_KEYS={tc:"ruoli e KPI",params:"parametri premi",fcvm_params:"soglie FC+VM",sas_matrix:"matrice SAS",
+  demolt_matrix_store:"matrice inventari negozi",demolt_matrix_fc:"matrice inventari FC",seas_cfg:"configurazione seasonal",
+  seas_targets:"target seasonal",store_flags:"flag negozi",usa_p:"parametri USA"};
 function loadSession(input){
   var f=input.files[0];if(!f)return;input.value="";
   var reader=new FileReader();reader.onload=function(ev){try{
     var state=JSON.parse(ev.target.result);
     if(state._type!=="boggi_session"){alert("Il file selezionato non è una sessione Boggi valida.");return}
     var ts=state.ts?new Date(state.ts).toLocaleString("it-IT"):"sconosciuto";
-    if(!confirm("Caricare la sessione salvata il "+ts+"?\n\nTutti i dati attuali verranno sostituiti."))return;
+    var verInfo=state.app_version?" con la v"+state.app_version:"";
+    var newer=typeof state.v==="number"&&state.v>AUTO_VERSION;
+    if(!confirm("Caricare la sessione salvata il "+ts+verInfo+"?\n\nTutti i dati attuali verranno sostituiti."+
+      (newer?"\n\n⚠ La sessione è stata creata con una versione dell'app più recente di questa: alcuni dati potrebbero non essere letti. Aggiorna l'app se possibile.":"")))return;
+    var cfgMissing=Object.keys(_SESSION_CFG_KEYS).filter(function(k){return state[k]===undefined;}).map(function(k){return _SESSION_CFG_KEYS[k];});
+    _sessionResetData();
     // Restore data
     if(state.D){
       if(state.D.e){E=state.D.e;
@@ -1339,7 +1366,8 @@ function loadSession(input){
     if(state.store_flags){STORE_FLAGS={};for(var sid in state.store_flags)STORE_FLAGS[sid]=state.store_flags[sid]}
     initStoreFlags(); // risemina DEPT stores mancanti (per sessioni salvate prima dell'aggiunta dei flag)
     if(state.seas){SEAS=state.seas;}
-    if(state.seas_targets){for(var sk in state.seas_targets)SEAS_TARGETS[sk]=state.seas_targets[sk];}
+    // target seasonal: sostituiti (prima venivano fusi con quelli correnti)
+    if(state.seas_targets){for(var ok in SEAS_TARGETS)delete SEAS_TARGETS[ok];for(var sk in state.seas_targets)SEAS_TARGETS[sk]=state.seas_targets[sk];}
     if(state.monthly_syly)MONTHLY_SYLY=state.monthly_syly;
     if(state.seas_cfg){
       if(state.seas_cfg.basePct!==undefined)SEAS_CFG.basePct=state.seas_cfg.basePct;
@@ -1392,6 +1420,7 @@ function loadSession(input){
     if(state.fc_prev_results)FC_PREV_RESULTS=state.fc_prev_results;
     if(state.fc_area_sas)FC_AREA_SAS=state.fc_area_sas;
     if(state.mail_log)MAIL_LOG=state.mail_log;
+    if(state.import_stamps&&typeof IMPORT_STAMPS!=="undefined")IMPORT_STAMPS=state.import_stamps;
     if(state.mode)MODE=state.mode;if(state.region)REGION=state.region;if(state.prize_mode){PRIZE_MODE=state.prize_mode;setPrizeMode(PRIZE_MODE);}if(state.season_period){SEASON_PERIOD=state.season_period;setSeasonPeriod(SEASON_PERIOD);}
     document.getElementById("modeP").className="gbtn"+(MODE==="preventivo"?" on":"");document.getElementById("modeC").className="gbtn"+(MODE==="consuntivo"?" on":"");
     document.getElementById("regInt").className="gbtn"+(REGION==="international"?" on":"");document.getElementById("regIt").className="gbtn"+(REGION==="italia"?" on":"");
@@ -1407,8 +1436,9 @@ function loadSession(input){
     }else{
       loadMsg="Sessione caricata con successo!\n\n"+E.length+" dipendenti ripristinati.";
     }
+    if(cfgMissing.length)loadMsg+="\n\nNon presenti nel file (mantenuti i valori attuali): "+cfgMissing.join(", ")+".";
     alert(loadMsg);
-  }catch(ex){alert("Errore nel caricamento: "+ex.message)}};reader.readAsText(f);
+  }catch(ex){alert("Errore nel caricamento: "+ex.message+"\n\nI dati potrebbero essere incompleti: ricarica la sessione o un altro file.")}};reader.readAsText(f);
 }
 
 // Save/Dirty
@@ -1416,7 +1446,7 @@ var _origTC=JSON.stringify(TC),_origS50=SICK_50,_origS0=SICK_0,_origP=JSON.strin
 function markDirty(){var dirty=JSON.stringify(TC)!==_origTC||SICK_50!==_origS50||SICK_0!==_origS0||JSON.stringify(PARAMS)!==_origP||JSON.stringify(USA_P)!==_origUSA||CFG_MONTH!==_origMonth||CFG_YEAR!==_origYear||CFG_PDF_PATH!==_origPdfPath||CFG_SEASON!==_origSeason||JSON.stringify(STORE_FLAGS)!==_origSF||JSON.stringify(SEAS_CFG)!==_origSeasCfg||JSON.stringify(SAS_MATRIX)!==_origSasMatrix||JSON.stringify(DEMOLT_MATRIX_STORE)!==_origDemoltMatrixStore||JSON.stringify(DEMOLT_MATRIX_FC)!==_origDemoltMatrixFc||PRIZE_MODE!==_origPrizeMode||SEASON_PERIOD!==_origSeasonPeriod;document.getElementById("saveBar").className="save-bar"+(dirty?" show":"");var cnt=document.querySelector(".cnt");if(cnt)cnt.style.paddingBottom=dirty?"60px":""}
 function saveConfig(){
   _flushDigMobInputs();
-  var cfg={tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,seas_cfg:SEAS_CFG,sas_matrix:SAS_MATRIX,demolt_matrix_store:DEMOLT_MATRIX_STORE,demolt_matrix_fc:DEMOLT_MATRIX_FC,agg:AGG,vl:VL,usa_p:USA_P,store_flags:STORE_FLAGS,fcvm_params:FCVM_PARAMS,cfg_month:CFG_MONTH,cfg_year:CFG_YEAR,cfg_pdf_path:CFG_PDF_PATH,cfg_season:CFG_SEASON,saved:new Date().toISOString()};
+  var cfg={tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,seas_cfg:SEAS_CFG,sas_matrix:SAS_MATRIX,demolt_matrix_store:DEMOLT_MATRIX_STORE,demolt_matrix_fc:DEMOLT_MATRIX_FC,usa_p:USA_P,store_flags:STORE_FLAGS,fcvm_params:FCVM_PARAMS,cfg_month:CFG_MONTH,cfg_year:CFG_YEAR,cfg_pdf_path:CFG_PDF_PATH,cfg_season:CFG_SEASON,saved:new Date().toISOString()};
   var blob=new Blob([JSON.stringify(cfg,null,2)],{type:"application/json"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="boggi_config_"+_sessionFileTag()+".json";a.click();
   _origTC=JSON.stringify(TC);_origS50=SICK_50;_origS0=SICK_0;_origP=JSON.stringify(PARAMS);_origUSA=JSON.stringify(USA_P);_origMonth=CFG_MONTH;_origYear=CFG_YEAR;_origPdfPath=CFG_PDF_PATH;_origSeason=CFG_SEASON;_origSF=JSON.stringify(STORE_FLAGS);_origSeasCfg=JSON.stringify(SEAS_CFG);_origPrizeMode=PRIZE_MODE;_origSeasonPeriod=SEASON_PERIOD;_origSasMatrix=JSON.stringify(SAS_MATRIX);_origDemoltMatrixStore=JSON.stringify(DEMOLT_MATRIX_STORE);_origDemoltMatrixFc=JSON.stringify(DEMOLT_MATRIX_FC);document.getElementById("saveBar").className="save-bar";autoSave()}
 function discardChanges(){TC=JSON.parse(_origTC);SICK_50=_origS50;SICK_0=_origS0;PARAMS=JSON.parse(_origP);USA_P=JSON.parse(_origUSA);CFG_MONTH=_origMonth;CFG_YEAR=_origYear;CFG_PDF_PATH=_origPdfPath;CFG_SEASON=_origSeason;STORE_FLAGS=JSON.parse(_origSF);SEAS_CFG=JSON.parse(_origSeasCfg);SAS_MATRIX=JSON.parse(_origSasMatrix);DEMOLT_MATRIX_STORE=JSON.parse(_origDemoltMatrixStore);DEMOLT_MATRIX_FC=JSON.parse(_origDemoltMatrixFc);PRIZE_MODE=_origPrizeMode;SEASON_PERIOD=_origSeasonPeriod;document.getElementById("saveBar").className="save-bar";setPrizeMode(PRIZE_MODE);setSeasonPeriod(SEASON_PERIOD);rT();rC()}
@@ -1458,7 +1488,9 @@ function loadConfig(evt){var f=evt.target.files[0];if(!f)return;var reader=new F
       if(cfg.demolt_matrix_fc.bpA)DEMOLT_MATRIX_FC.bpA=cfg.demolt_matrix_fc.bpA;
       if(cfg.demolt_matrix_fc.bpB)DEMOLT_MATRIX_FC.bpB=cfg.demolt_matrix_fc.bpB;
     }
-    if(cfg.agg)AGG=cfg.agg;if(cfg.vl)VL=cfg.vl;if(cfg.usa_p){for(var r in cfg.usa_p)USA_P[r]=cfg.usa_p[r]}
+    // aggiunte e Visual sono DATI del mese (sessione), non configurazione: un file di
+    // configurazione vecchio non deve piu` sovrascriverli (le chiavi agg/vl vengono ignorate)
+    if(cfg.usa_p){for(var r in cfg.usa_p)USA_P[r]=cfg.usa_p[r]}
     if(cfg.cfg_month)CFG_MONTH=cfg.cfg_month;if(cfg.cfg_year)CFG_YEAR=cfg.cfg_year;if(cfg.cfg_pdf_path!==undefined)CFG_PDF_PATH=cfg.cfg_pdf_path;if(cfg.cfg_season)CFG_SEASON=cfg.cfg_season;
     if(cfg.store_flags){STORE_FLAGS={};for(var sid in cfg.store_flags)STORE_FLAGS[sid]=cfg.store_flags[sid]}
     initStoreFlags(); // risemina DEPT stores mancanti
@@ -5252,8 +5284,8 @@ function loadVisualExcel(input){
     }
     var empCount=Object.keys(VL).length;
     var _sidInfo=hdr.sid>=0?('col.'+hdr.sid+' \u2714'):'NON TROVATA \u26a0 (il premio per negozio non sar\u00e0 calcolabile)';
-    alert('Visual In Store caricato!\n\n'+empCount+' dipendenti \u00b7 '+rowCount+' righe elaborate\nColonne: MATR=col.'+hdr.matr+' | SID='+_sidInfo+' | BDG=col.'+hdr.bdg+
-      (negRows.length?'\n\n⚠ '+negRows.length+' righe con importo NEGATIVO scartate (non ammesse):\n• '+negRows.slice(0,15).join('\n• ')+(negRows.length>15?'\n… e altre '+(negRows.length-15):''):''));
+    alert(importDone("visual","Visual In Store",(f&&f.name),'Visual In Store caricato!\n\n'+empCount+' dipendenti \u00b7 '+rowCount+' righe elaborate\nColonne: MATR=col.'+hdr.matr+' | SID='+_sidInfo+' | BDG=col.'+hdr.bdg+
+      (negRows.length?'\n\n⚠ '+negRows.length+' righe con importo NEGATIVO scartate (non ammesse):\n• '+negRows.slice(0,15).join('\n• ')+(negRows.length>15?'\n… e altre '+(negRows.length-15):''):'')));
     autoSave();rSources();rC();
   }catch(ex){alert('Errore lettura Visual: '+ex.message);}};reader.readAsArrayBuffer(f);
 }
@@ -6887,6 +6919,67 @@ function parseRatio(s){
   return neg?-Math.abs(n):n;
 }
 
+// === Ricerca colonna per intestazione (tutti gli import consuntivo/target) ===
+// hdrs: intestazioni gia` in minuscolo; cands: candidati dal PIU` specifico al meno.
+// Regole (prima: vinceva la prima colonna da sinistra che conteneva un candidato qualsiasi):
+//  1. i candidati si provano nell'ordine; per ognuno prima l'intestazione identica, poi quella
+//     che lo contiene;
+//  2. se piu` colonne corrispondono allo stesso candidato (es. «cr 2025» e «cr 2026» per
+//     «cr 20») si preferisce quella con l'anno configurato e si scartano quelle dell'anno
+//     precedente o marcate LY/PY/prev; a parita` resta la prima e la scelta viene annotata.
+// opt.skip: parti di intestazione da ignorare (es. ["fcst","forecast"]).
+var HDR_NOTES=[]; // scelte ambigue dell'ultimo import, mostrate nel riepilogo
+function _colLetter(i){var s="";i++;while(i>0){var r=(i-1)%26;s=String.fromCharCode(65+r)+s;i=Math.floor((i-1)/26);}return s;}
+function _fixCol(label,idx){HDR_NOTES.push("Intestazione «"+label+"» non trovata: usata la colonna fissa "+_colLetter(idx)+" (posizione storica del file): controlla che sia giusta");}
+// Foglio del mese m (1-12) per nome intero (italiano o inglese)
+// o per numero come token isolato ("02", "2", "02-2026" si'; "2026" no). null se nessuno.
+var MONTH_NAMES_IT=["","gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"];
+var MONTH_NAMES_EN=["","january","february","march","april","may","june","july","august","september","october","november","december"];
+function sheetForMonth(names,m){
+  if(!m||!names)return null;
+  var it=MONTH_NAMES_IT[m],en=MONTH_NAMES_EN[m];
+  var num=new RegExp("(^|\\D)0?"+m+"(\\D|$)");
+  var i,l;
+  for(i=0;i<names.length;i++){l=String(names[i]).toLowerCase();if(l.indexOf(it)>=0||l.indexOf(en)>=0)return names[i];}
+  for(i=0;i<names.length;i++){l=String(names[i]).toLowerCase();if(num.test(l))return names[i];}
+  return null;
+}
+// Mese (1-12) riconosciuto nel nome di un file/foglio, o 0 se assente/ambiguo.
+// Es. "Incentivi_consuntivo_AGOSTO_2026.xlsx" -> 8; "FCVM_08_2026 ITA.xlsx" -> 8; "DATI W31-34.xlsx" -> 0.
+function monthFromName(name){
+  var l=String(name||"").toLowerCase(),found=[];
+  for(var m=1;m<=12;m++){if(l.indexOf(MONTH_NAMES_IT[m])>=0||l.indexOf(MONTH_NAMES_EN[m])>=0)found.push(m);}
+  if(found.length===1)return found[0];
+  if(found.length>1)return 0;
+  // numero di mese accanto a un anno: 08_2026, 08-2026, 2026_08, 2026.08
+  var r=l.match(/(?:^|\D)(0?[1-9]|1[0-2])[\s._-]+(20\d\d)(?:\D|$)/)||null;
+  if(r)return parseInt(r[1],10);
+  r=l.match(/(?:^|\D)(20\d\d)[\s._-]+(0?[1-9]|1[0-2])(?:\D|$)/);
+  if(r)return parseInt(r[2],10);
+  return 0;
+}
+function hdrFind(hdrs,cands,opt){
+  opt=opt||{};var skip=opt.skip||[];
+  var ok=function(h){if(!h)return false;for(var s=0;s<skip.length;s++)if(h.indexOf(skip[s])>=0)return false;return true;};
+  var yr=typeof CFG_YEAR!=="undefined"?String(CFG_YEAR):"",ly=yr?String(CFG_YEAR-1):"";
+  var score=function(h){var s=0;if(yr&&h.indexOf(yr)>=0)s+=2;
+    if((ly&&h.indexOf(ly)>=0)||/(^|[^a-z])(ly|py)([^a-z]|$)|prev|last year|anno prec/.test(h))s-=2;return s;};
+  var pick=function(list,cand){
+    if(list.length<2)return list[0];
+    var best=list[0],bs=score(hdrs[best]),tie=false;
+    for(var i=1;i<list.length;i++){var sc=score(hdrs[list[i]]);if(sc>bs){best=list[i];bs=sc;tie=false;}else if(sc===bs)tie=true;}
+    if(tie)HDR_NOTES.push("Colonna «"+String(cand).trim()+"»: trovate "+list.length+" colonne ("+list.map(function(c){return "«"+hdrs[c]+"»"}).join(", ")+"), usata «"+hdrs[best]+"»");
+    return best;
+  };
+  for(var i=0;i<cands.length;i++){
+    var c=String(cands[i]),ct=c.trim(),ex=[],inc=[];
+    for(var ci=0;ci<hdrs.length;ci++){var h=hdrs[ci];if(!ok(h))continue;if(h===ct)ex.push(ci);else if(h.indexOf(c)>=0)inc.push(ci);}
+    if(ex.length)return pick(ex,c);
+    if(inc.length)return pick(inc,c);
+  }
+  return -1;
+}
+
 // === WORKDAY: nuovo export HR (estero dal preventivo ottobre 2026, poi Italia) ===
 // Colonne per nome header (identificate dal nome, non dall'indice). Stipendio = Prorated Monthly Salary (quello
 // effettivamente pagato, come il vecchio CODICE_INTERNO), BDG = Amount del piano "Budget Amount" (mensile).
@@ -7018,6 +7111,7 @@ function matrItResolve(raw){
 // U(20)=filiale (store_id), V(21)=filiale_descrizione, W(22)=unita_locale (ente→valuta), AX(49)=Cod_Mansione, DJ(113)=residenza_email
 // Vecchio formato (backward compat via header detection): A(0)=Id Empl, C(2)=Ente, E(4)=Store, ...
 function loadAnagraficaExcel(file){
+  HDR_NOTES=[];
   var reader=new FileReader();
   reader.onload=function(ev){setTimeout(function(){
     try{
@@ -7260,14 +7354,14 @@ function loadAnagraficaExcel(file){
       // Nuovo formato HR: dipendente(C2), cognome(D3), nome(E4), data_assunzione(H7), data_cessazione(I8),
       // CODICE_INTERNO(O14)=salary, AZIENDA_PER_COSTI(P15)=budget, filiale(U20), filiale_descrizione(V21),
       // unita_locale(W22)=ente/valuta, Cod_Mansione(AX49), residenza_email(DJ113)
-      var C_ID    =_intFind("dipendente","id empl","employee id");                              if(C_ID<0)    C_ID=2;
-      var C_ENTE  =_intFind("unita locale","cod unita locale","cod unit","unit locale");        if(C_ENTE<0)  C_ENTE=22;
-      var C_STORE =_intFind("filiale","cod cdc","cod c d c","store id");                        if(C_STORE<0) C_STORE=20;
-      var C_SDESC =_intFind("filiale descrizione","cdc description","store name","negozio");    if(C_SDESC<0) C_SDESC=21;
-      var C_COGN  =_intFind("cognome","surname","last name");                                    if(C_COGN<0)  C_COGN=3;
-      var C_NOME  =_intFind("nome","first name");                                                if(C_NOME<0)  C_NOME=4;
-      var C_JOB   =_intFind("cod mansione","job title","job","ruolo");                           if(C_JOB<0)   C_JOB=49;
-      var C_SAL   =_intFind("codice interno","salary","stipendio","gross salary");               if(C_SAL<0)   C_SAL=14;
+      var C_ID    =_intFind("dipendente","id empl","employee id");                              if(C_ID<0){C_ID=2;_fixCol("ID dipendente",2);}
+      var C_ENTE  =_intFind("unita locale","cod unita locale","cod unit","unit locale");        if(C_ENTE<0){C_ENTE=22;_fixCol("unità locale/ente",22);}
+      var C_STORE =_intFind("filiale","cod cdc","cod c d c","store id");                        if(C_STORE<0){C_STORE=20;_fixCol("filiale/negozio",20);}
+      var C_SDESC =_intFind("filiale descrizione","cdc description","store name","negozio");    if(C_SDESC<0){C_SDESC=21;_fixCol("descrizione negozio",21);}
+      var C_COGN  =_intFind("cognome","surname","last name");                                    if(C_COGN<0){C_COGN=3;_fixCol("cognome",3);}
+      var C_NOME  =_intFind("nome","first name");                                                if(C_NOME<0){C_NOME=4;_fixCol("nome",4);}
+      var C_JOB   =_intFind("cod mansione","job title","job","ruolo");                           if(C_JOB<0){C_JOB=49;_fixCol("mansione",49);}
+      var C_SAL   =_intFind("codice interno","salary","stipendio","gross salary");               if(C_SAL<0){C_SAL=14;_fixCol("stipendio",14);}
       // Budget: nuovo formato = "azienda per costi", vecchio formato = colonna "budget" (escludi "budget visual")
       var C_BDG=-1;
       for(var _bi=0;_bi<INT_HDR.length;_bi++){
@@ -7280,14 +7374,14 @@ function loadAnagraficaExcel(file){
           if(_bh.indexOf("budget")>=0&&_bh.indexOf("visual")<0&&_bh.indexOf("vis ")<0){C_BDG=_bi;break;}
         }
       }
-      if(C_BDG<0)C_BDG=15;
+      if(C_BDG<0){C_BDG=15;_fixCol("budget",15);}
       // Status (vecchio formato: "Active/Dismissal") — non presente nel nuovo formato, -1 se non trovato
       var C_STATUS=_intFind("active dismissal","active/dismissal","dismissal resignation","status");
       if(C_STATUS<0)C_STATUS=-1;
       // Data assunzione e cessazione
-      var C_HIRE  =_intFind("data assunzione","data inizio rapporto","hire date","start date");  if(C_HIRE<0)C_HIRE=7;
+      var C_HIRE  =_intFind("data assunzione","data inizio rapporto","hire date","start date");  if(C_HIRE<0){C_HIRE=7;_fixCol("data assunzione",7);}
       var C_TERM  =_intFind("data cessazione","data fine rapporto","termination date","end date"); if(C_TERM<0)C_TERM=-1;
-      var C_EMAIL =_intFind("residenza email","e mail","email");                                  if(C_EMAIL<0)C_EMAIL=113;
+      var C_EMAIL =_intFind("residenza email","e mail","email");                                  if(C_EMAIL<0){C_EMAIL=113;_fixCol("email",113);}
       var C_FC    =-1;
       INT_HDR.forEach(function(cell,ci){var s=String(cell||"").toLowerCase().replace(/[\s\n\r]+/g,"");if(s==="fc"||s.indexOf("fieldcoach")>=0||s.indexOf("field coach")>=0)C_FC=ci;});
 
@@ -7622,7 +7716,7 @@ function applyImportedAnagrafica(){
   // Rebuild all tabs
   updateHeaderCount();
   rC();rA();rSources();rDist();rAgg();rT();autoSave();
-  alert("Anagrafica aggiornata: "+E.length+" dipendenti"+(dup2Count>0?" (di cui "+dup2Count+" secondo-negozio)":"")+(manCount>0?" (di cui "+manCount+" inseriti manualmente mantenuti)":"")+" (precedenti: "+oldLen+").\n\nTarget, consuntivo e KPI azzerati. Ricarica i dati per "+getMonthYearLabel()+".");
+  alert(importDone("anagrafica","Anagrafica",(window._pendingFile||""),"Anagrafica aggiornata: "+E.length+" dipendenti"+(dup2Count>0?" (di cui "+dup2Count+" secondo-negozio)":"")+(manCount>0?" (di cui "+manCount+" inseriti manualmente mantenuti)":"")+" (precedenti: "+oldLen+").\n\nTarget, consuntivo e KPI azzerati. Ricarica i dati per "+getMonthYearLabel()+"."));
 }
 
 // ── IMPORT MAPPING FC PER MODALITÀ MENSILE INTERNAZIONALE ───────────────────
@@ -7898,7 +7992,7 @@ function applyImportedUSAAnagrafica(){
   window._pendingNewStoresUSA=null;
   var el=document.getElementById("scanResults");if(el)el.innerHTML="";
   rC();rA();rSources();rAgg();autoSave();
-  alert("\u2705 Anagrafica USA applicata: "+imported.length+" dipendenti USA aggiornati.");
+  alert(importDone("anagrafica_usa","Anagrafica USA",(window._pendingFileUSA||""),"\u2705 Anagrafica USA applicata: "+imported.length+" dipendenti USA aggiornati."));
 }
 
 function downloadUSAImportLog(){
@@ -8002,6 +8096,7 @@ function seasFindUptCol(headers,skipFcst){
 // In modalità seasonal: aggiorna SEAS_TARGETS (target semestrali per negozio)
 // Riconosce: fatturato+SY+CR (target_03/pivot), fidelity/subscription, dept QTY
 function loadTargetExcel(file){
+  HDR_NOTES=[];
   var reader=new FileReader();
   reader.onload=function(ev){setTimeout(function(){
     try{
@@ -8143,7 +8238,7 @@ function loadTargetExcel(file){
         }
 
         var seasLabel={seas_pivot:"Target KPI Seasonal (Fatturato + SY"+(cUptCol>=0?" + UPT":"")+")",seas_fidelity:"Target Subscription Rate Seasonal",seas_qty_dept:"Target QTY Dept Store Seasonal",seas_upt:"Target UPT Seasonal (Brian & Barry)"}[seasFormat]||"Target Seasonal";
-        alert(seasLabel+"\n\nNegozi aggiornati in SEAS_TARGETS: "+imported+"\nNegozi totali in SEAS_TARGETS: "+Object.keys(SEAS_TARGETS).length);
+        alert(importDone("target_seas","Target seasonal",(file&&file.name),seasLabel+"\n\nNegozi aggiornati in SEAS_TARGETS: "+imported+"\nNegozi totali in SEAS_TARGETS: "+Object.keys(SEAS_TARGETS).length));
         rC();rA();rSources();autoSave();
         return;
       }
@@ -8154,11 +8249,9 @@ function loadTargetExcel(file){
       var targetMonth=CFG_MONTH;
       var mNames=["","gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"];
       var bestSheet=null;
-      // Try month-named sheet first
-      wb.SheetNames.forEach(function(sn){
-        var snl=sn.toLowerCase();
-        if(snl.indexOf(mNames[targetMonth])>=0||snl.indexOf(String(targetMonth).padStart(2,"0"))>=0)bestSheet=sn;
-      });
+      // Try month-named sheet first: prima per NOME del mese, poi per NUMERO come token a se`
+      // (prima "02" veniva trovato anche dentro "2026" e vinceva l'ultimo foglio corrispondente)
+      bestSheet=sheetForMonth(wb.SheetNames,targetMonth);
       // If file has Sheet1/default with month column, use that
       if(!bestSheet){
         wb.SheetNames.forEach(function(sn){
@@ -8183,7 +8276,7 @@ function loadTargetExcel(file){
 
       // Type 1: Main target (target_03 style): store_id, gross_sales_LC, sy, cr, forex
       function findH(){for(var i=1;i<arguments.length;i++){var idx=headers.indexOf(arguments[i]);if(idx>=0)return idx;}return-1;}
-      function findHPartial(){for(var ci=0;ci<headers.length;ci++){for(var i=1;i<arguments.length;i++){if(headers[ci].indexOf(arguments[i])>=0)return ci}}return-1}
+      function findHPartial(){return hdrFind(headers,[].slice.call(arguments,1));}
 
       var cSid=findH(0,"store_id");if(cSid<0)cSid=findHPartial(0,"store id","store_id");
       var cSales=findHPartial(0,"gross_sales_lc","sales_lc","fcst sales","fcst_sales");
@@ -8230,7 +8323,7 @@ function loadTargetExcel(file){
           var val=parseFloat(row[cSyLy]);
           if(!isNaN(val)){MONTHLY_SYLY[sid]=val;syLyImported++;}
         }
-        alert("\u2705 SY LY mensile importata:\n\u2022 "+syLyImported+" store caricati\n\u2022 Colonna: "+headers[cSyLy]);
+        alert(importDone("syly","SY LY mensile",(file&&file.name),"\u2705 SY LY mensile importata:\n\u2022 "+syLyImported+" store caricati\n\u2022 Colonna: "+headers[cSyLy]));
         rSources();rC();rA();return;
       }
 
@@ -8269,7 +8362,7 @@ function loadTargetExcel(file){
       var typeLabel={"main_target":"Target Fatturato + SY + CR","fidelity":"Target Fidelity/Subscription","dept_qty":"Target QTY Dept Store","turnover_only":"Target Fatturato"}[type];
       var msg="Target caricati: "+typeLabel+"\n\nFoglio: "+bestSheet+"\nRighe importate: "+imported+"\nRighe saltate (mese diverso): "+skipped+"\nNuovi store: "+newStores.length+"\n\nStore totali in D.t: "+Object.keys(D.t).length;
 
-      alert(msg);
+      alert(importDone("target_"+type,"Target ("+type+")",(file&&file.name),msg));
       try{usaApplyStoreNames()}catch(exn){}
       rC();rA();rSources();autoSave();
 
@@ -8282,6 +8375,7 @@ function loadTargetExcel(file){
 // In modalità mensile: aggiorna D.c (consuntivi mensili per negozio/dipendente)
 // In modalità seasonal: aggiorna SEAS_TARGETS[sid] con i campi consuntivo (sc, sy, nf, es, s4)
 function loadResultsExcel(file){
+  HDR_NOTES=[];
   var reader=new FileReader();
   reader.onload=function(ev){setTimeout(function(){
     try{
@@ -8323,7 +8417,7 @@ function loadResultsExcel(file){
         // facendo apparire il Dept Store sempre a target anche con un consuntivo reale
         // diverso (bug segnalato 25/08/2026, es. reale store 1318: target/fcst ~538k,
         // vero consuntivo 592k, mostrato sempre come 538k=target raggiunto).
-        function fHP(){for(var ci=0;ci<headers.length;ci++){if(!headers[ci]||headers[ci].indexOf("fcst")>=0||headers[ci].indexOf("forecast")>=0)continue;for(var i=0;i<arguments.length;i++){if(headers[ci].indexOf(arguments[i])>=0)return ci;}}return-1;}
+        function fHP(){return hdrFind(headers,[].slice.call(arguments),{skip:["fcst","forecast"]});}
 
         // Identifica tipo file dal contenuto delle colonne
         var cSid=fHP("store id","store_id");
@@ -8407,7 +8501,7 @@ function loadResultsExcel(file){
         }
 
         var seasLabels={"seas_main":"Fatturato + SY + Subscription Rate"+(cUpt>=0?" + UPT":""),"seas_upt":"UPT (Brian & Barry)","seas_inv_acc":"Inventario (% su COGS) + Accuracy","seas_sas":"SAS (ore medie)","seas_inv_abs":"Inventario/Esubero (valore assoluto)","seas_qty_dept":"QTY Dept Store"};
-        alert("Consuntivo Seasonal: "+seasLabels[seasConsType]+"\n\nNegozi aggiornati in D.c: "+imported);
+        alert(importDone("cons_seas_"+seasConsType,"Consuntivo seasonal ("+seasLabels[seasConsType]+")",(file&&file.name),"Consuntivo Seasonal: "+seasLabels[seasConsType]+"\n\nNegozi aggiornati in D.c: "+imported));
         rC();rA();rSources();autoSave();
         return;
       }
@@ -8416,7 +8510,7 @@ function loadResultsExcel(file){
 
       var type="unknown",bestSheet=null,bestJson=null,bestHeaders=null,bestDataStart=1;
       var fnLow=(file.name||"").toLowerCase();
-      function findHP(hdrs){return function(){for(var ci=0;ci<hdrs.length;ci++){if(!hdrs[ci])continue;for(var i=0;i<arguments.length;i++){if(hdrs[ci].indexOf(arguments[i])>=0)return ci}}return-1}}
+      function findHP(hdrs){return function(){return hdrFind(hdrs,[].slice.call(arguments));}}
 
       var isDCC=fnLow.indexOf("dcc")>=0;
       var isArt=fnLow.indexOf("report_w4")>=0||fnLow.indexOf("report_1l")>=0||fnLow.indexOf("report_factory")>=0||fnLow.indexOf("articol")>=0||fnLow.indexOf("incentivo")>=0;
@@ -8577,7 +8671,7 @@ function loadResultsExcel(file){
         var cSid=fH("store id","store_id");
         // fHns: come fH ma ignora le colonne "recognised_*" — il valore riconosciuto/matrice lo
         // calcoliamo noi (sasMatrixPct/sasRecognizedValue), non lo importiamo dal file.
-        function fHns(){for(var ci=0;ci<headers.length;ci++){if(!headers[ci]||headers[ci].indexOf('recognised')>=0)continue;for(var i=0;i<arguments.length;i++){if(headers[ci].indexOf(arguments[i])>=0)return ci}}return-1}
+        function fHns(){return hdrFind(headers,[].slice.call(arguments),{skip:['recognised']});}
         var cSa=fHns("% sas accepted","sas accepted","% accepted","% accettati","accepted %","accepted","% accettazione","accettati %","% acceptance","pct_accepted","pct accepted");
         // NUOVA logica SAS (da luglio 2026): velocità %, valore SAS (LC/EUR), riserva riportata.
         // Richiede il simbolo "%" nell'header (fasi "processed within"/"gestiti"/"handled") per non
@@ -8752,7 +8846,12 @@ function loadResultsExcel(file){
         // Build lookup multiplo per matching robusto
         // 1. COGNOME|NOME (exact match)
         // 2. COGNOME_NORM (solo cognome normalizzato — fallback)
-        var usaLookupExact={},usaLookupCogn={};
+        // v9.111: 0. Employee ID = matricola in anagrafica (se coincide); il fallback sul solo
+        // cognome vale SOLO se il cognome e` unico nel negozio della riga (o, senza colonna
+        // negozio, tra i dipendenti USA). Prima: primo dipendente con quel cognome, quindi due
+        // omonimi di cognome potevano scambiarsi le vendite.
+        var cStore2=hdrFind(headers,["store id","store_id","store","location"]);
+        var usaLookupExact={},usaLookupCogn={},usaById={};
         E.forEach(function(emp){
           if(emp.cu!=="USD")return;
           var c=(emp.c||"").toUpperCase().trim();
@@ -8760,10 +8859,11 @@ function loadResultsExcel(file){
           var cNorm=c.replace(/[\s'\-]/g,"");
           usaLookupExact[c+"|"+n]=emp.m;      // exact cognome+nome
           if(!usaLookupExact[n+"|"+c])usaLookupExact[n+"|"+c]=emp.m; // anagrafica con nome/cognome invertiti
-          if(!usaLookupCogn[cNorm])usaLookupCogn[cNorm]=emp.m; // solo cognome normalizzato
+          (usaLookupCogn[cNorm]=usaLookupCogn[cNorm]||[]).push(emp); // tutti i dipendenti con quel cognome
+          usaById[String(emp.m).trim()]=emp.m;
         });
-        var matched=0,notFound=0,skippedRows=0;
-        var notFoundList=[];
+        var matched=0,notFound=0,skippedRows=0,ambiguous=0;
+        var notFoundList=[],ambiguousList=[];
         if(!D.usa)D.usa={};
         for(var ri=dataStart;ri<json.length;ri++){
           var row=json[ri];if(!row)continue;
@@ -8772,11 +8872,19 @@ function loadResultsExcel(file){
           if(cEmpId2>=0&&(!empIdRaw||String(empIdRaw).trim()==="-"||String(empIdRaw).trim()==="")){skippedRows++;continue;}
           var cogn=cCogn2>=0?String(row[cCogn2]||"").toUpperCase().trim():"";
           var nome=cNome2>=0?String(row[cNome2]||"").toUpperCase().trim():"";
-          var salesVal=cSales2>=0?parseFloat(row[cSales2])||0:0;
+          // parseNum: "1,234.56" e "$1,234" letti correttamente (prima parseFloat -> 1)
+          var salesVal=cSales2>=0?parseNum(row[cSales2]):0;
           if(!cogn){skippedRows++;continue;}
-          // Prova match: 1) cognome+nome esatto  2) solo cognome normalizzato
-          var matr=usaLookupExact[cogn+"|"+nome];
-          if(!matr){var cNorm2=cogn.replace(/[\s'\-]/g,"");matr=usaLookupCogn[cNorm2];}
+          // Match: 0) Employee ID  1) cognome+nome esatto  2) solo cognome, se unico nel negozio
+          var matr=cEmpId2>=0?usaById[String(row[cEmpId2]==null?"":row[cEmpId2]).trim()]:null;
+          if(!matr)matr=usaLookupExact[cogn+"|"+nome];
+          if(!matr){
+            var cands=usaLookupCogn[cogn.replace(/[\s'\-]/g,"")]||[];
+            var rowSid=cStore2>=0?parseInt(row[cStore2]):NaN;
+            if(!isNaN(rowSid))cands=cands.filter(function(emp){return Number(emp.si)===rowSid;});
+            if(cands.length===1)matr=cands[0].m;
+            else if(cands.length>1){ambiguous++;if(ambiguousList.length<10)ambiguousList.push(cogn+(nome?" "+nome:"")+" ("+cands.length+" con lo stesso cognome"+(isNaN(rowSid)?"":" nel negozio "+rowSid)+")");continue;}
+          }
           if(matr){
             if(!D.usa[matr])D.usa[matr]={cm:0,ps:0,st:0,sb:0,tp:0};
             D.usa[matr].ps=Math.round(salesVal*100)/100;
@@ -8788,10 +8896,11 @@ function loadResultsExcel(file){
           imported++;
         }
         var notFoundMsg=notFound>0?("\n\u26a0 "+notFound+" righe non abbinate (cognome non trovato in anagrafica):\n  "+notFoundList.join(", ")+(notFound>10?" ...":"")):"";
+        if(ambiguous>0)notFoundMsg+="\n\u26a0 "+ambiguous+" righe NON abbinate perch\u00e9 ambigue (nome diverso dall'anagrafica e cognome non unico): inserisci a mano le vendite di\n  "+ambiguousList.join(", ")+(ambiguous>10?" ...":"");
         report="\u2705 Vendite Personali USA: "+matched+" dipendenti aggiornati su "+(matched+notFound)+" righe."+notFoundMsg+(skippedRows>0?"\n("+skippedRows+" righe totale/vuote ignorate)":"");
       }
 
-      alert(report);
+      alert(importDone("cons_"+type,"Consuntivo ("+type+")",(file&&file.name),report));
       LOAD_RESULTS._lastCons=type;
       rC();rA();rSources();autoSave();
 
@@ -8822,7 +8931,7 @@ function loadUSAPrevResults(file){
         if(hdr.some(function(h){return h&&h.indexOf("store")>=0})){headerRow=hr;headers=hdr;break;}
       }
       if(headerRow<0)continue;
-      function fH2(){for(var ci=0;ci<headers.length;ci++){if(!headers[ci])continue;for(var i=0;i<arguments.length;i++){if(headers[ci].indexOf(arguments[i])>=0)return ci}}return-1}
+      function fH2(){return hdrFind(headers,[].slice.call(arguments));}
       var cSid=fH2("store id","store_id");var cTotSales=fH2("tot sales");var cEsubero=fH2("esubero");
       if(cSid<0||cTotSales<0)continue;
       for(var ri=headerRow+1;ri<json.length;ri++){
@@ -8841,7 +8950,7 @@ function loadUSAPrevResults(file){
       break; // primo foglio con store trovato è sufficiente
     }
     autoSave();rC();rA();rSources();
-    alert('Esubero precedente USA: '+updated+' negozi aggiornati'+(skipped>0?' ('+skipped+' negozi non-USA ignorati)':'')+'.');
+    alert(importDone("usa_prev","Esubero precedente USA",(file&&file.name),'Esubero precedente USA: '+updated+' negozi aggiornati'+(skipped>0?' ('+skipped+' negozi non-USA ignorati)':'')+'.'));
   }catch(ex){alert('Errore lettura esubero precedente USA:\n'+ex.message);}},50);};
   reader.readAsArrayBuffer(file);
 }
@@ -9113,7 +9222,7 @@ function manEmpReapplyFcvm(manual){
   return n;
 }
 function rSources(){try{
-  if(PRIZE_MODE==="fcvm"){document.getElementById("p4").innerHTML=rSourcesFcvm();return;}
+  if(PRIZE_MODE==="fcvm"){document.getElementById("p4").innerHTML=(typeof importChecksBoxHtml==="function"?importChecksBoxHtml():"")+rSourcesFcvm();return;}
   var isP=MODE==="preventivo",sh="";
   var isSeasonal=PRIZE_MODE==="seasonal";
 
@@ -9419,7 +9528,7 @@ function rSources(){try{
     sh+='</div>';
   }
   sh+='</div>';
-  document.getElementById("p4").innerHTML=sh;
+  document.getElementById("p4").innerHTML=(typeof importChecksBoxHtml==="function"?importChecksBoxHtml():"")+sh;
   // Connectors toggle
   var togC=document.getElementById("toggleConn");if(togC)togC.onclick=function(){var bd=document.getElementById("connBody");if(bd){var vis=bd.style.display==="none";bd.style.display=vis?"":"none";togC.textContent=vis?"Comprimi \u25b2":"Espandi \u25bc"}};
 
@@ -12069,7 +12178,7 @@ function applyFcVmAnagrafica(){
   // Aggiorna header contatore
   updateHeaderCount();
   rC();rA();rSources();autoSave();
-  alert('✅ Anagrafica FC+VM applicata: '+list.length+' dipendenti, '+Object.keys(FC_MAP).length+' negozi.'+(nManFc?'\n('+nManFc+' inseriti manualmente mantenuti)':''));
+  alert(importDone("fc_anagrafica","Anagrafica FC+VM","",'✅ Anagrafica FC+VM applicata: '+list.length+' dipendenti, '+Object.keys(FC_MAP).length+' negozi.'+(nManFc?'\n('+nManFc+' inseriti manualmente mantenuti)':'')));
 }
 
 function downloadFcVmImportLog(){
@@ -12144,7 +12253,7 @@ function loadFcVmTarget(file){
     if(ratesFound>0)msg+='\n• '+ratesFound+' cambi valuta derivati da EUR/LC';
     if(useFallback)msg+='\n⚠ Usata colonna LC come fallback (cambi non derivabili)';
     rC();rA();rSources();autoSave();
-    alert(msg);
+    alert(importDone("fc_target","Target FC+VM",(file&&file.name),msg));
   }catch(ex){alert('Errore: '+ex.message);}},50);};
   reader.readAsArrayBuffer(file);
 }
@@ -12173,7 +12282,7 @@ function loadMonthlySyLyExcel(file){
         var val=parseFloat(r[syCol]);
         if(sid&&!isNaN(val)){MONTHLY_SYLY[sid]=val;imported++;}
       });
-      alert('\u2705 SY LY mensile importata:\n\u2022 '+imported+' store caricati\n\u2022 Colonna: '+syCol);
+      alert(importDone("syly","SY LY mensile",(file&&file.name),'\u2705 SY LY mensile importata:\n\u2022 '+imported+' store caricati\n\u2022 Colonna: '+syCol));
       rSources();rC();rA();
     }catch(ex){alert('Errore lettura file SY LY: '+ex.message);}
   };
@@ -12246,7 +12355,7 @@ function loadFcVmSyLy(file){
     var msg='✅ SY LY importata:\n• '+imported+' store caricati\n• SY LY = Fatturato LY / Traffico LY (aggregato per area in calcolo)';
     if(noTraffic>0)msg+='\n⚠ '+noTraffic+' store senza traffico — SY non usata per quelle aree';
     rC();rA();rSources();autoSave();
-    alert(msg);
+    alert(importDone("fc_syly","SY LY FC+VM",(file&&file.name),msg));
   }catch(ex){alert('Errore: '+ex.message);}},50);};
   reader.readAsArrayBuffer(file);
 }
@@ -12292,7 +12401,7 @@ function loadFcVmSas(file){
       if(hdr.sasr>=0){var rv=parseFloat(row2[hdr.sasr]);if(!isNaN(rv))FC_RESULTS[sid].sasr_eur=Math.round(rv*100)/100;}
       imported++;
     }
-    alert('✅ SAS FC+VM importati: '+imported+' negozi'+(withVal>0?(' · '+withVal+' con valore'):'')+'.');
+    alert(importDone("fc_sas","SAS FC+VM",(file&&file.name),'✅ SAS FC+VM importati: '+imported+' negozi'+(withVal>0?(' · '+withVal+' con valore'):'')+'.'));
     rC();rA();rSources();autoSave();
   }catch(ex){alert('Errore import SAS FC+VM:\n'+ex.message);}},50);};
   reader.readAsArrayBuffer(file);
@@ -12364,7 +12473,7 @@ function loadFcVmSasArea(file){
       });
       if(dupMatr.length>10)msg+='\n...';
     }
-    alert(msg);
+    alert(importDone("fc_sas_area","SAS Area FC",(file&&file.name),msg));
     rC();rA();rSources();autoSave();
   }catch(ex){alert('Errore import SAS Area:\n'+ex.message);}},50);};
   reader.readAsArrayBuffer(file);
@@ -12413,7 +12522,7 @@ function loadFcVmSasRiserva(file){
     parsed.forEach(function(p){if(!FC_AREA_SAS[p[0]])FC_AREA_SAS[p[0]]={};FC_AREA_SAS[p[0]].sasr_eur=p[1];});
     var msg='✅ Riserva SAS FC/VM mese precedente importata: '+parsed.length+' aree · totale '+tot.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' EUR.';
     if(notFound.length)msg+='\n\n⚠ Non abbinati ('+notFound.length+'):\n'+notFound.slice(0,10).join('\n')+(notFound.length>10?'\n...':'');
-    alert(msg);
+    alert(importDone("fc_sas_riserva","Riserva SAS FC",(file&&file.name),msg));
     rC();rA();rSources();autoSave();
   }catch(ex){alert('Errore import Riserva SAS FC/VM:\n'+ex.message);}},50);};
   reader.readAsArrayBuffer(file);
@@ -12491,7 +12600,7 @@ function loadFcVmResults(file){
     var msg='✅ Risultati FC+VM importati:\n• '+imported+' store caricati\n• SY CY = Gross Sales / Traffico';
     if(noTraffic>0)msg+='\n⚠ '+noTraffic+' store senza traffico';
     rC();rA();rSources();autoSave();
-    alert(msg);
+    alert(importDone("fc_results","Consuntivo FC+VM",(file&&file.name),msg));
   }catch(ex){alert('Errore: '+ex.message);}},50);};
   reader.readAsArrayBuffer(file);
 }
@@ -12552,7 +12661,7 @@ function loadFcVmPrevResults(file){
     rC();rA();rSources();autoSave();
     var nStore=Object.keys(FC_PREV_RESULTS).length;
     var colInfo='Colonne rilevate:\n• Target (col.'+(hdr.to>=0?hdr.to+1:'—')+'): '+(hdr.to>=0?'✓':'non trovata')+'\n• Consuntivo (col.'+(hdr.sc+1)+'): ✓';
-    alert('✅ Risultati mese precedente caricati:\n• '+imported+' righe, '+nStore+' store\n• Esubero area totale: € '+Math.round(totEsub).toLocaleString()+'\n\n'+colInfo);
+    alert(importDone("fc_prev","Risultati mese precedente FC+VM",(file&&file.name),'✅ Risultati mese precedente caricati:\n• '+imported+' righe, '+nStore+' store\n• Esubero area totale: € '+Math.round(totEsub).toLocaleString()+'\n\n'+colInfo));
   }catch(ex){alert('Errore: '+ex.message);}},50);};
   reader.readAsArrayBuffer(file);
 }
@@ -13476,6 +13585,60 @@ function runValidationsAndReport(title){
   }catch(ex){combined.errors.push("Errore in validateConfiguration: "+ex.message)}
   showValidationReport(title||"Verifica dati caricati",combined);
   return combined;
+}
+
+// === Riepilogo controlli dopo ogni import (non bloccante) ===================
+// Ogni import riuscito registra un «timbro» (IMPORT_STAMPS) con il mese configurato al
+// momento dell'import e il mese letto dal nome del file. I controlli segnalano, senza
+// bloccare:
+//  - file il cui nome indica un mese diverso da quello configurato;
+//  - dati importati quando il mese configurato era un altro (es. inventari di ottobre
+//    ancora attivi a novembre perche` il file non e` stato ricaricato);
+//  - matricole duplicate, negozi con dipendenti senza target, negozi senza consuntivo;
+//  - colonne scelte in modo ambiguo o lette da posizione fissa (HDR_NOTES dell'import).
+// Il riepilogo e` aggiunto al messaggio di fine import e mostrato in cima a Fonti Dati.
+var IMPORT_STAMPS={}; // src -> {label,file,m,y,fm,ts}
+function _monthLbl(m,y){var n=(typeof MONTH_NAMES_IT!=="undefined"&&MONTH_NAMES_IT[m])||String(m);return n.charAt(0).toUpperCase()+n.slice(1)+(y?" "+y:"");}
+function importChecks(){
+  var out=[],k,s;
+  for(k in IMPORT_STAMPS){s=IMPORT_STAMPS[k];if(!s)continue;
+    if(s.fm&&s.fm!==CFG_MONTH)out.push({lvl:"warn",t:"«"+s.label+"»: il file «"+s.file+"» sembra di "+_monthLbl(s.fm)+", il mese configurato è "+_monthLbl(CFG_MONTH,CFG_YEAR)+"."});
+    else if(s.m&&(s.m!==CFG_MONTH||s.y!==CFG_YEAR))out.push({lvl:"warn",t:"«"+s.label+"» è stato caricato quando il mese configurato era "+_monthLbl(s.m,s.y)+": se è cambiato mese, ricarica il file."});
+  }
+  if(PRIZE_MODE!=="fcvm"&&typeof E!=="undefined"&&E.length){
+    var seen={},dup=[];
+    E.forEach(function(e){var m=String(e.m);if(seen[m])dup.push(m);seen[m]=1;});
+    if(dup.length)out.push({lvl:"err",t:dup.length+" matricole duplicate in anagrafica: "+dup.slice(0,10).join(", ")+(dup.length>10?"…":"")+"."});
+    var hasT=Object.keys(D.t||{}).length>0,hasC=Object.keys(D.c||{}).some(function(x){return (D.c[x].sc||0)>0;});
+    var sids={};E.forEach(function(e){if(e.ps!=="SI"&&!(typeof isUSA==="function"&&isUSA(e.si,e)))sids[String(e.si)]=1;});
+    if(hasT){var noT=Object.keys(sids).filter(function(x){return !(D.t[x]&&D.t[x].to>0);});
+      if(noT.length)out.push({lvl:"warn",t:noT.length+" negozi con dipendenti ma senza target di fatturato: "+noT.slice(0,12).join(", ")+(noT.length>12?"…":"")+" (premio di negozio = 0)."});}
+    if(MODE==="consuntivo"&&hasC){var noC=Object.keys(sids).filter(function(x){return D.t[x]&&D.t[x].to>0&&!((D.c[x]||{}).sc>0);});
+      if(noC.length)out.push({lvl:"warn",t:noC.length+" negozi con target ma senza consuntivo di fatturato: "+noC.slice(0,12).join(", ")+(noC.length>12?"…":"")+"."});}
+  }
+  return out;
+}
+// Da chiamare a fine import riuscito: registra il timbro e restituisce il messaggio
+// dell'import con in coda le note dell'import (extra + HDR_NOTES) e i controlli generali.
+function importDone(src,label,fileName,msg,extra){
+  var fname=fileName||"";
+  IMPORT_STAMPS[src]={label:label,file:fname,m:CFG_MONTH,y:CFG_YEAR,fm:(typeof monthFromName==="function"?monthFromName(fname):0),ts:new Date().toISOString()};
+  var notes=(extra||[]).concat(typeof HDR_NOTES!=="undefined"?HDR_NOTES:[]);
+  if(typeof HDR_NOTES!=="undefined")HDR_NOTES=[];
+  var chk=importChecks();
+  var txt=msg||"";
+  if(notes.length)txt+="\n\n\u2139 Note su questo file:\n\u2022 "+notes.slice(0,12).join("\n\u2022 ")+(notes.length>12?"\n\u2026 e altre "+(notes.length-12):"");
+  if(chk.length)txt+="\n\n\u26a0 Controlli (non bloccanti):\n\u2022 "+chk.map(function(c){return c.t}).join("\n\u2022 ");
+  try{if(typeof rSources==="function")rSources();}catch(_e){}
+  return txt;
+}
+// Riquadro in cima a Fonti Dati
+function importChecksBoxHtml(){
+  var chk=importChecks();if(!chk.length)return "";
+  var h='<div class="wg" style="border-left:4px solid #e0a800;border-radius:0;background:#fffbea;margin-bottom:12px">';
+  h+='<div class="wg-title" style="color:#856404">\u26a0 Controlli sui dati caricati <span style="font-weight:400;font-size:10px;color:#8a8680">(non bloccanti)</span></div><ul style="margin:6px 0 0 18px;padding:0;font-size:11px;color:#5c4a00">';
+  chk.forEach(function(c){h+='<li style="margin:2px 0'+(c.lvl==="err"?';color:#a32d2d;font-weight:600':'')+'">'+esc(c.t)+'</li>';});
+  return h+'</ul></div>';
 }
 
 // ── #10 SIMULATORE WHAT-IF ────────────────────────────────────────────────

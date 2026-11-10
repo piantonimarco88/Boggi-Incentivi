@@ -24,7 +24,7 @@ function saveSession(){
     _flushDigMobInputs();
     try{usaQRecord()}catch(exq){}
     var state={
-      _type:"boggi_session",v:AUTO_VERSION,
+      _type:"boggi_session",v:AUTO_VERSION,app_version:(typeof APP_VERSION!=="undefined"?APP_VERSION:""),
       D:{e:E,t:D.t,c:D.c,cs:D.cs,s:D.s,v:D.v,tr:D.tr,usa:D.usa,uq:D.uq,us:D.us,d:D.d,vl:D.vl,ur:D.ur},
       tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,
       seas:SEAS,seas_cfg:SEAS_CFG,seas_targets:SEAS_TARGETS,sas_matrix:SAS_MATRIX,
@@ -36,7 +36,7 @@ function saveSession(){
       fc_emp:FC_EMP,fc_map:FC_MAP,fc_targets:FC_TARGETS,fc_results:FC_RESULTS,
       fc_syly:FC_SYLY,fc_store_flags:FC_STORE_FLAGS,agg_fcvm:AGG_FCVM,
       fc_overrides:FC_OVERRIDES,fc_prev_results:FC_PREV_RESULTS,fc_area_sas:FC_AREA_SAS,fcvm_params:FCVM_PARAMS,
-      monitor_snaps:MONITOR_SNAPS,mail_log:MAIL_LOG,
+      monitor_snaps:MONITOR_SNAPS,mail_log:MAIL_LOG,import_stamps:(typeof IMPORT_STAMPS!=="undefined"?IMPORT_STAMPS:{}),
       ts:new Date().toISOString()
     };
     var json=JSON.stringify(state);
@@ -48,13 +48,39 @@ function saveSession(){
     document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(a.href);
   }catch(ex){alert("Errore nel salvataggio: "+ex.message)}
 }
+// Carica sessione: i DATI del mese ripartono da zero prima del caricamento, cosi` una
+// sessione (anche vecchia, con meno chiavi) non si mescola con i dati della sessione
+// corrente (prima: FC area SAS, inventari, aggiunte... restavano quelli attuali).
+// La CONFIGURAZIONE (ruoli, parametri, matrici) assente nel file resta quella attuale
+// ed e` elencata nel messaggio finale.
+function _sessionResetData(){
+  var d0={};try{d0=JSON.parse(document.getElementById("jdata").textContent)||{}}catch(_e){}
+  ["t","c","cs","s","v","usa","uq","d","vl","ur"].forEach(function(k){
+    D[k]=d0[k]!==undefined?JSON.parse(JSON.stringify(d0[k])):(Array.isArray(D[k])?[]:{});
+  });
+  E=[];
+  AGG={};VL={};SEAS={};MONTHLY_SYLY={};
+  DEMOLT_RESULT_STORE={};DEMOLT_RESULT_FC={};DEMOLT_CHECK=null;
+  FC_EMP={};FC_MAP={};FC_TARGETS={};FC_RESULTS={};FC_SYLY={};FC_STORE_FLAGS={};
+  AGG_FCVM={};FC_OVERRIDES={};FC_PREV_RESULTS={};FC_AREA_SAS={};
+  MAIL_LOG=[];
+  if(typeof IMPORT_STAMPS!=="undefined")IMPORT_STAMPS={};
+}
+var _SESSION_CFG_KEYS={tc:"ruoli e KPI",params:"parametri premi",fcvm_params:"soglie FC+VM",sas_matrix:"matrice SAS",
+  demolt_matrix_store:"matrice inventari negozi",demolt_matrix_fc:"matrice inventari FC",seas_cfg:"configurazione seasonal",
+  seas_targets:"target seasonal",store_flags:"flag negozi",usa_p:"parametri USA"};
 function loadSession(input){
   var f=input.files[0];if(!f)return;input.value="";
   var reader=new FileReader();reader.onload=function(ev){try{
     var state=JSON.parse(ev.target.result);
     if(state._type!=="boggi_session"){alert("Il file selezionato non è una sessione Boggi valida.");return}
     var ts=state.ts?new Date(state.ts).toLocaleString("it-IT"):"sconosciuto";
-    if(!confirm("Caricare la sessione salvata il "+ts+"?\n\nTutti i dati attuali verranno sostituiti."))return;
+    var verInfo=state.app_version?" con la v"+state.app_version:"";
+    var newer=typeof state.v==="number"&&state.v>AUTO_VERSION;
+    if(!confirm("Caricare la sessione salvata il "+ts+verInfo+"?\n\nTutti i dati attuali verranno sostituiti."+
+      (newer?"\n\n⚠ La sessione è stata creata con una versione dell'app più recente di questa: alcuni dati potrebbero non essere letti. Aggiorna l'app se possibile.":"")))return;
+    var cfgMissing=Object.keys(_SESSION_CFG_KEYS).filter(function(k){return state[k]===undefined;}).map(function(k){return _SESSION_CFG_KEYS[k];});
+    _sessionResetData();
     // Restore data
     if(state.D){
       if(state.D.e){E=state.D.e;
@@ -80,7 +106,8 @@ function loadSession(input){
     if(state.store_flags){STORE_FLAGS={};for(var sid in state.store_flags)STORE_FLAGS[sid]=state.store_flags[sid]}
     initStoreFlags(); // risemina DEPT stores mancanti (per sessioni salvate prima dell'aggiunta dei flag)
     if(state.seas){SEAS=state.seas;}
-    if(state.seas_targets){for(var sk in state.seas_targets)SEAS_TARGETS[sk]=state.seas_targets[sk];}
+    // target seasonal: sostituiti (prima venivano fusi con quelli correnti)
+    if(state.seas_targets){for(var ok in SEAS_TARGETS)delete SEAS_TARGETS[ok];for(var sk in state.seas_targets)SEAS_TARGETS[sk]=state.seas_targets[sk];}
     if(state.monthly_syly)MONTHLY_SYLY=state.monthly_syly;
     if(state.seas_cfg){
       if(state.seas_cfg.basePct!==undefined)SEAS_CFG.basePct=state.seas_cfg.basePct;
@@ -133,6 +160,7 @@ function loadSession(input){
     if(state.fc_prev_results)FC_PREV_RESULTS=state.fc_prev_results;
     if(state.fc_area_sas)FC_AREA_SAS=state.fc_area_sas;
     if(state.mail_log)MAIL_LOG=state.mail_log;
+    if(state.import_stamps&&typeof IMPORT_STAMPS!=="undefined")IMPORT_STAMPS=state.import_stamps;
     if(state.mode)MODE=state.mode;if(state.region)REGION=state.region;if(state.prize_mode){PRIZE_MODE=state.prize_mode;setPrizeMode(PRIZE_MODE);}if(state.season_period){SEASON_PERIOD=state.season_period;setSeasonPeriod(SEASON_PERIOD);}
     document.getElementById("modeP").className="gbtn"+(MODE==="preventivo"?" on":"");document.getElementById("modeC").className="gbtn"+(MODE==="consuntivo"?" on":"");
     document.getElementById("regInt").className="gbtn"+(REGION==="international"?" on":"");document.getElementById("regIt").className="gbtn"+(REGION==="italia"?" on":"");
@@ -148,8 +176,9 @@ function loadSession(input){
     }else{
       loadMsg="Sessione caricata con successo!\n\n"+E.length+" dipendenti ripristinati.";
     }
+    if(cfgMissing.length)loadMsg+="\n\nNon presenti nel file (mantenuti i valori attuali): "+cfgMissing.join(", ")+".";
     alert(loadMsg);
-  }catch(ex){alert("Errore nel caricamento: "+ex.message)}};reader.readAsText(f);
+  }catch(ex){alert("Errore nel caricamento: "+ex.message+"\n\nI dati potrebbero essere incompleti: ricarica la sessione o un altro file.")}};reader.readAsText(f);
 }
 
 // Save/Dirty
@@ -157,7 +186,7 @@ var _origTC=JSON.stringify(TC),_origS50=SICK_50,_origS0=SICK_0,_origP=JSON.strin
 function markDirty(){var dirty=JSON.stringify(TC)!==_origTC||SICK_50!==_origS50||SICK_0!==_origS0||JSON.stringify(PARAMS)!==_origP||JSON.stringify(USA_P)!==_origUSA||CFG_MONTH!==_origMonth||CFG_YEAR!==_origYear||CFG_PDF_PATH!==_origPdfPath||CFG_SEASON!==_origSeason||JSON.stringify(STORE_FLAGS)!==_origSF||JSON.stringify(SEAS_CFG)!==_origSeasCfg||JSON.stringify(SAS_MATRIX)!==_origSasMatrix||JSON.stringify(DEMOLT_MATRIX_STORE)!==_origDemoltMatrixStore||JSON.stringify(DEMOLT_MATRIX_FC)!==_origDemoltMatrixFc||PRIZE_MODE!==_origPrizeMode||SEASON_PERIOD!==_origSeasonPeriod;document.getElementById("saveBar").className="save-bar"+(dirty?" show":"");var cnt=document.querySelector(".cnt");if(cnt)cnt.style.paddingBottom=dirty?"60px":""}
 function saveConfig(){
   _flushDigMobInputs();
-  var cfg={tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,seas_cfg:SEAS_CFG,sas_matrix:SAS_MATRIX,demolt_matrix_store:DEMOLT_MATRIX_STORE,demolt_matrix_fc:DEMOLT_MATRIX_FC,agg:AGG,vl:VL,usa_p:USA_P,store_flags:STORE_FLAGS,fcvm_params:FCVM_PARAMS,cfg_month:CFG_MONTH,cfg_year:CFG_YEAR,cfg_pdf_path:CFG_PDF_PATH,cfg_season:CFG_SEASON,saved:new Date().toISOString()};
+  var cfg={tc:TC,sick50:SICK_50,sick0:SICK_0,params:PARAMS,mode:MODE,region:REGION,prize_mode:PRIZE_MODE,season_period:SEASON_PERIOD,seas_cfg:SEAS_CFG,sas_matrix:SAS_MATRIX,demolt_matrix_store:DEMOLT_MATRIX_STORE,demolt_matrix_fc:DEMOLT_MATRIX_FC,usa_p:USA_P,store_flags:STORE_FLAGS,fcvm_params:FCVM_PARAMS,cfg_month:CFG_MONTH,cfg_year:CFG_YEAR,cfg_pdf_path:CFG_PDF_PATH,cfg_season:CFG_SEASON,saved:new Date().toISOString()};
   var blob=new Blob([JSON.stringify(cfg,null,2)],{type:"application/json"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="boggi_config_"+_sessionFileTag()+".json";a.click();
   _origTC=JSON.stringify(TC);_origS50=SICK_50;_origS0=SICK_0;_origP=JSON.stringify(PARAMS);_origUSA=JSON.stringify(USA_P);_origMonth=CFG_MONTH;_origYear=CFG_YEAR;_origPdfPath=CFG_PDF_PATH;_origSeason=CFG_SEASON;_origSF=JSON.stringify(STORE_FLAGS);_origSeasCfg=JSON.stringify(SEAS_CFG);_origPrizeMode=PRIZE_MODE;_origSeasonPeriod=SEASON_PERIOD;_origSasMatrix=JSON.stringify(SAS_MATRIX);_origDemoltMatrixStore=JSON.stringify(DEMOLT_MATRIX_STORE);_origDemoltMatrixFc=JSON.stringify(DEMOLT_MATRIX_FC);document.getElementById("saveBar").className="save-bar";autoSave()}
 function discardChanges(){TC=JSON.parse(_origTC);SICK_50=_origS50;SICK_0=_origS0;PARAMS=JSON.parse(_origP);USA_P=JSON.parse(_origUSA);CFG_MONTH=_origMonth;CFG_YEAR=_origYear;CFG_PDF_PATH=_origPdfPath;CFG_SEASON=_origSeason;STORE_FLAGS=JSON.parse(_origSF);SEAS_CFG=JSON.parse(_origSeasCfg);SAS_MATRIX=JSON.parse(_origSasMatrix);DEMOLT_MATRIX_STORE=JSON.parse(_origDemoltMatrixStore);DEMOLT_MATRIX_FC=JSON.parse(_origDemoltMatrixFc);PRIZE_MODE=_origPrizeMode;SEASON_PERIOD=_origSeasonPeriod;document.getElementById("saveBar").className="save-bar";setPrizeMode(PRIZE_MODE);setSeasonPeriod(SEASON_PERIOD);rT();rC()}
@@ -199,7 +228,9 @@ function loadConfig(evt){var f=evt.target.files[0];if(!f)return;var reader=new F
       if(cfg.demolt_matrix_fc.bpA)DEMOLT_MATRIX_FC.bpA=cfg.demolt_matrix_fc.bpA;
       if(cfg.demolt_matrix_fc.bpB)DEMOLT_MATRIX_FC.bpB=cfg.demolt_matrix_fc.bpB;
     }
-    if(cfg.agg)AGG=cfg.agg;if(cfg.vl)VL=cfg.vl;if(cfg.usa_p){for(var r in cfg.usa_p)USA_P[r]=cfg.usa_p[r]}
+    // aggiunte e Visual sono DATI del mese (sessione), non configurazione: un file di
+    // configurazione vecchio non deve piu` sovrascriverli (le chiavi agg/vl vengono ignorate)
+    if(cfg.usa_p){for(var r in cfg.usa_p)USA_P[r]=cfg.usa_p[r]}
     if(cfg.cfg_month)CFG_MONTH=cfg.cfg_month;if(cfg.cfg_year)CFG_YEAR=cfg.cfg_year;if(cfg.cfg_pdf_path!==undefined)CFG_PDF_PATH=cfg.cfg_pdf_path;if(cfg.cfg_season)CFG_SEASON=cfg.cfg_season;
     if(cfg.store_flags){STORE_FLAGS={};for(var sid in cfg.store_flags)STORE_FLAGS[sid]=cfg.store_flags[sid]}
     initStoreFlags(); // risemina DEPT stores mancanti

@@ -15,6 +15,7 @@
 //   const app = loadBundle();            // contesto nuovo e isolato
 //   app.run("calcE(E[0])");              // esegue codice nel contesto dell'app
 //   app.alerts / app.errors              // alert() mostrati / errori degli script
+//   loadBundle({manualTimers:true}) + app.flushTimers()  // per i loader che usano setTimeout
 // ============================================================
 
 "use strict";
@@ -70,7 +71,7 @@ function loadBundle(opts) {
     return els[id];
   }
   const store = {};
-  const app = { alerts: [], errors: [], blobs: [], elements: els };
+  const app = { alerts: [], errors: [], blobs: [], elements: els, _timers: [] };
   const ctx = {
     console: opts.console || { log() {}, warn() {}, error() {}, info() {} },
     document: {
@@ -82,7 +83,9 @@ function loadBundle(opts) {
       getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); },
       removeItem: k => { delete store[k]; }, key: () => null, length: 0,
     },
-    setTimeout: () => 0, clearTimeout() {}, setInterval: () => 0, clearInterval() {},
+    // timer: ignorati, oppure (opts.manualTimers) accodati ed eseguiti da app.flushTimers()
+    setTimeout: fn => { if (opts.manualTimers && typeof fn === "function") app._timers.push(fn); return 0; },
+    clearTimeout() {}, setInterval: () => 0, clearInterval() {},
     navigator: { userAgent: "node-test" }, location: { href: "", search: "", hash: "" },
     alert: m => { app.alerts.push(String(m)); },
     confirm: () => (opts.confirm === undefined ? true : opts.confirm),
@@ -110,6 +113,14 @@ function loadBundle(opts) {
     catch (e) { app.errors.push("script " + i + ": " + e.message); }
   });
   app.ctx = ctx;
+  // esegue i setTimeout accodati (anche quelli creati durante l'esecuzione), max 500
+  app.flushTimers = () => {
+    let n = 0;
+    while (app._timers.length && n < 500) {
+      const fn = app._timers.shift(); n++;
+      try { fn(); } catch (e) { app.errors.push("timer: " + e.message); }
+    }
+  };
   app.run = code => vm.runInContext(code, ctx);
   // Testo dell'ultimo file "scaricato" dall'app (Blob)
   app.lastBlobText = () => { const b = app.blobs[app.blobs.length - 1]; return b ? b.parts.join("") : null; };

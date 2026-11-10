@@ -387,7 +387,7 @@ function applyFcVmAnagrafica(){
   // Aggiorna header contatore
   updateHeaderCount();
   rC();rA();rSources();autoSave();
-  alert('✅ Anagrafica FC+VM applicata: '+list.length+' dipendenti, '+Object.keys(FC_MAP).length+' negozi.'+(nManFc?'\n('+nManFc+' inseriti manualmente mantenuti)':''));
+  alert(importDone("fc_anagrafica","Anagrafica FC+VM","",'✅ Anagrafica FC+VM applicata: '+list.length+' dipendenti, '+Object.keys(FC_MAP).length+' negozi.'+(nManFc?'\n('+nManFc+' inseriti manualmente mantenuti)':'')));
 }
 
 function downloadFcVmImportLog(){
@@ -462,7 +462,7 @@ function loadFcVmTarget(file){
     if(ratesFound>0)msg+='\n• '+ratesFound+' cambi valuta derivati da EUR/LC';
     if(useFallback)msg+='\n⚠ Usata colonna LC come fallback (cambi non derivabili)';
     rC();rA();rSources();autoSave();
-    alert(msg);
+    alert(importDone("fc_target","Target FC+VM",(file&&file.name),msg));
   }catch(ex){alert('Errore: '+ex.message);}},50);};
   reader.readAsArrayBuffer(file);
 }
@@ -491,7 +491,7 @@ function loadMonthlySyLyExcel(file){
         var val=parseFloat(r[syCol]);
         if(sid&&!isNaN(val)){MONTHLY_SYLY[sid]=val;imported++;}
       });
-      alert('\u2705 SY LY mensile importata:\n\u2022 '+imported+' store caricati\n\u2022 Colonna: '+syCol);
+      alert(importDone("syly","SY LY mensile",(file&&file.name),'\u2705 SY LY mensile importata:\n\u2022 '+imported+' store caricati\n\u2022 Colonna: '+syCol));
       rSources();rC();rA();
     }catch(ex){alert('Errore lettura file SY LY: '+ex.message);}
   };
@@ -564,7 +564,7 @@ function loadFcVmSyLy(file){
     var msg='✅ SY LY importata:\n• '+imported+' store caricati\n• SY LY = Fatturato LY / Traffico LY (aggregato per area in calcolo)';
     if(noTraffic>0)msg+='\n⚠ '+noTraffic+' store senza traffico — SY non usata per quelle aree';
     rC();rA();rSources();autoSave();
-    alert(msg);
+    alert(importDone("fc_syly","SY LY FC+VM",(file&&file.name),msg));
   }catch(ex){alert('Errore: '+ex.message);}},50);};
   reader.readAsArrayBuffer(file);
 }
@@ -610,7 +610,7 @@ function loadFcVmSas(file){
       if(hdr.sasr>=0){var rv=parseFloat(row2[hdr.sasr]);if(!isNaN(rv))FC_RESULTS[sid].sasr_eur=Math.round(rv*100)/100;}
       imported++;
     }
-    alert('✅ SAS FC+VM importati: '+imported+' negozi'+(withVal>0?(' · '+withVal+' con valore'):'')+'.');
+    alert(importDone("fc_sas","SAS FC+VM",(file&&file.name),'✅ SAS FC+VM importati: '+imported+' negozi'+(withVal>0?(' · '+withVal+' con valore'):'')+'.'));
     rC();rA();rSources();autoSave();
   }catch(ex){alert('Errore import SAS FC+VM:\n'+ex.message);}},50);};
   reader.readAsArrayBuffer(file);
@@ -682,7 +682,7 @@ function loadFcVmSasArea(file){
       });
       if(dupMatr.length>10)msg+='\n...';
     }
-    alert(msg);
+    alert(importDone("fc_sas_area","SAS Area FC",(file&&file.name),msg));
     rC();rA();rSources();autoSave();
   }catch(ex){alert('Errore import SAS Area:\n'+ex.message);}},50);};
   reader.readAsArrayBuffer(file);
@@ -731,7 +731,7 @@ function loadFcVmSasRiserva(file){
     parsed.forEach(function(p){if(!FC_AREA_SAS[p[0]])FC_AREA_SAS[p[0]]={};FC_AREA_SAS[p[0]].sasr_eur=p[1];});
     var msg='✅ Riserva SAS FC/VM mese precedente importata: '+parsed.length+' aree · totale '+tot.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' EUR.';
     if(notFound.length)msg+='\n\n⚠ Non abbinati ('+notFound.length+'):\n'+notFound.slice(0,10).join('\n')+(notFound.length>10?'\n...':'');
-    alert(msg);
+    alert(importDone("fc_sas_riserva","Riserva SAS FC",(file&&file.name),msg));
     rC();rA();rSources();autoSave();
   }catch(ex){alert('Errore import Riserva SAS FC/VM:\n'+ex.message);}},50);};
   reader.readAsArrayBuffer(file);
@@ -809,7 +809,7 @@ function loadFcVmResults(file){
     var msg='✅ Risultati FC+VM importati:\n• '+imported+' store caricati\n• SY CY = Gross Sales / Traffico';
     if(noTraffic>0)msg+='\n⚠ '+noTraffic+' store senza traffico';
     rC();rA();rSources();autoSave();
-    alert(msg);
+    alert(importDone("fc_results","Consuntivo FC+VM",(file&&file.name),msg));
   }catch(ex){alert('Errore: '+ex.message);}},50);};
   reader.readAsArrayBuffer(file);
 }
@@ -870,7 +870,7 @@ function loadFcVmPrevResults(file){
     rC();rA();rSources();autoSave();
     var nStore=Object.keys(FC_PREV_RESULTS).length;
     var colInfo='Colonne rilevate:\n• Target (col.'+(hdr.to>=0?hdr.to+1:'—')+'): '+(hdr.to>=0?'✓':'non trovata')+'\n• Consuntivo (col.'+(hdr.sc+1)+'): ✓';
-    alert('✅ Risultati mese precedente caricati:\n• '+imported+' righe, '+nStore+' store\n• Esubero area totale: € '+Math.round(totEsub).toLocaleString()+'\n\n'+colInfo);
+    alert(importDone("fc_prev","Risultati mese precedente FC+VM",(file&&file.name),'✅ Risultati mese precedente caricati:\n• '+imported+' righe, '+nStore+' store\n• Esubero area totale: € '+Math.round(totEsub).toLocaleString()+'\n\n'+colInfo));
   }catch(ex){alert('Errore: '+ex.message);}},50);};
   reader.readAsArrayBuffer(file);
 }

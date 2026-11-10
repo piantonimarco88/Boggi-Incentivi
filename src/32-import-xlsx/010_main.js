@@ -58,6 +58,67 @@ function parseRatio(s){
   return neg?-Math.abs(n):n;
 }
 
+// === Ricerca colonna per intestazione (tutti gli import consuntivo/target) ===
+// hdrs: intestazioni gia` in minuscolo; cands: candidati dal PIU` specifico al meno.
+// Regole (prima: vinceva la prima colonna da sinistra che conteneva un candidato qualsiasi):
+//  1. i candidati si provano nell'ordine; per ognuno prima l'intestazione identica, poi quella
+//     che lo contiene;
+//  2. se piu` colonne corrispondono allo stesso candidato (es. «cr 2025» e «cr 2026» per
+//     «cr 20») si preferisce quella con l'anno configurato e si scartano quelle dell'anno
+//     precedente o marcate LY/PY/prev; a parita` resta la prima e la scelta viene annotata.
+// opt.skip: parti di intestazione da ignorare (es. ["fcst","forecast"]).
+var HDR_NOTES=[]; // scelte ambigue dell'ultimo import, mostrate nel riepilogo
+function _colLetter(i){var s="";i++;while(i>0){var r=(i-1)%26;s=String.fromCharCode(65+r)+s;i=Math.floor((i-1)/26);}return s;}
+function _fixCol(label,idx){HDR_NOTES.push("Intestazione «"+label+"» non trovata: usata la colonna fissa "+_colLetter(idx)+" (posizione storica del file): controlla che sia giusta");}
+// Foglio del mese m (1-12) per nome intero (italiano o inglese)
+// o per numero come token isolato ("02", "2", "02-2026" si'; "2026" no). null se nessuno.
+var MONTH_NAMES_IT=["","gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"];
+var MONTH_NAMES_EN=["","january","february","march","april","may","june","july","august","september","october","november","december"];
+function sheetForMonth(names,m){
+  if(!m||!names)return null;
+  var it=MONTH_NAMES_IT[m],en=MONTH_NAMES_EN[m];
+  var num=new RegExp("(^|\\D)0?"+m+"(\\D|$)");
+  var i,l;
+  for(i=0;i<names.length;i++){l=String(names[i]).toLowerCase();if(l.indexOf(it)>=0||l.indexOf(en)>=0)return names[i];}
+  for(i=0;i<names.length;i++){l=String(names[i]).toLowerCase();if(num.test(l))return names[i];}
+  return null;
+}
+// Mese (1-12) riconosciuto nel nome di un file/foglio, o 0 se assente/ambiguo.
+// Es. "Incentivi_consuntivo_AGOSTO_2026.xlsx" -> 8; "FCVM_08_2026 ITA.xlsx" -> 8; "DATI W31-34.xlsx" -> 0.
+function monthFromName(name){
+  var l=String(name||"").toLowerCase(),found=[];
+  for(var m=1;m<=12;m++){if(l.indexOf(MONTH_NAMES_IT[m])>=0||l.indexOf(MONTH_NAMES_EN[m])>=0)found.push(m);}
+  if(found.length===1)return found[0];
+  if(found.length>1)return 0;
+  // numero di mese accanto a un anno: 08_2026, 08-2026, 2026_08, 2026.08
+  var r=l.match(/(?:^|\D)(0?[1-9]|1[0-2])[\s._-]+(20\d\d)(?:\D|$)/)||null;
+  if(r)return parseInt(r[1],10);
+  r=l.match(/(?:^|\D)(20\d\d)[\s._-]+(0?[1-9]|1[0-2])(?:\D|$)/);
+  if(r)return parseInt(r[2],10);
+  return 0;
+}
+function hdrFind(hdrs,cands,opt){
+  opt=opt||{};var skip=opt.skip||[];
+  var ok=function(h){if(!h)return false;for(var s=0;s<skip.length;s++)if(h.indexOf(skip[s])>=0)return false;return true;};
+  var yr=typeof CFG_YEAR!=="undefined"?String(CFG_YEAR):"",ly=yr?String(CFG_YEAR-1):"";
+  var score=function(h){var s=0;if(yr&&h.indexOf(yr)>=0)s+=2;
+    if((ly&&h.indexOf(ly)>=0)||/(^|[^a-z])(ly|py)([^a-z]|$)|prev|last year|anno prec/.test(h))s-=2;return s;};
+  var pick=function(list,cand){
+    if(list.length<2)return list[0];
+    var best=list[0],bs=score(hdrs[best]),tie=false;
+    for(var i=1;i<list.length;i++){var sc=score(hdrs[list[i]]);if(sc>bs){best=list[i];bs=sc;tie=false;}else if(sc===bs)tie=true;}
+    if(tie)HDR_NOTES.push("Colonna «"+String(cand).trim()+"»: trovate "+list.length+" colonne ("+list.map(function(c){return "«"+hdrs[c]+"»"}).join(", ")+"), usata «"+hdrs[best]+"»");
+    return best;
+  };
+  for(var i=0;i<cands.length;i++){
+    var c=String(cands[i]),ct=c.trim(),ex=[],inc=[];
+    for(var ci=0;ci<hdrs.length;ci++){var h=hdrs[ci];if(!ok(h))continue;if(h===ct)ex.push(ci);else if(h.indexOf(c)>=0)inc.push(ci);}
+    if(ex.length)return pick(ex,c);
+    if(inc.length)return pick(inc,c);
+  }
+  return -1;
+}
+
 // === WORKDAY: nuovo export HR (estero dal preventivo ottobre 2026, poi Italia) ===
 // Colonne per nome header (identificate dal nome, non dall'indice). Stipendio = Prorated Monthly Salary (quello
 // effettivamente pagato, come il vecchio CODICE_INTERNO), BDG = Amount del piano "Budget Amount" (mensile).
@@ -189,6 +250,7 @@ function matrItResolve(raw){
 // U(20)=filiale (store_id), V(21)=filiale_descrizione, W(22)=unita_locale (ente→valuta), AX(49)=Cod_Mansione, DJ(113)=residenza_email
 // Vecchio formato (backward compat via header detection): A(0)=Id Empl, C(2)=Ente, E(4)=Store, ...
 function loadAnagraficaExcel(file){
+  HDR_NOTES=[];
   var reader=new FileReader();
   reader.onload=function(ev){setTimeout(function(){
     try{
@@ -431,14 +493,14 @@ function loadAnagraficaExcel(file){
       // Nuovo formato HR: dipendente(C2), cognome(D3), nome(E4), data_assunzione(H7), data_cessazione(I8),
       // CODICE_INTERNO(O14)=salary, AZIENDA_PER_COSTI(P15)=budget, filiale(U20), filiale_descrizione(V21),
       // unita_locale(W22)=ente/valuta, Cod_Mansione(AX49), residenza_email(DJ113)
-      var C_ID    =_intFind("dipendente","id empl","employee id");                              if(C_ID<0)    C_ID=2;
-      var C_ENTE  =_intFind("unita locale","cod unita locale","cod unit","unit locale");        if(C_ENTE<0)  C_ENTE=22;
-      var C_STORE =_intFind("filiale","cod cdc","cod c d c","store id");                        if(C_STORE<0) C_STORE=20;
-      var C_SDESC =_intFind("filiale descrizione","cdc description","store name","negozio");    if(C_SDESC<0) C_SDESC=21;
-      var C_COGN  =_intFind("cognome","surname","last name");                                    if(C_COGN<0)  C_COGN=3;
-      var C_NOME  =_intFind("nome","first name");                                                if(C_NOME<0)  C_NOME=4;
-      var C_JOB   =_intFind("cod mansione","job title","job","ruolo");                           if(C_JOB<0)   C_JOB=49;
-      var C_SAL   =_intFind("codice interno","salary","stipendio","gross salary");               if(C_SAL<0)   C_SAL=14;
+      var C_ID    =_intFind("dipendente","id empl","employee id");                              if(C_ID<0){C_ID=2;_fixCol("ID dipendente",2);}
+      var C_ENTE  =_intFind("unita locale","cod unita locale","cod unit","unit locale");        if(C_ENTE<0){C_ENTE=22;_fixCol("unità locale/ente",22);}
+      var C_STORE =_intFind("filiale","cod cdc","cod c d c","store id");                        if(C_STORE<0){C_STORE=20;_fixCol("filiale/negozio",20);}
+      var C_SDESC =_intFind("filiale descrizione","cdc description","store name","negozio");    if(C_SDESC<0){C_SDESC=21;_fixCol("descrizione negozio",21);}
+      var C_COGN  =_intFind("cognome","surname","last name");                                    if(C_COGN<0){C_COGN=3;_fixCol("cognome",3);}
+      var C_NOME  =_intFind("nome","first name");                                                if(C_NOME<0){C_NOME=4;_fixCol("nome",4);}
+      var C_JOB   =_intFind("cod mansione","job title","job","ruolo");                           if(C_JOB<0){C_JOB=49;_fixCol("mansione",49);}
+      var C_SAL   =_intFind("codice interno","salary","stipendio","gross salary");               if(C_SAL<0){C_SAL=14;_fixCol("stipendio",14);}
       // Budget: nuovo formato = "azienda per costi", vecchio formato = colonna "budget" (escludi "budget visual")
       var C_BDG=-1;
       for(var _bi=0;_bi<INT_HDR.length;_bi++){
@@ -451,14 +513,14 @@ function loadAnagraficaExcel(file){
           if(_bh.indexOf("budget")>=0&&_bh.indexOf("visual")<0&&_bh.indexOf("vis ")<0){C_BDG=_bi;break;}
         }
       }
-      if(C_BDG<0)C_BDG=15;
+      if(C_BDG<0){C_BDG=15;_fixCol("budget",15);}
       // Status (vecchio formato: "Active/Dismissal") — non presente nel nuovo formato, -1 se non trovato
       var C_STATUS=_intFind("active dismissal","active/dismissal","dismissal resignation","status");
       if(C_STATUS<0)C_STATUS=-1;
       // Data assunzione e cessazione
-      var C_HIRE  =_intFind("data assunzione","data inizio rapporto","hire date","start date");  if(C_HIRE<0)C_HIRE=7;
+      var C_HIRE  =_intFind("data assunzione","data inizio rapporto","hire date","start date");  if(C_HIRE<0){C_HIRE=7;_fixCol("data assunzione",7);}
       var C_TERM  =_intFind("data cessazione","data fine rapporto","termination date","end date"); if(C_TERM<0)C_TERM=-1;
-      var C_EMAIL =_intFind("residenza email","e mail","email");                                  if(C_EMAIL<0)C_EMAIL=113;
+      var C_EMAIL =_intFind("residenza email","e mail","email");                                  if(C_EMAIL<0){C_EMAIL=113;_fixCol("email",113);}
       var C_FC    =-1;
       INT_HDR.forEach(function(cell,ci){var s=String(cell||"").toLowerCase().replace(/[\s\n\r]+/g,"");if(s==="fc"||s.indexOf("fieldcoach")>=0||s.indexOf("field coach")>=0)C_FC=ci;});
 
@@ -793,7 +855,7 @@ function applyImportedAnagrafica(){
   // Rebuild all tabs
   updateHeaderCount();
   rC();rA();rSources();rDist();rAgg();rT();autoSave();
-  alert("Anagrafica aggiornata: "+E.length+" dipendenti"+(dup2Count>0?" (di cui "+dup2Count+" secondo-negozio)":"")+(manCount>0?" (di cui "+manCount+" inseriti manualmente mantenuti)":"")+" (precedenti: "+oldLen+").\n\nTarget, consuntivo e KPI azzerati. Ricarica i dati per "+getMonthYearLabel()+".");
+  alert(importDone("anagrafica","Anagrafica",(window._pendingFile||""),"Anagrafica aggiornata: "+E.length+" dipendenti"+(dup2Count>0?" (di cui "+dup2Count+" secondo-negozio)":"")+(manCount>0?" (di cui "+manCount+" inseriti manualmente mantenuti)":"")+" (precedenti: "+oldLen+").\n\nTarget, consuntivo e KPI azzerati. Ricarica i dati per "+getMonthYearLabel()+"."));
 }
 
 // ── IMPORT MAPPING FC PER MODALITÀ MENSILE INTERNAZIONALE ───────────────────
@@ -1069,7 +1131,7 @@ function applyImportedUSAAnagrafica(){
   window._pendingNewStoresUSA=null;
   var el=document.getElementById("scanResults");if(el)el.innerHTML="";
   rC();rA();rSources();rAgg();autoSave();
-  alert("\u2705 Anagrafica USA applicata: "+imported.length+" dipendenti USA aggiornati.");
+  alert(importDone("anagrafica_usa","Anagrafica USA",(window._pendingFileUSA||""),"\u2705 Anagrafica USA applicata: "+imported.length+" dipendenti USA aggiornati."));
 }
 
 function downloadUSAImportLog(){
@@ -1173,6 +1235,7 @@ function seasFindUptCol(headers,skipFcst){
 // In modalità seasonal: aggiorna SEAS_TARGETS (target semestrali per negozio)
 // Riconosce: fatturato+SY+CR (target_03/pivot), fidelity/subscription, dept QTY
 function loadTargetExcel(file){
+  HDR_NOTES=[];
   var reader=new FileReader();
   reader.onload=function(ev){setTimeout(function(){
     try{
@@ -1314,7 +1377,7 @@ function loadTargetExcel(file){
         }
 
         var seasLabel={seas_pivot:"Target KPI Seasonal (Fatturato + SY"+(cUptCol>=0?" + UPT":"")+")",seas_fidelity:"Target Subscription Rate Seasonal",seas_qty_dept:"Target QTY Dept Store Seasonal",seas_upt:"Target UPT Seasonal (Brian & Barry)"}[seasFormat]||"Target Seasonal";
-        alert(seasLabel+"\n\nNegozi aggiornati in SEAS_TARGETS: "+imported+"\nNegozi totali in SEAS_TARGETS: "+Object.keys(SEAS_TARGETS).length);
+        alert(importDone("target_seas","Target seasonal",(file&&file.name),seasLabel+"\n\nNegozi aggiornati in SEAS_TARGETS: "+imported+"\nNegozi totali in SEAS_TARGETS: "+Object.keys(SEAS_TARGETS).length));
         rC();rA();rSources();autoSave();
         return;
       }
@@ -1325,11 +1388,9 @@ function loadTargetExcel(file){
       var targetMonth=CFG_MONTH;
       var mNames=["","gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"];
       var bestSheet=null;
-      // Try month-named sheet first
-      wb.SheetNames.forEach(function(sn){
-        var snl=sn.toLowerCase();
-        if(snl.indexOf(mNames[targetMonth])>=0||snl.indexOf(String(targetMonth).padStart(2,"0"))>=0)bestSheet=sn;
-      });
+      // Try month-named sheet first: prima per NOME del mese, poi per NUMERO come token a se`
+      // (prima "02" veniva trovato anche dentro "2026" e vinceva l'ultimo foglio corrispondente)
+      bestSheet=sheetForMonth(wb.SheetNames,targetMonth);
       // If file has Sheet1/default with month column, use that
       if(!bestSheet){
         wb.SheetNames.forEach(function(sn){
@@ -1354,7 +1415,7 @@ function loadTargetExcel(file){
 
       // Type 1: Main target (target_03 style): store_id, gross_sales_LC, sy, cr, forex
       function findH(){for(var i=1;i<arguments.length;i++){var idx=headers.indexOf(arguments[i]);if(idx>=0)return idx;}return-1;}
-      function findHPartial(){for(var ci=0;ci<headers.length;ci++){for(var i=1;i<arguments.length;i++){if(headers[ci].indexOf(arguments[i])>=0)return ci}}return-1}
+      function findHPartial(){return hdrFind(headers,[].slice.call(arguments,1));}
 
       var cSid=findH(0,"store_id");if(cSid<0)cSid=findHPartial(0,"store id","store_id");
       var cSales=findHPartial(0,"gross_sales_lc","sales_lc","fcst sales","fcst_sales");
@@ -1401,7 +1462,7 @@ function loadTargetExcel(file){
           var val=parseFloat(row[cSyLy]);
           if(!isNaN(val)){MONTHLY_SYLY[sid]=val;syLyImported++;}
         }
-        alert("\u2705 SY LY mensile importata:\n\u2022 "+syLyImported+" store caricati\n\u2022 Colonna: "+headers[cSyLy]);
+        alert(importDone("syly","SY LY mensile",(file&&file.name),"\u2705 SY LY mensile importata:\n\u2022 "+syLyImported+" store caricati\n\u2022 Colonna: "+headers[cSyLy]));
         rSources();rC();rA();return;
       }
 
@@ -1440,7 +1501,7 @@ function loadTargetExcel(file){
       var typeLabel={"main_target":"Target Fatturato + SY + CR","fidelity":"Target Fidelity/Subscription","dept_qty":"Target QTY Dept Store","turnover_only":"Target Fatturato"}[type];
       var msg="Target caricati: "+typeLabel+"\n\nFoglio: "+bestSheet+"\nRighe importate: "+imported+"\nRighe saltate (mese diverso): "+skipped+"\nNuovi store: "+newStores.length+"\n\nStore totali in D.t: "+Object.keys(D.t).length;
 
-      alert(msg);
+      alert(importDone("target_"+type,"Target ("+type+")",(file&&file.name),msg));
       try{usaApplyStoreNames()}catch(exn){}
       rC();rA();rSources();autoSave();
 
@@ -1453,6 +1514,7 @@ function loadTargetExcel(file){
 // In modalità mensile: aggiorna D.c (consuntivi mensili per negozio/dipendente)
 // In modalità seasonal: aggiorna SEAS_TARGETS[sid] con i campi consuntivo (sc, sy, nf, es, s4)
 function loadResultsExcel(file){
+  HDR_NOTES=[];
   var reader=new FileReader();
   reader.onload=function(ev){setTimeout(function(){
     try{
@@ -1494,7 +1556,7 @@ function loadResultsExcel(file){
         // facendo apparire il Dept Store sempre a target anche con un consuntivo reale
         // diverso (bug segnalato 25/08/2026, es. reale store 1318: target/fcst ~538k,
         // vero consuntivo 592k, mostrato sempre come 538k=target raggiunto).
-        function fHP(){for(var ci=0;ci<headers.length;ci++){if(!headers[ci]||headers[ci].indexOf("fcst")>=0||headers[ci].indexOf("forecast")>=0)continue;for(var i=0;i<arguments.length;i++){if(headers[ci].indexOf(arguments[i])>=0)return ci;}}return-1;}
+        function fHP(){return hdrFind(headers,[].slice.call(arguments),{skip:["fcst","forecast"]});}
 
         // Identifica tipo file dal contenuto delle colonne
         var cSid=fHP("store id","store_id");
@@ -1578,7 +1640,7 @@ function loadResultsExcel(file){
         }
 
         var seasLabels={"seas_main":"Fatturato + SY + Subscription Rate"+(cUpt>=0?" + UPT":""),"seas_upt":"UPT (Brian & Barry)","seas_inv_acc":"Inventario (% su COGS) + Accuracy","seas_sas":"SAS (ore medie)","seas_inv_abs":"Inventario/Esubero (valore assoluto)","seas_qty_dept":"QTY Dept Store"};
-        alert("Consuntivo Seasonal: "+seasLabels[seasConsType]+"\n\nNegozi aggiornati in D.c: "+imported);
+        alert(importDone("cons_seas_"+seasConsType,"Consuntivo seasonal ("+seasLabels[seasConsType]+")",(file&&file.name),"Consuntivo Seasonal: "+seasLabels[seasConsType]+"\n\nNegozi aggiornati in D.c: "+imported));
         rC();rA();rSources();autoSave();
         return;
       }
@@ -1587,7 +1649,7 @@ function loadResultsExcel(file){
 
       var type="unknown",bestSheet=null,bestJson=null,bestHeaders=null,bestDataStart=1;
       var fnLow=(file.name||"").toLowerCase();
-      function findHP(hdrs){return function(){for(var ci=0;ci<hdrs.length;ci++){if(!hdrs[ci])continue;for(var i=0;i<arguments.length;i++){if(hdrs[ci].indexOf(arguments[i])>=0)return ci}}return-1}}
+      function findHP(hdrs){return function(){return hdrFind(hdrs,[].slice.call(arguments));}}
 
       var isDCC=fnLow.indexOf("dcc")>=0;
       var isArt=fnLow.indexOf("report_w4")>=0||fnLow.indexOf("report_1l")>=0||fnLow.indexOf("report_factory")>=0||fnLow.indexOf("articol")>=0||fnLow.indexOf("incentivo")>=0;
@@ -1748,7 +1810,7 @@ function loadResultsExcel(file){
         var cSid=fH("store id","store_id");
         // fHns: come fH ma ignora le colonne "recognised_*" — il valore riconosciuto/matrice lo
         // calcoliamo noi (sasMatrixPct/sasRecognizedValue), non lo importiamo dal file.
-        function fHns(){for(var ci=0;ci<headers.length;ci++){if(!headers[ci]||headers[ci].indexOf('recognised')>=0)continue;for(var i=0;i<arguments.length;i++){if(headers[ci].indexOf(arguments[i])>=0)return ci}}return-1}
+        function fHns(){return hdrFind(headers,[].slice.call(arguments),{skip:['recognised']});}
         var cSa=fHns("% sas accepted","sas accepted","% accepted","% accettati","accepted %","accepted","% accettazione","accettati %","% acceptance","pct_accepted","pct accepted");
         // NUOVA logica SAS (da luglio 2026): velocità %, valore SAS (LC/EUR), riserva riportata.
         // Richiede il simbolo "%" nell'header (fasi "processed within"/"gestiti"/"handled") per non
@@ -1923,7 +1985,12 @@ function loadResultsExcel(file){
         // Build lookup multiplo per matching robusto
         // 1. COGNOME|NOME (exact match)
         // 2. COGNOME_NORM (solo cognome normalizzato — fallback)
-        var usaLookupExact={},usaLookupCogn={};
+        // v9.111: 0. Employee ID = matricola in anagrafica (se coincide); il fallback sul solo
+        // cognome vale SOLO se il cognome e` unico nel negozio della riga (o, senza colonna
+        // negozio, tra i dipendenti USA). Prima: primo dipendente con quel cognome, quindi due
+        // omonimi di cognome potevano scambiarsi le vendite.
+        var cStore2=hdrFind(headers,["store id","store_id","store","location"]);
+        var usaLookupExact={},usaLookupCogn={},usaById={};
         E.forEach(function(emp){
           if(emp.cu!=="USD")return;
           var c=(emp.c||"").toUpperCase().trim();
@@ -1931,10 +1998,11 @@ function loadResultsExcel(file){
           var cNorm=c.replace(/[\s'\-]/g,"");
           usaLookupExact[c+"|"+n]=emp.m;      // exact cognome+nome
           if(!usaLookupExact[n+"|"+c])usaLookupExact[n+"|"+c]=emp.m; // anagrafica con nome/cognome invertiti
-          if(!usaLookupCogn[cNorm])usaLookupCogn[cNorm]=emp.m; // solo cognome normalizzato
+          (usaLookupCogn[cNorm]=usaLookupCogn[cNorm]||[]).push(emp); // tutti i dipendenti con quel cognome
+          usaById[String(emp.m).trim()]=emp.m;
         });
-        var matched=0,notFound=0,skippedRows=0;
-        var notFoundList=[];
+        var matched=0,notFound=0,skippedRows=0,ambiguous=0;
+        var notFoundList=[],ambiguousList=[];
         if(!D.usa)D.usa={};
         for(var ri=dataStart;ri<json.length;ri++){
           var row=json[ri];if(!row)continue;
@@ -1943,11 +2011,19 @@ function loadResultsExcel(file){
           if(cEmpId2>=0&&(!empIdRaw||String(empIdRaw).trim()==="-"||String(empIdRaw).trim()==="")){skippedRows++;continue;}
           var cogn=cCogn2>=0?String(row[cCogn2]||"").toUpperCase().trim():"";
           var nome=cNome2>=0?String(row[cNome2]||"").toUpperCase().trim():"";
-          var salesVal=cSales2>=0?parseFloat(row[cSales2])||0:0;
+          // parseNum: "1,234.56" e "$1,234" letti correttamente (prima parseFloat -> 1)
+          var salesVal=cSales2>=0?parseNum(row[cSales2]):0;
           if(!cogn){skippedRows++;continue;}
-          // Prova match: 1) cognome+nome esatto  2) solo cognome normalizzato
-          var matr=usaLookupExact[cogn+"|"+nome];
-          if(!matr){var cNorm2=cogn.replace(/[\s'\-]/g,"");matr=usaLookupCogn[cNorm2];}
+          // Match: 0) Employee ID  1) cognome+nome esatto  2) solo cognome, se unico nel negozio
+          var matr=cEmpId2>=0?usaById[String(row[cEmpId2]==null?"":row[cEmpId2]).trim()]:null;
+          if(!matr)matr=usaLookupExact[cogn+"|"+nome];
+          if(!matr){
+            var cands=usaLookupCogn[cogn.replace(/[\s'\-]/g,"")]||[];
+            var rowSid=cStore2>=0?parseInt(row[cStore2]):NaN;
+            if(!isNaN(rowSid))cands=cands.filter(function(emp){return Number(emp.si)===rowSid;});
+            if(cands.length===1)matr=cands[0].m;
+            else if(cands.length>1){ambiguous++;if(ambiguousList.length<10)ambiguousList.push(cogn+(nome?" "+nome:"")+" ("+cands.length+" con lo stesso cognome"+(isNaN(rowSid)?"":" nel negozio "+rowSid)+")");continue;}
+          }
           if(matr){
             if(!D.usa[matr])D.usa[matr]={cm:0,ps:0,st:0,sb:0,tp:0};
             D.usa[matr].ps=Math.round(salesVal*100)/100;
@@ -1959,10 +2035,11 @@ function loadResultsExcel(file){
           imported++;
         }
         var notFoundMsg=notFound>0?("\n\u26a0 "+notFound+" righe non abbinate (cognome non trovato in anagrafica):\n  "+notFoundList.join(", ")+(notFound>10?" ...":"")):"";
+        if(ambiguous>0)notFoundMsg+="\n\u26a0 "+ambiguous+" righe NON abbinate perch\u00e9 ambigue (nome diverso dall'anagrafica e cognome non unico): inserisci a mano le vendite di\n  "+ambiguousList.join(", ")+(ambiguous>10?" ...":"");
         report="\u2705 Vendite Personali USA: "+matched+" dipendenti aggiornati su "+(matched+notFound)+" righe."+notFoundMsg+(skippedRows>0?"\n("+skippedRows+" righe totale/vuote ignorate)":"");
       }
 
-      alert(report);
+      alert(importDone("cons_"+type,"Consuntivo ("+type+")",(file&&file.name),report));
       LOAD_RESULTS._lastCons=type;
       rC();rA();rSources();autoSave();
 
@@ -1993,7 +2070,7 @@ function loadUSAPrevResults(file){
         if(hdr.some(function(h){return h&&h.indexOf("store")>=0})){headerRow=hr;headers=hdr;break;}
       }
       if(headerRow<0)continue;
-      function fH2(){for(var ci=0;ci<headers.length;ci++){if(!headers[ci])continue;for(var i=0;i<arguments.length;i++){if(headers[ci].indexOf(arguments[i])>=0)return ci}}return-1}
+      function fH2(){return hdrFind(headers,[].slice.call(arguments));}
       var cSid=fH2("store id","store_id");var cTotSales=fH2("tot sales");var cEsubero=fH2("esubero");
       if(cSid<0||cTotSales<0)continue;
       for(var ri=headerRow+1;ri<json.length;ri++){
@@ -2012,7 +2089,7 @@ function loadUSAPrevResults(file){
       break; // primo foglio con store trovato è sufficiente
     }
     autoSave();rC();rA();rSources();
-    alert('Esubero precedente USA: '+updated+' negozi aggiornati'+(skipped>0?' ('+skipped+' negozi non-USA ignorati)':'')+'.');
+    alert(importDone("usa_prev","Esubero precedente USA",(file&&file.name),'Esubero precedente USA: '+updated+' negozi aggiornati'+(skipped>0?' ('+skipped+' negozi non-USA ignorati)':'')+'.'));
   }catch(ex){alert('Errore lettura esubero precedente USA:\n'+ex.message);}},50);};
   reader.readAsArrayBuffer(file);
 }

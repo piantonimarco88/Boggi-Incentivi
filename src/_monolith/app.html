@@ -215,12 +215,13 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 /*BUNDLE_INSERT:60-fcvm-state*/
 /*BUNDLE_INSERT:70-fcvm-calc*//*BUNDLE_INSERT:80-roles-config*/var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.110'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.111'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.111: Sessioni — «Carica sessione» parte da dati vuoti (niente più dati della sessione corrente mescolati a quella caricata) e indica la configurazione non presente nel file; «Carica configurazione» non tocca più aggiunte e Visual. Import — colonne riconosciute per priorità e anno in corso (es. «cr 2026» e non «cr 2025»), foglio del mese esatto, vendite USA abbinate sul solo cognome solo se unico nel negozio. Nuovo riquadro «Controlli sui dati caricati» in Fonti Dati e in coda a ogni import: file di un altro mese, dati caricati in un mese precedente, matricole duplicate, negozi senza target o consuntivo",
   "9.110: Avvio — corretti due errori all'apertura con dati salvati (tabelle Calcolo premi e Analisi a volte non disegnate subito). Rilasci più sicuri: ogni versione viene pubblicata solo se superano i test sull'app completa, e una versione può essere annullata o riportata a una precedente senza reinstallare l'app",
   "9.109: Import — i numeri scritti come testo in formato italiano sono letti correttamente («1.500» = 1500, «0,125» = 0,125; UPT/CR/% sempre decimali). Lettere — l'anno segue il mese/anno configurato (non più 2026 fisso). «Stampa PDF» singolo stampa sempre il dipendente visualizzato. Soglie FC+VM salvate in sessione e configurazione. Aggiunte negative non ammesse: segnalate (Visual e inserimento manuale)",
   "9.108: Coefficiente Inventari — l'import legge direttamente le % già presenti nel file, senza ricalcoli: negozi = «Accuracy» e «% DCC Executed corretta» (Matrice negozi), FC = «% DCC Executed» e «% DCC Sent corretta» (Matrice FC)",
