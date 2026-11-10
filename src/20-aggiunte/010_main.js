@@ -7,7 +7,7 @@ var MONITOR_SNAPS=[];
 var MAIL_LOG=[];
 function logMailSent(matr,to,status){
   MAIL_LOG.push({m:matr,to:to||"",period:getPdfSubfolder().fileBase,docType:MODE,prizeMode:PRIZE_MODE,ts:new Date().toISOString(),status:status});
-  autoSave();
+  window._autoSaveQuiet=true;try{autoSave();}finally{window._autoSaveQuiet=false;} // un invio non rende «vecchi» i PDF
 }
 function getLastMailLog(matr){
   var period=getPdfSubfolder().fileBase;

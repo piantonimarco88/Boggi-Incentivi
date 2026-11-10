@@ -61,6 +61,7 @@ function rSourcesFcvm(){
     var _anyBdgStores=Object.values(FC_EMP).some(function(e){return e.bdg_stores&&e.bdg_stores.length>0;});
     if(_anyBdgStores)checks.push({label:'SAS Negozi (per BDG extra)',ok:_hasSasStore});
   }
+  window.SRC_CHECKS={checks:checks.map(function(c){return {l:c.label,ok:c.ok,v:c.ok?"OK":"Da caricare"};})}; // barra a passi
   var nOk=checks.filter(function(c){return c.ok;}).length;
   var pct=Math.round(nOk/checks.length*100);
   var barColor=pct===100?'#2d7a3a':pct>=50?'#c9a96e':'#cf5b5b';

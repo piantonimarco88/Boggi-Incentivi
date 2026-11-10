@@ -1,5 +1,5 @@
 function rSources(){try{
-  if(PRIZE_MODE==="fcvm"){document.getElementById("p4").innerHTML=(typeof importChecksBoxHtml==="function"?importChecksBoxHtml():"")+rSourcesFcvm();return;}
+  if(PRIZE_MODE==="fcvm"){document.getElementById("p4").innerHTML=(typeof importChecksBoxHtml==="function"?importChecksBoxHtml():"")+rSourcesFcvm();if(typeof stepBarSoon==="function")stepBarSoon();return;}
   var isP=MODE==="preventivo",sh="";
   var isSeasonal=PRIZE_MODE==="seasonal";
 
@@ -173,6 +173,7 @@ function rSources(){try{
       }
     }
   }
+  window.SRC_CHECKS={checks:checks}; // anche per la barra a passi (passo Import)
   var ld=0;checks.forEach(function(ck){if(ck.ok)ld++});var pO=Math.round(ld/checks.length*100);
   sh+='<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px"><div style="flex:1;height:8px;background:#e5e1db;border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pO+'%;background:'+(pO===100?"#2d7a3a":"#c9a96e")+';border-radius:4px"></div></div><span style="font-size:12px;font-weight:700">'+pO+"%</span></div>";
   sh+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px">';
@@ -306,6 +307,7 @@ function rSources(){try{
   }
   sh+='</div>';
   document.getElementById("p4").innerHTML=(typeof importChecksBoxHtml==="function"?importChecksBoxHtml():"")+sh;
+  if(typeof stepBarSoon==="function")stepBarSoon();
   // Connectors toggle
   var togC=document.getElementById("toggleConn");if(togC)togC.onclick=function(){var bd=document.getElementById("connBody");if(bd){var vis=bd.style.display==="none";bd.style.display=vis?"":"none";togC.textContent=vis?"Comprimi \u25b2":"Espandi \u25bc"}};
 

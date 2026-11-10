@@ -639,7 +639,7 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 
   </div>
 </div>
-<div class="cnt"><div class="tabs" id="tabs"></div>
+<div class="cnt"><div id="stepBar"></div><div class="tabs" id="tabs"></div>
 <div class="pnl on" id="p0"></div><div class="pnl" id="p1"></div><div class="pnl" id="p2"></div><div class="pnl" id="p5"></div><div class="pnl" id="p7"></div><div class="pnl" id="p6"></div><div class="pnl" id="p3"></div><div class="pnl" id="p4"></div><div class="pnl" id="p8"></div><div class="pnl" id="p9"></div><div class="pnl" id="p10"></div>
 </div>
 <!-- Save bar (hidden until changes) -->
@@ -731,7 +731,7 @@ var MONITOR_SNAPS=[];
 var MAIL_LOG=[];
 function logMailSent(matr,to,status){
   MAIL_LOG.push({m:matr,to:to||"",period:getPdfSubfolder().fileBase,docType:MODE,prizeMode:PRIZE_MODE,ts:new Date().toISOString(),status:status});
-  autoSave();
+  window._autoSaveQuiet=true;try{autoSave();}finally{window._autoSaveQuiet=false;} // un invio non rende «vecchi» i PDF
 }
 function getLastMailLog(matr){
   var period=getPdfSubfolder().fileBase;
@@ -1421,12 +1421,13 @@ function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.113'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.114'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.114: Nuova barra a passi sopra i tab — Import → Verifica → Calcolo → PDF → Invio, con lo stato di ognuno (fonti caricate, avvisi, totale premi, PDF da rigenerare dopo una modifica ai dati, email inviate/errori). Clicca un passo per vedere il dettaglio e andare al tab giusto; i tab restano come prima",
   "9.113: Workgame — un'unica formula per calcolo, lettere, analisi, export e tracciato; per chi ha il BDG in TRASFERTE ora è pagato nel cod. 380 (prima mancava nel tracciato). Configurazione — nuove sezioni «Cambi valuta» (modificabili, con data di validità), «Date di attivazione regole» (SAS, USA, Coefficiente Inventari) e coefficienti Seasonal (mid-season, mesi stagione, QTY Dept), tutti salvati in sessione e configurazione; dopo un reset l'app parte dal mese corrente. Librerie (Excel, ZIP, PDF) incluse nell'app e aggiornate: niente più caricamento da internet",
   "9.112: Invio email — prima di inviare compare l'elenco completo dipendente → email → PDF (o Field Coach → email → ZIP con il numero di lettere) da confermare; al termine la tabella esiti distingue inviate, errori e «non confermate» (prima gli ZIP ai Field Coach risultavano sempre inviati). Lettere — etichette nella lingua della lettera (preventivo mensile, mese e titoli FC+VM), valuta del dipendente nelle formule SAS/DCC, corretto un refuso nel disclaimer inglese; logo Boggi alleggerito (lettere da 1,1 MB a 40 KB, aspetto invariato)",
   "9.111: Sessioni — «Carica sessione» parte da dati vuoti (niente più dati della sessione corrente mescolati a quella caricata) e indica la configurazione non presente nel file; «Carica configurazione» non tocca più aggiunte e Visual. Import — colonne riconosciute per priorità e anno in corso (es. «cr 2026» e non «cr 2025»), foglio del mese esatto, vendite USA abbinate sul solo cognome solo se unico nel negozio. Nuovo riquadro «Controlli sui dati caricati» in Fonti Dati e in coda a ogni import: file di un altro mese, dati caricati in un mese precedente, matricole duplicate, negozi senza target o consuntivo",
@@ -1646,6 +1647,10 @@ function _showChangelogBanner(toVer){
 }
 
 function autoSave(){
+  // barra a passi: ogni salvataggio «non silenzioso» è una modifica dei dati (serve a capire se
+  // i PDF sono più vecchi dei dati); logMailSent salva in modo silenzioso
+  if(!window._autoSaveQuiet){window._lastChangeTs=new Date();}
+  if(typeof stepBarSoon==="function")stepBarSoon();
   try{
     try{usaQRecord()}catch(exq){}
     var state={
@@ -9797,7 +9802,7 @@ function manEmpReapplyFcvm(manual){
   return n;
 }
 function rSources(){try{
-  if(PRIZE_MODE==="fcvm"){document.getElementById("p4").innerHTML=(typeof importChecksBoxHtml==="function"?importChecksBoxHtml():"")+rSourcesFcvm();return;}
+  if(PRIZE_MODE==="fcvm"){document.getElementById("p4").innerHTML=(typeof importChecksBoxHtml==="function"?importChecksBoxHtml():"")+rSourcesFcvm();if(typeof stepBarSoon==="function")stepBarSoon();return;}
   var isP=MODE==="preventivo",sh="";
   var isSeasonal=PRIZE_MODE==="seasonal";
 
@@ -9971,6 +9976,7 @@ function rSources(){try{
       }
     }
   }
+  window.SRC_CHECKS={checks:checks}; // anche per la barra a passi (passo Import)
   var ld=0;checks.forEach(function(ck){if(ck.ok)ld++});var pO=Math.round(ld/checks.length*100);
   sh+='<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px"><div style="flex:1;height:8px;background:#e5e1db;border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pO+'%;background:'+(pO===100?"#2d7a3a":"#c9a96e")+';border-radius:4px"></div></div><span style="font-size:12px;font-weight:700">'+pO+"%</span></div>";
   sh+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px">';
@@ -10104,6 +10110,7 @@ function rSources(){try{
   }
   sh+='</div>';
   document.getElementById("p4").innerHTML=(typeof importChecksBoxHtml==="function"?importChecksBoxHtml():"")+sh;
+  if(typeof stepBarSoon==="function")stepBarSoon();
   // Connectors toggle
   var togC=document.getElementById("toggleConn");if(togC)togC.onclick=function(){var bd=document.getElementById("connBody");if(bd){var vis=bd.style.display==="none";bd.style.display=vis?"":"none";togC.textContent=vis?"Comprimi \u25b2":"Espandi \u25bc"}};
 
@@ -12489,6 +12496,7 @@ function rSourcesFcvm(){
     var _anyBdgStores=Object.values(FC_EMP).some(function(e){return e.bdg_stores&&e.bdg_stores.length>0;});
     if(_anyBdgStores)checks.push({label:'SAS Negozi (per BDG extra)',ok:_hasSasStore});
   }
+  window.SRC_CHECKS={checks:checks.map(function(c){return {l:c.label,ok:c.ok,v:c.ok?"OK":"Da caricare"};})}; // barra a passi
   var nOk=checks.filter(function(c){return c.ok;}).length;
   var pct=Math.round(nOk/checks.length*100);
   var barColor=pct===100?'#2d7a3a':pct>=50?'#c9a96e':'#cf5b5b';
@@ -14276,6 +14284,142 @@ function importChecksBoxHtml(){
   chk.forEach(function(c){h+='<li style="margin:2px 0'+(c.lvl==="err"?';color:#a32d2d;font-weight:600':'')+'">'+esc(c.t)+'</li>';});
   return h+'</ul></div>';
 }
+
+// ============================================================
+// Barra a passi (v9.114): Import -> Verifica -> Calcolo -> PDF -> Invio
+// Sta sopra i tab (che restano invariati) e mostra lo stato di ogni passo; cliccando un
+// passo si apre il dettaglio con le cose da fare e un pulsante che porta al tab giusto.
+// Nessuna logica nuova: ogni stato viene da funzioni che l'app ha gia`:
+//  - Import   -> checklist «Completezza» di Fonti Dati (SRC_CHECKS, scritta da rSources)
+//  - Verifica -> controlli dopo l'import (importChecks, 35-validation)
+//  - Calcolo  -> pool delle lettere e premi (getLetterPool / calcEUR)
+//  - PDF      -> ora dell'ultimo «Salva tutti i PDF» (_pdfBatchTs) vs ultima modifica dati
+//  - Invio    -> log invii email del periodo (MAIL_LOG)
+// ============================================================
+// window.SRC_CHECKS: {checks:[{l,ok,v}]} — scritto da rSources/rSourcesFcvm
+// window._lastChangeTs: ultima modifica dei dati (ogni autoSave non «silenzioso», 84-state-restore)
+// (proprieta` di window: assegnate anche da blocchi <script> strict o caricati prima di questo)
+if(typeof window.SRC_CHECKS==="undefined")window.SRC_CHECKS=null;
+if(typeof window._lastChangeTs==="undefined")window._lastChangeTs=null;
+var _stepSel=null;        // passo aperto nel dettaglio (indice) o null
+var _stepTimer=null;
+
+function _stepGoTab(k){
+  try{
+    var i=-1;for(var j=0;j<TD.length;j++)if(TD[j].k===k){i=j;break;}
+    var b=document.querySelectorAll(".tab")[i];if(b)b.click();
+  }catch(_e){}
+}
+function _stepTime(d){return d?d.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"}):"";}
+function _stepPeriod(){try{return getPdfSubfolder().fileBase;}catch(_e){return "";}}
+
+function stepState(){
+  var isFcvm=PRIZE_MODE==="fcvm",inWebView=!!(window.chrome&&window.chrome.webview);
+  var steps=[];
+  // 1. Import
+  var ch=(window.SRC_CHECKS&&window.SRC_CHECKS.checks)||[];
+  // le fonti facoltative («(opt.)», «opzionale») non bloccano il passo
+  var isOpt=function(c){return /\(opt|opzional/i.test(String(c.l||"")+" "+String(c.v||""));};
+  var req=ch.filter(function(c){return !isOpt(c);});
+  var nOk=req.filter(function(c){return c.ok;}).length,missing=req.filter(function(c){return !c.ok;});
+  var hasAnag=isFcvm?Object.keys(FC_EMP||{}).length>0:(E||[]).length>0;
+  steps.push({k:"import",n:"Import",
+    st:!ch.length||!hasAnag?"todo":(missing.length?"warn":"ok"),
+    sub:req.length?(nOk+" di "+req.length+" fonti"):"Nessun file",
+    d:missing.length?"Mancano "+missing.length+" fonti del mese.":(hasAnag?"Tutte le fonti del mese sono caricate.":"Carica per prima l'anagrafica."),
+    rows:ch.map(function(c){return [c.ok?"ok":(isOpt(c)?"todo":"warn"),c.l,c.ok?(c.v||""):(isOpt(c)?"facoltativa":(c.v||""))];}),
+    btn:["Apri Fonti Dati",function(){_stepGoTab("4");}]});
+  // 2. Verifica
+  var chk=[];try{chk=typeof importChecks==="function"?importChecks():[];}catch(_e){}
+  var nErr=chk.filter(function(c){return c.lvl==="err";}).length;
+  steps.push({k:"verifica",n:"Verifica",
+    st:!hasAnag?"todo":(nErr?"err":(chk.length?"warn":"ok")),
+    sub:!hasAnag?"In attesa dei dati":(chk.length?chk.length+(chk.length===1?" avviso":" avvisi"):"Nessun avviso"),
+    d:chk.length?"Puoi proseguire, ma controlla questi punti prima dei PDF.":"Nessun problema rilevato dai controlli automatici.",
+    rows:chk.map(function(c){return [c.lvl==="err"?"err":"warn",c.t,""];}),
+    btn:["Verifica dati",function(){if(typeof runValidationsAndReport==="function")runValidationsAndReport();else _stepGoTab("4");}]});
+  // 3. Calcolo
+  var pool=[];try{pool=getLetterPool();}catch(_e){}
+  var rows3=[["ok","Dipendenti con lettera",String(pool.length)]],tot=null;
+  if(!isFcvm&&PRIZE_MODE==="mensile"){try{tot=0;var nPos=0;pool.forEach(function(e){var v=calcEUR(e)||0;tot+=v;if(v>0)nPos++;});
+    rows3.push(["ok","Totale premi (EUR)","€ "+Math.round(tot).toLocaleString("it-IT")]);rows3.push(["ok","Dipendenti con premio",nPos+" di "+pool.length]);}catch(_e){tot=null;}}
+  var impOk=steps[0].st==="ok";
+  steps.push({k:"calcolo",n:"Calcolo",
+    st:!pool.length?"todo":(impOk?"ok":"warn"),
+    sub:!pool.length?"Nessun dipendente":(tot!=null?"€ "+Math.round(tot).toLocaleString("it-IT"):pool.length+" dipendenti"),
+    d:!pool.length?"Il calcolo parte quando l'anagrafica è caricata.":(impOk?"Premi calcolati sui dati attuali.":"Premi calcolati, ma alcune fonti mancano: i KPI senza dati valgono 0."),
+    rows:rows3,btn:["Apri Calcolo premi",function(){_stepGoTab("0");}]});
+  // 4. PDF
+  var bt=typeof _pdfBatchTs!=="undefined"?_pdfBatchTs:null;
+  var lc=window._lastChangeTs;
+  var stale=!!(bt&&lc&&lc>bt);
+  steps.push({k:"pdf",n:"PDF",
+    st:!pool.length?"todo":(!bt?"todo":(stale?"warn":"ok")),
+    sub:!pool.length?"In attesa dei dati":(!bt?"Da generare":(stale?"Da rigenerare":"Generati alle "+_stepTime(bt))),
+    d:!bt?"In questa sessione i PDF non sono ancora stati generati."+(inWebView?" Usa «Salva tutti i PDF» nella barra in alto dell'app.":"")
+      :(stale?"Hai modificato dati o aggiunte dopo l'ultimo «Salva tutti i PDF» ("+_stepTime(bt)+", modifica alle "+_stepTime(lc)+"): rigenera i PDF prima di inviare.":"PDF generati alle "+_stepTime(bt)+", nessuna modifica successiva."),
+    rows:[["ok","PDF da generare",String(pool.length)]].concat(bt?[[stale?"warn":"ok","Ultimo «Salva tutti i PDF»",_stepTime(bt)]]:[]).concat(lc?[["ok","Ultima modifica dei dati",_stepTime(lc)]]:[]),
+    btn:inWebView?null:["Salva tutti i PDF (ZIP)",function(){if(typeof saveAllPDFsZip==="function")saveAllPDFsZip();}]});
+  // 5. Invio
+  var per=_stepPeriod(),log=(typeof MAIL_LOG!=="undefined"?MAIL_LOG:[]).filter(function(l){return l.period===per&&l.docType===MODE&&l.prizeMode===PRIZE_MODE;});
+  var last={};log.forEach(function(l){last[l.m]=l.status;});
+  var cnt={sent:0,error:0,unconfirmed:0,prepared:0};Object.keys(last).forEach(function(m){cnt[last[m]]=(cnt[last[m]]||0)+1;});
+  var withMail=pool.filter(function(e){return e.mp&&e.mp.indexOf("@")>0;}).length;
+  var pdfOk=steps[3].st==="ok";
+  steps.push({k:"invio",n:"Invio",
+    st:!pool.length?"todo":(cnt.error?"err":(!pdfOk&&!cnt.sent?"lock":(cnt.sent>=withMail&&withMail>0?"ok":(cnt.sent||cnt.unconfirmed?"warn":"todo")))),
+    sub:cnt.sent||cnt.error||cnt.unconfirmed?(cnt.sent+" inviate"+(cnt.error?" · "+cnt.error+" errori":"")):(!pdfOk?"In attesa dei PDF":"Da inviare"),
+    d:!pdfOk&&!cnt.sent?"Prima genera (o rigenera) i PDF.":"Invio email del periodo "+per+(isFcvm?"":" ai dipendenti")+" e ZIP ai Field Coach dal tab Distribuzione.",
+    rows:[["ok","Dipendenti con email",String(withMail)],[cnt.sent?"ok":"warn","Inviate",String(cnt.sent)]]
+      .concat(cnt.unconfirmed?[["warn","Non confermate",String(cnt.unconfirmed)]]:[]).concat(cnt.error?[["err","Errori",String(cnt.error)]]:[]),
+    btn:["Apri Distribuzione",function(){_stepGoTab("6");}]});
+  return steps;
+}
+
+var _STEP_C={ok:["#e8f0e0","#3b6d11","✓"],warn:["#faeeda","#854f0b","!"],err:["#fcebeb","#a32d2d","✕"],todo:["#f0ede7","#5f5e5a","•"],lock:["#f0ede7","#a09a92","–"]};
+function stepBarHtml(steps){
+  var h='<div style="display:flex;gap:6px;align-items:stretch;margin:0 0 10px">';
+  steps.forEach(function(s,i){var c=_STEP_C[s.st]||_STEP_C.todo,sel=_stepSel===i;
+    h+='<button type="button" data-step="'+i+'" style="flex:1;min-width:0;text-align:left;cursor:pointer;padding:8px 10px;border-radius:8px;font-family:inherit;'+
+      'border:'+(sel?'1.5px solid #c9a96e':'1px solid #e5e1db')+';background:'+(sel?'#fff':'#faf9f7')+'">'+
+      '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px"><span style="width:18px;height:18px;border-radius:50%;background:'+c[0]+';color:'+c[1]+';display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">'+c[2]+'</span>'+
+      '<span style="font-size:12px;font-weight:700;color:#2c2925">'+(i+1)+'. '+esc(s.n)+'</span></div>'+
+      '<div style="font-size:10px;color:'+c[1]+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(s.sub)+'</div></button>';
+    if(i<steps.length-1)h+='<div style="display:flex;align-items:center;color:#c9a96e;font-size:14px">›</div>';
+  });
+  h+='</div>';
+  if(_stepSel!==null&&steps[_stepSel]){var s=steps[_stepSel];
+    h+='<div style="background:#fff;border:1px solid #e5e1db;border-radius:8px;padding:10px 14px;margin:0 0 12px">';
+    h+='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px"><div><div style="font-size:13px;font-weight:700;color:#2c2925">'+(_stepSel+1)+'. '+esc(s.n)+'</div>'+
+      '<div style="font-size:11px;color:#8a8680">'+esc(s.d)+'</div></div>'+
+      '<div style="display:flex;gap:6px">'+(s.btn?'<button type="button" class="exp-btn" id="stepBtn">'+esc(s.btn[0])+'</button>':'')+'<button type="button" class="exp-btn" id="stepClose" title="Chiudi">✕</button></div></div>';
+    s.rows.slice(0,30).forEach(function(r){var c=_STEP_C[r[0]]||_STEP_C.todo;
+      h+='<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid #f0ede7;font-size:11px;color:#2c2925">'+
+        '<span style="width:16px;height:16px;border-radius:50%;background:'+c[0]+';color:'+c[1]+';display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">'+c[2]+'</span>'+
+        '<span style="flex:1">'+esc(r[1])+'</span><span style="color:#8a8680">'+esc(r[2])+'</span></div>';});
+    if(s.rows.length>30)h+='<div style="font-size:10px;color:#8a8680;padding-top:4px">… e altri '+(s.rows.length-30)+'</div>';
+    h+='</div>';
+  }
+  return h;
+}
+function stepBarRender(){
+  try{
+    var el=document.getElementById("stepBar");if(!el)return;
+    var steps=stepState();
+    el.innerHTML=stepBarHtml(steps);
+    document.querySelectorAll("#stepBar [data-step]").forEach(function(b){b.onclick=function(){
+      var i=parseInt(b.getAttribute("data-step"),10);_stepSel=(_stepSel===i?null:i);stepBarRender();};});
+    var sb=document.getElementById("stepBtn");if(sb&&_stepSel!==null&&steps[_stepSel].btn)sb.onclick=steps[_stepSel].btn[1];
+    var sc=document.getElementById("stepClose");if(sc)sc.onclick=function(){_stepSel=null;stepBarRender();};
+  }catch(ex){if(typeof console!=="undefined")console.error("stepBar:",ex);}
+}
+// aggiornamento raggruppato (dopo salvataggi, import, cambi di tab)
+function stepBarSoon(){if(_stepTimer)clearTimeout(_stepTimer);_stepTimer=setTimeout(function(){_stepTimer=null;stepBarRender();},150);}
+_afterScripts(function(){
+  stepBarRender();
+  // ogni cambio di tab ridisegna la barra (gli stati possono essere cambiati nel frattempo)
+  try{document.getElementById("tabs").addEventListener("click",stepBarSoon);}catch(_e){}
+});
 
 // ── #10 SIMULATORE WHAT-IF ────────────────────────────────────────────────
 "use strict";

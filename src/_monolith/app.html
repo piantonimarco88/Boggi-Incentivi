@@ -195,7 +195,7 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 
   </div>
 </div>
-<div class="cnt"><div class="tabs" id="tabs"></div>
+<div class="cnt"><div id="stepBar"></div><div class="tabs" id="tabs"></div>
 <div class="pnl on" id="p0"></div><div class="pnl" id="p1"></div><div class="pnl" id="p2"></div><div class="pnl" id="p5"></div><div class="pnl" id="p7"></div><div class="pnl" id="p6"></div><div class="pnl" id="p3"></div><div class="pnl" id="p4"></div><div class="pnl" id="p8"></div><div class="pnl" id="p9"></div><div class="pnl" id="p10"></div>
 </div>
 <!-- Save bar (hidden until changes) -->
@@ -216,12 +216,13 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 /*BUNDLE_INSERT:60-fcvm-state*/
 /*BUNDLE_INSERT:70-fcvm-calc*//*BUNDLE_INSERT:80-roles-config*/var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.113'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.114'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.114: Nuova barra a passi sopra i tab — Import → Verifica → Calcolo → PDF → Invio, con lo stato di ognuno (fonti caricate, avvisi, totale premi, PDF da rigenerare dopo una modifica ai dati, email inviate/errori). Clicca un passo per vedere il dettaglio e andare al tab giusto; i tab restano come prima",
   "9.113: Workgame — un'unica formula per calcolo, lettere, analisi, export e tracciato; per chi ha il BDG in TRASFERTE ora è pagato nel cod. 380 (prima mancava nel tracciato). Configurazione — nuove sezioni «Cambi valuta» (modificabili, con data di validità), «Date di attivazione regole» (SAS, USA, Coefficiente Inventari) e coefficienti Seasonal (mid-season, mesi stagione, QTY Dept), tutti salvati in sessione e configurazione; dopo un reset l'app parte dal mese corrente. Librerie (Excel, ZIP, PDF) incluse nell'app e aggiornate: niente più caricamento da internet",
   "9.112: Invio email — prima di inviare compare l'elenco completo dipendente → email → PDF (o Field Coach → email → ZIP con il numero di lettere) da confermare; al termine la tabella esiti distingue inviate, errori e «non confermate» (prima gli ZIP ai Field Coach risultavano sempre inviati). Lettere — etichette nella lingua della lettera (preventivo mensile, mese e titoli FC+VM), valuta del dipendente nelle formule SAS/DCC, corretto un refuso nel disclaimer inglese; logo Boggi alleggerito (lettere da 1,1 MB a 40 KB, aspetto invariato)",
   "9.111: Sessioni — «Carica sessione» parte da dati vuoti (niente più dati della sessione corrente mescolati a quella caricata) e indica la configurazione non presente nel file; «Carica configurazione» non tocca più aggiunte e Visual. Import — colonne riconosciute per priorità e anno in corso (es. «cr 2026» e non «cr 2025»), foglio del mese esatto, vendite USA abbinate sul solo cognome solo se unico nel negozio. Nuovo riquadro «Controlli sui dati caricati» in Fonti Dati e in coda a ogni import: file di un altro mese, dati caricati in un mese precedente, matricole duplicate, negozi senza target o consuntivo",
@@ -375,6 +376,7 @@ getLetterHtmlForPrint=function(i){
   return _glhfp(i);
 };
 /*BUNDLE_INSERT:35-validation*/
+/*BUNDLE_INSERT:96b-step-bar*/
 /*BUNDLE_INSERT:85-tab-simulatore*/
 /*BUNDLE_INSERT:90-tab-storico*/
 /*BUNDLE_INSERT:95-tab-confronto*/

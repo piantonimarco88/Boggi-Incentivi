@@ -119,6 +119,10 @@ function _showChangelogBanner(toVer){
 }
 
 function autoSave(){
+  // barra a passi: ogni salvataggio «non silenzioso» è una modifica dei dati (serve a capire se
+  // i PDF sono più vecchi dei dati); logMailSent salva in modo silenzioso
+  if(!window._autoSaveQuiet){window._lastChangeTs=new Date();}
+  if(typeof stepBarSoon==="function")stepBarSoon();
   try{
     try{usaQRecord()}catch(exq){}
     var state={
