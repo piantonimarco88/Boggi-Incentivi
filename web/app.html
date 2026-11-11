@@ -920,10 +920,15 @@ var SEAS_BB_START_YEAR=2026, SEAS_BB_START_SEASON="FW";
 function seasBBPeriodActive(){
   return _seasOrd(CFG_SEASON,CFG_YEAR)>=_seasOrd(SEAS_BB_START_SEASON,SEAS_BB_START_YEAR);
 }
+// Store Brian & Barry (bbFrom...bbTo) oppure Double B (dbFrom...dbTo): stesso set KPI e stessa tabella pesi
 function isBBStoreId(sid){
   var n=parseInt(sid,10);
   if(isNaN(n))return false;
-  return n>=(SEAS_CFG.bbFrom||5000)&&n<=(SEAS_CFG.bbTo||5100);
+  return (n>=(SEAS_CFG.bbFrom||5000)&&n<=(SEAS_CFG.bbTo||5100))||(n>=(SEAS_CFG.dbFrom||6000)&&n<=(SEAS_CFG.dbTo||6999));
+}
+// Testo per messaggi/report: intervalli store a cui si applicano i KPI dedicati
+function seasBBRangesLabel(){
+  return "Brian & Barry "+(SEAS_CFG.bbFrom||5000)+"–"+(SEAS_CFG.bbTo||5100)+" e Double B "+(SEAS_CFG.dbFrom||6000)+"–"+(SEAS_CFG.dbTo||6999);
 }
 // Italia, anagrafica seasonal: oltre 4999 i centri di costo sono esclusi (sedi/uffici/altri brand),
 // tranne gli store Brian & Barry (bbFrom...bbTo) dalla stagione in cui hanno i KPI dedicati.
@@ -985,6 +990,8 @@ var SEAS_CFG = {
   ],
   bbFrom: 5000,             // primo store id Brian & Barry
   bbTo: 5100,               // ultimo store id Brian & Barry
+  dbFrom: 6000,             // primo store id Double B (stessi KPI e pesi di Brian & Barry)
+  dbTo: 6999,               // ultimo store id Double B
   molt_turnover: [
     {from:-Infinity, to:-1,    coeff:0.00, label:"< -1%"},
     {from:-1,        to:0,     coeff:0.80, label:"-1% a 0%"},
@@ -1449,12 +1456,13 @@ function paramsMigrate(p){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.117'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.118'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.118: Seasonal FW26 Italia — anche gli store Double B (6000-6999, intervallo modificabile in Configurazione) usano i KPI dedicati SY, Subscription e UPT con la stessa tabella pesi dei Brian & Barry; l'import anagrafica e l'inserimento manuale li ammettono (prima venivano scartati come store > 4999)",
   "9.117: Seasonal — nei «Controlli sui dati caricati» (e nella barra a passi, passo Verifica) un avviso elenca i negozi che usano ancora i target seasonal incorporati nell'app (stagione precedente) perché il file dei target importato non li conteneva. Solo avviso: il calcolo non cambia",
   "9.116: Invio ZIP ai Field Coach — ora gli ZIP vengono salvati su disco e inviati da lì, così l'app riceve l'esito di ogni email anche con l'exe attuale (prima risultavano «non confermate»); a fine invio viene salvato accanto a PDF/ZIP il file log_invii_<periodo>.csv con tutti gli esiti del periodo, errori compresi. Calcolo — regola BDG 60%, KPI predefiniti per ruolo, migrazione dei vecchi salvataggi e mid-season già pagato ora in un unico punto (risultati identici); «Carica sessione» converte anche i ruoli storici «SM VSM» come già faceva «Carica configurazione»",
   "9.115: Seasonal Italia — l'import anagrafica (e l'inserimento manuale) ora include gli store Brian & Barry 5000-5100 da FW26: prima li scartava come «store > 4999», quindi i KPI dedicati (SY, Subscription, UPT) non si applicavano a nessuno. Gli altri store > 4999 restano esclusi",
@@ -1575,6 +1583,8 @@ if(window._autoState){try{
     if(as.seas_cfg.kpi_bb)SEAS_CFG.kpi_bb=as.seas_cfg.kpi_bb;
     if(as.seas_cfg.bbFrom!==undefined)SEAS_CFG.bbFrom=as.seas_cfg.bbFrom;
     if(as.seas_cfg.bbTo!==undefined)SEAS_CFG.bbTo=as.seas_cfg.bbTo;
+    if(as.seas_cfg.dbFrom!==undefined)SEAS_CFG.dbFrom=as.seas_cfg.dbFrom;
+    if(as.seas_cfg.dbTo!==undefined)SEAS_CFG.dbTo=as.seas_cfg.dbTo;
     if(as.seas_cfg.molt_turnover){SEAS_CFG.molt_turnover=as.seas_cfg.molt_turnover.map(function(r){return{from:r.from===null?-Infinity:r.from,to:r.to===null?Infinity:r.to,coeff:r.coeff,label:r.label||""};})}
     if(as.seas_cfg.molt_inventario){SEAS_CFG.molt_inventario=as.seas_cfg.molt_inventario.map(function(r){return{from:r.from===null?-Infinity:r.from,to:r.to===null?Infinity:r.to,coeff:r.coeff,label:r.label||""};})}
   }
@@ -1876,6 +1886,8 @@ function loadSession(input){
       if(state.seas_cfg.kpi_bb)SEAS_CFG.kpi_bb=state.seas_cfg.kpi_bb;
       if(state.seas_cfg.bbFrom!==undefined)SEAS_CFG.bbFrom=state.seas_cfg.bbFrom;
       if(state.seas_cfg.bbTo!==undefined)SEAS_CFG.bbTo=state.seas_cfg.bbTo;
+      if(state.seas_cfg.dbFrom!==undefined)SEAS_CFG.dbFrom=state.seas_cfg.dbFrom;
+      if(state.seas_cfg.dbTo!==undefined)SEAS_CFG.dbTo=state.seas_cfg.dbTo;
       ["midPct","semMonths","deptQtyPct"].forEach(function(k){if(typeof state.seas_cfg[k]==="number")SEAS_CFG[k]=state.seas_cfg[k];});
       if(state.seas_cfg.molt_turnover){
         SEAS_CFG.molt_turnover=state.seas_cfg.molt_turnover.map(function(r){
@@ -1995,6 +2007,8 @@ function loadConfig(evt){var f=evt.target.files[0];if(!f)return;var reader=new F
       if(cfg.seas_cfg.kpi_bb)SEAS_CFG.kpi_bb=cfg.seas_cfg.kpi_bb;
       if(cfg.seas_cfg.bbFrom!==undefined)SEAS_CFG.bbFrom=cfg.seas_cfg.bbFrom;
       if(cfg.seas_cfg.bbTo!==undefined)SEAS_CFG.bbTo=cfg.seas_cfg.bbTo;
+      if(cfg.seas_cfg.dbFrom!==undefined)SEAS_CFG.dbFrom=cfg.seas_cfg.dbFrom;
+      if(cfg.seas_cfg.dbTo!==undefined)SEAS_CFG.dbTo=cfg.seas_cfg.dbTo;
       ["midPct","semMonths","deptQtyPct"].forEach(function(k){if(typeof cfg.seas_cfg[k]==="number")SEAS_CFG[k]=cfg.seas_cfg[k];});
       if(cfg.seas_cfg.molt_turnover){
         SEAS_CFG.molt_turnover=cfg.seas_cfg.molt_turnover.map(function(r){
@@ -2771,7 +2785,7 @@ function seasKpiWeightLabel(k){
   SEAS_CFG.kpi.forEach(function(kd){if(kd.k===k)std=kd;});
   if(seasKpiHasBB())(SEAS_CFG.kpi_bb||[]).forEach(function(kd){if(kd.k===k)bb=kd;});
   var s=std?Math.round(std.weight*100)+'%':'';
-  if(bb&&(!std||Math.round(bb.weight*100)!==Math.round(std.weight*100)))s+=(s?' · ':'')+'B&B '+Math.round(bb.weight*100)+'%';
+  if(bb&&(!std||Math.round(bb.weight*100)!==Math.round(std.weight*100)))s+=(s?' · ':'')+'BB/DB '+Math.round(bb.weight*100)+'%';
   return s||'—';
 }
 // Centralised seasonal KPI achievement logic:
@@ -6024,10 +6038,12 @@ function rT(){try{
 
   // KPI Brian & Barry (SM/VSM Italia, da FW26)
   var bbActive=REGION==="italia"&&seasBBPeriodActive();
-  h+='<div style="font-size:11px;font-weight:700;color:#5b6abf;margin:18px 0 6px;text-transform:uppercase;letter-spacing:1px">KPI &mdash; Pesi e Soglie BRIAN &amp; BARRY</div>';
-  h+='<div style="font-size:10px;color:#8a8680;margin-bottom:6px">Per SM/VSM dei negozi <b>Brian &amp; Barry</b> (Italia, dalla stagione <b>FW26</b>): 3 KPI dedicati (Shopper Yield, Subscription Rate, UPT). Restano il &ldquo;cancello&rdquo; dello step 2 il moltiplicatore Fatturato (turnover) e il moltiplicatore Inventario, come per i negozi Boggi. '+(bbActive?'<b style="color:#2d7a3a">Regola attiva per questa stagione/regione.</b>':'<b style="color:#a09a92">Non attiva ora (serve regione Italia e stagione FW26 o successive).</b>')+'</div>';
+  h+='<div style="font-size:11px;font-weight:700;color:#5b6abf;margin:18px 0 6px;text-transform:uppercase;letter-spacing:1px">KPI &mdash; Pesi e Soglie BRIAN &amp; BARRY / DOUBLE B</div>';
+  h+='<div style="font-size:10px;color:#8a8680;margin-bottom:6px">Per SM/VSM dei negozi <b>Brian &amp; Barry</b> e <b>Double B</b> (Italia, dalla stagione <b>FW26</b>): 3 KPI dedicati (Shopper Yield, Subscription Rate, UPT). Restano il &ldquo;cancello&rdquo; dello step 2 il moltiplicatore Fatturato (turnover) e il moltiplicatore Inventario, come per i negozi Boggi. '+(bbActive?'<b style="color:#2d7a3a">Regola attiva per questa stagione/regione.</b>':'<b style="color:#a09a92">Non attiva ora (serve regione Italia e stagione FW26 o successive).</b>')+'</div>';
   h+='<div class="cfg-row"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">Store ID Brian &amp; Barry</span><span style="font-size:9px;color:#a09a92">Intervallo di store id (inclusi) a cui si applicano i KPI dedicati</span></div>';
   h+='<div style="display:flex;align-items:center;gap:4px"><input class="cfg-input" style="width:70px" type="number" id="seas_bbFrom" value="'+(SEAS_CFG.bbFrom||5000)+'" step="1" min="0"><span style="font-size:10px;color:#8a8680">&ndash;</span><input class="cfg-input" style="width:70px" type="number" id="seas_bbTo" value="'+(SEAS_CFG.bbTo||5100)+'" step="1" min="0"></div></div>';
+  h+='<div class="cfg-row"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">Store ID Double B</span><span style="font-size:9px;color:#a09a92">Intervallo di store id (inclusi): stessi KPI e stessi pesi di Brian &amp; Barry</span></div>';
+  h+='<div style="display:flex;align-items:center;gap:4px"><input class="cfg-input" style="width:70px" type="number" id="seas_dbFrom" value="'+(SEAS_CFG.dbFrom||6000)+'" step="1" min="0"><span style="font-size:10px;color:#8a8680">&ndash;</span><input class="cfg-input" style="width:70px" type="number" id="seas_dbTo" value="'+(SEAS_CFG.dbTo||6999)+'" step="1" min="0"></div></div>';
   h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed"><colgroup><col style="width:40%"><col style="width:18%"><col style="width:28%"><col style="width:14%"></colgroup><thead><tr style="background:#f5f2ee">';
   h+='<th style="text-align:left;padding:6px 10px;font-weight:700;color:#6b6560">KPI</th>';
   h+='<th style="text-align:center;padding:6px 10px;font-weight:700;color:#6b6560">Peso (%)</th>';
@@ -6145,12 +6161,13 @@ function rT(){try{
     SEAS_CFG.kpi_bb[ki].threshold=parseFloat(inp.value)/100||0.995;
     markDirty();autoSave();rC();rA();
   };});
-  ["seas_bbFrom","seas_bbTo"].forEach(function(id){
+  var bbRangeFields={seas_bbFrom:["bbFrom",5000],seas_bbTo:["bbTo",5100],seas_dbFrom:["dbFrom",6000],seas_dbTo:["dbTo",6999]};
+  Object.keys(bbRangeFields).forEach(function(id){
     var el=document.getElementById(id);if(!el)return;
     el.onchange=function(){
-      var v=parseInt(this.value,10);
-      if(isNaN(v)||v<0){this.value=id==="seas_bbFrom"?(SEAS_CFG.bbFrom||5000):(SEAS_CFG.bbTo||5100);return;}
-      if(id==="seas_bbFrom")SEAS_CFG.bbFrom=v;else SEAS_CFG.bbTo=v;
+      var key=bbRangeFields[id][0],v=parseInt(this.value,10);
+      if(isNaN(v)||v<0){this.value=SEAS_CFG[key]||bbRangeFields[id][1];return;}
+      SEAS_CFG[key]=v;
       markDirty();autoSave();rC();rA();
     };
   });
@@ -7857,7 +7874,7 @@ function loadAnagraficaExcel(file){
             continue;
           }
           if(PRIZE_MODE==="seasonal"?!itSeasStoreAllowed(cdcNum):cdcNum>6500){
-            itErrors.push({row:ri+1,name:fullName,reason:"Centro di costo "+cdcNum+" escluso"+(PRIZE_MODE==="seasonal"?" (seasonal: solo store \u2264 4999 e Brian & Barry "+(SEAS_CFG.bbFrom||5000)+"\u2013"+(SEAS_CFG.bbTo||5100)+" da FW26)":"")});
+            itErrors.push({row:ri+1,name:fullName,reason:"Centro di costo "+cdcNum+" escluso"+(PRIZE_MODE==="seasonal"?" (seasonal: solo store \u2264 4999 e "+seasBBRangesLabel()+" da FW26)":"")});
             continue;
           }
           var cdcDesc=String(row[ZC.cdcDesc]||"").trim();
@@ -9665,7 +9682,7 @@ function _manSaveE(){
   if(!m||!cogn||!nome)return _manFail("Matricola, cognome e nome sono obbligatori.");
   if(E.some(function(e){return String(e.m)===m}))return _manFail("Matricola "+m+" già presente in anagrafica.");
   if(isNaN(si)||si<=0)return _manFail("Inserisci uno Store ID valido.");
-  if(isIT&&(seas?!itSeasStoreAllowed(si):si>6500))return _manFail("Store "+si+" escluso"+(seas?" (seasonal: solo store ≤ 4999 e Brian & Barry "+(SEAS_CFG.bbFrom||5000)+"–"+(SEAS_CFG.bbTo||5100)+" da FW26).":" (store > 6500, sede/ufficio)."));
+  if(isIT&&(seas?!itSeasStoreAllowed(si):si>6500))return _manFail("Store "+si+" escluso"+(seas?" (seasonal: solo store ≤ 4999 e "+seasBBRangesLabel()+" da FW26).":" (store > 6500, sede/ufficio)."));
   if(seas&&SEASON_PERIOD==="mid"&&REGION==="international"&&isD(si))return _manFail("Dept store ("+si+") escluso dal Mid-Season — premio solo a fine stagione.");
   var sdesc=_manV("manS"),sname=sdesc;
   if(!sname)sname=_manStoreName(si);
@@ -10093,7 +10110,7 @@ function rSources(){try{
     if(REGION==="italia"&&seasBBPeriodActive()){
       var bbParts=[];
       (SEAS_CFG.kpi_bb||[]).forEach(function(k){if(k.weight>0)bbParts.push(k.label+' '+Math.round(k.weight*100)+'% (soglia '+Math.round(k.threshold*100)+'%)')});
-      if(bbParts.length)sh+='<b>KPI Brian &amp; Barry (store '+(SEAS_CFG.bbFrom||5000)+'&ndash;'+(SEAS_CFG.bbTo||5100)+'):</b> '+bbParts.join(' &nbsp;&#183;&nbsp; ')+'<br>';
+      if(bbParts.length)sh+='<b>KPI Brian &amp; Barry / Double B (store '+(SEAS_CFG.bbFrom||5000)+'&ndash;'+(SEAS_CFG.bbTo||5100)+' e '+(SEAS_CFG.dbFrom||6000)+'&ndash;'+(SEAS_CFG.dbTo||6999)+'):</b> '+bbParts.join(' &nbsp;&#183;&nbsp; ')+'<br>';
     }
         // Moltiplicatore fatturato
     sh+='<b>Molt. Fatturato:</b> ';
@@ -14610,6 +14627,8 @@ function _simCloneSeasCfg(cfg){
     kpi_bb:(cfg.kpi_bb||[]).map(function(k){return{k:k.k,label:k.label,weight:k.weight,threshold:k.threshold};}),
     bbFrom:cfg.bbFrom,
     bbTo:cfg.bbTo,
+    dbFrom:cfg.dbFrom,
+    dbTo:cfg.dbTo,
     molt_turnover:cfg.molt_turnover.map(function(r){return{from:r.from,to:r.to,coeff:r.coeff,label:r.label||""};}),
     molt_inventario:cfg.molt_inventario.map(function(r){return{from:r.from,to:r.to,coeff:r.coeff,label:r.label||""};})
   };

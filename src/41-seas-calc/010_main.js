@@ -244,7 +244,7 @@ function seasKpiWeightLabel(k){
   SEAS_CFG.kpi.forEach(function(kd){if(kd.k===k)std=kd;});
   if(seasKpiHasBB())(SEAS_CFG.kpi_bb||[]).forEach(function(kd){if(kd.k===k)bb=kd;});
   var s=std?Math.round(std.weight*100)+'%':'';
-  if(bb&&(!std||Math.round(bb.weight*100)!==Math.round(std.weight*100)))s+=(s?' · ':'')+'B&B '+Math.round(bb.weight*100)+'%';
+  if(bb&&(!std||Math.round(bb.weight*100)!==Math.round(std.weight*100)))s+=(s?' · ':'')+'BB/DB '+Math.round(bb.weight*100)+'%';
   return s||'—';
 }
 // Centralised seasonal KPI achievement logic:

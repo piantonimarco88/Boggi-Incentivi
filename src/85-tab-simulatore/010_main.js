@@ -92,6 +92,8 @@ function _simCloneSeasCfg(cfg){
     kpi_bb:(cfg.kpi_bb||[]).map(function(k){return{k:k.k,label:k.label,weight:k.weight,threshold:k.threshold};}),
     bbFrom:cfg.bbFrom,
     bbTo:cfg.bbTo,
+    dbFrom:cfg.dbFrom,
+    dbTo:cfg.dbTo,
     molt_turnover:cfg.molt_turnover.map(function(r){return{from:r.from,to:r.to,coeff:r.coeff,label:r.label||""};}),
     molt_inventario:cfg.molt_inventario.map(function(r){return{from:r.from,to:r.to,coeff:r.coeff,label:r.label||""};})
   };

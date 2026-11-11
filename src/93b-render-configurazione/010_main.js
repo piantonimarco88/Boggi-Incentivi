@@ -223,10 +223,12 @@ function rT(){try{
 
   // KPI Brian & Barry (SM/VSM Italia, da FW26)
   var bbActive=REGION==="italia"&&seasBBPeriodActive();
-  h+='<div style="font-size:11px;font-weight:700;color:#5b6abf;margin:18px 0 6px;text-transform:uppercase;letter-spacing:1px">KPI &mdash; Pesi e Soglie BRIAN &amp; BARRY</div>';
-  h+='<div style="font-size:10px;color:#8a8680;margin-bottom:6px">Per SM/VSM dei negozi <b>Brian &amp; Barry</b> (Italia, dalla stagione <b>FW26</b>): 3 KPI dedicati (Shopper Yield, Subscription Rate, UPT). Restano il &ldquo;cancello&rdquo; dello step 2 il moltiplicatore Fatturato (turnover) e il moltiplicatore Inventario, come per i negozi Boggi. '+(bbActive?'<b style="color:#2d7a3a">Regola attiva per questa stagione/regione.</b>':'<b style="color:#a09a92">Non attiva ora (serve regione Italia e stagione FW26 o successive).</b>')+'</div>';
+  h+='<div style="font-size:11px;font-weight:700;color:#5b6abf;margin:18px 0 6px;text-transform:uppercase;letter-spacing:1px">KPI &mdash; Pesi e Soglie BRIAN &amp; BARRY / DOUBLE B</div>';
+  h+='<div style="font-size:10px;color:#8a8680;margin-bottom:6px">Per SM/VSM dei negozi <b>Brian &amp; Barry</b> e <b>Double B</b> (Italia, dalla stagione <b>FW26</b>): 3 KPI dedicati (Shopper Yield, Subscription Rate, UPT). Restano il &ldquo;cancello&rdquo; dello step 2 il moltiplicatore Fatturato (turnover) e il moltiplicatore Inventario, come per i negozi Boggi. '+(bbActive?'<b style="color:#2d7a3a">Regola attiva per questa stagione/regione.</b>':'<b style="color:#a09a92">Non attiva ora (serve regione Italia e stagione FW26 o successive).</b>')+'</div>';
   h+='<div class="cfg-row"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">Store ID Brian &amp; Barry</span><span style="font-size:9px;color:#a09a92">Intervallo di store id (inclusi) a cui si applicano i KPI dedicati</span></div>';
   h+='<div style="display:flex;align-items:center;gap:4px"><input class="cfg-input" style="width:70px" type="number" id="seas_bbFrom" value="'+(SEAS_CFG.bbFrom||5000)+'" step="1" min="0"><span style="font-size:10px;color:#8a8680">&ndash;</span><input class="cfg-input" style="width:70px" type="number" id="seas_bbTo" value="'+(SEAS_CFG.bbTo||5100)+'" step="1" min="0"></div></div>';
+  h+='<div class="cfg-row"><div style="flex:1"><span class="cfg-label" style="width:auto;display:block">Store ID Double B</span><span style="font-size:9px;color:#a09a92">Intervallo di store id (inclusi): stessi KPI e stessi pesi di Brian &amp; Barry</span></div>';
+  h+='<div style="display:flex;align-items:center;gap:4px"><input class="cfg-input" style="width:70px" type="number" id="seas_dbFrom" value="'+(SEAS_CFG.dbFrom||6000)+'" step="1" min="0"><span style="font-size:10px;color:#8a8680">&ndash;</span><input class="cfg-input" style="width:70px" type="number" id="seas_dbTo" value="'+(SEAS_CFG.dbTo||6999)+'" step="1" min="0"></div></div>';
   h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed"><colgroup><col style="width:40%"><col style="width:18%"><col style="width:28%"><col style="width:14%"></colgroup><thead><tr style="background:#f5f2ee">';
   h+='<th style="text-align:left;padding:6px 10px;font-weight:700;color:#6b6560">KPI</th>';
   h+='<th style="text-align:center;padding:6px 10px;font-weight:700;color:#6b6560">Peso (%)</th>';
@@ -344,12 +346,13 @@ function rT(){try{
     SEAS_CFG.kpi_bb[ki].threshold=parseFloat(inp.value)/100||0.995;
     markDirty();autoSave();rC();rA();
   };});
-  ["seas_bbFrom","seas_bbTo"].forEach(function(id){
+  var bbRangeFields={seas_bbFrom:["bbFrom",5000],seas_bbTo:["bbTo",5100],seas_dbFrom:["dbFrom",6000],seas_dbTo:["dbTo",6999]};
+  Object.keys(bbRangeFields).forEach(function(id){
     var el=document.getElementById(id);if(!el)return;
     el.onchange=function(){
-      var v=parseInt(this.value,10);
-      if(isNaN(v)||v<0){this.value=id==="seas_bbFrom"?(SEAS_CFG.bbFrom||5000):(SEAS_CFG.bbTo||5100);return;}
-      if(id==="seas_bbFrom")SEAS_CFG.bbFrom=v;else SEAS_CFG.bbTo=v;
+      var key=bbRangeFields[id][0],v=parseInt(this.value,10);
+      if(isNaN(v)||v<0){this.value=SEAS_CFG[key]||bbRangeFields[id][1];return;}
+      SEAS_CFG[key]=v;
       markDirty();autoSave();rC();rA();
     };
   });

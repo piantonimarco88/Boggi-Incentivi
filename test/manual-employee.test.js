@@ -92,6 +92,14 @@ test("Seasonal: store > 4999 escluso in Italia (tranne Brian & Barry 5000-5100 d
   // prima di FW26 resta escluso
   const ss = ctx({ PRIZE_MODE: "seasonal", CFG_SEASON: "SS" }, { manM: "3", manC: "A", manN: "B", manJ: "SM", manSi: "5002", manS: "BB MILANO", manIb: "100" });
   assert.strictEqual(vm.runInContext("_manSaveE()", ss), false);
+  // Double B (6xxx): ammesso in FW26, escluso prima; 7001 fuori range
+  const d = ctx({ PRIZE_MODE: "seasonal" }, { manM: "5", manC: "A", manN: "B", manJ: "VSM", manSi: "6001", manS: "DB MILANO", manIb: "100" });
+  d.SEAS_TARGETS["6001"] = { to: 100000 };
+  assert.strictEqual(vm.runInContext("_manSaveE()", d), true);
+  const dss = ctx({ PRIZE_MODE: "seasonal", CFG_SEASON: "SS" }, { manM: "6", manC: "A", manN: "B", manJ: "SM", manSi: "6001", manS: "DB MILANO", manIb: "100" });
+  assert.strictEqual(vm.runInContext("_manSaveE()", dss), false);
+  const d7 = ctx({ PRIZE_MODE: "seasonal" }, { manM: "7", manC: "A", manN: "B", manJ: "SM", manSi: "7001", manS: "N", manIb: "100" });
+  assert.strictEqual(vm.runInContext("_manSaveE()", d7), false);
   // fuori range B&B (5101) escluso anche in FW26
   const o = ctx({ PRIZE_MODE: "seasonal" }, { manM: "4", manC: "A", manN: "B", manJ: "SM", manSi: "5101", manS: "N", manIb: "100" });
   assert.strictEqual(vm.runInContext("_manSaveE()", o), false);

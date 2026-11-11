@@ -278,7 +278,7 @@ function rSources(){try{
     if(REGION==="italia"&&seasBBPeriodActive()){
       var bbParts=[];
       (SEAS_CFG.kpi_bb||[]).forEach(function(k){if(k.weight>0)bbParts.push(k.label+' '+Math.round(k.weight*100)+'% (soglia '+Math.round(k.threshold*100)+'%)')});
-      if(bbParts.length)sh+='<b>KPI Brian &amp; Barry (store '+(SEAS_CFG.bbFrom||5000)+'&ndash;'+(SEAS_CFG.bbTo||5100)+'):</b> '+bbParts.join(' &nbsp;&#183;&nbsp; ')+'<br>';
+      if(bbParts.length)sh+='<b>KPI Brian &amp; Barry / Double B (store '+(SEAS_CFG.bbFrom||5000)+'&ndash;'+(SEAS_CFG.bbTo||5100)+' e '+(SEAS_CFG.dbFrom||6000)+'&ndash;'+(SEAS_CFG.dbTo||6999)+'):</b> '+bbParts.join(' &nbsp;&#183;&nbsp; ')+'<br>';
     }
         // Moltiplicatore fatturato
     sh+='<b>Molt. Fatturato:</b> ';

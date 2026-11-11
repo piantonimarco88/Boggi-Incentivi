@@ -114,10 +114,15 @@ var SEAS_BB_START_YEAR=2026, SEAS_BB_START_SEASON="FW";
 function seasBBPeriodActive(){
   return _seasOrd(CFG_SEASON,CFG_YEAR)>=_seasOrd(SEAS_BB_START_SEASON,SEAS_BB_START_YEAR);
 }
+// Store Brian & Barry (bbFrom...bbTo) oppure Double B (dbFrom...dbTo): stesso set KPI e stessa tabella pesi
 function isBBStoreId(sid){
   var n=parseInt(sid,10);
   if(isNaN(n))return false;
-  return n>=(SEAS_CFG.bbFrom||5000)&&n<=(SEAS_CFG.bbTo||5100);
+  return (n>=(SEAS_CFG.bbFrom||5000)&&n<=(SEAS_CFG.bbTo||5100))||(n>=(SEAS_CFG.dbFrom||6000)&&n<=(SEAS_CFG.dbTo||6999));
+}
+// Testo per messaggi/report: intervalli store a cui si applicano i KPI dedicati
+function seasBBRangesLabel(){
+  return "Brian & Barry "+(SEAS_CFG.bbFrom||5000)+"–"+(SEAS_CFG.bbTo||5100)+" e Double B "+(SEAS_CFG.dbFrom||6000)+"–"+(SEAS_CFG.dbTo||6999);
 }
 // Italia, anagrafica seasonal: oltre 4999 i centri di costo sono esclusi (sedi/uffici/altri brand),
 // tranne gli store Brian & Barry (bbFrom...bbTo) dalla stagione in cui hanno i KPI dedicati.
@@ -179,6 +184,8 @@ var SEAS_CFG = {
   ],
   bbFrom: 5000,             // primo store id Brian & Barry
   bbTo: 5100,               // ultimo store id Brian & Barry
+  dbFrom: 6000,             // primo store id Double B (stessi KPI e pesi di Brian & Barry)
+  dbTo: 6999,               // ultimo store id Double B
   molt_turnover: [
     {from:-Infinity, to:-1,    coeff:0.00, label:"< -1%"},
     {from:-1,        to:0,     coeff:0.80, label:"-1% a 0%"},
