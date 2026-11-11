@@ -684,6 +684,34 @@ function showImportReport(imported,errors,sheet,filename,cutoffStr){
   h+='<div style="background:#f0faf2;border:1px solid #d4edda;border-radius:6px;padding:10px 16px;flex:1;text-align:center"><div style="font-size:24px;font-weight:800;color:#2d7a3a">'+imported.length+'</div><div style="font-size:10px;color:#6b6560">Importabili</div></div>';
   h+='<div style="background:'+(errors.length?"#fef6f0":"#f0faf2")+';border:1px solid '+(errors.length?"#f8d7da":"#d4edda")+';border-radius:6px;padding:10px 16px;flex:1;text-align:center"><div style="font-size:24px;font-weight:800;color:'+(errors.length?"#cf5b5b":"#2d7a3a")+'">'+errors.length+'</div><div style="font-size:10px;color:#6b6560">Esclusi</div></div></div>';
 
+  // Seasonal Italia: riepilogo Brian & Barry / Double B (KPI dedicati da FW26). L'anteprima mostra solo
+  // i primi 20 importati, quindi questi negozi non si vedrebbero: elenco completo qui.
+  if(isIT&&PRIZE_MODE==="seasonal"){
+    var bbL=[],dbL=[];
+    imported.forEach(function(e){
+      var n=parseInt(e.si,10);if(isNaN(n))return;
+      if(n>=(SEAS_CFG.bbFrom||5000)&&n<=(SEAS_CFG.bbTo||5100))bbL.push(e);
+      else if(n>=(SEAS_CFG.dbFrom||6000)&&n<=(SEAS_CFG.dbTo||6999))dbL.push(e);
+    });
+    var bbOn=seasBBPeriodActive();
+    h+='<div style="border:1px solid '+(bbOn?'#c9a96e':'#d5d0c8')+';background:#fdf8ee;border-radius:6px;padding:10px 12px;margin-bottom:12px">';
+    h+='<div style="font-size:11px;font-weight:700;color:#a07d2c;margin-bottom:4px">Brian &amp; Barry / Double B <span style="font-weight:400;color:#8a8680">('+esc(seasBBRangesLabel())+')</span></div>';
+    h+='<div style="font-size:10px;color:#6b6560;margin-bottom:6px">'+(bbOn?'KPI dedicati attivi (SY, Subscription, UPT).':'<b style="color:#cf5b5b">Fuori stagione: i KPI dedicati valgono da FW26, questi store non vengono importati.</b>')+'</div>';
+    [['Brian &amp; Barry',bbL],['Double B',dbL]].forEach(function(g){
+      var stores={};g[1].forEach(function(e){stores[String(e.si)]=1;});
+      var ids=Object.keys(stores).sort(function(a,b){return a-b;});
+      h+='<div style="font-size:10px;margin-bottom:3px"><b>'+g[0]+':</b> <span style="color:'+(g[1].length?'#2d7a3a':'#cf5b5b')+';font-weight:700">'+g[1].length+' dipendenti importati</span>'+(ids.length?' in '+ids.length+' negozi ('+esc(ids.join(', '))+')':'')+'</div>';
+    });
+    var bbAll=bbL.concat(dbL);
+    if(bbAll.length){
+      h+='<div class="scroll-wrap" style="max-height:160px;margin-top:6px"><table style="font-size:9px;width:100%"><thead><tr style="background:#f5f2ee"><th style="padding:3px">Matricola</th><th style="padding:3px">Cognome</th><th style="padding:3px">Nome</th><th style="padding:3px">Job</th><th style="padding:3px">Negozio</th></tr></thead><tbody>';
+      bbAll.slice(0,60).forEach(function(e){h+='<tr><td style="padding:2px 3px">'+esc(e.m)+'</td><td style="padding:2px 3px">'+esc(e.c)+'</td><td style="padding:2px 3px">'+esc(e.n)+'</td><td style="padding:2px 3px;font-weight:700">'+esc(e.j)+'</td><td style="padding:2px 3px">'+esc(e.s)+'</td></tr>';});
+      if(bbAll.length>60)h+='<tr><td colspan="5" style="padding:3px;text-align:center;color:#8a8680;font-style:italic">... e altri '+(bbAll.length-60)+'</td></tr>';
+      h+='</tbody></table></div>';
+    }
+    h+='</div>';
+  }
+
   if(errors.length){
     h+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:#856404;margin-bottom:4px">Dettaglio esclusi:</div>';
     h+='<div class="scroll-wrap" style="max-height:200px"><table style="font-size:9px;width:100%"><thead><tr style="background:#fef6f0"><th style="padding:4px">Riga Excel</th><th style="padding:4px">Dipendente</th><th style="padding:4px">Motivo esclusione</th></tr></thead><tbody>';
