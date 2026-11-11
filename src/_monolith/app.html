@@ -216,12 +216,13 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 /*BUNDLE_INSERT:60-fcvm-state*/
 /*BUNDLE_INSERT:70-fcvm-calc*//*BUNDLE_INSERT:80-roles-config*/var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.116'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.117'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.117: Seasonal — nei «Controlli sui dati caricati» (e nella barra a passi, passo Verifica) un avviso elenca i negozi che usano ancora i target seasonal incorporati nell'app (stagione precedente) perché il file dei target importato non li conteneva. Solo avviso: il calcolo non cambia",
   "9.116: Invio ZIP ai Field Coach — ora gli ZIP vengono salvati su disco e inviati da lì, così l'app riceve l'esito di ogni email anche con l'exe attuale (prima risultavano «non confermate»); a fine invio viene salvato accanto a PDF/ZIP il file log_invii_<periodo>.csv con tutti gli esiti del periodo, errori compresi. Calcolo — regola BDG 60%, KPI predefiniti per ruolo, migrazione dei vecchi salvataggi e mid-season già pagato ora in un unico punto (risultati identici); «Carica sessione» converte anche i ruoli storici «SM VSM» come già faceva «Carica configurazione»",
   "9.115: Seasonal Italia — l'import anagrafica (e l'inserimento manuale) ora include gli store Brian & Barry 5000-5100 da FW26: prima li scartava come «store > 4999», quindi i KPI dedicati (SY, Subscription, UPT) non si applicavano a nessuno. Gli altri store > 4999 restano esclusi",
   "9.114: Nuova barra a passi sopra i tab — Import → Verifica → Calcolo → PDF → Invio, con lo stato di ognuno (fonti caricate, avvisi, totale premi, PDF da rigenerare dopo una modifica ai dati, email inviate/errori). Clicca un passo per vedere il dettaglio e andare al tab giusto; i tab restano come prima",

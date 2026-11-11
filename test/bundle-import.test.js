@@ -76,6 +76,25 @@ test("riepilogo controlli: file di un altro mese, dati caricati in un mese prece
   assert.match(app.run("importChecksBoxHtml()"), /Controlli sui dati caricati/);
 });
 
+test("seasonal: avviso per i negozi che usano ancora i target incorporati nell'app (stagione precedente)", () => {
+  const app = loadBundle();
+  // 1001 e 1002 hanno target incorporati; il «file importato» aggiorna solo 1002
+  app.run(`PRIZE_MODE="seasonal";MODE="consuntivo";CFG_YEAR=2026;CFG_MONTH=11;IMPORT_STAMPS={};STORE_FLAGS={};initStoreFlags();
+    E=[{m:"S1",f:"SM",j:"SM",si:1001,ps:"NO",cu:"EUR"},{m:"S2",f:"SM",j:"SM",si:1002,ps:"NO",cu:"EUR"},{m:"S3",f:"SA",j:"SA",si:1003,ps:"NO",cu:"EUR"}];
+    SEAS_TARGETS["1002"].to=123456;`);
+  const chk = JSON.parse(app.run("JSON.stringify(importChecks())"));
+  const w = chk.find(c => /target seasonal incorporati/.test(c.t));
+  assert.ok(w, "manca l'avviso");
+  assert.strictEqual(w.lvl, "warn");
+  assert.match(w.t, /^1 negozi .*: 1001\./, "solo 1001 (1002 importato; 1003 senza SM/VSM)");
+  // importato anche 1001 -> nessun avviso
+  app.run(`SEAS_TARGETS["1001"].to=654321;`);
+  assert.ok(!JSON.parse(app.run("JSON.stringify(importChecks())")).some(c => /incorporati/.test(c.t)));
+  // in mensile l'avviso non c'e`
+  app.run(`SEAS_TARGETS["1001"]=JSON.parse(JSON.stringify(SEAS_TARGETS_DEFAULT["1001"]));PRIZE_MODE="mensile";`);
+  assert.ok(!JSON.parse(app.run("JSON.stringify(importChecks())")).some(c => /incorporati/.test(c.t)));
+});
+
 test("riepilogo controlli: nessun avviso se tutto e` coerente", () => {
   const app = loadBundle();
   app.run(`PRIZE_MODE="mensile";MODE="consuntivo";CFG_YEAR=2026;CFG_MONTH=8;IMPORT_STAMPS={};

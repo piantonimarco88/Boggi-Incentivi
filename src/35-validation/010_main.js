@@ -271,6 +271,15 @@ function importChecks(){
     if(s.fm&&s.fm!==CFG_MONTH)out.push({lvl:"warn",t:"«"+s.label+"»: il file «"+s.file+"» sembra di "+_monthLbl(s.fm)+", il mese configurato è "+_monthLbl(CFG_MONTH,CFG_YEAR)+"."});
     else if(s.m&&(s.m!==CFG_MONTH||s.y!==CFG_YEAR))out.push({lvl:"warn",t:"«"+s.label+"» è stato caricato quando il mese configurato era "+_monthLbl(s.m,s.y)+": se è cambiato mese, ricarica il file."});
   }
+  // Seasonal: negozi con SM/VSM che usano ancora i target incorporati nel codice (stagione
+  // precedente) perche il file dei target importato non li conteneva. Solo avviso.
+  if(PRIZE_MODE==="seasonal"&&typeof SEAS_TARGETS_DEFAULT!=="undefined"&&typeof E!=="undefined"&&E.length){
+    var oldT={};
+    E.forEach(function(e){if(e.ps==="SI"||(typeof isSMVSM==="function"&&!isSMVSM(e)))return;var sid=String(e.si),d=SEAS_TARGETS_DEFAULT[sid],t=SEAS_TARGETS[sid];
+      if(d&&t&&(t.to||0)>0&&JSON.stringify(t)===JSON.stringify(d))oldT[sid]=1;});
+    var ol=Object.keys(oldT).sort();
+    if(ol.length)out.push({lvl:"warn",t:ol.length+" negozi usano ancora i target seasonal incorporati nell'app (stagione precedente), non quelli importati: "+ol.slice(0,12).join(", ")+(ol.length>12?"…":"")+". Controlla che il file dei target della stagione li contenga."});
+  }
   if(PRIZE_MODE!=="fcvm"&&typeof E!=="undefined"&&E.length){
     var seen={},dup=[];
     E.forEach(function(e){var m=String(e.m);if(seen[m])dup.push(m);seen[m]=1;});
