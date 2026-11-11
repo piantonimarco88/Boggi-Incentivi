@@ -23,3 +23,8 @@ jobs:
       # Test funzioni pure: naming PDF, sottocartelle, label periodo, CF
       - name: Test
         run: node --test
+
+      # Suite statistiche.html (parita` agente/tab, regole, malattia...) sui dati demo
+      # inventati statistiche/demo_data_ci.json
+      - name: Test statistiche
+        run: node statistiche/_tests.js

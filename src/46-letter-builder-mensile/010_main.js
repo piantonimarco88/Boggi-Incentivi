@@ -759,7 +759,7 @@ function buildSeasonalLetter(e){
   // Importo realmente erogato a mid-season (importato da loadMidSeasonPaidExcel), da detrarre a saldo.
   // seasonalNet usa calcSeasonal() come unica fonte di verità (stessa cifra di tab/export:
   // evita un possibile scarto di arrotondamento tra il calcolo locale qui sopra e quello centralizzato).
-  var midPaid=(!isP&&SEAS[e.m]&&SEAS[e.m].midPaid>0)?SEAS[e.m].midPaid:0;
+  var midPaid=seasMidPaid(e,isP);
   var seasonalNet=calcSeasonal(e);
 
   var stagione=CFG_SEASON+String(CFG_YEAR).slice(-2); // e.g. FW26 or SS26

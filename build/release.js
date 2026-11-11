@@ -59,7 +59,8 @@ const CHANGELOG_OPEN = "var APP_CHANGELOG=[";
 // Percorsi che compongono l'app: sono gli unici toccati da rollback/annulla
 const APP_PATHS = ["src", "test"];
 // Percorsi messi nel commit di rilascio
-const COMMIT_PATHS = ["src", "app.html", "web/app.html", "build", "test", "MainWindow.xaml.cs", ".gitignore"];
+const COMMIT_PATHS = ["src", "app.html", "web/app.html", "build", "test", "MainWindow.xaml.cs", ".gitignore",
+  ".github", "statistiche/_tests.js", "statistiche/demo_data_ci.json"];
 // Riga co-autore del commit (sovrascrivibile: CO_AUTHOR="Nome <email>" node build/release.js ...)
 const COAUTHOR = "Co-Authored-By: " + (process.env.CO_AUTHOR || "Claude <noreply@anthropic.com>");
 

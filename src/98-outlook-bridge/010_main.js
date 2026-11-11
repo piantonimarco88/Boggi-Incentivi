@@ -357,8 +357,27 @@ function _empSendLoop(folder,queue,preResults){
 
 // Tabella esiti: errori in alto, retry mirato sui soli falliti, export CSV
 // opts: {title, noRetry}; r.unknown = passata a Outlook ma senza conferma di invio dall'exe
+// Log invii del periodo (dipendenti + Field Coach, compresi errori e non confermati) salvato
+// come CSV nella cartella di PDF/ZIP: audit completo senza ricompilare l'exe (il suo
+// audit_log.jsonl registra solo gli invii riusciti). Sovrascritto a ogni invio del periodo.
+function _mailAuditCsv(){
+  var per=getPdfSubfolder().fileBase;
+  var rows=(MAIL_LOG||[]).filter(function(l){return l.period===per&&l.docType===MODE&&l.prizeMode===PRIZE_MODE;});
+  var esito={sent:'INVIATA',error:'ERRORE',unconfirmed:'NON CONFERMATA',prepared:'BOZZA'};
+  var csv='\ufeffdata_ora;matricola_o_fc;email;esito;periodo;tipo\n';
+  rows.forEach(function(l){csv+=[l.ts,l.m,l.to||'',esito[l.status]||l.status,l.period,l.docType].map(function(v){return String(v==null?'':v).replace(/[;\r\n]/g,' ');}).join(';')+'\n';});
+  return {name:'log_invii_'+per+'.csv',csv:csv,n:rows.length};
+}
+function _saveMailAudit(folder){
+  if(!folder||!(window.chrome&&window.chrome.webview))return null;
+  var a=_mailAuditCsv();if(!a.n)return null;
+  var b64=btoa(unescape(encodeURIComponent(a.csv)));
+  window.chrome.webview.postMessage({type:'saveFileBase64',folderPath:folder,fileName:a.name,fileBase64:b64});
+  return folder.replace(/[\/\\]$/,'')+'\\'+a.name;
+}
 function _empShowResults(folder,results,opts){
   opts=opts||{};
+  var auditPath=_saveMailAudit(folder);
   var sent=results.filter(function(r){return r.ok;}).length;
   var unknown=results.filter(function(r){return r.unknown;});
   var failed=results.filter(function(r){return !r.ok&&!r.skipped&&!r.unknown;});
@@ -382,6 +401,7 @@ function _empShowResults(folder,results,opts){
   h+='<div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:14px">'+esc(opts.title||'Invio completato')+'</div>';
   h+='<div style="display:flex;gap:10px;justify-content:center;margin-bottom:14px">'+
      stat(sent,'Inviate','#5bb98c')+(unknown.length?stat(unknown.length,'Non confermate','#a09a92'):'')+stat(failed.length,'Errori','#cf5b5b')+stat(skipped.length,'Saltate','#e8b34b')+'</div>'+
+     (auditPath?'<div style="font-size:10px;color:#a09a92;margin:-6px 0 12px;word-break:break-all">Log degli invii del periodo salvato in '+esc(auditPath)+'</div>':'')+
      (unknown.length?'<div style="font-size:10px;color:#a09a92;margin:-6px 0 12px">Non confermate: le email sono passate a Outlook, ma questa versione dell\'exe non comunica se l\'invio \u00e8 riuscito. Controlla in Outlook la cartella Posta inviata.</div>':'');
   h+='<div style="max-height:260px;overflow-y:auto;border:1px solid #3d3a36;border-radius:8px"><table style="width:100%;border-collapse:collapse;text-align:left">'+rows+'</table></div>';
   h+='<div style="display:flex;gap:8px;justify-content:center;margin-top:14px">'+

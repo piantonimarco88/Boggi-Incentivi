@@ -57,6 +57,9 @@ statistiche/*.json
 statistiche/_*.html
 statistiche/_*.js
 statistiche/_*.md
+# eccezioni: suite di test e dati demo NON riconducibili a persone (build/make-stats-demo.js)
+!statistiche/_tests.js
+!statistiche/demo_data_ci.json
 
 # ===== Segreti (chiavi API) =====
 # Mai in repo: il repository GitHub e` pubblico.

@@ -296,7 +296,7 @@ function rCSeasonal(){
     var m1=isP?seasMoltTurnover(3.01):seasMoltTurnover(auto?auto.scost:0);
     var m2=isP?seasMoltInventarioV(0):seasMoltInventarioV(auto?auto.inv:0);
     var gross=Math.round(base*kpiScore*m1*m2*100)/100;
-    var midPaid=(!isP&&SEAS[e.m]&&SEAS[e.m].midPaid>0)?SEAS[e.m].midPaid:0;
+    var midPaid=seasMidPaid(e,isP);
     // val (netto) usa calcSeasonal come unica fonte di verità: stessa cifra di lettere/export
     return {isDept:false,kpiScore:kpiScore,m1:m1,m2:m2,auto:auto,gross:gross,midPaid:midPaid,val:calcSeasonal(e)};
   }
@@ -551,7 +551,7 @@ function exportSeasonalExcel(){
   smvsm.forEach(function(e){
     var cu=e.cu||'EUR', ex=e.ex||1;
     var excl=!!(SEAS[e.m]&&SEAS[e.m].excluded);
-    var midPaid=(!isP&&SEAS[e.m]&&SEAS[e.m].midPaid>0)?SEAS[e.m].midPaid:0;
+    var midPaid=seasMidPaid(e,isP);
     var isDept=isD(e.si);
 
     var rlSem=(e.rl||0)*seasSemMonths();

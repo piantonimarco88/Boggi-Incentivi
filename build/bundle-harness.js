@@ -106,6 +106,8 @@ function loadBundle(opts) {
     matchMedia: () => ({ matches: false, addListener() {}, addEventListener() {} }),
     addEventListener() {}, removeEventListener() {},
     performance: { now: () => Date.now() },
+    btoa: s => Buffer.from(String(s), "binary").toString("base64"),
+    atob: s => Buffer.from(String(s), "base64").toString("binary"),
   };
   ctx.window = ctx; ctx.self = ctx; ctx.globalThis = ctx;
   vm.createContext(ctx);

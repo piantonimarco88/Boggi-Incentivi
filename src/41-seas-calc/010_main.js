@@ -269,6 +269,8 @@ function seasIsKpiAchieved(kdef, auto){
 function seasMidPct(){var v=SEAS_CFG&&SEAS_CFG.midPct;return (typeof v==="number"&&v>=0&&v<=1)?v:0.30;}
 function seasSemMonths(){var v=SEAS_CFG&&SEAS_CFG.semMonths;return (typeof v==="number"&&v>0&&v<=12)?v:6;}
 function seasDeptQtyPct(){var v=SEAS_CFG&&SEAS_CFG.deptQtyPct;return (typeof v==="number"&&v>=0&&v<=2)?v:0.5;}
+// Mid-season gia' pagato da detrarre in consuntivo (unica fonte: calcolo, tab, lettera, export)
+function seasMidPaid(e,isP){if(isP===undefined)isP=MODE==="preventivo";return (!isP&&SEAS&&SEAS[e.m]&&SEAS[e.m].midPaid>0)?SEAS[e.m].midPaid:0;}
 function calcSeasonalDeptInfo(e){
   var sid=String(e.si);
   var stg=SEAS_TARGETS[sid]||{};
@@ -312,7 +314,7 @@ function calcSeasonal(e){
   var m2=seasMoltInventarioV(inv);
   var gross=Math.round(base*kpiScore*m1*m2*100)/100;
   // Deduce il mid-season già erogato (se in consuntivo e midPaid registrato)
-  var midPaid=(!isP&&SEAS[e.m]&&SEAS[e.m].midPaid>0)?SEAS[e.m].midPaid:0;
+  var midPaid=seasMidPaid(e,isP);
   return Math.max(0, Math.round((gross-midPaid)*100)/100);
 }
 

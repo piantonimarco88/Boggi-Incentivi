@@ -180,6 +180,7 @@ function saveZipPerFC(){
         if(ev.data.startsWith('zipFolderSelected:')){
           window.chrome.webview.removeEventListener('message',_folderH2);
           _zipSaveFolderPath=ev.data.slice('zipFolderSelected:'.length);
+          _fcZipLastFolder=_zipSaveFolderPath; // l'invio successivo usa gli ZIP salvati qui (esito confermato dall'exe)
           startWithDir('__csharp__');
         } else if(ev.data==='zipFolderCancelled'){
           window.chrome.webview.removeEventListener('message',_folderH2);
@@ -767,6 +768,30 @@ function openFcZipEmail(fcKey){
 
 // Invia mail ai Field Coach tramite overlay (ZIP gia' salvati su disco)
 var _fcZipConfirmed=false; // true solo per la chiamata subito dopo «Confermo e invio»
+var _fcZipLastFolder=null; // cartella dove sono stati salvati gli ZIP FC in questa sessione
+// Salva su disco (tramite l'exe) gli ZIP in memoria dei Field Coach indicati, uno alla volta;
+// done(failed) riceve le chiavi FC il cui salvataggio è fallito.
+function _fcSaveBlobsTo(folder,keys,fcMap,done){
+  var failed=[],i=0;
+  function next(){
+    if(i>=keys.length){done(failed);return;}
+    var k=keys[i++],name=fcMap[k].fileName,blob=_fcZipBlobs[k];
+    if(!blob){failed.push(k);next();return;}
+    var h=function(ev){
+      if(typeof ev.data!=='string')return;
+      if(ev.data==='fileSaved:'+name||ev.data==='fileSaveError:'+name){
+        window.chrome.webview.removeEventListener('message',h);
+        if(ev.data.indexOf('fileSaveError:')===0)failed.push(k);
+        next();
+      }
+    };
+    window.chrome.webview.addEventListener('message',h);
+    var rd=new FileReader();
+    rd.onload=function(e2){window.chrome.webview.postMessage({type:'saveFileBase64',folderPath:folder,fileName:name,fileBase64:String(e2.target.result).split(',')[1]});};
+    rd.readAsDataURL(blob);
+  }
+  next();
+}
 function sendFcZipEmails(){
   var folderName=MODE==="preventivo"?"preventivo":"consuntivo";
   var psf=getPdfSubfolder();
@@ -817,7 +842,7 @@ function sendFcZipEmails(){
   }
   function _fcShowEnd(cancelled){
     _fcEmlCleanup();
-    _empShowResults(null,results,{title:cancelled?'Invio Field Coach annullato ('+done+'/'+total+')':'Invio email Field Coach',noRetry:true});
+    _empShowResults(_fcZipLastFolder,results,{title:cancelled?'Invio Field Coach annullato ('+done+'/'+total+')':'Invio email Field Coach',noRetry:true});
   }
   // === Overlay ===
   var ov=document.createElement("div");
@@ -901,10 +926,38 @@ function sendFcZipEmails(){
     _fcLast=null;
     window.chrome.webview.postMessage({type:'sendOutlookMailDirect',to:m.email,subject:subj,body:bodyTxt,pdfFolder:zipFolder,pdfName:m.fileName});
   }
-  // Se i blob sono tutti in memoria: invia direttamente senza selezionare cartella
+  // v9.116: si invia SEMPRE da file su disco (sendOutlookMailDirect), perché è il percorso per cui
+  // l'exe installato comunica l'esito di ogni email. Prima, con gli ZIP in memoria, si usava
+  // sendOutlookMailBase64, che non comunica l'esito (risultava «non confermata»).
+  //  1. ZIP già salvati in questa sessione con «Salva ZIP per FC» -> si inviano da quella cartella
+  //  2. ZIP solo in memoria -> si sceglie una cartella, vi si salvano e si inviano da lì
+  //  3. altrimenti -> si sceglie la cartella dove sono gli ZIP (come prima)
   var allBlobsAvailable=fcKeys.every(function(k){return !!_fcZipBlobs[k];});
-  if(allBlobsAvailable){
-    sendNextBlob(0);
+  if(_fcZipLastFolder&&allBlobsAvailable){
+    sendNext(0,_fcZipLastFolder);
+  } else if(allBlobsAvailable){
+    var _folderHB=null;
+    _folderHB=function(ev){
+      if(typeof ev.data!=='string')return;
+      if(ev.data.startsWith('zipFolderSelected:')){
+        window.chrome.webview.removeEventListener('message',_folderHB);
+        var folder=ev.data.slice('zipFolderSelected:'.length);
+        document.getElementById('fcEmlLabel').textContent='Salvataggio ZIP in '+folder+'\u2026';
+        _fcSaveBlobsTo(folder,fcKeys,fcMap,function(failed){
+          if(failed.length){
+            failed.forEach(function(k){results.push({e:{m:k,c:'Field Coach',n:'',mp:fcMap[k].email},ok:false,skipped:true,reason:'ZIP non salvato su disco'});});
+            fcKeys=fcKeys.filter(function(k){return failed.indexOf(k)<0;});
+          }
+          _fcZipLastFolder=folder;
+          sendNext(0,folder);
+        });
+      } else if(ev.data==='zipFolderCancelled'){
+        window.chrome.webview.removeEventListener('message',_folderHB);
+        _fcEmlCleanup();
+      }
+    };
+    window.chrome.webview.addEventListener('message',_folderHB);
+    window.chrome.webview.postMessage({type:'selectZipFolder'});
   } else {
     // Fallback: chiedi all'utente di selezionare la cartella ZIP su disco
     var _folderH=null;
@@ -912,7 +965,8 @@ function sendFcZipEmails(){
       if(typeof ev.data==='string'){
         if(ev.data.startsWith('zipFolderSelected:')){
           window.chrome.webview.removeEventListener('message',_folderH);
-          sendNext(0,ev.data.slice('zipFolderSelected:'.length));
+          _fcZipLastFolder=ev.data.slice('zipFolderSelected:'.length);
+          sendNext(0,_fcZipLastFolder);
         } else if(ev.data==='zipFolderCancelled'){
           window.chrome.webview.removeEventListener('message',_folderH);
           _fcEmlCleanup();

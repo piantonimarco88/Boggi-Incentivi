@@ -1411,27 +1411,48 @@ var RL=[
 ];
 var KP=["BDG","Digital","SY","Privilege","SAS","DCC","CS","Articoli","Visual","QTY Dept"];
 var TC={};
-function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
+// Motore condiviso (v9.116): KPI predefiniti per ruolo e migrazioni dei vecchi salvataggi in
+// UN solo posto. Prima la tabella era ricopiata 4 volte (qui, ripristino automatico, Carica
+// sessione, Carica configurazione) e le migrazioni erano diverse nei tre ripristini.
+function tcDefault(r,k){
   var isSCS=r.indexOf("SCS")>=0,isDept=r.indexOf("DEPT")>=0,isNoSas=r.indexOf("NO SAS")>=0,isNoDig=r.indexOf("NO DIGITAL")>=0,isNoSY=r.indexOf("NO SY")>=0,isNoPriv=r.indexOf("NO PRIVILEGE")>=0;
-  if(k==="BDG")TC[r][k]=true;
-  else if(k==="Digital")TC[r][k]=!isNoDig&&!isDept;
-  else if(k==="SY")TC[r][k]=!isSCS&&!isDept&&!isNoSY;
-  else if(k==="Privilege")TC[r][k]=!isDept&&!isNoPriv;
-  else if(k==="SAS")TC[r][k]=isSCS&&!isNoSas;
-  else if(k==="DCC")TC[r][k]=isSCS;
-  else if(k==="CS")TC[r][k]=false;
-  else if(k==="Articoli")TC[r][k]=true;
-  else if(k==="Visual")TC[r][k]=false;
-  else if(k==="QTY Dept")TC[r][k]=isDept})})}
+  if(k==="BDG")return true;
+  if(k==="Digital")return !isNoDig&&!isDept;
+  if(k==="SY")return !isSCS&&!isDept&&!isNoSY;
+  if(k==="Privilege")return !isDept&&!isNoPriv;
+  if(k==="SAS")return isSCS&&!isNoSas;
+  if(k==="DCC")return isSCS;
+  if(k==="CS")return false;
+  if(k==="Articoli")return true;
+  if(k==="Visual")return false;
+  if(k==="QTY Dept")return isDept;
+}
+function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){TC[r][k]=tcDefault(r,k);});});}
+// Ruoli che mancano in TC (salvataggi vecchi): aggiunti con i KPI predefiniti
+function tcFillMissing(){RL.forEach(function(r){if(!TC[r]){TC[r]={};KP.forEach(function(k){TC[r][k]=tcDefault(r,k);});}});}
+// Ruoli storici "SM VSM ..." -> "SM ..." e "VSM ..." separati (prima solo in Carica configurazione)
+function tcMigrateLegacy(tc){
+  if(!tc)return tc;
+  [["SM VSM","SM","VSM"],["SM VSM NO DIGITAL","SM NO DIGITAL","VSM NO DIGITAL"],["SM VSM DEPT","SM DEPT","VSM DEPT"]].forEach(function(m){
+    if(tc[m[0]]&&!tc[m[1]]){tc[m[1]]=JSON.parse(JSON.stringify(tc[m[0]]));tc[m[2]]=JSON.parse(JSON.stringify(tc[m[0]]));}
+  });
+  return tc;
+}
+// Parametri storici: digMin unico -> digMinClassic / digMinMobility (+2 punti)
+function paramsMigrate(p){
+  if(p&&p.digMin!==undefined&&p.digMinClassic===undefined){p.digMinClassic=p.digMin;p.digMinMobility=p.digMin+0.02;}
+  return p;
+}
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.115'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.116'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.116: Invio ZIP ai Field Coach — ora gli ZIP vengono salvati su disco e inviati da lì, così l'app riceve l'esito di ogni email anche con l'exe attuale (prima risultavano «non confermate»); a fine invio viene salvato accanto a PDF/ZIP il file log_invii_<periodo>.csv con tutti gli esiti del periodo, errori compresi. Calcolo — regola BDG 60%, KPI predefiniti per ruolo, migrazione dei vecchi salvataggi e mid-season già pagato ora in un unico punto (risultati identici); «Carica sessione» converte anche i ruoli storici «SM VSM» come già faceva «Carica configurazione»",
   "9.115: Seasonal Italia — l'import anagrafica (e l'inserimento manuale) ora include gli store Brian & Barry 5000-5100 da FW26: prima li scartava come «store > 4999», quindi i KPI dedicati (SY, Subscription, UPT) non si applicavano a nessuno. Gli altri store > 4999 restano esclusi",
   "9.114: Nuova barra a passi sopra i tab — Import → Verifica → Calcolo → PDF → Invio, con lo stato di ognuno (fonti caricate, avvisi, totale premi, PDF da rigenerare dopo una modifica ai dati, email inviate/errori). Clicca un passo per vedere il dettaglio e andare al tab giusto; i tab restano come prima",
   "9.113: Workgame — un'unica formula per calcolo, lettere, analisi, export e tracciato; per chi ha il BDG in TRASFERTE ora è pagato nel cod. 380 (prima mancava nel tracciato). Configurazione — nuove sezioni «Cambi valuta» (modificabili, con data di validità), «Date di attivazione regole» (SAS, USA, Coefficiente Inventari) e coefficienti Seasonal (mid-season, mesi stagione, QTY Dept), tutti salvati in sessione e configurazione; dopo un reset l'app parte dal mese corrente. Librerie (Excel, ZIP, PDF) incluse nell'app e aggiornate: niente più caricamento da internet",
@@ -1535,10 +1556,10 @@ function updateHeaderCount(){
 // Restore config from autosaved state if available
 if(window._autoState){try{
   var as=window._autoState;
-  if(as.tc)TC=as.tc;
+  if(as.tc)TC=tcMigrateLegacy(as.tc);
   if(as.sick50!==undefined)SICK_50=as.sick50;
   if(as.sick0!==undefined)SICK_0=as.sick0;
-  if(as.params){for(var k in as.params)if(PARAMS.hasOwnProperty(k))PARAMS[k]=as.params[k]}
+  if(as.params){paramsMigrate(as.params);for(var k in as.params)if(PARAMS.hasOwnProperty(k))PARAMS[k]=as.params[k]}
   if(as.usa_p){for(var r in as.usa_p)USA_P[r]=as.usa_p[r]}
   if(as.store_flags){STORE_FLAGS={};for(var sid in as.store_flags)STORE_FLAGS[sid]=as.store_flags[sid]}
   if(as.seas_cfg){
@@ -1599,13 +1620,7 @@ if(window._autoState){try{
   delete window._autoState;
 }catch(ex){/* autoState restore failed, use defaults */}}
 // Ensure all RL roles exist in TC (runs ALWAYS, even if autoState restore failed)
-RL.forEach(function(r){if(!TC[r]){TC[r]={};KP.forEach(function(k){
-  var isSCS=r.indexOf("SCS")>=0,isDept=r.indexOf("DEPT")>=0,isNoSas=r.indexOf("NO SAS")>=0,isNoDig=r.indexOf("NO DIGITAL")>=0,isNoSY=r.indexOf("NO SY")>=0,isNoPriv=r.indexOf("NO PRIVILEGE")>=0;
-  if(k==="BDG")TC[r][k]=true;else if(k==="Digital")TC[r][k]=!isNoDig&&!isDept;
-  else if(k==="SY")TC[r][k]=!isSCS&&!isDept&&!isNoSY;else if(k==="Privilege")TC[r][k]=!isDept&&!isNoPriv;
-  else if(k==="SAS")TC[r][k]=isSCS&&!isNoSas;else if(k==="DCC")TC[r][k]=isSCS;
-  else if(k==="CS")TC[r][k]=false;else if(k==="Articoli")TC[r][k]=true;else if(k==="Visual")TC[r][k]=false;
-  else if(k==="QTY Dept")TC[r][k]=isDept})}});
+tcFillMissing();
 
 // AutoSave: persist full state to localStorage
 // Aggiorna badge versione con APP_VERSION
@@ -1834,15 +1849,9 @@ function loadSession(input){
       if(state.D.usa)D.usa=state.D.usa;if(state.D.uq)D.uq=state.D.uq;if(state.D.us)D.us=state.D.us;
       if(state.D.d)D.d=state.D.d;if(state.D.vl)D.vl=state.D.vl;if(state.D.ur)D.ur=state.D.ur;
     }
-    if(state.tc){TC=state.tc;RL.forEach(function(r){if(!TC[r]){TC[r]={};KP.forEach(function(k){
-      var isSCS=r.indexOf("SCS")>=0,isDept=r.indexOf("DEPT")>=0,isNoSas=r.indexOf("NO SAS")>=0,isNoDig=r.indexOf("NO DIGITAL")>=0,isNoSY=r.indexOf("NO SY")>=0,isNoPriv=r.indexOf("NO PRIVILEGE")>=0;
-      if(k==="BDG")TC[r][k]=true;else if(k==="Digital")TC[r][k]=!isNoDig&&!isDept;
-      else if(k==="SY")TC[r][k]=!isSCS&&!isDept&&!isNoSY;else if(k==="Privilege")TC[r][k]=!isDept&&!isNoPriv;
-      else if(k==="SAS")TC[r][k]=isSCS&&!isNoSas;else if(k==="DCC")TC[r][k]=isSCS;
-      else if(k==="CS")TC[r][k]=false;else if(k==="Articoli")TC[r][k]=true;else if(k==="Visual")TC[r][k]=false;
-      else if(k==="QTY Dept")TC[r][k]=isDept})}})}
+    if(state.tc){TC=tcMigrateLegacy(state.tc);tcFillMissing()} // stessa migrazione di Carica configurazione (prima mancava)
     if(state.sick50!==undefined)SICK_50=state.sick50;if(state.sick0!==undefined)SICK_0=state.sick0;
-    if(state.params){if(state.params.digMin!==undefined&&state.params.digMinClassic===undefined){state.params.digMinClassic=state.params.digMin;state.params.digMinMobility=state.params.digMin+0.02}for(var k in state.params)if(PARAMS.hasOwnProperty(k))PARAMS[k]=state.params[k]}
+    if(state.params){paramsMigrate(state.params);for(var k in state.params)if(PARAMS.hasOwnProperty(k))PARAMS[k]=state.params[k]}
     if(state.fcvm_params)_applyFcvmParams(state.fcvm_params);
     if(state.ente_cu)_applyEnteCu(state.ente_cu);
     if(state.rule_cfg)_applyRuleCfg(state.rule_cfg);
@@ -1945,22 +1954,13 @@ function loadConfig(evt){var f=evt.target.files[0];if(!f)return;var reader=new F
     var cfg=JSON.parse(txt);
     if(cfg.tc){
       // Migrate legacy "SM VSM" to individual SM/VSM
-      if(cfg.tc["SM VSM"]&&!cfg.tc["SM"]){cfg.tc["SM"]=JSON.parse(JSON.stringify(cfg.tc["SM VSM"]));cfg.tc["VSM"]=JSON.parse(JSON.stringify(cfg.tc["SM VSM"]))}
-      if(cfg.tc["SM VSM NO DIGITAL"]&&!cfg.tc["SM NO DIGITAL"]){cfg.tc["SM NO DIGITAL"]=JSON.parse(JSON.stringify(cfg.tc["SM VSM NO DIGITAL"]));cfg.tc["VSM NO DIGITAL"]=JSON.parse(JSON.stringify(cfg.tc["SM VSM NO DIGITAL"]))}
-      if(cfg.tc["SM VSM DEPT"]&&!cfg.tc["SM DEPT"]){cfg.tc["SM DEPT"]=JSON.parse(JSON.stringify(cfg.tc["SM VSM DEPT"]));cfg.tc["VSM DEPT"]=JSON.parse(JSON.stringify(cfg.tc["SM VSM DEPT"]))}
-      TC=cfg.tc;
+      TC=tcMigrateLegacy(cfg.tc);
       // Ensure all RL roles exist in TC
-      RL.forEach(function(r){if(!TC[r]){TC[r]={};KP.forEach(function(k){
-        var isSCS=r.indexOf("SCS")>=0,isDept=r.indexOf("DEPT")>=0,isNoSas=r.indexOf("NO SAS")>=0,isNoDig=r.indexOf("NO DIGITAL")>=0,isNoSY=r.indexOf("NO SY")>=0,isNoPriv=r.indexOf("NO PRIVILEGE")>=0;
-        if(k==="BDG")TC[r][k]=true;else if(k==="Digital")TC[r][k]=!isNoDig&&!isDept;
-        else if(k==="SY")TC[r][k]=!isSCS&&!isDept&&!isNoSY;else if(k==="Privilege")TC[r][k]=!isDept&&!isNoPriv;
-        else if(k==="SAS")TC[r][k]=isSCS&&!isNoSas;else if(k==="DCC")TC[r][k]=isSCS;
-        else if(k==="CS")TC[r][k]=false;else if(k==="Articoli")TC[r][k]=true;else if(k==="Visual")TC[r][k]=false;
-        else if(k==="QTY Dept")TC[r][k]=isDept})}})
+      tcFillMissing()
     }if(cfg.sick50!==undefined)SICK_50=cfg.sick50;if(cfg.sick0!==undefined)SICK_0=cfg.sick0;
     if(cfg.params){
       // Migrate legacy digMin to digMinClassic/digMinMobility
-      if(cfg.params.digMin!==undefined&&cfg.params.digMinClassic===undefined){cfg.params.digMinClassic=cfg.params.digMin;cfg.params.digMinMobility=cfg.params.digMin+0.02}
+      paramsMigrate(cfg.params);
       for(var k in cfg.params)if(PARAMS.hasOwnProperty(k))PARAMS[k]=cfg.params[k]
     }
     if(cfg.fcvm_params)_applyFcvmParams(cfg.fcvm_params);
@@ -2229,7 +2229,7 @@ function _getValRaw(e,kpiKey){
     case "pq":return dp?Math.round(e.ib*PARAMS.qtyPct*100)/100:0;default:return 0}}
   if(!tg.to&&!cn.sc)return 0;var storePct=storePctOf(sid);
   switch(kpiKey){
-    case "rb":if(e.ov_b100==="SI")return e.ib;if(e.ov_rid==="SI")return Math.round(e.ib*PARAMS.bdg60mult*100)/100;if(storePct>=PARAMS.bdg100)return e.ib;if(storePct>=PARAMS.bdg60){if(dp){if((tg.qt||0)>0&&(cn.qc||0)>=(tg.qt||0))return Math.round(e.ib*PARAMS.bdg60mult*100)/100}else{var syLyR=MONTHLY_SYLY[sid]||0;var syUp=(cn.sy||0)>syLyR&&syLyR>0;if(syUp)return Math.round(e.ib*PARAMS.bdg60mult*100)/100}}return 0;
+    case "rb":if(e.ov_b100==="SI")return e.ib;if(e.ov_rid==="SI")return Math.round(e.ib*PARAMS.bdg60mult*100)/100;if(storePct>=PARAMS.bdg100)return e.ib;if(isRidottoStore(sid))return Math.round(e.ib*PARAMS.bdg60mult*100)/100;return 0; // regola 60%: unica (isRidottoStore)
     case "rd":if(storePct>=PARAMS.bdg100&&(cn.pd||0)>=getDigMin(e.si))return Math.round(e.ib*PARAMS.digPct*100)/100;return 0;
     case "rs":if((tg.sy||0)>0&&(cn.sy||0)>=(tg.sy||0)*PARAMS.kpi100){var _rl2=e.rl||e.ib||0;return Math.round(_rl2*PARAMS.syPct*100)/100}return 0;
     case "rp":if((tg.pr||0)>0&&(cn.nf||0)>=(tg.pr||0)*PARAMS.kpi100){var _rl3=e.rl||e.ib||0;return Math.round(_rl3*PARAMS.privPct*100)/100}return 0;
@@ -2792,6 +2792,8 @@ function seasIsKpiAchieved(kdef, auto){
 function seasMidPct(){var v=SEAS_CFG&&SEAS_CFG.midPct;return (typeof v==="number"&&v>=0&&v<=1)?v:0.30;}
 function seasSemMonths(){var v=SEAS_CFG&&SEAS_CFG.semMonths;return (typeof v==="number"&&v>0&&v<=12)?v:6;}
 function seasDeptQtyPct(){var v=SEAS_CFG&&SEAS_CFG.deptQtyPct;return (typeof v==="number"&&v>=0&&v<=2)?v:0.5;}
+// Mid-season gia' pagato da detrarre in consuntivo (unica fonte: calcolo, tab, lettera, export)
+function seasMidPaid(e,isP){if(isP===undefined)isP=MODE==="preventivo";return (!isP&&SEAS&&SEAS[e.m]&&SEAS[e.m].midPaid>0)?SEAS[e.m].midPaid:0;}
 function calcSeasonalDeptInfo(e){
   var sid=String(e.si);
   var stg=SEAS_TARGETS[sid]||{};
@@ -2835,7 +2837,7 @@ function calcSeasonal(e){
   var m2=seasMoltInventarioV(inv);
   var gross=Math.round(base*kpiScore*m1*m2*100)/100;
   // Deduce il mid-season già erogato (se in consuntivo e midPaid registrato)
-  var midPaid=(!isP&&SEAS[e.m]&&SEAS[e.m].midPaid>0)?SEAS[e.m].midPaid:0;
+  var midPaid=seasMidPaid(e,isP);
   return Math.max(0, Math.round((gross-midPaid)*100)/100);
 }
 
@@ -4582,7 +4584,7 @@ function buildSeasonalLetter(e){
   // Importo realmente erogato a mid-season (importato da loadMidSeasonPaidExcel), da detrarre a saldo.
   // seasonalNet usa calcSeasonal() come unica fonte di verità (stessa cifra di tab/export:
   // evita un possibile scarto di arrotondamento tra il calcolo locale qui sopra e quello centralizzato).
-  var midPaid=(!isP&&SEAS[e.m]&&SEAS[e.m].midPaid>0)?SEAS[e.m].midPaid:0;
+  var midPaid=seasMidPaid(e,isP);
   var seasonalNet=calcSeasonal(e);
 
   var stagione=CFG_SEASON+String(CFG_YEAR).slice(-2); // e.g. FW26 or SS26
@@ -6790,7 +6792,7 @@ function rCSeasonal(){
     var m1=isP?seasMoltTurnover(3.01):seasMoltTurnover(auto?auto.scost:0);
     var m2=isP?seasMoltInventarioV(0):seasMoltInventarioV(auto?auto.inv:0);
     var gross=Math.round(base*kpiScore*m1*m2*100)/100;
-    var midPaid=(!isP&&SEAS[e.m]&&SEAS[e.m].midPaid>0)?SEAS[e.m].midPaid:0;
+    var midPaid=seasMidPaid(e,isP);
     // val (netto) usa calcSeasonal come unica fonte di verità: stessa cifra di lettere/export
     return {isDept:false,kpiScore:kpiScore,m1:m1,m2:m2,auto:auto,gross:gross,midPaid:midPaid,val:calcSeasonal(e)};
   }
@@ -7045,7 +7047,7 @@ function exportSeasonalExcel(){
   smvsm.forEach(function(e){
     var cu=e.cu||'EUR', ex=e.ex||1;
     var excl=!!(SEAS[e.m]&&SEAS[e.m].excluded);
-    var midPaid=(!isP&&SEAS[e.m]&&SEAS[e.m].midPaid>0)?SEAS[e.m].midPaid:0;
+    var midPaid=seasMidPaid(e,isP);
     var isDept=isD(e.si);
 
     var rlSem=(e.rl||0)*seasSemMonths();
@@ -10482,6 +10484,7 @@ function saveZipPerFC(){
         if(ev.data.startsWith('zipFolderSelected:')){
           window.chrome.webview.removeEventListener('message',_folderH2);
           _zipSaveFolderPath=ev.data.slice('zipFolderSelected:'.length);
+          _fcZipLastFolder=_zipSaveFolderPath; // l'invio successivo usa gli ZIP salvati qui (esito confermato dall'exe)
           startWithDir('__csharp__');
         } else if(ev.data==='zipFolderCancelled'){
           window.chrome.webview.removeEventListener('message',_folderH2);
@@ -11069,6 +11072,30 @@ function openFcZipEmail(fcKey){
 
 // Invia mail ai Field Coach tramite overlay (ZIP gia' salvati su disco)
 var _fcZipConfirmed=false; // true solo per la chiamata subito dopo «Confermo e invio»
+var _fcZipLastFolder=null; // cartella dove sono stati salvati gli ZIP FC in questa sessione
+// Salva su disco (tramite l'exe) gli ZIP in memoria dei Field Coach indicati, uno alla volta;
+// done(failed) riceve le chiavi FC il cui salvataggio è fallito.
+function _fcSaveBlobsTo(folder,keys,fcMap,done){
+  var failed=[],i=0;
+  function next(){
+    if(i>=keys.length){done(failed);return;}
+    var k=keys[i++],name=fcMap[k].fileName,blob=_fcZipBlobs[k];
+    if(!blob){failed.push(k);next();return;}
+    var h=function(ev){
+      if(typeof ev.data!=='string')return;
+      if(ev.data==='fileSaved:'+name||ev.data==='fileSaveError:'+name){
+        window.chrome.webview.removeEventListener('message',h);
+        if(ev.data.indexOf('fileSaveError:')===0)failed.push(k);
+        next();
+      }
+    };
+    window.chrome.webview.addEventListener('message',h);
+    var rd=new FileReader();
+    rd.onload=function(e2){window.chrome.webview.postMessage({type:'saveFileBase64',folderPath:folder,fileName:name,fileBase64:String(e2.target.result).split(',')[1]});};
+    rd.readAsDataURL(blob);
+  }
+  next();
+}
 function sendFcZipEmails(){
   var folderName=MODE==="preventivo"?"preventivo":"consuntivo";
   var psf=getPdfSubfolder();
@@ -11119,7 +11146,7 @@ function sendFcZipEmails(){
   }
   function _fcShowEnd(cancelled){
     _fcEmlCleanup();
-    _empShowResults(null,results,{title:cancelled?'Invio Field Coach annullato ('+done+'/'+total+')':'Invio email Field Coach',noRetry:true});
+    _empShowResults(_fcZipLastFolder,results,{title:cancelled?'Invio Field Coach annullato ('+done+'/'+total+')':'Invio email Field Coach',noRetry:true});
   }
   // === Overlay ===
   var ov=document.createElement("div");
@@ -11203,10 +11230,38 @@ function sendFcZipEmails(){
     _fcLast=null;
     window.chrome.webview.postMessage({type:'sendOutlookMailDirect',to:m.email,subject:subj,body:bodyTxt,pdfFolder:zipFolder,pdfName:m.fileName});
   }
-  // Se i blob sono tutti in memoria: invia direttamente senza selezionare cartella
+  // v9.116: si invia SEMPRE da file su disco (sendOutlookMailDirect), perché è il percorso per cui
+  // l'exe installato comunica l'esito di ogni email. Prima, con gli ZIP in memoria, si usava
+  // sendOutlookMailBase64, che non comunica l'esito (risultava «non confermata»).
+  //  1. ZIP già salvati in questa sessione con «Salva ZIP per FC» -> si inviano da quella cartella
+  //  2. ZIP solo in memoria -> si sceglie una cartella, vi si salvano e si inviano da lì
+  //  3. altrimenti -> si sceglie la cartella dove sono gli ZIP (come prima)
   var allBlobsAvailable=fcKeys.every(function(k){return !!_fcZipBlobs[k];});
-  if(allBlobsAvailable){
-    sendNextBlob(0);
+  if(_fcZipLastFolder&&allBlobsAvailable){
+    sendNext(0,_fcZipLastFolder);
+  } else if(allBlobsAvailable){
+    var _folderHB=null;
+    _folderHB=function(ev){
+      if(typeof ev.data!=='string')return;
+      if(ev.data.startsWith('zipFolderSelected:')){
+        window.chrome.webview.removeEventListener('message',_folderHB);
+        var folder=ev.data.slice('zipFolderSelected:'.length);
+        document.getElementById('fcEmlLabel').textContent='Salvataggio ZIP in '+folder+'\u2026';
+        _fcSaveBlobsTo(folder,fcKeys,fcMap,function(failed){
+          if(failed.length){
+            failed.forEach(function(k){results.push({e:{m:k,c:'Field Coach',n:'',mp:fcMap[k].email},ok:false,skipped:true,reason:'ZIP non salvato su disco'});});
+            fcKeys=fcKeys.filter(function(k){return failed.indexOf(k)<0;});
+          }
+          _fcZipLastFolder=folder;
+          sendNext(0,folder);
+        });
+      } else if(ev.data==='zipFolderCancelled'){
+        window.chrome.webview.removeEventListener('message',_folderHB);
+        _fcEmlCleanup();
+      }
+    };
+    window.chrome.webview.addEventListener('message',_folderHB);
+    window.chrome.webview.postMessage({type:'selectZipFolder'});
   } else {
     // Fallback: chiedi all'utente di selezionare la cartella ZIP su disco
     var _folderH=null;
@@ -11214,7 +11269,8 @@ function sendFcZipEmails(){
       if(typeof ev.data==='string'){
         if(ev.data.startsWith('zipFolderSelected:')){
           window.chrome.webview.removeEventListener('message',_folderH);
-          sendNext(0,ev.data.slice('zipFolderSelected:'.length));
+          _fcZipLastFolder=ev.data.slice('zipFolderSelected:'.length);
+          sendNext(0,_fcZipLastFolder);
         } else if(ev.data==='zipFolderCancelled'){
           window.chrome.webview.removeEventListener('message',_folderH);
           _fcEmlCleanup();
@@ -11629,8 +11685,27 @@ function _empSendLoop(folder,queue,preResults){
 
 // Tabella esiti: errori in alto, retry mirato sui soli falliti, export CSV
 // opts: {title, noRetry}; r.unknown = passata a Outlook ma senza conferma di invio dall'exe
+// Log invii del periodo (dipendenti + Field Coach, compresi errori e non confermati) salvato
+// come CSV nella cartella di PDF/ZIP: audit completo senza ricompilare l'exe (il suo
+// audit_log.jsonl registra solo gli invii riusciti). Sovrascritto a ogni invio del periodo.
+function _mailAuditCsv(){
+  var per=getPdfSubfolder().fileBase;
+  var rows=(MAIL_LOG||[]).filter(function(l){return l.period===per&&l.docType===MODE&&l.prizeMode===PRIZE_MODE;});
+  var esito={sent:'INVIATA',error:'ERRORE',unconfirmed:'NON CONFERMATA',prepared:'BOZZA'};
+  var csv='\ufeffdata_ora;matricola_o_fc;email;esito;periodo;tipo\n';
+  rows.forEach(function(l){csv+=[l.ts,l.m,l.to||'',esito[l.status]||l.status,l.period,l.docType].map(function(v){return String(v==null?'':v).replace(/[;\r\n]/g,' ');}).join(';')+'\n';});
+  return {name:'log_invii_'+per+'.csv',csv:csv,n:rows.length};
+}
+function _saveMailAudit(folder){
+  if(!folder||!(window.chrome&&window.chrome.webview))return null;
+  var a=_mailAuditCsv();if(!a.n)return null;
+  var b64=btoa(unescape(encodeURIComponent(a.csv)));
+  window.chrome.webview.postMessage({type:'saveFileBase64',folderPath:folder,fileName:a.name,fileBase64:b64});
+  return folder.replace(/[\/\\]$/,'')+'\\'+a.name;
+}
 function _empShowResults(folder,results,opts){
   opts=opts||{};
+  var auditPath=_saveMailAudit(folder);
   var sent=results.filter(function(r){return r.ok;}).length;
   var unknown=results.filter(function(r){return r.unknown;});
   var failed=results.filter(function(r){return !r.ok&&!r.skipped&&!r.unknown;});
@@ -11654,6 +11729,7 @@ function _empShowResults(folder,results,opts){
   h+='<div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:14px">'+esc(opts.title||'Invio completato')+'</div>';
   h+='<div style="display:flex;gap:10px;justify-content:center;margin-bottom:14px">'+
      stat(sent,'Inviate','#5bb98c')+(unknown.length?stat(unknown.length,'Non confermate','#a09a92'):'')+stat(failed.length,'Errori','#cf5b5b')+stat(skipped.length,'Saltate','#e8b34b')+'</div>'+
+     (auditPath?'<div style="font-size:10px;color:#a09a92;margin:-6px 0 12px;word-break:break-all">Log degli invii del periodo salvato in '+esc(auditPath)+'</div>':'')+
      (unknown.length?'<div style="font-size:10px;color:#a09a92;margin:-6px 0 12px">Non confermate: le email sono passate a Outlook, ma questa versione dell\'exe non comunica se l\'invio \u00e8 riuscito. Controlla in Outlook la cartella Posta inviata.</div>':'');
   h+='<div style="max-height:260px;overflow-y:auto;border:1px solid #3d3a36;border-radius:8px"><table style="width:100%;border-collapse:collapse;text-align:left">'+rows+'</table></div>';
   h+='<div style="display:flex;gap:8px;justify-content:center;margin-top:14px">'+

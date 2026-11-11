@@ -111,15 +111,9 @@ function loadSession(input){
       if(state.D.usa)D.usa=state.D.usa;if(state.D.uq)D.uq=state.D.uq;if(state.D.us)D.us=state.D.us;
       if(state.D.d)D.d=state.D.d;if(state.D.vl)D.vl=state.D.vl;if(state.D.ur)D.ur=state.D.ur;
     }
-    if(state.tc){TC=state.tc;RL.forEach(function(r){if(!TC[r]){TC[r]={};KP.forEach(function(k){
-      var isSCS=r.indexOf("SCS")>=0,isDept=r.indexOf("DEPT")>=0,isNoSas=r.indexOf("NO SAS")>=0,isNoDig=r.indexOf("NO DIGITAL")>=0,isNoSY=r.indexOf("NO SY")>=0,isNoPriv=r.indexOf("NO PRIVILEGE")>=0;
-      if(k==="BDG")TC[r][k]=true;else if(k==="Digital")TC[r][k]=!isNoDig&&!isDept;
-      else if(k==="SY")TC[r][k]=!isSCS&&!isDept&&!isNoSY;else if(k==="Privilege")TC[r][k]=!isDept&&!isNoPriv;
-      else if(k==="SAS")TC[r][k]=isSCS&&!isNoSas;else if(k==="DCC")TC[r][k]=isSCS;
-      else if(k==="CS")TC[r][k]=false;else if(k==="Articoli")TC[r][k]=true;else if(k==="Visual")TC[r][k]=false;
-      else if(k==="QTY Dept")TC[r][k]=isDept})}})}
+    if(state.tc){TC=tcMigrateLegacy(state.tc);tcFillMissing()} // stessa migrazione di Carica configurazione (prima mancava)
     if(state.sick50!==undefined)SICK_50=state.sick50;if(state.sick0!==undefined)SICK_0=state.sick0;
-    if(state.params){if(state.params.digMin!==undefined&&state.params.digMinClassic===undefined){state.params.digMinClassic=state.params.digMin;state.params.digMinMobility=state.params.digMin+0.02}for(var k in state.params)if(PARAMS.hasOwnProperty(k))PARAMS[k]=state.params[k]}
+    if(state.params){paramsMigrate(state.params);for(var k in state.params)if(PARAMS.hasOwnProperty(k))PARAMS[k]=state.params[k]}
     if(state.fcvm_params)_applyFcvmParams(state.fcvm_params);
     if(state.ente_cu)_applyEnteCu(state.ente_cu);
     if(state.rule_cfg)_applyRuleCfg(state.rule_cfg);
@@ -222,22 +216,13 @@ function loadConfig(evt){var f=evt.target.files[0];if(!f)return;var reader=new F
     var cfg=JSON.parse(txt);
     if(cfg.tc){
       // Migrate legacy "SM VSM" to individual SM/VSM
-      if(cfg.tc["SM VSM"]&&!cfg.tc["SM"]){cfg.tc["SM"]=JSON.parse(JSON.stringify(cfg.tc["SM VSM"]));cfg.tc["VSM"]=JSON.parse(JSON.stringify(cfg.tc["SM VSM"]))}
-      if(cfg.tc["SM VSM NO DIGITAL"]&&!cfg.tc["SM NO DIGITAL"]){cfg.tc["SM NO DIGITAL"]=JSON.parse(JSON.stringify(cfg.tc["SM VSM NO DIGITAL"]));cfg.tc["VSM NO DIGITAL"]=JSON.parse(JSON.stringify(cfg.tc["SM VSM NO DIGITAL"]))}
-      if(cfg.tc["SM VSM DEPT"]&&!cfg.tc["SM DEPT"]){cfg.tc["SM DEPT"]=JSON.parse(JSON.stringify(cfg.tc["SM VSM DEPT"]));cfg.tc["VSM DEPT"]=JSON.parse(JSON.stringify(cfg.tc["SM VSM DEPT"]))}
-      TC=cfg.tc;
+      TC=tcMigrateLegacy(cfg.tc);
       // Ensure all RL roles exist in TC
-      RL.forEach(function(r){if(!TC[r]){TC[r]={};KP.forEach(function(k){
-        var isSCS=r.indexOf("SCS")>=0,isDept=r.indexOf("DEPT")>=0,isNoSas=r.indexOf("NO SAS")>=0,isNoDig=r.indexOf("NO DIGITAL")>=0,isNoSY=r.indexOf("NO SY")>=0,isNoPriv=r.indexOf("NO PRIVILEGE")>=0;
-        if(k==="BDG")TC[r][k]=true;else if(k==="Digital")TC[r][k]=!isNoDig&&!isDept;
-        else if(k==="SY")TC[r][k]=!isSCS&&!isDept&&!isNoSY;else if(k==="Privilege")TC[r][k]=!isDept&&!isNoPriv;
-        else if(k==="SAS")TC[r][k]=isSCS&&!isNoSas;else if(k==="DCC")TC[r][k]=isSCS;
-        else if(k==="CS")TC[r][k]=false;else if(k==="Articoli")TC[r][k]=true;else if(k==="Visual")TC[r][k]=false;
-        else if(k==="QTY Dept")TC[r][k]=isDept})}})
+      tcFillMissing()
     }if(cfg.sick50!==undefined)SICK_50=cfg.sick50;if(cfg.sick0!==undefined)SICK_0=cfg.sick0;
     if(cfg.params){
       // Migrate legacy digMin to digMinClassic/digMinMobility
-      if(cfg.params.digMin!==undefined&&cfg.params.digMinClassic===undefined){cfg.params.digMinClassic=cfg.params.digMin;cfg.params.digMinMobility=cfg.params.digMin+0.02}
+      paramsMigrate(cfg.params);
       for(var k in cfg.params)if(PARAMS.hasOwnProperty(k))PARAMS[k]=cfg.params[k]
     }
     if(cfg.fcvm_params)_applyFcvmParams(cfg.fcvm_params);

@@ -127,16 +127,46 @@ test("ZIP ai Field Coach: elenco da confermare, poi esiti reali (prima: sempre Â
   assert.match(pre, /fc\.due<\/td><td[^>]*>fc\.due@example\.com<\/td><td[^>]*>fc\.due_consuntivo_[^<]*\.zip<\/td><td[^>]*>1</);
   assert.match(pre, /fc\.uno@example\.com<\/td><td[^>]*>[^<]*\.zip<\/td><td[^>]*>2</);
   assert.strictEqual(app.run("__posted.length"), 0, "nessun invio prima della conferma");
-  // conferma
+  // conferma: ZIP solo in memoria -> l'app chiede la cartella, li salva su disco e li invia da li`
   app.run("document.getElementById('fcPfSend').onclick()");
-  assert.strictEqual(app.run("__posted.length"), 1);
-  app.run(`__send("mailDone");                                    // fc.due: exe attuale, nessun esito
-           __send("mailResult:err:Destinatario non valido");__send("mailDone"); // fc.uno: errore`);
+  const types = () => JSON.parse(app.run("JSON.stringify(__posted.map(function(m){return m.type+(m.fileName?':'+m.fileName:'')+(m.pdfName?':'+m.pdfName:'')}))"));
+  assert.deepStrictEqual(types(), ["selectZipFolder"]);
+  app.run(`__send("zipFolderSelected:C:\\\\ZIP");`);
+  let t = types();
+  assert.match(t[1], /^saveFileBase64:fc\.due_consuntivo_.*\.zip$/);
+  app.run(`__send("fileSaved:"+__posted[1].fileName);`);
+  t = types();
+  assert.match(t[2], /^saveFileBase64:fc\.uno_/);
+  app.run(`__send("fileSaved:"+__posted[2].fileName);`);
+  t = types();
+  // invio da disco (percorso per cui l'exe attuale comunica l'esito), mai piu` il base64
+  assert.match(t[3], /^sendOutlookMailDirect:fc\.due_/);
+  assert.ok(!t.some(x => /sendOutlookMailBase64/.test(x)));
+  app.run(`__send("mailResult:ok");__send("mailDone");`);                              // fc.due: inviata
+  app.run(`__send("mailResult:err:Destinatario non valido");__send("mailDone");`);     // fc.uno: errore
   const res = app.run("__ov[__ov.length-1]");
   assert.match(res, /Invio email Field Coach/);
-  assert.match(res, />0<\/div><div[^>]*>Inviate/);
-  assert.match(res, />1<\/div><div[^>]*>Non confermate/);
+  assert.match(res, />1<\/div><div[^>]*>Inviate/);
+  assert.doesNotMatch(res, /Non confermate/);
   assert.match(res, />1<\/div><div[^>]*>Errori/);
   assert.match(res, /Destinatario non valido/);
   assert.doesNotMatch(res, /Riprova/);
+  // log degli invii del periodo salvato nella stessa cartella, con anche l'errore
+  const last = JSON.parse(app.run("JSON.stringify(__posted[__posted.length-1])"));
+  assert.strictEqual(last.type, "saveFileBase64");
+  assert.match(last.fileName, /^log_invii_.*\.csv$/);
+  assert.strictEqual(last.folderPath, "C:\\ZIP");
+  const csv = Buffer.from(last.fileBase64, "base64").toString("utf8");
+  assert.match(csv, /fc\.due;fc\.due@example\.com;INVIATA/);
+  assert.match(csv, /fc\.uno;fc\.uno@example\.com;ERRORE/);
+  assert.match(res, /Log degli invii del periodo salvato in C:\\ZIP\\log_invii_/);
+});
+
+test("ZIP ai Field Coach: se sono gia` stati salvati in questa sessione si inviano da quella cartella", () => {
+  const app = mailApp();
+  app.run(`E=[{m:"A3",mf:"fc.due@example.com",si:1202,ps:"NO"}];_fcZipBlobs={"fc.due":{}};_fcZipLastFolder="D:\\\\FC";
+    sendFcZipEmails();document.getElementById('fcPfSend').onclick();`);
+  const p = JSON.parse(app.run("JSON.stringify(__posted)"));
+  assert.strictEqual(p[0].type, "sendOutlookMailDirect");
+  assert.strictEqual(p[0].pdfFolder, "D:\\FC");
 });

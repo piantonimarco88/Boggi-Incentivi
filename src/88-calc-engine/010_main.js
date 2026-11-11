@@ -213,7 +213,7 @@ function _getValRaw(e,kpiKey){
     case "pq":return dp?Math.round(e.ib*PARAMS.qtyPct*100)/100:0;default:return 0}}
   if(!tg.to&&!cn.sc)return 0;var storePct=storePctOf(sid);
   switch(kpiKey){
-    case "rb":if(e.ov_b100==="SI")return e.ib;if(e.ov_rid==="SI")return Math.round(e.ib*PARAMS.bdg60mult*100)/100;if(storePct>=PARAMS.bdg100)return e.ib;if(storePct>=PARAMS.bdg60){if(dp){if((tg.qt||0)>0&&(cn.qc||0)>=(tg.qt||0))return Math.round(e.ib*PARAMS.bdg60mult*100)/100}else{var syLyR=MONTHLY_SYLY[sid]||0;var syUp=(cn.sy||0)>syLyR&&syLyR>0;if(syUp)return Math.round(e.ib*PARAMS.bdg60mult*100)/100}}return 0;
+    case "rb":if(e.ov_b100==="SI")return e.ib;if(e.ov_rid==="SI")return Math.round(e.ib*PARAMS.bdg60mult*100)/100;if(storePct>=PARAMS.bdg100)return e.ib;if(isRidottoStore(sid))return Math.round(e.ib*PARAMS.bdg60mult*100)/100;return 0; // regola 60%: unica (isRidottoStore)
     case "rd":if(storePct>=PARAMS.bdg100&&(cn.pd||0)>=getDigMin(e.si))return Math.round(e.ib*PARAMS.digPct*100)/100;return 0;
     case "rs":if((tg.sy||0)>0&&(cn.sy||0)>=(tg.sy||0)*PARAMS.kpi100){var _rl2=e.rl||e.ib||0;return Math.round(_rl2*PARAMS.syPct*100)/100}return 0;
     case "rp":if((tg.pr||0)>0&&(cn.nf||0)>=(tg.pr||0)*PARAMS.kpi100){var _rl3=e.rl||e.ib||0;return Math.round(_rl3*PARAMS.privPct*100)/100}return 0;

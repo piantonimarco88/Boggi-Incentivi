@@ -138,6 +138,22 @@ test("Configurazione: cambiando un cambio l'app propone di applicarlo ai dipende
   assert.strictEqual(app.run("ENTE_CU['211'].ex"), 1.25);
 });
 
+test("sessione vecchia con ruolo storico «SM VSM» e digMin: migrati come in Carica configurazione", () => {
+  const app = loadBundle();
+  app.run(SETUP);
+  const tcOld = JSON.parse(app.run("JSON.stringify(TC)"));
+  delete tcOld.SM; delete tcOld.VSM;
+  tcOld["SM VSM"] = Object.assign({}, tcOld.SA, { Digital: false, SY: false });
+  const old = { _type: "boggi_session", v: 2, D: { e: [] }, tc: tcOld, params: { digMin: 0.04 } };
+  app.nextFileText = JSON.stringify(old);
+  app.run("loadSession({files:[{}],value:''})");
+  const r = JSON.parse(app.run("JSON.stringify({sm:TC.SM,vsm:TC.VSM,dc:PARAMS.digMinClassic,dm:PARAMS.digMinMobility})"));
+  assert.strictEqual(r.sm.Digital, false, "SM eredita la configurazione di «SM VSM» (prima: valori predefiniti)");
+  assert.strictEqual(r.vsm.SY, false);
+  assert.strictEqual(r.dc, 0.04);
+  assert.strictEqual(Math.round(r.dm * 100) / 100, 0.06);
+});
+
 test("Carica sessione: un file che non e` una sessione viene rifiutato senza toccare i dati", () => {
   const app = loadBundle();
   app.run(SETUP);

@@ -9,16 +9,36 @@ var RL=[
 ];
 var KP=["BDG","Digital","SY","Privilege","SAS","DCC","CS","Articoli","Visual","QTY Dept"];
 var TC={};
-function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){
+// Motore condiviso (v9.116): KPI predefiniti per ruolo e migrazioni dei vecchi salvataggi in
+// UN solo posto. Prima la tabella era ricopiata 4 volte (qui, ripristino automatico, Carica
+// sessione, Carica configurazione) e le migrazioni erano diverse nei tre ripristini.
+function tcDefault(r,k){
   var isSCS=r.indexOf("SCS")>=0,isDept=r.indexOf("DEPT")>=0,isNoSas=r.indexOf("NO SAS")>=0,isNoDig=r.indexOf("NO DIGITAL")>=0,isNoSY=r.indexOf("NO SY")>=0,isNoPriv=r.indexOf("NO PRIVILEGE")>=0;
-  if(k==="BDG")TC[r][k]=true;
-  else if(k==="Digital")TC[r][k]=!isNoDig&&!isDept;
-  else if(k==="SY")TC[r][k]=!isSCS&&!isDept&&!isNoSY;
-  else if(k==="Privilege")TC[r][k]=!isDept&&!isNoPriv;
-  else if(k==="SAS")TC[r][k]=isSCS&&!isNoSas;
-  else if(k==="DCC")TC[r][k]=isSCS;
-  else if(k==="CS")TC[r][k]=false;
-  else if(k==="Articoli")TC[r][k]=true;
-  else if(k==="Visual")TC[r][k]=false;
-  else if(k==="QTY Dept")TC[r][k]=isDept})})}
+  if(k==="BDG")return true;
+  if(k==="Digital")return !isNoDig&&!isDept;
+  if(k==="SY")return !isSCS&&!isDept&&!isNoSY;
+  if(k==="Privilege")return !isDept&&!isNoPriv;
+  if(k==="SAS")return isSCS&&!isNoSas;
+  if(k==="DCC")return isSCS;
+  if(k==="CS")return false;
+  if(k==="Articoli")return true;
+  if(k==="Visual")return false;
+  if(k==="QTY Dept")return isDept;
+}
+function initTC(){RL.forEach(function(r){TC[r]={};KP.forEach(function(k){TC[r][k]=tcDefault(r,k);});});}
+// Ruoli che mancano in TC (salvataggi vecchi): aggiunti con i KPI predefiniti
+function tcFillMissing(){RL.forEach(function(r){if(!TC[r]){TC[r]={};KP.forEach(function(k){TC[r][k]=tcDefault(r,k);});}});}
+// Ruoli storici "SM VSM ..." -> "SM ..." e "VSM ..." separati (prima solo in Carica configurazione)
+function tcMigrateLegacy(tc){
+  if(!tc)return tc;
+  [["SM VSM","SM","VSM"],["SM VSM NO DIGITAL","SM NO DIGITAL","VSM NO DIGITAL"],["SM VSM DEPT","SM DEPT","VSM DEPT"]].forEach(function(m){
+    if(tc[m[0]]&&!tc[m[1]]){tc[m[1]]=JSON.parse(JSON.stringify(tc[m[0]]));tc[m[2]]=JSON.parse(JSON.stringify(tc[m[0]]));}
+  });
+  return tc;
+}
+// Parametri storici: digMin unico -> digMinClassic / digMinMobility (+2 punti)
+function paramsMigrate(p){
+  if(p&&p.digMin!==undefined&&p.digMinClassic===undefined){p.digMinClassic=p.digMin;p.digMinMobility=p.digMin+0.02;}
+  return p;
+}
 initTC();
