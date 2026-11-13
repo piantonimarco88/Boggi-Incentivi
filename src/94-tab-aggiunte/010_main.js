@@ -211,8 +211,12 @@ var AGG_HDR_ALIASES={
 function _aggNormHdr(s){return String(s==null?"":s).toLowerCase().replace(/[^a-z0-9]+/g," ").trim();}
 // Parsing puro (testabile): rows = array di righe (array di celle). Ritorna {cols,items,problems}.
 //  items: [{row,raw,m,vals:{k:importo>0},cu}] — m già risolto sull'anagrafica quando possibile.
-function aggParseRows(rows){
+// keyDefs (facoltativo): [{k,l,al:[alias normalizzati]}] — default le voci del tab Aggiunte; per FC+VM una sola colonna «Aggiunta».
+// resolve (facoltativo): matricola del file -> matricola dell'anagrafica (default matrItResolve su E; FC+VM: sul pool FC_EMP).
+function aggParseRows(rows,keyDefs,resolve){
   var out={cols:null,items:[],problems:[]};
+  resolve=resolve||matrItResolve;
+  keyDefs=keyDefs||AGG_KEYS.map(function(ak){return {k:ak.k,l:ak.l,al:AGG_HDR_ALIASES[ak.k]||[_aggNormHdr(ak.l)]};});
   var hr=-1,ri,ci;
   for(ri=0;ri<Math.min(10,rows.length);ri++){
     var hs=(rows[ri]||[]).map(_aggNormHdr);
@@ -225,11 +229,10 @@ function aggParseRows(rows){
     if(cols.cu<0&&(hdr[ci]==="valuta"||hdr[ci]==="currency"||hdr[ci]==="cu"))cols.cu=ci;
   }
   // priorità: alias esatti nell'ordine indicato
-  AGG_KEYS.forEach(function(ak){
-    var al=AGG_HDR_ALIASES[ak.k]||[_aggNormHdr(ak.l)];
-    for(var a=0;a<al.length;a++){var ix=hdr.indexOf(al[a]);if(ix>=0&&ix!==cols.m){cols.k[ak.k]=ix;return;}}
+  keyDefs.forEach(function(kd){
+    for(var a=0;a<kd.al.length;a++){var ix=hdr.indexOf(kd.al[a]);if(ix>=0&&ix!==cols.m){cols.k[kd.k]=ix;return;}}
   });
-  if(!Object.keys(cols.k).length){out.problems.push("Nessuna colonna importo riconosciuta (attese: "+AGG_KEYS.map(function(a){return a.l;}).join(", ")+").");return out;}
+  if(!Object.keys(cols.k).length){out.problems.push("Nessuna colonna importo riconosciuta (attese: "+keyDefs.map(function(a){return a.l;}).join(", ")+").");return out;}
   out.cols=cols;
   for(ri=hr+1;ri<rows.length;ri++){
     var row=rows[ri];if(!row)continue;
@@ -243,7 +246,7 @@ function aggParseRows(rows){
     });
     if(neg.length)out.problems.push("riga "+(ri+1)+" · matr. "+raw+": importo negativo scartato ("+neg.join(", ")+")");
     if(!any)continue;
-    out.items.push({row:ri+1,raw:raw,m:matrItResolve(raw),vals:vals,cu:cols.cu>=0?String(row[cols.cu]||"").trim().toUpperCase():""});
+    out.items.push({row:ri+1,raw:raw,m:resolve(raw),vals:vals,cu:cols.cu>=0?String(row[cols.cu]||"").trim().toUpperCase():""});
   }
   return out;
 }

@@ -14,6 +14,11 @@
 //   B) Confronto tra due sessioni dello stesso mese (vecchia = pagata, nuova = ricalcolata con i dati
 //      rivisti, es. inventari corretti da Audit): solo differenze positive per dipendente e voce:
 //      node build/diff-aggiunte.js --sessione ott.json --confronto ott_rivista.json --out aggiunte.xlsx
+//   C) Come B ma senza i Dept stores (--escludi-dept): da usare quando i Dept sono già stati
+//      pagati con il file A, altrimenti la loro differenza verrebbe contata due volte.
+//   D) Sessioni FC+VM (PRIZE_MODE fcvm): si usa con --confronto come B; il premio è quello d'area
+//      + BDG negozi (calcFcVmPremio) e il file ha una sola colonna «Aggiunta» per dipendente, da
+//      importare nel tab Aggiunte FC+VM. --dept-senza-inventari e --escludi-dept valgono solo per il mensile.
 //   Opzioni: --periodo "Ottobre 2026" (testo nel riepilogo), --pagamento "Novembre 2026".
 // ============================================================
 
@@ -74,7 +79,18 @@ const ITEMS_JS = `(function(){
   });
   return JSON.stringify(out);
 })()`;
-const itemsOf = app => JSON.parse(app.run(ITEMS_JS));
+// FC+VM: un solo importo per dipendente (premio d'area dopo malattia/coefficiente inventari + BDG negozi), in valuta locale
+const ITEMS_FCVM_JS = `(function(){
+  var out={};
+  getFcVmPool().forEach(function(emp){
+    var r=calcFcVmPremio(emp.m),v=r.totalPremioLC||0;
+    out[emp.m]={m:emp.m,c:emp.c,n:emp.n,si:"",s:"",j:emp.j,cu:emp.cu||"EUR",ex:(emp.ex&&emp.ex!==1&&emp.ex>0)?emp.ex:getFcVmExRate(emp.cu),
+      pct:(r.demoltDr&&r.demoltDr.pct!=null)?r.demoltDr.pct:null,dept:false,items:v?{tot:v}:{}};
+  });
+  return JSON.stringify(out);
+})()`;
+const modeOf = app => app.run("PRIZE_MODE");
+const itemsOf = app => JSON.parse(app.run(modeOf(app) === "fcvm" ? ITEMS_FCVM_JS : ITEMS_JS));
 
 // Toglie il Coefficiente Inventari ai soli negozi Dept (il resto resta com'è)
 function stripDeptInventari(app) {
@@ -111,52 +127,60 @@ function diffRows(oldI, newI) {
 }
 
 function buildWorkbook(XLSX, rows, meta) {
-  const imp = rows.filter(r => Object.keys(r.diff).some(k => AGG_COLS.some(c => c[0] === k)));
-  const sorted = rows.slice().sort((a, b) => (Number(a.si) - Number(b.si)) || String(a.m).localeCompare(String(b.m)));
-
-  // Foglio 1 — Aggiunte (importabile)
-  const h1 = ["Matricola", "Cognome", "Nome", "Negozio", "Ruolo", "Valuta"].concat(AGG_COLS.map(c => c[1]));
-  const a1 = [h1];
-  sorted.forEach(r => {
-    if (!Object.keys(r.diff).some(k => AGG_COLS.some(c => c[0] === k))) return;
-    a1.push([String(r.m), r.c, r.n, r.s, r.j, r.cu].concat(AGG_COLS.map(c => r.diff[c[0]] || null)));
-  });
-
-  // Foglio 2 — Dettaglio ricalcolo
-  const vk = Object.keys(NON_IMPORT);
-  const h2 = ["Negozio", "Matricola", "Cognome", "Nome", "Ruolo", "Valuta", "Cambio EUR", "% coeff. inventari applicato", "Premio calcolato (prima)", "Premio ricalcolato (dopo)"]
-    .concat(AGG_COLS.map(c => "Diff. " + c[1])).concat(vk.map(k => "Diff. " + NON_IMPORT[k] + " (NON importabile)"))
-    .concat(["Totale differenza (valuta locale)", "Totale differenza (EUR)"]);
-  const a2 = [h2];
+  const fcvm = meta.mode === "fcvm";
+  const sorted = rows.slice().sort((a, b) => (Number(a.si) - Number(b.si)) || String(a.j).localeCompare(String(b.j)) || String(a.c).localeCompare(String(b.c)) || String(a.m).localeCompare(String(b.m)));
+  const hasImp = r => fcvm ? !!r.diff.tot : Object.keys(r.diff).some(k => AGG_COLS.some(c => c[0] === k));
+  const vk = fcvm ? [] : Object.keys(NON_IMPORT);
   const totLoc = {};
   let totEur = 0;
-  sorted.forEach(r => {
-    const eur = round2(r.totPos * r.ex);
-    totLoc[r.cu] = round2((totLoc[r.cu] || 0) + r.totPos); totEur = round2(totEur + eur);
-    a2.push([r.s, String(r.m), r.c, r.n, r.j, r.cu, r.ex, r.pct == null ? null : r.pct, r.oldTot, r.newTot]
-      .concat(AGG_COLS.map(c => r.diff[c[0]] || null)).concat(vk.map(k => r.diff[k] || null)).concat([r.totPos, eur]));
-  });
+  let a1, a2;
+
+  if (fcvm) {
+    // Foglio 1 — Aggiunte FC+VM (importabile nel tab Aggiunte FC+VM): un solo importo per dipendente
+    a1 = [["Matricola", "Cognome", "Nome", "Ruolo", "Valuta", "Aggiunta"]];
+    a2 = [["Matricola", "Cognome", "Nome", "Ruolo", "Valuta", "Cambio EUR", "% coeff. inventari applicato", "Premio calcolato (prima)", "Premio ricalcolato (dopo)", "Differenza (valuta locale)", "Differenza (EUR)"]];
+    sorted.forEach(r => {
+      if (r.diff.tot) a1.push([String(r.m), r.c, r.n, r.j, r.cu, r.diff.tot]);
+      const eur = round2(r.totPos * r.ex);
+      totLoc[r.cu] = round2((totLoc[r.cu] || 0) + r.totPos); totEur = round2(totEur + eur);
+      a2.push([String(r.m), r.c, r.n, r.j, r.cu, r.ex, r.pctNew == null ? r.pct : r.pctNew, r.oldTot, r.newTot, r.totPos, eur]);
+    });
+  } else {
+    // Foglio 1 — Aggiunte (importabile nel tab Aggiunte)
+    a1 = [["Matricola", "Cognome", "Nome", "Negozio", "Ruolo", "Valuta"].concat(AGG_COLS.map(c => c[1]))];
+    a2 = [["Negozio", "Matricola", "Cognome", "Nome", "Ruolo", "Valuta", "Cambio EUR", "% coeff. inventari applicato", "Premio calcolato (prima)", "Premio ricalcolato (dopo)"]
+      .concat(AGG_COLS.map(c => "Diff. " + c[1])).concat(vk.map(k => "Diff. " + NON_IMPORT[k] + " (NON importabile)"))
+      .concat(["Totale differenza (valuta locale)", "Totale differenza (EUR)"])];
+    sorted.forEach(r => {
+      if (hasImp(r)) a1.push([String(r.m), r.c, r.n, r.s, r.j, r.cu].concat(AGG_COLS.map(c => r.diff[c[0]] || null)));
+      const eur = round2(r.totPos * r.ex);
+      totLoc[r.cu] = round2((totLoc[r.cu] || 0) + r.totPos); totEur = round2(totEur + eur);
+      a2.push([r.s, String(r.m), r.c, r.n, r.j, r.cu, r.ex, r.pct == null ? null : r.pct, r.oldTot, r.newTot]
+        .concat(AGG_COLS.map(c => r.diff[c[0]] || null)).concat(vk.map(k => r.diff[k] || null)).concat([r.totPos, eur]));
+    });
+  }
   const nonImp = sorted.filter(r => vk.some(k => r.diff[k]));
   const negRows = sorted.filter(r => Object.keys(r.neg).length);
 
   // Foglio 3 — Riepilogo
-  const a3 = [["Aggiunte da differenza di ricalcolo"], [""],
+  const tabName = fcvm ? "Aggiunte FC+VM" : "Aggiunte";
+  const a3 = [["Aggiunte da differenza di ricalcolo" + (fcvm ? " — FC+VM" : "")], [""],
     ["Scenario", meta.scenario], ["Periodo di riferimento", meta.periodo || ""], ["Da pagare con il consuntivo di", meta.pagamento || ""],
     ["Sessione di partenza", meta.sessione], meta.confronto ? ["Sessione ricalcolata", meta.confronto] : null,
     ["Generato il", new Date().toLocaleString("it-IT")], [""],
-    ["Dipendenti con differenza positiva", rows.length]].filter(Boolean);
+    ["Dipendenti con differenza positiva", rows.filter(r => r.totPos > 0).length]].filter(Boolean);
   Object.keys(totLoc).sort().forEach(c => a3.push(["Totale " + c + " (valuta locale)", totLoc[c]]));
   a3.push(["Totale in EUR (cambi della sessione)", totEur], [""]);
-  a3.push(["Come usarlo: nell'app, sessione del mese di pagamento, tab «Aggiunte» → «Importa aggiunte (Excel)» e scegli questo file (foglio «Aggiunte»). Gli importi si SOMMANO alle aggiunte già presenti e NON risentono di regole, policy o malattia."]);
-  a3.push(["Importi in valuta locale del dipendente, come nel tab Aggiunte. Non importarlo due volte: raddoppia gli importi."]);
+  a3.push(["Come usarlo: nell'app, sessione del mese di pagamento, tab «" + tabName + "» → «Importa aggiunte (Excel)» e scegli questo file (foglio «Aggiunte»). Gli importi si SOMMANO alle aggiunte già presenti e NON risentono di regole, policy o malattia."]);
+  a3.push(["Importi in valuta locale del dipendente, come nel tab. Non importarlo due volte: raddoppia gli importi."]);
   if (meta.note) meta.note.forEach(t => a3.push([t]));
   if (nonImp.length) a3.push([""], ["ATTENZIONE: differenze su voci che il tab Aggiunte non gestisce (da inserire a mano):"], ...nonImp.map(r => ["  " + r.m + " " + r.c + " " + r.n, vk.map(k => NON_IMPORT[k] + " " + (r.diff[k] || 0)).join("; ")]));
   if (negRows.length) a3.push([""], ["Voci che nel ricalcolo SCENDONO (ignorate, non si recuperano):"], ...negRows.map(r => ["  " + r.m + " " + r.c + " " + r.n, JSON.stringify(r.neg)]));
 
   const wb = XLSX.utils.book_new();
   const mk = (aoa, widths) => { const ws = XLSX.utils.aoa_to_sheet(aoa); ws["!cols"] = widths.map(w => ({ wch: w })); return ws; };
-  XLSX.utils.book_append_sheet(wb, mk(a1, [11, 24, 24, 28, 10, 8].concat(AGG_COLS.map(() => 12))), "Aggiunte");
-  XLSX.utils.book_append_sheet(wb, mk(a2, [28, 11, 24, 24, 10, 8, 10, 12, 14, 14].concat(AGG_COLS.map(() => 12)).concat(vk.map(() => 16)).concat([16, 16])), "Dettaglio ricalcolo");
+  XLSX.utils.book_append_sheet(wb, mk(a1, fcvm ? [11, 24, 24, 8, 8, 12] : [11, 24, 24, 28, 10, 8].concat(AGG_COLS.map(() => 12))), "Aggiunte");
+  XLSX.utils.book_append_sheet(wb, mk(a2, fcvm ? [11, 24, 24, 8, 8, 10, 12, 14, 14, 14, 14] : [28, 11, 24, 24, 10, 8, 10, 12, 14, 14].concat(AGG_COLS.map(() => 12)).concat(vk.map(() => 16)).concat([16, 16])), "Dettaglio ricalcolo");
   XLSX.utils.book_append_sheet(wb, mk(a3, [46, 60]), "Riepilogo");
   return { wb, nImport: a1.length - 1, totLoc, totEur, nonImp, negRows };
 }
@@ -164,28 +188,43 @@ function buildWorkbook(XLSX, rows, meta) {
 function main() {
   const a = parseArgs(process.argv.slice(2));
   if (!a.sessione || !a.out || (!a["dept-senza-inventari"] && !a.confronto)) {
-    console.error("Uso: node build/diff-aggiunte.js --sessione <sessione.json> (--dept-senza-inventari | --confronto <sessione_rivista.json>) --out <file.xlsx> [--periodo \"Ottobre 2026\"] [--pagamento \"Novembre 2026\"]");
+    console.error("Uso: node build/diff-aggiunte.js --sessione <sessione.json> (--dept-senza-inventari | --confronto <sessione_rivista.json> [--escludi-dept]) --out <file.xlsx> [--periodo \"Ottobre 2026\"] [--pagamento \"Novembre 2026\"]");
     process.exit(1);
   }
+  const fail = m => { console.error("ERRORE: " + m); process.exit(1); };
   const A = openSession(a.sessione);
+  const mode = modeOf(A) === "fcvm" ? "fcvm" : "mensile";
+  if (modeOf(A) === "seasonal") fail("le sessioni seasonal non sono supportate (solo mensile e FC+VM).");
+  if (mode === "fcvm" && (a["dept-senza-inventari"] || a["escludi-dept"])) fail("--dept-senza-inventari e --escludi-dept valgono solo per le sessioni mensili.");
+  let B = null;
+  if (a.confronto) {
+    B = openSession(a.confronto);
+    if ((modeOf(B) === "fcvm" ? "fcvm" : "mensile") !== mode) fail("le due sessioni sono di modalità diverse (mensile / FC+VM).");
+  }
+  const note = [];
+  // I Dept già pagati con il file --dept-senza-inventari restano fuori dal confronto (togliendo il coefficiente da entrambi i lati)
+  if (a["escludi-dept"]) {
+    const rem = stripDeptInventari(A);
+    if (B) stripDeptInventari(B);
+    note.push("Negozi Dept esclusi dal confronto (differenza già gestita a parte): " + rem.sort().join(", "));
+  }
   const oldI = itemsOf(A);
-  let newI, scenario, note = [];
+  let newI, scenario;
   if (a["dept-senza-inventari"]) {
     const rem = stripDeptInventari(A);
     newI = itemsOf(A);
     scenario = "Negozi Dept: premio SM/VSM senza il parametro Inventari (coefficiente 100%)";
     note.push("Negozi Dept ai quali è stato tolto il coefficiente: " + rem.sort().join(", "));
   } else {
-    const B = openSession(a.confronto);
     newI = itemsOf(B);
-    scenario = "Confronto tra due sessioni: solo le differenze positive per dipendente e voce";
+    scenario = (mode === "fcvm" ? "FC+VM — " : "") + "Confronto tra due sessioni: solo le differenze positive per dipendente" + (mode === "fcvm" ? "" : " e voce");
   }
   const rows = diffRows(oldI, newI);
 
   // XLSX vendorizzato (SheetJS) caricato in un contesto vm
   const ctx = {}; ctx.self = ctx; ctx.window = ctx; ctx.globalThis = ctx; vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "src", "vendor-xlsx", "010_xlsx.full.min.js"), "utf8"), ctx);
-  const meta = { scenario, periodo: a.periodo, pagamento: a.pagamento, sessione: path.basename(a.sessione), confronto: a.confronto ? path.basename(a.confronto) : "", note };
+  const meta = { mode, scenario, periodo: a.periodo, pagamento: a.pagamento, sessione: path.basename(a.sessione), confronto: a.confronto ? path.basename(a.confronto) : "", note };
   const r = buildWorkbook(ctx.XLSX, rows, meta);
   const buf = Buffer.from(ctx.XLSX.write(r.wb, { type: "array", bookType: "xlsx" }));
   fs.writeFileSync(a.out, buf);

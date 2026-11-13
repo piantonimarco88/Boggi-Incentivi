@@ -1,6 +1,7 @@
 function rAggFcvm(){
   var pool=getFcVmPool();
   var h='<div style="font-size:12px;color:#6b6560;margin-bottom:14px"><b>Aggiunte manuali FC+VM</b> — Importi inseriti qui si <b>sommano</b> al premio calcolato automaticamente. Non soggetti a soglie o regole.</div>';
+  h+='<div style="margin-bottom:12px"><label class="exp-btn btn-amber" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="Importa da Excel: una riga per dipendente (Matricola, Valuta facoltativa, Aggiunta in valuta locale). Gli importi si sommano a quelli presenti.">&#128194; Importa aggiunte (Excel)<input type="file" accept=".xlsx,.xlsm,.xls" onchange="loadAggiunteFcvmExcel(this)" style="display:none"></label></div>';
 
   if(!pool.length){
     h+='<div class="wg" style="text-align:center;padding:30px;color:#a09a92"><div style="font-size:28px;margin-bottom:10px">&#128084;</div><div>Carica prima l\u2019anagrafica FC+VM.</div></div>';
@@ -108,3 +109,55 @@ function exportFcVmExcel(){
 
 // ── Incentive Monitor ──────────────────────────────────────────
 var _MMONTHS=["","Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
+
+// === IMPORT AGGIUNTE FC+VM DA EXCEL (v9.121) ===============================
+// Stesso schema del tab Aggiunte mensile (vedi 94-tab-aggiunte): una riga per dipendente con colonna
+// Matricola, «Valuta» facoltativa e UNA colonna importo («Aggiunta»), in valuta locale. Gli importi si
+// SOMMANO ad AGG_FCVM (importo unico per dipendente). Foglio «Aggiunte» se esiste, altrimenti il primo.
+var AGG_FCVM_KEYS=[{k:"tot",l:"Aggiunta",al:["aggiunta","aggiunte","importo","totale aggiunta"]}];
+// Matricola del file -> matricola del pool FC+VM: identica, poi (se univoca) confronto sulle cifre senza zeri iniziali.
+function _aggResolveFcvm(raw){
+  var s=String(raw==null?"":raw).trim();if(!s)return "";
+  var ks=Object.keys(FC_EMP);
+  if(FC_EMP[s])return s;
+  var d=s.replace(/[^0-9]/g,"").replace(/^0+/,"");if(!d)return s;
+  var hit=ks.filter(function(k){return String(k).replace(/[^0-9]/g,"").replace(/^0+/,"")===d;});
+  return hit.length===1?hit[0]:s;
+}
+function aggApplyItemsFcvm(items){
+  var res={n:0,tot:{},skipped:[]};
+  items.forEach(function(it){
+    var e=FC_EMP[it.m];
+    if(!e){res.skipped.push("riga "+it.row+" · matr. "+it.raw+": non presente nell'anagrafica FC+VM");return;}
+    var cu=e.cu||"EUR";
+    if(it.cu&&it.cu!==cu){res.skipped.push("riga "+it.row+" · "+e.c+" "+e.n+" ("+it.raw+"): valuta file "+it.cu+" ≠ valuta dipendente "+cu);return;}
+    var v=it.vals.tot||0;if(!(v>0))return;
+    AGG_FCVM[it.m]=Math.round(((AGG_FCVM[it.m]||0)+v)*100)/100;
+    res.n++;res.tot[cu]=Math.round(((res.tot[cu]||0)+v)*100)/100;
+  });
+  return res;
+}
+function loadAggiunteFcvmExcel(input){
+  var f=input.files[0];if(!f)return;input.value="";
+  var reader=new FileReader();reader.onload=function(ev){try{
+    if(!Object.keys(FC_EMP).length){alert("Carica prima l'anagrafica FC+VM.");return;}
+    var wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array"});
+    var sn=wb.SheetNames.filter(function(n){return _aggNormHdr(n)==="aggiunte";})[0]||wb.SheetNames[0];
+    var rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:null,raw:true});
+    var p=aggParseRows(rows,AGG_FCVM_KEYS,_aggResolveFcvm);
+    if(!p.items.length){alert("Import aggiunte FC+VM: nessuna riga con importi.\n\n"+(p.problems.length?p.problems.join("\n"):"Controlla che il foglio abbia una colonna Matricola e una colonna «Aggiunta»."));return;}
+    var prev=IMPORT_STAMPS.aggiunte_fcvm;
+    if(prev&&prev.file===f.name&&!confirm("Il file «"+f.name+"» risulta già importato in questa sessione.\n\nLe aggiunte si SOMMANO: importarlo di nuovo le raddoppia.\n\nContinuare lo stesso?"))return;
+    var known=p.items.filter(function(it){return FC_EMP[it.m];}).length;
+    var already=p.items.filter(function(it){return FC_EMP[it.m]&&AGG_FCVM[it.m]>0;}).length;
+    if(!confirm("Importare le aggiunte FC+VM da «"+f.name+"» (foglio «"+sn+"»)?\n\n"+known+" dipendenti riconosciuti su "+p.items.length+" righe con importi."+
+      (already?"\n"+already+" hanno già un'aggiunta: gli importi si SOMMANO.":"")+"\n\nMese configurato: "+_monthLbl(CFG_MONTH,CFG_YEAR)+"."))return;
+    var r=aggApplyItemsFcvm(p.items);
+    IMPORT_STAMPS.aggiunte_fcvm={label:"Aggiunte FC+VM",file:f.name,m:CFG_MONTH,y:CFG_YEAR,fm:0,ts:new Date().toISOString()};
+    var tot=Object.keys(r.tot).map(function(c){return c+" "+r.tot[c].toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2});}).join(" · ");
+    var warn=p.problems.concat(r.skipped);
+    rAggFcvm();try{rSources();}catch(_e){}autoSave();
+    alert("Aggiunte FC+VM importate: "+r.n+" dipendenti.\nTotale (valuta locale): "+tot+
+      (warn.length?"\n\n\u26a0 "+warn.length+" righe non importate o con avvisi:\n\u2022 "+warn.slice(0,15).join("\n\u2022 ")+(warn.length>15?"\n\u2026 e altre "+(warn.length-15):""):""));
+  }catch(ex){alert("Errore lettura aggiunte FC+VM: "+ex.message);}};reader.readAsArrayBuffer(f);
+}

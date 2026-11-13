@@ -148,3 +148,94 @@ test("diff-aggiunte --dept-senza-inventari: con le aggiunte importate il premio 
   after.forEach((v, i) => assert.ok(Math.abs(v - full[i]) < 0.011, "dipendente " + i + ": " + v + " vs premio pieno " + full[i]));
   fs.rmSync(tmp, { recursive: true, force: true });
 });
+
+// ── Strumento: confronto con esclusione Dept e sessioni FC+VM ───────────────────────────
+const TOOL = path.join(__dirname, "..", "build", "diff-aggiunte.js");
+function runTool(args) { return execFileSync(process.execPath, [TOOL].concat(args), { stdio: "pipe" }).toString(); }
+function readSheet(file, name) {
+  const X = loadXlsx();
+  const wb = X.read(fs.readFileSync(file), { type: "buffer" });
+  return X.utils.sheet_to_json(wb.Sheets[name || "Aggiunte"], { header: 1, defval: null, raw: true });
+}
+function saveToTmp(app, tmp, name) {
+  app.run("saveSession()");
+  const p = path.join(tmp, name);
+  fs.writeFileSync(p, app.lastBlobText());
+  return p;
+}
+
+test("diff-aggiunte --confronto --escludi-dept: i Dept già pagati non vengono contati due volte", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "diffagg-"));
+  const EXTRA = `
+    STORE_FLAGS["1401"]={dept:false,noSas:false,noDig:false};
+    D.t["1401"]={to:100000,sy:0,pr:0};D.c["1401"]={sc:101000,es:0,sa:0.9,vel:0.9};
+    E.push({m:"1000777",c:"NERI",n:"PAOLA",f:"SM",j:"SM",si:1401,s:"1401 STORE NON DEPT",ib:400,rl:400,en:230,cu:"EUR",ex:1,ml:0,ps:"NO"});
+    DEMOLT_RESULT_STORE["1401"]={pct:0.7,compl:0.7,acc:0.97};`;
+  const A = loadBundle(); A.run(SETUP); A.run(EXTRA);
+  const B = loadBundle(); B.run(SETUP); B.run(EXTRA);
+  // sessione rivista (Audit): tutti i coefficienti salgono, Dept compresi
+  B.run("DEMOLT_RESULT_STORE={\"1301\":{pct:1},\"1302\":{pct:0.9},\"1401\":{pct:0.9}}");
+  const a = saveToTmp(A, tmp, "a.json"), b = saveToTmp(B, tmp, "b.json");
+  const all = path.join(tmp, "tutti.xlsx"), nodept = path.join(tmp, "nodept.xlsx");
+  runTool(["--sessione", a, "--confronto", b, "--out", all]);
+  runTool(["--sessione", a, "--confronto", b, "--escludi-dept", "--out", nodept]);
+  assert.strictEqual(readSheet(all).length - 1, 4, "senza esclusione: 3 SM/VSM Dept + 1 non Dept");
+  const rows = readSheet(nodept);
+  assert.strictEqual(rows.length - 1, 1, "con --escludi-dept resta solo il negozio non Dept");
+  assert.strictEqual(rows[1][0], "1000777");
+  assert.strictEqual(rows[1][6], 80, "BDG (Lordo): 400 x (0,9 - 0,7)");
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test("diff-aggiunte su sessioni FC+VM: file «Aggiunta» importabile nel tab FC+VM, premio = premio ricalcolato", () => {
+  const SETUP_FC = `
+    PRIZE_MODE="fcvm"; REGION="international"; MODE="consuntivo"; CFG_YEAR=2026; CFG_MONTH=10;
+    FC_EMP={"F1":{m:"F1",c:"ALFA",n:"ANNA",j:"FC",ib:1000,cu:"EUR",ex:1,ml:0,ps:"NO"},
+            "F2":{m:"F2",c:"BETA",n:"BRUNO",j:"FC",ib:800,cu:"GBP",ex:1.15,ml:0,ps:"NO"},
+            "V1":{m:"V1",c:"GAMMA",n:"GINO",j:"VM",ib:500,cu:"EUR",ex:1,ml:0,ps:"NO"}};
+    FC_MAP={"2001":{fc:"F1",vm:"V1"},"2002":{fc:"F2",vm:"V1"}};
+    FC_TARGETS={"2001":{to_eur:100000},"2002":{to_eur:100000}};
+    FC_RESULTS={"2001":{sc_eur:101000},"2002":{sc_eur:101000}};
+    FC_SYLY={};FC_STORE_FLAGS={};FC_PREV_RESULTS={};FC_AREA_SAS={};FC_OVERRIDES={};AGG_FCVM={};
+    FCVM_PARAMS.soglia100=0.98;FCVM_PARAMS.soglia60=0.9;FCVM_PARAMS.pct60=0.6;
+    DEMOLT_RESULT_FC={"F1":{pct:0.65,invio:0.9,compl:0.5},"F2":{pct:0.85,invio:0.9,compl:0.8}};`;
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "diffagg-"));
+  const A = loadBundle(); A.run(SETUP_FC);
+  const B = loadBundle(); B.run(SETUP_FC);
+  B.run("DEMOLT_RESULT_FC={\"F1\":{pct:0.85,invio:0.9,compl:0.8},\"F2\":{pct:0.75,invio:0.9,compl:0.7}}"); // F1 sale, F2 scende
+  const tot = app => JSON.parse(app.run("JSON.stringify(Object.keys(FC_EMP).map(function(m){return calcFcVmPremio(m).totalPremioLC}))"));
+  const ta = tot(A), tb = tot(B);
+  assert.deepStrictEqual(ta, [650, 680, 500]);
+  assert.deepStrictEqual(tb, [850, 600, 500]);
+  const a = saveToTmp(A, tmp, "a.json"), b = saveToTmp(B, tmp, "b.json");
+  const out = path.join(tmp, "fc.xlsx");
+  runTool(["--sessione", a, "--confronto", b, "--out", out]);
+  const rows = readSheet(out);
+  assert.deepStrictEqual(Array.from(rows[0]), ["Matricola", "Cognome", "Nome", "Ruolo", "Valuta", "Aggiunta"]);
+  assert.strictEqual(rows.length - 1, 1, "solo F1 ha una differenza positiva (F2 scende, ignorata)");
+  assert.deepStrictEqual(Array.from(rows[1]), ["F1", "ALFA", "ANNA", "FC", "EUR", 200]);
+
+  // import nel tab Aggiunte FC+VM della sessione di pagamento: aggiunta = differenza, somma alla successiva
+  A.ctx._rows = rows;
+  A.run("var _p=aggParseRows(_rows,AGG_FCVM_KEYS,_aggResolveFcvm);var _r=aggApplyItemsFcvm(_p.items)");
+  assert.deepStrictEqual(JSON.parse(A.run("JSON.stringify(AGG_FCVM)")), { F1: 200 });
+  assert.strictEqual(A.run("calcFcVmPremio('F1').totalPremioLC+AGG_FCVM['F1']"), tb[0]);
+  A.run("aggApplyItemsFcvm(_p.items)");
+  assert.strictEqual(A.run("AGG_FCVM.F1"), 400);
+  // matricola non del pool e valuta diversa: scartate
+  A.ctx._rows2 = [["Matricola", "Valuta", "Aggiunta"], ["F2", "EUR", 10], ["ZZZ", "EUR", 5]];
+  const r2 = JSON.parse(A.run("JSON.stringify(aggApplyItemsFcvm(aggParseRows(_rows2,AGG_FCVM_KEYS,_aggResolveFcvm).items))"));
+  assert.strictEqual(r2.n, 0);
+  assert.strictEqual(r2.skipped.length, 2);
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test("diff-aggiunte: opzioni incompatibili e modalità diverse sono rifiutate", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "diffagg-"));
+  const A = loadBundle(); A.run(SETUP);
+  const F = loadBundle(); F.run("PRIZE_MODE=\"fcvm\";MODE=\"consuntivo\";FC_EMP={};");
+  const a = saveToTmp(A, tmp, "m.json"), f = saveToTmp(F, tmp, "f.json"), out = path.join(tmp, "x.xlsx");
+  assert.throws(() => runTool(["--sessione", a, "--confronto", f, "--out", out]), /modalità diverse/);
+  assert.throws(() => runTool(["--sessione", f, "--dept-senza-inventari", "--out", out]), /solo per le sessioni mensili/);
+  fs.rmSync(tmp, { recursive: true, force: true });
+});

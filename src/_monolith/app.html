@@ -216,12 +216,13 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 /*BUNDLE_INSERT:60-fcvm-state*/
 /*BUNDLE_INSERT:70-fcvm-calc*//*BUNDLE_INSERT:80-roles-config*/var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.120'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.121'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.121: Aggiunte FC+VM — nuovo pulsante «Importa aggiunte (Excel)» anche nel tab Aggiunte FC+VM (una riga per dipendente: Matricola, Valuta facoltativa, Aggiunta in valuta locale; gli importi si sommano a quelli presenti)",
   "9.120: Coefficiente Inventari FC — da novembre 2026 le fasce «% DCC eseguiti» (completamento) dei Field Coach sono le stesse del negozio (70% / 90%); fasce % invio e griglia invariate e ottobre invariato (la data si modifica in Configurazione, Date di attivazione regole). Aggiunte — nuovo pulsante «Importa aggiunte (Excel)» (una riga per dipendente, importi in valuta locale, si sommano a quelli presenti) e nuova voce «QTY Dept»",
   "9.119: Report import anagrafica Italia (seasonal) — nuovo riquadro «Brian & Barry / Double B» con conteggio, negozi ed elenco dei dipendenti importati in quegli store (l'anteprima mostra solo i primi 20)",
   "9.118: Seasonal FW26 Italia — anche gli store Double B (6000-6999, intervallo modificabile in Configurazione) usano i KPI dedicati SY, Subscription e UPT con la stessa tabella pesi dei Brian & Barry; l'import anagrafica e l'inserimento manuale li ammettono (prima venivano scartati come store > 4999)",
