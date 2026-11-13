@@ -53,7 +53,7 @@ function _buildMensileSnap(){
       vi+=(ag.vi||0);rd+=(ag.rd||0);rp+=(ag.rp||0);rs+=(ag.rs||0);
       ra+=(ag.ra||0);rsa+=(ag.rsa||0);rdc+=(ag.rdc||0);
       // ag.rb (BDG lordo) + ag.rbn (BDG netto/trasferta) → entrambi importi premio, vanno in rb_eur
-      rb+=(ag.rb||0)+(ag.rbn||0);rcs+=(ag.rcs||0);
+      rb+=(ag.rb||0)+(ag.rbn||0);rcs+=(ag.rcs||0);pq+=(ag.pq||0);
     }
     MODE="preventivo";
     var mass=Math.round(calcE(e)*ex*100)/100;

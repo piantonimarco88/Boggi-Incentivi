@@ -10,7 +10,7 @@ function rAgg(){
   var _focusCF=_fEl?_fEl.getAttribute("data-aggcf"):null;
 
   var h='<div style="font-size:12px;color:#6b6560;margin-bottom:14px"><b>Aggiunte manuali</b> \u2014 Importi inseriti qui si <b>sommano</b> ai premi calcolati e <b>non risentono</b> di regole, policy o malattia.</div>';
-  h+='<div class="flt" style="margin-bottom:12px"><input placeholder="Cerca matricola, nome, negozio..." id="aggQ" value="'+esc(aggFilter)+'" style="padding:8px 12px;border-radius:6px;border:1px solid #d5d0c8;font-size:12px;flex:1;min-width:200px"></div>';
+  h+='<div class="flt" style="margin-bottom:12px"><input placeholder="Cerca matricola, nome, negozio..." id="aggQ" value="'+esc(aggFilter)+'" style="padding:8px 12px;border-radius:6px;border:1px solid #d5d0c8;font-size:12px;flex:1;min-width:200px"><label class="exp-btn btn-amber" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;white-space:nowrap" title="Importa da Excel: una riga per dipendente (Matricola + colonne BDG (Lordo), BDG (Netto), Digital, SY, Privilege, SAS, DCC, CS, Articoli, QTY Dept). Gli importi si sommano a quelli presenti.">&#128194; Importa aggiunte (Excel)<input type="file" accept=".xlsx,.xlsm,.xls" onchange="loadAggiunteExcel(this)" style="display:none"></label></div>';
 
   // Sort per store ID poi matricola
   var sorted=E.slice();
@@ -75,7 +75,7 @@ function rAgg(){
 
   if(sorted.length>500)h+='<tr><td colspan="'+_nCols+'" style="padding:8px;text-align:center;color:#a09a92;font-size:11px">Mostrando 500 su '+sorted.length+'. Usa la ricerca per filtrare.</td></tr>';
   h+='</tbody></table></div>';
-  h+='<div class="wb" style="margin-top:16px"><div style="font-size:11px;font-weight:700;color:#856404;margin-bottom:4px">\u2139 Come funzionano le Aggiunte</div><div style="font-size:11px;color:#856404;line-height:1.5">I valori inseriti qui vengono <b>sommati</b> ai premi calcolati normalmente. Non sono soggetti a regole di policy, soglie di fatturato, n\u00e9 al moltiplicatore malattia. Compaiono nella lettera come sezione separata "Aggiunte / Manual Adjustments". Le aggiunte vengono salvate nel file di configurazione JSON.</div></div>';
+  h+='<div class="wb" style="margin-top:16px"><div style="font-size:11px;font-weight:700;color:#856404;margin-bottom:4px">\u2139 Come funzionano le Aggiunte</div><div style="font-size:11px;color:#856404;line-height:1.5">I valori inseriti qui vengono <b>sommati</b> ai premi calcolati normalmente. Non sono soggetti a regole di policy, soglie di fatturato, n\u00e9 al moltiplicatore malattia. Compaiono nella lettera come sezione separata "Aggiunte / Manual Adjustments". Le aggiunte vengono salvate nella sessione. Con «Importa aggiunte (Excel)» si caricano in blocco da un file con una riga per dipendente (colonna Matricola, Valuta facoltativa e una colonna per voce: BDG (Lordo), BDG (Netto), Digital, SY, Privilege, SAS, DCC, CS, Articoli, QTY Dept): gli importi si <b>sommano</b> a quelli già presenti.</div></div>';
 
   document.getElementById("p5").innerHTML=h;
 
@@ -195,4 +195,96 @@ function loadVisualExcel(input){
       (negRows.length?'\n\n⚠ '+negRows.length+' righe con importo NEGATIVO scartate (non ammesse):\n• '+negRows.slice(0,15).join('\n• ')+(negRows.length>15?'\n… e altre '+(negRows.length-15):''):'')));
     autoSave();rSources();rC();
   }catch(ex){alert('Errore lettura Visual: '+ex.message);}};reader.readAsArrayBuffer(f);
+}
+
+// === IMPORT AGGIUNTE DA EXCEL (v9.120) =====================================
+// File con una riga per dipendente e una colonna per voce (intestazioni = etichette del tab Aggiunte:
+// «BDG (Lordo)», «BDG (Netto)», «Digital», «SY», «Privilege», «SAS», «DCC», «CS», «Articoli», «QTY Dept»).
+// Colonna matricola obbligatoria; «Valuta» facoltativa (se presente deve coincidere con quella del
+// dipendente, altrimenti la riga è scartata). Gli importi sono in VALUTA LOCALE, come nel tab.
+// Gli importi SI SOMMANO a quelli già presenti (come per l'inserimento manuale non risentono di regole,
+// policy o malattia). Foglio letto: «Aggiunte» se esiste, altrimenti il primo.
+var AGG_HDR_ALIASES={
+  rb:["bdg lordo","bdg"],rbn:["bdg netto"],rd:["digital"],rs:["sy","shopper yield"],rp:["privilege"],
+  rsa:["sas"],rdc:["dcc"],rcs:["cs","customer service"],ra:["articoli","venduto"],pq:["qty dept","qty"]
+};
+function _aggNormHdr(s){return String(s==null?"":s).toLowerCase().replace(/[^a-z0-9]+/g," ").trim();}
+// Parsing puro (testabile): rows = array di righe (array di celle). Ritorna {cols,items,problems}.
+//  items: [{row,raw,m,vals:{k:importo>0},cu}] — m già risolto sull'anagrafica quando possibile.
+function aggParseRows(rows){
+  var out={cols:null,items:[],problems:[]};
+  var hr=-1,ri,ci;
+  for(ri=0;ri<Math.min(10,rows.length);ri++){
+    var hs=(rows[ri]||[]).map(_aggNormHdr);
+    if(hs.some(function(h){return h.indexOf("matr")===0||h==="id empl"||h==="id employee";})){hr=ri;break;}
+  }
+  if(hr<0){out.problems.push("Intestazione non trovata: serve una colonna «Matricola».");return out;}
+  var hdr=(rows[hr]||[]).map(_aggNormHdr),cols={m:-1,cu:-1,k:{}};
+  for(ci=0;ci<hdr.length;ci++){
+    if(cols.m<0&&(hdr[ci].indexOf("matr")===0||hdr[ci]==="id empl"||hdr[ci]==="id employee"))cols.m=ci;
+    if(cols.cu<0&&(hdr[ci]==="valuta"||hdr[ci]==="currency"||hdr[ci]==="cu"))cols.cu=ci;
+  }
+  // priorità: alias esatti nell'ordine indicato
+  AGG_KEYS.forEach(function(ak){
+    var al=AGG_HDR_ALIASES[ak.k]||[_aggNormHdr(ak.l)];
+    for(var a=0;a<al.length;a++){var ix=hdr.indexOf(al[a]);if(ix>=0&&ix!==cols.m){cols.k[ak.k]=ix;return;}}
+  });
+  if(!Object.keys(cols.k).length){out.problems.push("Nessuna colonna importo riconosciuta (attese: "+AGG_KEYS.map(function(a){return a.l;}).join(", ")+").");return out;}
+  out.cols=cols;
+  for(ri=hr+1;ri<rows.length;ri++){
+    var row=rows[ri];if(!row)continue;
+    var raw=String(row[cols.m]==null?"":row[cols.m]).trim();if(!raw)continue;
+    var vals={},any=false,neg=[];
+    Object.keys(cols.k).forEach(function(k){
+      var cell=row[cols.k[k]];if(cell==null||cell==="")return;
+      var v=parseNum(cell);if(isNaN(v)||v===0)return;
+      if(v<0){neg.push(k+" "+v);return;}
+      vals[k]=Math.round(v*100)/100;any=true;
+    });
+    if(neg.length)out.problems.push("riga "+(ri+1)+" · matr. "+raw+": importo negativo scartato ("+neg.join(", ")+")");
+    if(!any)continue;
+    out.items.push({row:ri+1,raw:raw,m:matrItResolve(raw),vals:vals,cu:cols.cu>=0?String(row[cols.cu]||"").trim().toUpperCase():""});
+  }
+  return out;
+}
+// Applica gli items agli AGG sommando. Ritorna {n,tot:{valuta:importo},skipped:[...]}.
+function aggApplyItems(items){
+  var byM={};E.forEach(function(e){byM[String(e.m)]=e;});
+  var res={n:0,tot:{},skipped:[]};
+  items.forEach(function(it){
+    var e=byM[it.m];
+    if(!e){res.skipped.push("riga "+it.row+" · matr. "+it.raw+": non presente in anagrafica");return;}
+    var cu=e.cu||"EUR";
+    if(it.cu&&it.cu!==cu){res.skipped.push("riga "+it.row+" · "+e.c+" "+e.n+" ("+it.raw+"): valuta file "+it.cu+" ≠ valuta dipendente "+cu);return;}
+    if(!AGG[e.m])AGG[e.m]={};
+    var t=0;
+    Object.keys(it.vals).forEach(function(k){AGG[e.m][k]=Math.round(((AGG[e.m][k]||0)+it.vals[k])*100)/100;t+=it.vals[k];});
+    res.n++;res.tot[cu]=Math.round(((res.tot[cu]||0)+t)*100)/100;
+  });
+  return res;
+}
+function loadAggiunteExcel(input){
+  var f=input.files[0];if(!f)return;input.value="";
+  var reader=new FileReader();reader.onload=function(ev){try{
+    var wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array"});
+    var sn=wb.SheetNames.filter(function(n){return _aggNormHdr(n)==="aggiunte";})[0]||wb.SheetNames[0];
+    var rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:null,raw:true});
+    var p=aggParseRows(rows);
+    if(!p.items.length){alert("Import aggiunte: nessuna riga con importi.\n\n"+(p.problems.length?p.problems.join("\n"):"Controlla che il foglio abbia matricola e almeno una colonna importo."));return;}
+    var prev=IMPORT_STAMPS.aggiunte;
+    if(prev&&prev.file===f.name&&!confirm("Il file «"+f.name+"» risulta già importato in questa sessione.\n\nLe aggiunte si SOMMANO: importarlo di nuovo le raddoppia.\n\nContinuare lo stesso?"))return;
+    var byM={};E.forEach(function(e){byM[String(e.m)]=1;});
+    var known=p.items.filter(function(it){return byM[it.m];}).length;
+    var already=p.items.filter(function(it){return byM[it.m]&&AGG[it.m]&&aggTotal(it.m)>0;}).length;
+    if(!confirm("Importare le aggiunte da «"+f.name+"» (foglio «"+sn+"»)?\n\n"+known+" dipendenti riconosciuti su "+p.items.length+" righe con importi."+
+      (already?"\n"+already+" hanno già aggiunte: gli importi si SOMMANO.":"")+"\n\nMese configurato: "+_monthLbl(CFG_MONTH,CFG_YEAR)+"."))return;
+    var r=aggApplyItems(p.items);
+    // timbro senza controllo sul mese nel nome file (il file porta il mese di riferimento delle differenze, non quello di pagamento)
+    IMPORT_STAMPS.aggiunte={label:"Aggiunte",file:f.name,m:CFG_MONTH,y:CFG_YEAR,fm:0,ts:new Date().toISOString()};
+    var tot=Object.keys(r.tot).map(function(c){return c+" "+r.tot[c].toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2});}).join(" · ");
+    var warn=p.problems.concat(r.skipped);
+    rAgg();if(typeof rC==="function")rC();if(typeof rA==="function")rA();autoSave();
+    alert("Aggiunte importate: "+r.n+" dipendenti.\nTotale (valuta locale): "+tot+
+      (warn.length?"\n\n\u26a0 "+warn.length+" righe non importate o con avvisi:\n\u2022 "+warn.slice(0,15).join("\n\u2022 ")+(warn.length>15?"\n\u2026 e altre "+(warn.length-15):""):""));
+  }catch(ex){alert("Errore lettura aggiunte: "+ex.message);}};reader.readAsArrayBuffer(f);
 }

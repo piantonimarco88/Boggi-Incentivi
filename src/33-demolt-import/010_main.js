@@ -15,6 +15,17 @@ function demoltAppliesStore(e){
   if(!demoltActive()||!e||!e.j||e.j.indexOf("SM")<0)return false;
   return !(typeof isUSA==="function"&&isUSA(e.si,e));
 }
+// Allineamento fasce FC (da novembre 2026): le fasce «% DCC eseguiti» (completamento, asse orizzontale
+// della matrice FC) diventano quelle del «% DCC eseguiti» del negozio (asse verticale della matrice
+// negozio, bpA). Prima di quel mese resta la fascia salvata in DEMOLT_MATRIX_FC.bpB. Le fasce «% invio»
+// e i valori della griglia FC non cambiano. Data modificabile in Configurazione (rule_cfg.demoltFc).
+var DEMOLT_FCALIGN_YEAR=2026,DEMOLT_FCALIGN_MONTH=11;
+function demoltFcAligned(){return (CFG_YEAR>DEMOLT_FCALIGN_YEAR)||(CFG_YEAR===DEMOLT_FCALIGN_YEAR&&CFG_MONTH>=DEMOLT_FCALIGN_MONTH);}
+// Matrice FC effettivamente in uso nel mese configurato: UNICO punto di lettura (import, lettera, Configurazione).
+function demoltMatrixFc(){
+  if(!demoltFcAligned())return DEMOLT_MATRIX_FC;
+  return {bpA:DEMOLT_MATRIX_FC.bpA,bpB:DEMOLT_MATRIX_STORE.bpA.slice(),grid:DEMOLT_MATRIX_FC.grid};
+}
 function demoltBandIdx(v,bp){if(v==null)return null;return v<bp[0]?0:(v<bp[1]?1:2);}
 function demoltPct(matrix,valA,valB){var ai=demoltBandIdx(valA,matrix.bpA),bi=demoltBandIdx(valB,matrix.bpB);if(ai==null||bi==null)return null;return matrix.grid[ai][bi];}
 function demoltBandLbl(bp,k){return k===0?"<"+Math.round(bp[0]*100)+"%":(k===2?"≥"+Math.round(bp[1]*100)+"%":Math.round(bp[0]*100)+"-"+Math.round(bp[1]*100)+"%");}
@@ -122,7 +133,7 @@ function demoltProcessInventari(sh){
         if(!frw){fcNoRow.push(full);return;}
         var cm=_demoltPctVal(frw[fM]),iv=_demoltPctVal(frw[fQ]);
         if(cm==null||iv==null){fcNoVal.push(full+" (Invio "+_demoltPctStr(iv)+", Completamento "+_demoltPctStr(cm)+")");return;}
-        var pct=demoltPct(DEMOLT_MATRIX_FC,iv,cm);
+        var pct=demoltPct(demoltMatrixFc(),iv,cm);
         if(pct==null)return;
         DEMOLT_RESULT_FC[matr]={pct:pct,invio:iv,compl:cm};nFc++;
       });

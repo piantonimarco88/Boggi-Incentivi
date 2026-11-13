@@ -723,8 +723,8 @@ function fDec(v,d){d=d===undefined?2:d;return Number(v||0).toFixed(d).replace(".
 function esc(s){if(!s)return"";return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
 
 // === AGGIUNTE: manual overrides per employee, ADDED to normal calc, bypass rules/malattia ===
-// Keys match Aggiunte sheet: rb=BDG lordo, rbn=BDG netto, rd=Digital, rs=SY, rp=Privilege, rsa=SAS, rdc=DCC, rcs=CS, ra=Articoli
-var AGG={};// keyed by matricola: {rb:0,rbn:0,rd:0,rs:0,rp:0,rsa:0,rdc:0,rcs:0,ra:0}
+// Keys match Aggiunte sheet: rb=BDG lordo, rbn=BDG netto, rd=Digital, rs=SY, rp=Privilege, rsa=SAS, rdc=DCC, rcs=CS, ra=Articoli, pq=QTY Dept (v9.120)
+var AGG={};// keyed by matricola: {rb:0,rbn:0,rd:0,rs:0,rp:0,rsa:0,rdc:0,rcs:0,ra:0,pq:0}
 var MONITOR_SNAPS=[];
 // Log invii email: {m,to,period,docType(preventivo/consuntivo),prizeMode,ts,status(sent/error/prepared)}
 // status "sent"=invio automatico confermato da Outlook via C#; "prepared"=bozza aperta/eml scaricato (non conferma invio effettivo)
@@ -739,7 +739,7 @@ function getLastMailLog(matr){
   if(!matches.length)return null;
   return matches.reduce(function(a,b){return new Date(b.ts)>new Date(a.ts)?b:a;});
 }
-var AGG_KEYS=[{k:"rb",l:"BDG (Lordo)"},{k:"rbn",l:"BDG (Netto)"},{k:"rd",l:"Digital"},{k:"rs",l:"SY"},{k:"rp",l:"Privilege"},{k:"rsa",l:"SAS"},{k:"rdc",l:"DCC"},{k:"rcs",l:"CS"},{k:"ra",l:"Articoli"}];
+var AGG_KEYS=[{k:"rb",l:"BDG (Lordo)"},{k:"rbn",l:"BDG (Netto)"},{k:"rd",l:"Digital"},{k:"rs",l:"SY"},{k:"rp",l:"Privilege"},{k:"rsa",l:"SAS"},{k:"rdc",l:"DCC"},{k:"rcs",l:"CS"},{k:"ra",l:"Articoli"},{k:"pq",l:"QTY Dept"}];
 
 function getAgg(m){return AGG[m]||null}
 function aggTotal(m){var a=AGG[m];if(!a)return 0;var t=0;AGG_KEYS.forEach(function(ak){t+=(a[ak.k]||0)});return t}
@@ -1031,6 +1031,17 @@ function demoltAppliesStore(e){
   if(!demoltActive()||!e||!e.j||e.j.indexOf("SM")<0)return false;
   return !(typeof isUSA==="function"&&isUSA(e.si,e));
 }
+// Allineamento fasce FC (da novembre 2026): le fasce «% DCC eseguiti» (completamento, asse orizzontale
+// della matrice FC) diventano quelle del «% DCC eseguiti» del negozio (asse verticale della matrice
+// negozio, bpA). Prima di quel mese resta la fascia salvata in DEMOLT_MATRIX_FC.bpB. Le fasce «% invio»
+// e i valori della griglia FC non cambiano. Data modificabile in Configurazione (rule_cfg.demoltFc).
+var DEMOLT_FCALIGN_YEAR=2026,DEMOLT_FCALIGN_MONTH=11;
+function demoltFcAligned(){return (CFG_YEAR>DEMOLT_FCALIGN_YEAR)||(CFG_YEAR===DEMOLT_FCALIGN_YEAR&&CFG_MONTH>=DEMOLT_FCALIGN_MONTH);}
+// Matrice FC effettivamente in uso nel mese configurato: UNICO punto di lettura (import, lettera, Configurazione).
+function demoltMatrixFc(){
+  if(!demoltFcAligned())return DEMOLT_MATRIX_FC;
+  return {bpA:DEMOLT_MATRIX_FC.bpA,bpB:DEMOLT_MATRIX_STORE.bpA.slice(),grid:DEMOLT_MATRIX_FC.grid};
+}
 function demoltBandIdx(v,bp){if(v==null)return null;return v<bp[0]?0:(v<bp[1]?1:2);}
 function demoltPct(matrix,valA,valB){var ai=demoltBandIdx(valA,matrix.bpA),bi=demoltBandIdx(valB,matrix.bpB);if(ai==null||bi==null)return null;return matrix.grid[ai][bi];}
 function demoltBandLbl(bp,k){return k===0?"<"+Math.round(bp[0]*100)+"%":(k===2?"≥"+Math.round(bp[1]*100)+"%":Math.round(bp[0]*100)+"-"+Math.round(bp[1]*100)+"%");}
@@ -1138,7 +1149,7 @@ function demoltProcessInventari(sh){
         if(!frw){fcNoRow.push(full);return;}
         var cm=_demoltPctVal(frw[fM]),iv=_demoltPctVal(frw[fQ]);
         if(cm==null||iv==null){fcNoVal.push(full+" (Invio "+_demoltPctStr(iv)+", Completamento "+_demoltPctStr(cm)+")");return;}
-        var pct=demoltPct(DEMOLT_MATRIX_FC,iv,cm);
+        var pct=demoltPct(demoltMatrixFc(),iv,cm);
         if(pct==null)return;
         DEMOLT_RESULT_FC[matr]={pct:pct,invio:iv,compl:cm};nFc++;
       });
@@ -1456,12 +1467,13 @@ function paramsMigrate(p){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.119'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.120'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.120: Coefficiente Inventari FC — da novembre 2026 le fasce «% DCC eseguiti» (completamento) dei Field Coach sono le stesse del negozio (70% / 90%); fasce % invio e griglia invariate e ottobre invariato (la data si modifica in Configurazione, Date di attivazione regole). Aggiunte — nuovo pulsante «Importa aggiunte (Excel)» (una riga per dipendente, importi in valuta locale, si sommano a quelli presenti) e nuova voce «QTY Dept»",
   "9.119: Report import anagrafica Italia (seasonal) — nuovo riquadro «Brian & Barry / Double B» con conteggio, negozi ed elenco dei dipendenti importati in quegli store (l'anteprima mostra solo i primi 20)",
   "9.118: Seasonal FW26 Italia — anche gli store Double B (6000-6999, intervallo modificabile in Configurazione) usano i KPI dedicati SY, Subscription e UPT con la stessa tabella pesi dei Brian & Barry; l'import anagrafica e l'inserimento manuale li ammettono (prima venivano scartati come store > 4999)",
   "9.117: Seasonal — nei «Controlli sui dati caricati» (e nella barra a passi, passo Verifica) un avviso elenca i negozi che usano ancora i target seasonal incorporati nell'app (stagione precedente) perché il file dei target importato non li conteneva. Solo avviso: il calcolo non cambia",
@@ -1781,13 +1793,14 @@ function _applyEnteCu(t){
 
 // Date di attivazione delle regole (Configurazione): [anno, mese] per SAS nuova policy,
 // USA nuova logica e Coefficiente Inventari. Valori validi: anno 2020-2100, mese 1-12.
-function _ruleCfgGet(){return {sas:[SAS_NEW_START_YEAR,SAS_NEW_START_MONTH],usa:[USA_NEW_START_YEAR,USA_NEW_START_MONTH],demolt:[DEMOLT_CUTOFF_YEAR,DEMOLT_CUTOFF_MONTH]};}
+function _ruleCfgGet(){return {sas:[SAS_NEW_START_YEAR,SAS_NEW_START_MONTH],usa:[USA_NEW_START_YEAR,USA_NEW_START_MONTH],demolt:[DEMOLT_CUTOFF_YEAR,DEMOLT_CUTOFF_MONTH],demoltFc:[DEMOLT_FCALIGN_YEAR,DEMOLT_FCALIGN_MONTH]};}
 function _applyRuleCfg(r){
   if(!r||typeof r!=="object")return;
   var ok=function(a){return Array.isArray(a)&&a[0]>=2020&&a[0]<=2100&&a[1]>=1&&a[1]<=12&&a[0]%1===0&&a[1]%1===0;};
   if(ok(r.sas)){SAS_NEW_START_YEAR=r.sas[0];SAS_NEW_START_MONTH=r.sas[1];}
   if(ok(r.usa)){USA_NEW_START_YEAR=r.usa[0];USA_NEW_START_MONTH=r.usa[1];}
   if(ok(r.demolt)){DEMOLT_CUTOFF_YEAR=r.demolt[0];DEMOLT_CUTOFF_MONTH=r.demolt[1];}
+  if(ok(r.demoltFc)){DEMOLT_FCALIGN_YEAR=r.demoltFc[0];DEMOLT_FCALIGN_MONTH=r.demoltFc[1];}
 }
 var _origRC=null; // impostato quando tutti gli <script> sono caricati (le variabili stanno in moduli diversi)
 _afterScripts(function(){_origRC=JSON.stringify(_ruleCfgGet());});
@@ -3003,7 +3016,7 @@ function exportExcel(){
     var at=aggTotal(e.m);
     // Add aggiunte per-KPI
     var ag=AGG[e.m]||{};
-    rb+=(ag.rb||0);rbn+=(ag.rbn||0);rd+=(ag.rd||0);rs+=(ag.rs||0);rp+=(ag.rp||0);rsa+=(ag.rsa||0);rdc+=(ag.rdc||0);rcs+=(ag.rcs||0);ra+=(ag.ra||0);
+    rb+=(ag.rb||0);rbn+=(ag.rbn||0);rd+=(ag.rd||0);rs+=(ag.rs||0);rp+=(ag.rp||0);rsa+=(ag.rsa||0);rdc+=(ag.rdc||0);rcs+=(ag.rcs||0);ra+=(ag.ra||0);pq+=(ag.pq||0);
     var totLordo=rb+rbn+rd+rs+rp+rsa+rdc+rcs+ra+vi+pq+wg;
     var totLC=totLordo;var totEUR=totLC*ex;
     // ── Massimali: ogni KPI calcolato in preventivo (target=100%, sm=1) ─────
@@ -4055,7 +4068,7 @@ function demoltPct2(v){return (Math.floor((v||0)*10000+1e-6)/100).toFixed(2).rep
 function demoltLetterBlock(lang,dr,isP,cu,isArea){
   if(typeof demoltActive!=='function'||!demoltActive())return '';
   var T=_DEMOLT_LT[lang]||_DEMOLT_LT.INGLESE;
-  var matrix=isArea?DEMOLT_MATRIX_FC:DEMOLT_MATRIX_STORE;
+  var matrix=isArea?demoltMatrixFc():DEMOLT_MATRIX_STORE;
   var bpA=matrix.bpA,bpB=matrix.bpB;
   var hasData=!isP&&dr&&dr.pct!=null; // import inventari disponibile solo in consuntivo
   var valA=hasData?(isArea?dr.invio:dr.compl):null,valB=hasData?(isArea?dr.compl:dr.acc):null;
@@ -5627,7 +5640,7 @@ function rAgg(){
   var _focusCF=_fEl?_fEl.getAttribute("data-aggcf"):null;
 
   var h='<div style="font-size:12px;color:#6b6560;margin-bottom:14px"><b>Aggiunte manuali</b> \u2014 Importi inseriti qui si <b>sommano</b> ai premi calcolati e <b>non risentono</b> di regole, policy o malattia.</div>';
-  h+='<div class="flt" style="margin-bottom:12px"><input placeholder="Cerca matricola, nome, negozio..." id="aggQ" value="'+esc(aggFilter)+'" style="padding:8px 12px;border-radius:6px;border:1px solid #d5d0c8;font-size:12px;flex:1;min-width:200px"></div>';
+  h+='<div class="flt" style="margin-bottom:12px"><input placeholder="Cerca matricola, nome, negozio..." id="aggQ" value="'+esc(aggFilter)+'" style="padding:8px 12px;border-radius:6px;border:1px solid #d5d0c8;font-size:12px;flex:1;min-width:200px"><label class="exp-btn btn-amber" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;white-space:nowrap" title="Importa da Excel: una riga per dipendente (Matricola + colonne BDG (Lordo), BDG (Netto), Digital, SY, Privilege, SAS, DCC, CS, Articoli, QTY Dept). Gli importi si sommano a quelli presenti.">&#128194; Importa aggiunte (Excel)<input type="file" accept=".xlsx,.xlsm,.xls" onchange="loadAggiunteExcel(this)" style="display:none"></label></div>';
 
   // Sort per store ID poi matricola
   var sorted=E.slice();
@@ -5692,7 +5705,7 @@ function rAgg(){
 
   if(sorted.length>500)h+='<tr><td colspan="'+_nCols+'" style="padding:8px;text-align:center;color:#a09a92;font-size:11px">Mostrando 500 su '+sorted.length+'. Usa la ricerca per filtrare.</td></tr>';
   h+='</tbody></table></div>';
-  h+='<div class="wb" style="margin-top:16px"><div style="font-size:11px;font-weight:700;color:#856404;margin-bottom:4px">\u2139 Come funzionano le Aggiunte</div><div style="font-size:11px;color:#856404;line-height:1.5">I valori inseriti qui vengono <b>sommati</b> ai premi calcolati normalmente. Non sono soggetti a regole di policy, soglie di fatturato, n\u00e9 al moltiplicatore malattia. Compaiono nella lettera come sezione separata "Aggiunte / Manual Adjustments". Le aggiunte vengono salvate nel file di configurazione JSON.</div></div>';
+  h+='<div class="wb" style="margin-top:16px"><div style="font-size:11px;font-weight:700;color:#856404;margin-bottom:4px">\u2139 Come funzionano le Aggiunte</div><div style="font-size:11px;color:#856404;line-height:1.5">I valori inseriti qui vengono <b>sommati</b> ai premi calcolati normalmente. Non sono soggetti a regole di policy, soglie di fatturato, n\u00e9 al moltiplicatore malattia. Compaiono nella lettera come sezione separata "Aggiunte / Manual Adjustments". Le aggiunte vengono salvate nella sessione. Con «Importa aggiunte (Excel)» si caricano in blocco da un file con una riga per dipendente (colonna Matricola, Valuta facoltativa e una colonna per voce: BDG (Lordo), BDG (Netto), Digital, SY, Privilege, SAS, DCC, CS, Articoli, QTY Dept): gli importi si <b>sommano</b> a quelli già presenti.</div></div>';
 
   document.getElementById("p5").innerHTML=h;
 
@@ -5813,6 +5826,98 @@ function loadVisualExcel(input){
     autoSave();rSources();rC();
   }catch(ex){alert('Errore lettura Visual: '+ex.message);}};reader.readAsArrayBuffer(f);
 }
+
+// === IMPORT AGGIUNTE DA EXCEL (v9.120) =====================================
+// File con una riga per dipendente e una colonna per voce (intestazioni = etichette del tab Aggiunte:
+// «BDG (Lordo)», «BDG (Netto)», «Digital», «SY», «Privilege», «SAS», «DCC», «CS», «Articoli», «QTY Dept»).
+// Colonna matricola obbligatoria; «Valuta» facoltativa (se presente deve coincidere con quella del
+// dipendente, altrimenti la riga è scartata). Gli importi sono in VALUTA LOCALE, come nel tab.
+// Gli importi SI SOMMANO a quelli già presenti (come per l'inserimento manuale non risentono di regole,
+// policy o malattia). Foglio letto: «Aggiunte» se esiste, altrimenti il primo.
+var AGG_HDR_ALIASES={
+  rb:["bdg lordo","bdg"],rbn:["bdg netto"],rd:["digital"],rs:["sy","shopper yield"],rp:["privilege"],
+  rsa:["sas"],rdc:["dcc"],rcs:["cs","customer service"],ra:["articoli","venduto"],pq:["qty dept","qty"]
+};
+function _aggNormHdr(s){return String(s==null?"":s).toLowerCase().replace(/[^a-z0-9]+/g," ").trim();}
+// Parsing puro (testabile): rows = array di righe (array di celle). Ritorna {cols,items,problems}.
+//  items: [{row,raw,m,vals:{k:importo>0},cu}] — m già risolto sull'anagrafica quando possibile.
+function aggParseRows(rows){
+  var out={cols:null,items:[],problems:[]};
+  var hr=-1,ri,ci;
+  for(ri=0;ri<Math.min(10,rows.length);ri++){
+    var hs=(rows[ri]||[]).map(_aggNormHdr);
+    if(hs.some(function(h){return h.indexOf("matr")===0||h==="id empl"||h==="id employee";})){hr=ri;break;}
+  }
+  if(hr<0){out.problems.push("Intestazione non trovata: serve una colonna «Matricola».");return out;}
+  var hdr=(rows[hr]||[]).map(_aggNormHdr),cols={m:-1,cu:-1,k:{}};
+  for(ci=0;ci<hdr.length;ci++){
+    if(cols.m<0&&(hdr[ci].indexOf("matr")===0||hdr[ci]==="id empl"||hdr[ci]==="id employee"))cols.m=ci;
+    if(cols.cu<0&&(hdr[ci]==="valuta"||hdr[ci]==="currency"||hdr[ci]==="cu"))cols.cu=ci;
+  }
+  // priorità: alias esatti nell'ordine indicato
+  AGG_KEYS.forEach(function(ak){
+    var al=AGG_HDR_ALIASES[ak.k]||[_aggNormHdr(ak.l)];
+    for(var a=0;a<al.length;a++){var ix=hdr.indexOf(al[a]);if(ix>=0&&ix!==cols.m){cols.k[ak.k]=ix;return;}}
+  });
+  if(!Object.keys(cols.k).length){out.problems.push("Nessuna colonna importo riconosciuta (attese: "+AGG_KEYS.map(function(a){return a.l;}).join(", ")+").");return out;}
+  out.cols=cols;
+  for(ri=hr+1;ri<rows.length;ri++){
+    var row=rows[ri];if(!row)continue;
+    var raw=String(row[cols.m]==null?"":row[cols.m]).trim();if(!raw)continue;
+    var vals={},any=false,neg=[];
+    Object.keys(cols.k).forEach(function(k){
+      var cell=row[cols.k[k]];if(cell==null||cell==="")return;
+      var v=parseNum(cell);if(isNaN(v)||v===0)return;
+      if(v<0){neg.push(k+" "+v);return;}
+      vals[k]=Math.round(v*100)/100;any=true;
+    });
+    if(neg.length)out.problems.push("riga "+(ri+1)+" · matr. "+raw+": importo negativo scartato ("+neg.join(", ")+")");
+    if(!any)continue;
+    out.items.push({row:ri+1,raw:raw,m:matrItResolve(raw),vals:vals,cu:cols.cu>=0?String(row[cols.cu]||"").trim().toUpperCase():""});
+  }
+  return out;
+}
+// Applica gli items agli AGG sommando. Ritorna {n,tot:{valuta:importo},skipped:[...]}.
+function aggApplyItems(items){
+  var byM={};E.forEach(function(e){byM[String(e.m)]=e;});
+  var res={n:0,tot:{},skipped:[]};
+  items.forEach(function(it){
+    var e=byM[it.m];
+    if(!e){res.skipped.push("riga "+it.row+" · matr. "+it.raw+": non presente in anagrafica");return;}
+    var cu=e.cu||"EUR";
+    if(it.cu&&it.cu!==cu){res.skipped.push("riga "+it.row+" · "+e.c+" "+e.n+" ("+it.raw+"): valuta file "+it.cu+" ≠ valuta dipendente "+cu);return;}
+    if(!AGG[e.m])AGG[e.m]={};
+    var t=0;
+    Object.keys(it.vals).forEach(function(k){AGG[e.m][k]=Math.round(((AGG[e.m][k]||0)+it.vals[k])*100)/100;t+=it.vals[k];});
+    res.n++;res.tot[cu]=Math.round(((res.tot[cu]||0)+t)*100)/100;
+  });
+  return res;
+}
+function loadAggiunteExcel(input){
+  var f=input.files[0];if(!f)return;input.value="";
+  var reader=new FileReader();reader.onload=function(ev){try{
+    var wb=XLSX.read(new Uint8Array(ev.target.result),{type:"array"});
+    var sn=wb.SheetNames.filter(function(n){return _aggNormHdr(n)==="aggiunte";})[0]||wb.SheetNames[0];
+    var rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:null,raw:true});
+    var p=aggParseRows(rows);
+    if(!p.items.length){alert("Import aggiunte: nessuna riga con importi.\n\n"+(p.problems.length?p.problems.join("\n"):"Controlla che il foglio abbia matricola e almeno una colonna importo."));return;}
+    var prev=IMPORT_STAMPS.aggiunte;
+    if(prev&&prev.file===f.name&&!confirm("Il file «"+f.name+"» risulta già importato in questa sessione.\n\nLe aggiunte si SOMMANO: importarlo di nuovo le raddoppia.\n\nContinuare lo stesso?"))return;
+    var byM={};E.forEach(function(e){byM[String(e.m)]=1;});
+    var known=p.items.filter(function(it){return byM[it.m];}).length;
+    var already=p.items.filter(function(it){return byM[it.m]&&AGG[it.m]&&aggTotal(it.m)>0;}).length;
+    if(!confirm("Importare le aggiunte da «"+f.name+"» (foglio «"+sn+"»)?\n\n"+known+" dipendenti riconosciuti su "+p.items.length+" righe con importi."+
+      (already?"\n"+already+" hanno già aggiunte: gli importi si SOMMANO.":"")+"\n\nMese configurato: "+_monthLbl(CFG_MONTH,CFG_YEAR)+"."))return;
+    var r=aggApplyItems(p.items);
+    // timbro senza controllo sul mese nel nome file (il file porta il mese di riferimento delle differenze, non quello di pagamento)
+    IMPORT_STAMPS.aggiunte={label:"Aggiunte",file:f.name,m:CFG_MONTH,y:CFG_YEAR,fm:0,ts:new Date().toISOString()};
+    var tot=Object.keys(r.tot).map(function(c){return c+" "+r.tot[c].toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2});}).join(" · ");
+    var warn=p.problems.concat(r.skipped);
+    rAgg();if(typeof rC==="function")rC();if(typeof rA==="function")rA();autoSave();
+    alert("Aggiunte importate: "+r.n+" dipendenti.\nTotale (valuta locale): "+tot+
+      (warn.length?"\n\n\u26a0 "+warn.length+" righe non importate o con avvisi:\n\u2022 "+warn.slice(0,15).join("\n\u2022 ")+(warn.length>15?"\n\u2026 e altre "+(warn.length-15):""):""));
+  }catch(ex){alert("Errore lettura aggiunte: "+ex.message);}};reader.readAsArrayBuffer(f);
+}
 // ==== TAB 3: CONFIGURAZIONE ====
 function rT(){try{
   // FC+VM mode: show only FCVM parameters + Periodo/Output
@@ -5873,7 +5978,11 @@ function rT(){try{
     h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">&#128203; Coefficiente Inventari &mdash; Area (FC)</div>';
     if(!demoltActive())h+='<div style="font-size:10px;color:#a07d2c;background:#fff8ee;border:1px solid #f0e2c4;border-radius:5px;padding:6px 10px;margin-bottom:8px">Attivo da '+MONTH_NAMES.IT[DEMOLT_CUTOFF_MONTH]+' '+DEMOLT_CUTOFF_YEAR+' &mdash; i valori qui sotto si possono già impostare in anticipo.</div>';
     h+='<div style="font-size:10px;color:#8a8680;margin-bottom:8px">Riduce il premio d\'area in base a % Invio («% DCC Sent corretta») e % Completamento («% DCC Executed») lette dalla scheda Matrice FC del file &mdash; si applica solo al ruolo <b>Field Coach</b>, mai ai Visual Merchandiser.</div>';
-    var _dab=DEMOLT_MATRIX_FC.bpA,_dbb=DEMOLT_MATRIX_FC.bpB;
+    // Fasce effettive del mese configurato: da novembre 2026 il % completamento (DCC eseguiti) FC usa le fasce del negozio
+    var _dFcMx=demoltMatrixFc(),_dFcAl=demoltFcAligned();
+    var _dab=_dFcMx.bpA,_dbb=_dFcMx.bpB;
+    if(_dFcAl)h+='<div style="font-size:10px;color:#4a7c59;background:#f1f8f3;border:1px solid #cfe3d5;border-radius:5px;padding:6px 10px;margin-bottom:8px">Dal '+MONTH_NAMES.IT[DEMOLT_FCALIGN_MONTH]+' '+DEMOLT_FCALIGN_YEAR+' le fasce <b>% completamento (DCC eseguiti)</b> dei FC sono <b>allineate a quelle del negozio</b> ('+demoltBandLbl(_dbb,0)+' / '+demoltBandLbl(_dbb,1)+' / '+demoltBandLbl(_dbb,2)+'): si modificano nella matrice Negozio, asse «% completamento». Le fasce % invio e i valori della griglia restano quelli qui sotto.</div>';
+    else h+='<div style="font-size:10px;color:#a07d2c;background:#fff8ee;border:1px solid #f0e2c4;border-radius:5px;padding:6px 10px;margin-bottom:8px">Dal '+MONTH_NAMES.IT[DEMOLT_FCALIGN_MONTH]+' '+DEMOLT_FCALIGN_YEAR+' le fasce <b>% completamento (DCC eseguiti)</b> dei FC saranno allineate a quelle del negozio; fino ad allora valgono le soglie sotto.</div>';
     h+='<div style="font-size:10px;font-weight:700;color:#6b6560;text-align:center;margin:6px 0 2px">% COMPLETAMENTO (asse orizzontale) →</div>';
     h+='<table style="width:100%;border-collapse:collapse;table-layout:fixed;margin:0 0 8px"><thead><tr><th style="width:130px;font-size:9px;font-weight:700;color:#6b6560;padding:3px 8px;text-align:right;white-space:nowrap;vertical-align:bottom">% INVIO<br>(asse verticale) ↓</th>';
     for(var _dc=0;_dc<3;_dc++)h+='<th style="font-size:9px;font-weight:700;color:#8a8680;padding:3px 8px;text-align:center">'+demoltBandLbl(_dbb,_dc)+'</th>';
@@ -5888,7 +5997,7 @@ function rT(){try{
     for(var _di=0;_di<2;_di++)h+='<input class="cfg-input dem-fc-bandA" type="number" data-i="'+_di+'" value="'+Math.round(_dab[_di]*100)+'" step="1" min="0" max="100" style="width:56px;text-align:center">';
     h+='</div>';
     h+='<div style="font-size:10px;color:#8a8680;margin:2px 0">Soglie fasce <b>completamento</b> (%, bassa→alta)</div><div style="display:flex;gap:6px;margin-bottom:8px">';
-    for(var _di2=0;_di2<2;_di2++)h+='<input class="cfg-input dem-fc-bandB" type="number" data-i="'+_di2+'" value="'+Math.round(_dbb[_di2]*100)+'" step="1" min="0" max="100" style="width:56px;text-align:center">';
+    for(var _di2=0;_di2<2;_di2++)h+='<input class="cfg-input dem-fc-bandB" type="number" data-i="'+_di2+'" value="'+Math.round(_dbb[_di2]*100)+'" step="1" min="0" max="100" style="width:56px;text-align:center'+(_dFcAl?';background:#f1efe9;color:#8a8680':'')+'"'+(_dFcAl?' disabled title="Allineata alla fascia del negozio"':'')+'>';
     h+='</div></div>';
     // Malattia FC+VM
     h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">&#129298; Malattia &mdash; FC + VM (Consuntivo)</div>';
@@ -7383,6 +7492,7 @@ function cfgRulesSectionHtml(){
   h+=row("SAS nuova policy","SAS \u2192 fatturato (mensile e FC+VM); SAS individuale ritirato",sel("sas",r.sas[0],r.sas[1]));
   h+=row("USA nuova logica","Vendite personali \u00d7 rate/bonus target + trimestrale",sel("usa",r.usa[0],r.usa[1]));
   h+=row("Coefficiente Inventari","Riduzione premio SM/VSM e FC in base agli inventari",sel("demolt",r.demolt[0],r.demolt[1]));
+  h+=row("Fasce DCC eseguiti FC = negozio","Le fasce % completamento dei FC diventano quelle del negozio",sel("demoltFc",r.demoltFc[0],r.demoltFc[1]));
   h+='</div>';
   h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">\ud83c\udfc6 Seasonal \u2014 coefficienti</div>';
   h+=row("Quota mid-season","Parte del premio di stagione pagata a met\u00e0 stagione",'<input class="cfg-input" style="width:75px" type="number" step="1" min="0" max="100" data-seas-coef="midPct" data-pct="1" value="'+Math.round(seasMidPct()*1000)/10+'"> %');
@@ -7398,7 +7508,7 @@ function cfgRulesBind(){
     if(JSON.stringify(_ruleCfgGet())===before){alert("Data non valida (anno 2020-2100).");}
     markDirty();autoSave();rC();rA();rT();
   }
-  ["sas","usa","demolt"].forEach(function(id){
+  ["sas","usa","demolt","demoltFc"].forEach(function(id){
     var m=document.querySelector('[data-rule-m="'+id+'"]'),y=document.querySelector('[data-rule-y="'+id+'"]');
     if(m)m.onchange=function(){upd(id);};if(y)y.onchange=function(){upd(id);};
   });
@@ -13802,7 +13912,7 @@ function _buildMensileSnap(){
       vi+=(ag.vi||0);rd+=(ag.rd||0);rp+=(ag.rp||0);rs+=(ag.rs||0);
       ra+=(ag.ra||0);rsa+=(ag.rsa||0);rdc+=(ag.rdc||0);
       // ag.rb (BDG lordo) + ag.rbn (BDG netto/trasferta) → entrambi importi premio, vanno in rb_eur
-      rb+=(ag.rb||0)+(ag.rbn||0);rcs+=(ag.rcs||0);
+      rb+=(ag.rb||0)+(ag.rbn||0);rcs+=(ag.rcs||0);pq+=(ag.pq||0);
     }
     MODE="preventivo";
     var mass=Math.round(calcE(e)*ex*100)/100;

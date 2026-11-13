@@ -211,7 +211,7 @@ function demoltPct2(v){return (Math.floor((v||0)*10000+1e-6)/100).toFixed(2).rep
 function demoltLetterBlock(lang,dr,isP,cu,isArea){
   if(typeof demoltActive!=='function'||!demoltActive())return '';
   var T=_DEMOLT_LT[lang]||_DEMOLT_LT.INGLESE;
-  var matrix=isArea?DEMOLT_MATRIX_FC:DEMOLT_MATRIX_STORE;
+  var matrix=isArea?demoltMatrixFc():DEMOLT_MATRIX_STORE;
   var bpA=matrix.bpA,bpB=matrix.bpB;
   var hasData=!isP&&dr&&dr.pct!=null; // import inventari disponibile solo in consuntivo
   var valA=hasData?(isArea?dr.invio:dr.compl):null,valB=hasData?(isArea?dr.compl:dr.acc):null;

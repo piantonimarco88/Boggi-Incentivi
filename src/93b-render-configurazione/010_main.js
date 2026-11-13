@@ -57,7 +57,11 @@ function rT(){try{
     h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">&#128203; Coefficiente Inventari &mdash; Area (FC)</div>';
     if(!demoltActive())h+='<div style="font-size:10px;color:#a07d2c;background:#fff8ee;border:1px solid #f0e2c4;border-radius:5px;padding:6px 10px;margin-bottom:8px">Attivo da '+MONTH_NAMES.IT[DEMOLT_CUTOFF_MONTH]+' '+DEMOLT_CUTOFF_YEAR+' &mdash; i valori qui sotto si possono già impostare in anticipo.</div>';
     h+='<div style="font-size:10px;color:#8a8680;margin-bottom:8px">Riduce il premio d\'area in base a % Invio («% DCC Sent corretta») e % Completamento («% DCC Executed») lette dalla scheda Matrice FC del file &mdash; si applica solo al ruolo <b>Field Coach</b>, mai ai Visual Merchandiser.</div>';
-    var _dab=DEMOLT_MATRIX_FC.bpA,_dbb=DEMOLT_MATRIX_FC.bpB;
+    // Fasce effettive del mese configurato: da novembre 2026 il % completamento (DCC eseguiti) FC usa le fasce del negozio
+    var _dFcMx=demoltMatrixFc(),_dFcAl=demoltFcAligned();
+    var _dab=_dFcMx.bpA,_dbb=_dFcMx.bpB;
+    if(_dFcAl)h+='<div style="font-size:10px;color:#4a7c59;background:#f1f8f3;border:1px solid #cfe3d5;border-radius:5px;padding:6px 10px;margin-bottom:8px">Dal '+MONTH_NAMES.IT[DEMOLT_FCALIGN_MONTH]+' '+DEMOLT_FCALIGN_YEAR+' le fasce <b>% completamento (DCC eseguiti)</b> dei FC sono <b>allineate a quelle del negozio</b> ('+demoltBandLbl(_dbb,0)+' / '+demoltBandLbl(_dbb,1)+' / '+demoltBandLbl(_dbb,2)+'): si modificano nella matrice Negozio, asse «% completamento». Le fasce % invio e i valori della griglia restano quelli qui sotto.</div>';
+    else h+='<div style="font-size:10px;color:#a07d2c;background:#fff8ee;border:1px solid #f0e2c4;border-radius:5px;padding:6px 10px;margin-bottom:8px">Dal '+MONTH_NAMES.IT[DEMOLT_FCALIGN_MONTH]+' '+DEMOLT_FCALIGN_YEAR+' le fasce <b>% completamento (DCC eseguiti)</b> dei FC saranno allineate a quelle del negozio; fino ad allora valgono le soglie sotto.</div>';
     h+='<div style="font-size:10px;font-weight:700;color:#6b6560;text-align:center;margin:6px 0 2px">% COMPLETAMENTO (asse orizzontale) →</div>';
     h+='<table style="width:100%;border-collapse:collapse;table-layout:fixed;margin:0 0 8px"><thead><tr><th style="width:130px;font-size:9px;font-weight:700;color:#6b6560;padding:3px 8px;text-align:right;white-space:nowrap;vertical-align:bottom">% INVIO<br>(asse verticale) ↓</th>';
     for(var _dc=0;_dc<3;_dc++)h+='<th style="font-size:9px;font-weight:700;color:#8a8680;padding:3px 8px;text-align:center">'+demoltBandLbl(_dbb,_dc)+'</th>';
@@ -72,7 +76,7 @@ function rT(){try{
     for(var _di=0;_di<2;_di++)h+='<input class="cfg-input dem-fc-bandA" type="number" data-i="'+_di+'" value="'+Math.round(_dab[_di]*100)+'" step="1" min="0" max="100" style="width:56px;text-align:center">';
     h+='</div>';
     h+='<div style="font-size:10px;color:#8a8680;margin:2px 0">Soglie fasce <b>completamento</b> (%, bassa→alta)</div><div style="display:flex;gap:6px;margin-bottom:8px">';
-    for(var _di2=0;_di2<2;_di2++)h+='<input class="cfg-input dem-fc-bandB" type="number" data-i="'+_di2+'" value="'+Math.round(_dbb[_di2]*100)+'" step="1" min="0" max="100" style="width:56px;text-align:center">';
+    for(var _di2=0;_di2<2;_di2++)h+='<input class="cfg-input dem-fc-bandB" type="number" data-i="'+_di2+'" value="'+Math.round(_dbb[_di2]*100)+'" step="1" min="0" max="100" style="width:56px;text-align:center'+(_dFcAl?';background:#f1efe9;color:#8a8680':'')+'"'+(_dFcAl?' disabled title="Allineata alla fascia del negozio"':'')+'>';
     h+='</div></div>';
     // Malattia FC+VM
     h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">&#129298; Malattia &mdash; FC + VM (Consuntivo)</div>';
@@ -768,6 +772,7 @@ function cfgRulesSectionHtml(){
   h+=row("SAS nuova policy","SAS \u2192 fatturato (mensile e FC+VM); SAS individuale ritirato",sel("sas",r.sas[0],r.sas[1]));
   h+=row("USA nuova logica","Vendite personali \u00d7 rate/bonus target + trimestrale",sel("usa",r.usa[0],r.usa[1]));
   h+=row("Coefficiente Inventari","Riduzione premio SM/VSM e FC in base agli inventari",sel("demolt",r.demolt[0],r.demolt[1]));
+  h+=row("Fasce DCC eseguiti FC = negozio","Le fasce % completamento dei FC diventano quelle del negozio",sel("demoltFc",r.demoltFc[0],r.demoltFc[1]));
   h+='</div>';
   h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">\ud83c\udfc6 Seasonal \u2014 coefficienti</div>';
   h+=row("Quota mid-season","Parte del premio di stagione pagata a met\u00e0 stagione",'<input class="cfg-input" style="width:75px" type="number" step="1" min="0" max="100" data-seas-coef="midPct" data-pct="1" value="'+Math.round(seasMidPct()*1000)/10+'"> %');
@@ -783,7 +788,7 @@ function cfgRulesBind(){
     if(JSON.stringify(_ruleCfgGet())===before){alert("Data non valida (anno 2020-2100).");}
     markDirty();autoSave();rC();rA();rT();
   }
-  ["sas","usa","demolt"].forEach(function(id){
+  ["sas","usa","demolt","demoltFc"].forEach(function(id){
     var m=document.querySelector('[data-rule-m="'+id+'"]'),y=document.querySelector('[data-rule-y="'+id+'"]');
     if(m)m.onchange=function(){upd(id);};if(y)y.onchange=function(){upd(id);};
   });

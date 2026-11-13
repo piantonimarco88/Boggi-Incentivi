@@ -134,7 +134,7 @@ function exportExcel(){
     var at=aggTotal(e.m);
     // Add aggiunte per-KPI
     var ag=AGG[e.m]||{};
-    rb+=(ag.rb||0);rbn+=(ag.rbn||0);rd+=(ag.rd||0);rs+=(ag.rs||0);rp+=(ag.rp||0);rsa+=(ag.rsa||0);rdc+=(ag.rdc||0);rcs+=(ag.rcs||0);ra+=(ag.ra||0);
+    rb+=(ag.rb||0);rbn+=(ag.rbn||0);rd+=(ag.rd||0);rs+=(ag.rs||0);rp+=(ag.rp||0);rsa+=(ag.rsa||0);rdc+=(ag.rdc||0);rcs+=(ag.rcs||0);ra+=(ag.ra||0);pq+=(ag.pq||0);
     var totLordo=rb+rbn+rd+rs+rp+rsa+rdc+rcs+ra+vi+pq+wg;
     var totLC=totLordo;var totEUR=totLC*ex;
     // ── Massimali: ogni KPI calcolato in preventivo (target=100%, sm=1) ─────

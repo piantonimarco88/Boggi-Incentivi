@@ -28,13 +28,14 @@ function _applyEnteCu(t){
 
 // Date di attivazione delle regole (Configurazione): [anno, mese] per SAS nuova policy,
 // USA nuova logica e Coefficiente Inventari. Valori validi: anno 2020-2100, mese 1-12.
-function _ruleCfgGet(){return {sas:[SAS_NEW_START_YEAR,SAS_NEW_START_MONTH],usa:[USA_NEW_START_YEAR,USA_NEW_START_MONTH],demolt:[DEMOLT_CUTOFF_YEAR,DEMOLT_CUTOFF_MONTH]};}
+function _ruleCfgGet(){return {sas:[SAS_NEW_START_YEAR,SAS_NEW_START_MONTH],usa:[USA_NEW_START_YEAR,USA_NEW_START_MONTH],demolt:[DEMOLT_CUTOFF_YEAR,DEMOLT_CUTOFF_MONTH],demoltFc:[DEMOLT_FCALIGN_YEAR,DEMOLT_FCALIGN_MONTH]};}
 function _applyRuleCfg(r){
   if(!r||typeof r!=="object")return;
   var ok=function(a){return Array.isArray(a)&&a[0]>=2020&&a[0]<=2100&&a[1]>=1&&a[1]<=12&&a[0]%1===0&&a[1]%1===0;};
   if(ok(r.sas)){SAS_NEW_START_YEAR=r.sas[0];SAS_NEW_START_MONTH=r.sas[1];}
   if(ok(r.usa)){USA_NEW_START_YEAR=r.usa[0];USA_NEW_START_MONTH=r.usa[1];}
   if(ok(r.demolt)){DEMOLT_CUTOFF_YEAR=r.demolt[0];DEMOLT_CUTOFF_MONTH=r.demolt[1];}
+  if(ok(r.demoltFc)){DEMOLT_FCALIGN_YEAR=r.demoltFc[0];DEMOLT_FCALIGN_MONTH=r.demoltFc[1];}
 }
 var _origRC=null; // impostato quando tutti gli <script> sono caricati (le variabili stanno in moduli diversi)
 _afterScripts(function(){_origRC=JSON.stringify(_ruleCfgGet());});

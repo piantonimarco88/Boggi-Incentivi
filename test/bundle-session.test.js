@@ -108,15 +108,15 @@ test("cambi valuta, date di attivazione e coefficienti seasonal: salvati e ricar
   const app = loadBundle();
   app.run(SETUP);
   app.run(`ENTE_CU["211"].ex=1.2;ENTE_CU["211"].from="2026-11-01";
-    _applyRuleCfg({sas:[2026,8],usa:[2027,1],demolt:[2026,12]});
+    _applyRuleCfg({sas:[2026,8],usa:[2027,1],demolt:[2026,12],demoltFc:[2027,2]});
     SEAS_CFG.midPct=0.25;SEAS_CFG.semMonths=5;SEAS_CFG.deptQtyPct=0.4;`);
   const snap = () => JSON.parse(app.run(`JSON.stringify({cu:ENTE_CU["211"],r:_ruleCfgGet(),m:[seasMidPct(),seasSemMonths(),seasDeptQtyPct()],sas:sasNewActive()})`));
   const before = snap();
-  assert.deepStrictEqual(before.r, { sas: [2026, 8], usa: [2027, 1], demolt: [2026, 12] });
+  assert.deepStrictEqual(before.r, { sas: [2026, 8], usa: [2027, 1], demolt: [2026, 12], demoltFc: [2027, 2] });
   for (const how of ["saveSession", "saveConfig"]) {
     app.run(how + "()");
     const file = app.lastBlobText();
-    app.run(`ENTE_CU["211"]={cu:"GBP",ex:1.1692};_applyRuleCfg({sas:[2026,7],usa:[2026,9],demolt:[2026,10]});
+    app.run(`ENTE_CU["211"]={cu:"GBP",ex:1.1692};_applyRuleCfg({sas:[2026,7],usa:[2026,9],demolt:[2026,10],demoltFc:[2026,11]});
       SEAS_CFG.midPct=0.30;SEAS_CFG.semMonths=6;SEAS_CFG.deptQtyPct=0.5;`);
     app.nextFileText = file;
     app.run(how === "saveSession" ? "loadSession({files:[{}],value:''})" : "loadConfig({target:{files:[{}],value:''}})");
