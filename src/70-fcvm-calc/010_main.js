@@ -124,8 +124,10 @@ function calcFcVmPremio(matr){
         sasUsedB=_srB.used;sasResOutB=_srB.reserveOut;
       }
       var scTotBdg=sc+esubBdg+sasUsedB;
-      // Da luglio target raggiunto a >=100% (coerente con area e mensile); prima >100% (legacy)
-      var earned=isCons?((sasOn?scTotBdg>=to:scTotBdg>to)&&to>0):false;
+      // Premio raggiunto se consuntivo (+ esubero + SAS) >= soglia100 del target (99,5% di default, la stessa dell'area FC/VM,
+      // modificabile in Configurazione). Vale per i VM con premi di negozio singoli (bdg_stores) come per l'area, dalla policy SAS
+      // (luglio 2026) in poi; prima restava il vecchio criterio legacy (consuntivo > target). Confronto sulla % come in area.
+      var earned=isCons?(((sasNewActive()?(to>0&&scTotBdg/to>=FCVM_PARAMS.soglia100):scTotBdg>to))&&to>0):false;
       var prize=isCons?(earned?Math.round(b.ib*smFcvm*100)/100:0):b.ib;
       var prizeEur=Math.round(prize*exRate*100)/100;
       bdgPrize+=prize; bdgPrizeEur+=prizeEur;
