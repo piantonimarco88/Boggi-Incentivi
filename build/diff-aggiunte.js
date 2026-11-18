@@ -208,6 +208,9 @@ function main() {
     if (B) stripDeptInventari(B);
     note.push("Negozi Dept esclusi dal confronto (differenza già gestita a parte): " + rem.sort().join(", "));
   }
+  // Scenario Dept: il «prima» è il premio come fu calcolato/pagato, con il coefficiente anche ai Dept
+  // (dalla v9.123 i Dept lo ricevono solo da dicembre 2026: si forza l'attivazione per ricostruire il «prima»)
+  if (a["dept-senza-inventari"]) A.run("_applyRuleCfg({demoltDept:[2020,1]})");
   const oldI = itemsOf(A);
   let newI, scenario;
   if (a["dept-senza-inventari"]) {

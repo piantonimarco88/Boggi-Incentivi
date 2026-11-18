@@ -1027,9 +1027,17 @@ var DEMOLT_MATRIX_FC={bpA:[0.80,0.95],bpB:[0.80,0.95],grid:[[0.50,0.65,0.80],[0.
 var DEMOLT_CUTOFF_YEAR=2026,DEMOLT_CUTOFF_MONTH=10;
 function demoltActive(){return (CFG_YEAR>DEMOLT_CUTOFF_YEAR)||(CFG_YEAR===DEMOLT_CUTOFF_YEAR&&CFG_MONTH>=DEMOLT_CUTOFF_MONTH);}
 // Coefficiente Inventari negozio: solo SM/VSM, mai per i negozi/dipendenti USA (regola a parte, calcUSA).
+// Dept stores: il coefficiente vale solo da DEMOLT_DEPT_YEAR/MONTH (decisione 18/11/2026: da dicembre 2026,
+// non da novembre). Prima di quel mese i Dept stores NON ricevono nessuna riduzione, anche se il file
+// inventari contiene i loro negozi (i risultati restano salvati e si usano dalla data). Data modificabile
+// in Configurazione (rule_cfg.demoltDept). Ottobre: la riduzione già applicata si recupera con le aggiunte.
+var DEMOLT_DEPT_YEAR=2026,DEMOLT_DEPT_MONTH=12;
+function demoltDeptActive(){return (CFG_YEAR>DEMOLT_DEPT_YEAR)||(CFG_YEAR===DEMOLT_DEPT_YEAR&&CFG_MONTH>=DEMOLT_DEPT_MONTH);}
 function demoltAppliesStore(e){
   if(!demoltActive()||!e||!e.j||e.j.indexOf("SM")<0)return false;
-  return !(typeof isUSA==="function"&&isUSA(e.si,e));
+  if(typeof isUSA==="function"&&isUSA(e.si,e))return false;
+  if(typeof isD==="function"&&isD(e.si)&&!demoltDeptActive())return false;
+  return true;
 }
 // Allineamento fasce FC (da novembre 2026): le fasce «% DCC eseguiti» (completamento, asse orizzontale
 // della matrice FC) diventano quelle del «% DCC eseguiti» del negozio (asse verticale della matrice
@@ -1469,12 +1477,13 @@ function paramsMigrate(p){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.122'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.123'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.123: Coefficiente Inventari — i Dept stores (SM/VSM) lo ricevono solo da dicembre 2026, non da novembre: fino a novembre il loro premio è pieno anche se il file inventari li contiene (data modificabile in Configurazione, Date di attivazione regole). Gli altri negozi e i FC restano com'erano",
   "9.122: FC+VM — i VM con premi di negozio singoli (non di area) ottengono il premio se il consuntivo (con esubero e SAS) raggiunge il 99,5% del target, come l'area (soglia modificabile in Configurazione, «Soglia 100%» FC+VM); prima serviva il 100%. Vale dalla policy SAS (luglio 2026) in poi",
   "9.121: Aggiunte FC+VM — nuovo pulsante «Importa aggiunte (Excel)» anche nel tab Aggiunte FC+VM (una riga per dipendente: Matricola, Valuta facoltativa, Aggiunta in valuta locale; gli importi si sommano a quelli presenti)",
   "9.120: Coefficiente Inventari FC — da novembre 2026 le fasce «% DCC eseguiti» (completamento) dei Field Coach sono le stesse del negozio (70% / 90%); fasce % invio e griglia invariate e ottobre invariato (la data si modifica in Configurazione, Date di attivazione regole). Aggiunte — nuovo pulsante «Importa aggiunte (Excel)» (una riga per dipendente, importi in valuta locale, si sommano a quelli presenti) e nuova voce «QTY Dept»",
@@ -1797,7 +1806,7 @@ function _applyEnteCu(t){
 
 // Date di attivazione delle regole (Configurazione): [anno, mese] per SAS nuova policy,
 // USA nuova logica e Coefficiente Inventari. Valori validi: anno 2020-2100, mese 1-12.
-function _ruleCfgGet(){return {sas:[SAS_NEW_START_YEAR,SAS_NEW_START_MONTH],usa:[USA_NEW_START_YEAR,USA_NEW_START_MONTH],demolt:[DEMOLT_CUTOFF_YEAR,DEMOLT_CUTOFF_MONTH],demoltFc:[DEMOLT_FCALIGN_YEAR,DEMOLT_FCALIGN_MONTH]};}
+function _ruleCfgGet(){return {sas:[SAS_NEW_START_YEAR,SAS_NEW_START_MONTH],usa:[USA_NEW_START_YEAR,USA_NEW_START_MONTH],demolt:[DEMOLT_CUTOFF_YEAR,DEMOLT_CUTOFF_MONTH],demoltFc:[DEMOLT_FCALIGN_YEAR,DEMOLT_FCALIGN_MONTH],demoltDept:[DEMOLT_DEPT_YEAR,DEMOLT_DEPT_MONTH]};}
 function _applyRuleCfg(r){
   if(!r||typeof r!=="object")return;
   var ok=function(a){return Array.isArray(a)&&a[0]>=2020&&a[0]<=2100&&a[1]>=1&&a[1]<=12&&a[0]%1===0&&a[1]%1===0;};
@@ -1805,6 +1814,7 @@ function _applyRuleCfg(r){
   if(ok(r.usa)){USA_NEW_START_YEAR=r.usa[0];USA_NEW_START_MONTH=r.usa[1];}
   if(ok(r.demolt)){DEMOLT_CUTOFF_YEAR=r.demolt[0];DEMOLT_CUTOFF_MONTH=r.demolt[1];}
   if(ok(r.demoltFc)){DEMOLT_FCALIGN_YEAR=r.demoltFc[0];DEMOLT_FCALIGN_MONTH=r.demoltFc[1];}
+  if(ok(r.demoltDept)){DEMOLT_DEPT_YEAR=r.demoltDept[0];DEMOLT_DEPT_MONTH=r.demoltDept[1];}
 }
 var _origRC=null; // impostato quando tutti gli <script> sono caricati (le variabili stanno in moduli diversi)
 _afterScripts(function(){_origRC=JSON.stringify(_ruleCfgGet());});
@@ -7499,6 +7509,7 @@ function cfgRulesSectionHtml(){
   h+=row("SAS nuova policy","SAS \u2192 fatturato (mensile e FC+VM); SAS individuale ritirato",sel("sas",r.sas[0],r.sas[1]));
   h+=row("USA nuova logica","Vendite personali \u00d7 rate/bonus target + trimestrale",sel("usa",r.usa[0],r.usa[1]));
   h+=row("Coefficiente Inventari","Riduzione premio SM/VSM e FC in base agli inventari",sel("demolt",r.demolt[0],r.demolt[1]));
+  h+=row("Coefficiente Inventari — Dept stores","Dal mese indicato il coefficiente si applica anche agli SM/VSM dei Dept stores (prima no)",sel("demoltDept",r.demoltDept[0],r.demoltDept[1]));
   h+=row("Fasce DCC eseguiti FC = negozio","Le fasce % completamento dei FC diventano quelle del negozio",sel("demoltFc",r.demoltFc[0],r.demoltFc[1]));
   h+='</div>';
   h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">\ud83c\udfc6 Seasonal \u2014 coefficienti</div>';
@@ -7515,7 +7526,7 @@ function cfgRulesBind(){
     if(JSON.stringify(_ruleCfgGet())===before){alert("Data non valida (anno 2020-2100).");}
     markDirty();autoSave();rC();rA();rT();
   }
-  ["sas","usa","demolt","demoltFc"].forEach(function(id){
+  ["sas","usa","demolt","demoltFc","demoltDept"].forEach(function(id){
     var m=document.querySelector('[data-rule-m="'+id+'"]'),y=document.querySelector('[data-rule-y="'+id+'"]');
     if(m)m.onchange=function(){upd(id);};if(y)y.onchange=function(){upd(id);};
   });

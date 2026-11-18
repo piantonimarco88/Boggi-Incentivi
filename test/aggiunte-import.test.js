@@ -30,6 +30,7 @@ E=[{m:"0100205",c:"ROSSI",n:"MARIA",f:"SM",j:"SM DEPT",si:1301,s:"1301 ECI UNO",
 VL={};AGG={};
 DEMOLT_RESULT_STORE={"1301":{pct:0.8,compl:0.8,acc:0.97},"1302":{pct:0.5,compl:0.6,acc:0.9}};
 PARAMS.bdg60mult=0.6; PARAMS.qtyPct=0.5; PARAMS.artEnabled=false;
+_applyRuleCfg({demoltDept:[2026,10]}); // Dept con coefficiente come nel calcolo pagato di ottobre (di default solo da dicembre)
 `;
 
 function loadXlsx() {
@@ -237,5 +238,42 @@ test("diff-aggiunte: opzioni incompatibili e modalità diverse sono rifiutate", 
   const a = saveToTmp(A, tmp, "m.json"), f = saveToTmp(F, tmp, "f.json"), out = path.join(tmp, "x.xlsx");
   assert.throws(() => runTool(["--sessione", a, "--confronto", f, "--out", out]), /modalità diverse/);
   assert.throws(() => runTool(["--sessione", f, "--dept-senza-inventari", "--out", out]), /solo per le sessioni mensili/);
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test("Coefficiente Inventari ai Dept stores: solo dal mese configurato (default dicembre 2026), gli altri SM da ottobre", () => {
+  const app = loadBundle();
+  app.run(SETUP);
+  app.run("_applyRuleCfg({demoltDept:[2026,12]});E.push({m:'1000777',c:'NERI',n:'PAOLA',f:'SM',j:'SM',si:1401,s:'1401 NON DEPT',ib:400,rl:400,en:230,cu:'EUR',ex:1,ml:0,ps:'NO'});STORE_FLAGS['1401']={dept:false};D.t['1401']={to:100000,sy:0,pr:0};D.c['1401']={sc:101000,es:0};DEMOLT_RESULT_STORE['1401']={pct:0.7};");
+  const applies = () => JSON.parse(app.run("JSON.stringify(E.map(demoltAppliesStore))"));
+  const calc = () => JSON.parse(app.run("JSON.stringify(E.map(function(e){return calcE(e)}))"));
+  // ottobre e novembre: Dept senza coefficiente, negozio non Dept con coefficiente
+  assert.deepStrictEqual(applies(), [false, false, false, false, true]);
+  const oct = calc();
+  assert.strictEqual(oct[0], 450, "SM Dept: premio pieno (BDG 300 + QTY 150)");
+  assert.strictEqual(oct[4], 280, "SM non Dept: 400 x 70%");
+  app.run("CFG_MONTH=11");
+  assert.deepStrictEqual(applies(), [false, false, false, false, true]);
+  // dicembre: coefficiente anche ai Dept
+  app.run("CFG_MONTH=12");
+  assert.deepStrictEqual(applies(), [true, true, true, false, true]);
+  assert.strictEqual(calc()[0], 360, "SM Dept a dicembre: 450 x 80%");
+  // la data si sposta dalla configurazione
+  app.run("_applyRuleCfg({demoltDept:[2027,1]})");
+  assert.strictEqual(app.run("demoltAppliesStore(E[0])"), false);
+});
+
+test("diff-aggiunte --dept-senza-inventari: ricostruisce il «prima» con il coefficiente anche se oggi i Dept sono esclusi", () => {
+  const app = loadBundle();
+  app.run(SETUP);
+  app.run("_applyRuleCfg({demoltDept:[2026,12]})"); // come una sessione di ottobre aperta con le regole attuali
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "diffagg-"));
+  app.run("saveSession()");
+  const sess = path.join(tmp, "s.json"); fs.writeFileSync(sess, app.lastBlobText());
+  const out = path.join(tmp, "o.xlsx");
+  execFileSync(process.execPath, [path.join(__dirname, "..", "build", "diff-aggiunte.js"), "--sessione", sess, "--dept-senza-inventari", "--out", out], { stdio: "pipe" });
+  const X = loadXlsx();
+  const rows = X.utils.sheet_to_json(X.read(fs.readFileSync(out), { type: "buffer" }).Sheets["Aggiunte"], { header: 1, defval: null, raw: true });
+  assert.strictEqual(rows.length - 1, 3, "differenza per i 3 SM/VSM Dept (SM Rossi, VSM Smith, SM Verdi)");
   fs.rmSync(tmp, { recursive: true, force: true });
 });

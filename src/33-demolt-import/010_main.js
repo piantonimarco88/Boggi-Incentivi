@@ -11,9 +11,17 @@ var DEMOLT_MATRIX_FC={bpA:[0.80,0.95],bpB:[0.80,0.95],grid:[[0.50,0.65,0.80],[0.
 var DEMOLT_CUTOFF_YEAR=2026,DEMOLT_CUTOFF_MONTH=10;
 function demoltActive(){return (CFG_YEAR>DEMOLT_CUTOFF_YEAR)||(CFG_YEAR===DEMOLT_CUTOFF_YEAR&&CFG_MONTH>=DEMOLT_CUTOFF_MONTH);}
 // Coefficiente Inventari negozio: solo SM/VSM, mai per i negozi/dipendenti USA (regola a parte, calcUSA).
+// Dept stores: il coefficiente vale solo da DEMOLT_DEPT_YEAR/MONTH (decisione 18/11/2026: da dicembre 2026,
+// non da novembre). Prima di quel mese i Dept stores NON ricevono nessuna riduzione, anche se il file
+// inventari contiene i loro negozi (i risultati restano salvati e si usano dalla data). Data modificabile
+// in Configurazione (rule_cfg.demoltDept). Ottobre: la riduzione già applicata si recupera con le aggiunte.
+var DEMOLT_DEPT_YEAR=2026,DEMOLT_DEPT_MONTH=12;
+function demoltDeptActive(){return (CFG_YEAR>DEMOLT_DEPT_YEAR)||(CFG_YEAR===DEMOLT_DEPT_YEAR&&CFG_MONTH>=DEMOLT_DEPT_MONTH);}
 function demoltAppliesStore(e){
   if(!demoltActive()||!e||!e.j||e.j.indexOf("SM")<0)return false;
-  return !(typeof isUSA==="function"&&isUSA(e.si,e));
+  if(typeof isUSA==="function"&&isUSA(e.si,e))return false;
+  if(typeof isD==="function"&&isD(e.si)&&!demoltDeptActive())return false;
+  return true;
 }
 // Allineamento fasce FC (da novembre 2026): le fasce «% DCC eseguiti» (completamento, asse orizzontale
 // della matrice FC) diventano quelle del «% DCC eseguiti» del negozio (asse verticale della matrice

@@ -772,6 +772,7 @@ function cfgRulesSectionHtml(){
   h+=row("SAS nuova policy","SAS \u2192 fatturato (mensile e FC+VM); SAS individuale ritirato",sel("sas",r.sas[0],r.sas[1]));
   h+=row("USA nuova logica","Vendite personali \u00d7 rate/bonus target + trimestrale",sel("usa",r.usa[0],r.usa[1]));
   h+=row("Coefficiente Inventari","Riduzione premio SM/VSM e FC in base agli inventari",sel("demolt",r.demolt[0],r.demolt[1]));
+  h+=row("Coefficiente Inventari — Dept stores","Dal mese indicato il coefficiente si applica anche agli SM/VSM dei Dept stores (prima no)",sel("demoltDept",r.demoltDept[0],r.demoltDept[1]));
   h+=row("Fasce DCC eseguiti FC = negozio","Le fasce % completamento dei FC diventano quelle del negozio",sel("demoltFc",r.demoltFc[0],r.demoltFc[1]));
   h+='</div>';
   h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">\ud83c\udfc6 Seasonal \u2014 coefficienti</div>';
@@ -788,7 +789,7 @@ function cfgRulesBind(){
     if(JSON.stringify(_ruleCfgGet())===before){alert("Data non valida (anno 2020-2100).");}
     markDirty();autoSave();rC();rA();rT();
   }
-  ["sas","usa","demolt","demoltFc"].forEach(function(id){
+  ["sas","usa","demolt","demoltFc","demoltDept"].forEach(function(id){
     var m=document.querySelector('[data-rule-m="'+id+'"]'),y=document.querySelector('[data-rule-y="'+id+'"]');
     if(m)m.onchange=function(){upd(id);};if(y)y.onchange=function(){upd(id);};
   });
