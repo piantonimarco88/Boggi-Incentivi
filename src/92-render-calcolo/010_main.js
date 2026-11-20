@@ -1,3 +1,18 @@
+// ── Occupazione (full-time / part-time) ─────────────────────────────────────
+// e.po = % di occupazione (100 = full-time, <100 = part-time), assente se il file HR non la contiene.
+function occPct(e){var p=e?e.po:null;return(p==null||isNaN(p))?null:Number(p);}
+function occFmt(p){return String(Math.round(p*100)/100).replace(".",",");}
+// Testo per la cella del tab: "FT" / "PT 60%" (vuoto se dato non disponibile)
+function occCell(e){
+  var p=occPct(e);
+  if(p==null)return '<td style="text-align:center;color:#d5d0c8" title="Occupazione non presente nell\'anagrafica importata">—</td>';
+  if(p>=99.995)return '<td style="text-align:center;font-size:10px;color:#8a8680" title="Full-time">FT</td>';
+  var tip="Part-time "+occFmt(p)+"%"+(e.pt?" ("+e.pt+")":"");
+  return '<td style="text-align:center;white-space:nowrap" title="'+esc(tip)+'"><span style="background:#fdf1d6;color:#a07d2c;border:1px solid #e3c98a;border-radius:3px;padding:1px 5px;font-size:10px;font-weight:700">PT '+occFmt(p)+'%</span></td>';
+}
+// Valore per gli export Excel: % numerica (100 = full-time), cella vuota se non disponibile
+function occExport(e){var p=occPct(e);return p==null?"":p;}
+
 function rC(){
   applyStoreFlags();
   rebuildFilters();
@@ -23,7 +38,7 @@ function rC(){
   h+='<select id="cs">';uS.forEach(function(s){h+='<option value="'+esc(s)+'"'+(cF.s===s?" selected":"")+">"+(s==="ALL"?"Tutti i negozi":esc(s))+"</option>"});h+="</select>";
   h+='<span style="font-size:11px;color:#8a8680">'+fl.length+" dip. \u00b7 Tot: "+fc(tot,"EUR")+"</span></div>";
   function thS(col,label){var ar=cSort.col===col?(cSort.dir>0?"\u25b2":"\u25bc"):"\u25b4";return'<th data-col="'+col+'"'+(cSort.col===col?' class="sorted"':"")+">"+label+' <span class="arrow">'+ar+"</span></th>"}
-  h+='<div class="scroll-wrap"><table id="ctbl"><thead><tr>'+thS("m","Matr.")+thS("c","Cognome")+thS("n","Nome")+thS("si_m","Negozio")+thS("j","Ruolo")+'<th>Val.</th>'+thS("ml","Mal.")+'<th style="cursor:default;color:#c9a96e" title="Premio BDG moltiplicatore ridotto ('+Math.round(PARAMS.bdg60mult*100)+'%)">Rid.</th>';
+  h+='<div class="scroll-wrap"><table id="ctbl"><thead><tr>'+thS("m","Matr.")+thS("c","Cognome")+thS("n","Nome")+thS("si_m","Negozio")+thS("j","Ruolo")+'<th style="cursor:default" title="Occupazione: Full-time o Part-time con la % (dall\'anagrafica HR)">Occ.</th><th>Val.</th>'+thS("ml","Mal.")+'<th style="cursor:default;color:#c9a96e" title="Premio BDG moltiplicatore ridotto ('+Math.round(PARAMS.bdg60mult*100)+'%)">Rid.</th>';
   if(MODE==="consuntivo"&&typeof demoltActive==="function"&&demoltActive())h+='<th style="cursor:default;color:#a07d2c" title="Coefficiente Inventari (SM/VSM): riduzione premio da % completamento inventari + accuracy">Coef.</th>';
   IT.forEach(function(it){if(it.k==="ra"&&!PARAMS.artEnabled)return;h+=thS(it.k,it.l)});h+='<th>Agg.</th>'+thS("tl","TOTALE")+(MODE==="consuntivo"?'<th style="cursor:default;font-size:9px;text-align:center" title="Riconosci premio BDG al 100%">100%</th><th style="cursor:default;font-size:9px;text-align:center" title="Riconosci Molt. ridotto ('+Math.round(PARAMS.bdg60mult*100)+'%)">B60</th><th style="cursor:default;font-size:9px;text-align:center" title="Riconosci Workgame ('+Math.round((PARAMS.workgamePct||0)*100)+'% BDG)">WG</th>':'')+' <th style="cursor:default">PS</th>'+(REGION!=="italia"?'<th style="cursor:default">&#128231;</th>':'')+'<th style="cursor:default" title="Salva il PDF della lettera nella cartella dei PDF">PDF</th>'+"</tr></thead><tbody>";
   fl.forEach(function(e){var t=calcE(e),cu=e.cu||"EUR",ml=e.ml||0,sm=sickMult(ml),at=aggTotal(e.m);
@@ -38,7 +53,7 @@ function rC(){
     }else{
       _negCell=(uUp?esc(e.s).toUpperCase():esc(e.s))+'<button onclick="event.stopPropagation();startEditStore(\''+esc(e.m)+'\')" style="background:none;border:none;color:#a09a92;cursor:pointer;font-size:10px;margin-left:4px;padding:0" title="Cambia negozio">&#9998;</button>';
     }
-    h+='<tr class="ck" data-m="'+esc(e.m)+'"><td class="mn">'+esc(e.m)+"</td><td>"+(uUp?esc(e.c).toUpperCase():esc(e.c))+"</td><td>"+(uUp?esc(e.n).toUpperCase():esc(e.n))+'</td><td style="font-size:10px;color:#8a8680;white-space:nowrap">'+_negCell+'</td><td><span class="bg '+(sf.dept?"bg-d":"bg-n")+'" title="'+esc(e.j)+'">'+esc(e.f||e.j)+"</span></td>";
+    h+='<tr class="ck" data-m="'+esc(e.m)+'"><td class="mn">'+esc(e.m)+"</td><td>"+(uUp?esc(e.c).toUpperCase():esc(e.c))+"</td><td>"+(uUp?esc(e.n).toUpperCase():esc(e.n))+'</td><td style="font-size:10px;color:#8a8680;white-space:nowrap">'+_negCell+'</td><td><span class="bg '+(sf.dept?"bg-d":"bg-n")+'" title="'+esc(e.j)+'">'+esc(e.f||e.j)+"</span></td>"+occCell(e);
     h+='<td style="font-size:9px;color:#a09a92">'+cu+'</td><td style="text-align:center"><span class="ml-dot '+mlc+'"></span>'+ml+"</td>";
     var ridotto=!psOn&&t>0&&isRidotto(e)&&isOn(e.j,"rb");
     h+='<td style="text-align:center;font-size:13px" title="'+(ridotto?"Premio BDG ridotto ("+Math.round(PARAMS.bdg60mult*100)+"%)":"—")+'">'+(ridotto?'<span style="color:#c9a96e">&#11044;</span>':'—')+"</td>";
@@ -113,7 +128,9 @@ function exportExcel(){
   var headers=["MONTH","STORE ID","DESCR FILIALE","MATRICOLA DIPENDENTE","COGNOME","NOME","TIPO CONTRATTO","JOB","RML","CONCATENA","IMPORTO BDG","IMPORTO BDG1","BDG","FIELD COACH","FIELD","STORE ID2","DESCR FILIALE2","CF","TOTALE STIPENDIO COSTO AZIENDA","TOTALE INCENTIVO LORDO","TOTALE INCENTIVO COSTO AZIENDA","RISULTATO PREMIO BDG (LORDO)","RISULTATO PREMIO BDG (NETTO)","RISULTATO PREMIO DIGITAL","RISULTATO SHOPPER YIELD","RISULTATO NUOVE PRIVILEGE","RISULTATO SAS","RISULTATO DCC","RISULTATO CUSTOMER SERVICE","RISULTATO ARTICOLI INCENTIVATI","MALATTIE","VISUAL IN STORE","TOTALE INCENTIVO LORDO","TOTALE INCENTIVO NETTO","TOTALE INCENTIVO COSTO AZIENDA","TARGET TOP SA","FATTURATO PERSONALE CY TOP SA","INCENTIVO TOP SALES ADVISOR","INCENTIVO SEMESTRALE","TOTALE INCENTIVO EROGATO (LC)","TOTALE INCENTIVO EROGATO (EURO)","TOTALE COSTO AZIENDA","TOP SALES ADVISOR","ENTE","RML EURO","RISULTATO PREMIO BDG (LORDO) EURO","RISULTATO PREMIO BDG (NETTO) EURO","RISULTATO PREMIO DIGITAL EURO","RISULTATO SHOPPER YIELD EURO","RISULTATO NUOVE PRIVILEGE EURO","RISULTATO SAS EURO","RISULTATO DCC EURO","RISULTATO CUSTOMER SERVICE EURO","RISULTATO ARTICOLI INCENTIVATI EURO","VISUAL IN STORE EURO","MALATTIE","DOPPIO BDG","DOPPIO BDG LC","DOPPIO BDG EURO","TOP SALES ADVISOR EURO","SEMESTRALE EURO",
     // Massimali erogabili (premio se tutti i target raggiunti al 100%, senza riduzione malattia)
     "MASSIMALE BDG","MASSIMALE DIGITAL","MASSIMALE SHOPPER YIELD","MASSIMALE NUOVE PRIVILEGE","MASSIMALE SAS","MASSIMALE DCC","MASSIMALE CUSTOMER SERVICE","MASSIMALE ARTICOLI INCENTIVATI","MASSIMALE VISUAL IN STORE","MASSIMALE TOTALE",
-    "MASSIMALE BDG EURO","MASSIMALE DIGITAL EURO","MASSIMALE SHOPPER YIELD EURO","MASSIMALE NUOVE PRIVILEGE EURO","MASSIMALE SAS EURO","MASSIMALE DCC EURO","MASSIMALE CUSTOMER SERVICE EURO","MASSIMALE ARTICOLI INCENTIVATI EURO","MASSIMALE VISUAL IN STORE EURO","MASSIMALE TOTALE EURO"
+    "MASSIMALE BDG EURO","MASSIMALE DIGITAL EURO","MASSIMALE SHOPPER YIELD EURO","MASSIMALE NUOVE PRIVILEGE EURO","MASSIMALE SAS EURO","MASSIMALE DCC EURO","MASSIMALE CUSTOMER SERVICE EURO","MASSIMALE ARTICOLI INCENTIVATI EURO","MASSIMALE VISUAL IN STORE EURO","MASSIMALE TOTALE EURO",
+    // % occupazione dall'anagrafica HR: 100 = full-time, <100 = part-time (vuoto = dato non presente)
+    "% OCCUPAZIONE"
   ];
   var rows=[headers];
   E.forEach(function(e){
@@ -218,7 +235,8 @@ function exportExcel(){
       // Massimali LC
       mRb, mRd, mRs, mRp, mRsa, mRdc, mRcs, mRa, mVi, mTot,
       // Massimali EURO
-      mRb*ex, mRd*ex, mRs*ex, mRp*ex, mRsa*ex, mRdc*ex, mRcs*ex, mRa*ex, mVi*ex, mTot*ex
+      mRb*ex, mRd*ex, mRs*ex, mRp*ex, mRsa*ex, mRdc*ex, mRcs*ex, mRa*ex, mVi*ex, mTot*ex,
+      occExport(e)              // % OCCUPAZIONE (100 = full-time)
     ];
     rows.push(r);
   });
@@ -229,7 +247,7 @@ function exportExcel(){
 }
 
 function exportExcelConsuntivoIT(){
-  var headers=["MONTH","STORE ID","DESCR FILIALE","MATRICOLA DIPENDENTE","COGNOME","NOME","JOB","RML","IMPORTO BDG","IMPORTO BDG1","BDG","RISULTATO PREMIO BDG (LORDO)","RISULTATO PREMIO BDG (NETTO)","RISULTATO PREMIO DIGITAL","RISULTATO SHOPPER YIELD","RISULTATO NUOVE PRIVILEGE","RISULTATO SAS","RISULTATO DCC","RISULTATO CUSTOMER SERVICE","RISULTATO ARTICOLI INCENTIVATI","MALATTIE","VISUAL IN STORE"];
+  var headers=["MONTH","STORE ID","DESCR FILIALE","MATRICOLA DIPENDENTE","COGNOME","NOME","JOB","RML","IMPORTO BDG","IMPORTO BDG1","BDG","RISULTATO PREMIO BDG (LORDO)","RISULTATO PREMIO BDG (NETTO)","RISULTATO PREMIO DIGITAL","RISULTATO SHOPPER YIELD","RISULTATO NUOVE PRIVILEGE","RISULTATO SAS","RISULTATO DCC","RISULTATO CUSTOMER SERVICE","RISULTATO ARTICOLI INCENTIVATI","MALATTIE","VISUAL IN STORE","% OCCUPAZIONE"];
   var rows=[headers];
   E.forEach(function(e){
     if(e.ps==="SI")return;
@@ -251,7 +269,7 @@ function exportExcelConsuntivoIT(){
     var vi=(getVal(e,"vi")||0)*sm;
     var ag=AGG[e.m]||{};
     rb+=(ag.rb||0);rbn+=(ag.rbn||0);rd+=(ag.rd||0);rs+=(ag.rs||0);rp+=(ag.rp||0);rsa+=(ag.rsa||0);rdc+=(ag.rdc||0);rcs+=(ag.rcs||0);ra+=(ag.ra||0);
-    rows.push([CFG_MONTH,e.si,e.s,e.m,e.c,e.n,e.f||e.j,e.rl,e.ib,e.ib,e.ib,rb,rbn,rd,rs,rp,rsa,rdc,rcs,ra,e.ml||0,vi]);
+    rows.push([CFG_MONTH,e.si,e.s,e.m,e.c,e.n,e.f||e.j,e.rl,e.ib,e.ib,e.ib,rb,rbn,rd,rs,rp,rsa,rdc,rcs,ra,e.ml||0,vi,occExport(e)]);
   });
   var ws=XLSX.utils.aoa_to_sheet(rows);
   var wb=XLSX.utils.book_new();
@@ -634,7 +652,8 @@ function exportExcelUSA(){
     "QUARTERLY BONUS (%)",
     "COMMISSION MULTIPLIER (%)",
     "QUARTERLY BONUS EARNED (USD)",
-    "COMMISSION EARNED (USD)"
+    "COMMISSION EARNED (USD)",
+    "EMPLOYMENT % (100 = FULL TIME)"
   ];
   var rows=[headers];
 
@@ -656,7 +675,8 @@ function exportExcelUSA(){
         nd.qb>0?Math.round(nd.qb*10000)/100:"",
         100,                                  // nessun moltiplicatore 40/60: rate pieno (rate bonus se store a target)
         nd.qi?nd.quarterly:"",
-        nd.prize
+        nd.prize,
+        occExport(e)
       ]);
       return;
     }
@@ -690,13 +710,14 @@ function exportExcelUSA(){
       "",                                   // QUARTERLY BONUS %
       Math.round(mult*10000)/100,           // COMMISSION MULTIPLIER %
       "",                                   // QUARTERLY BONUS EARNED USD
-      prize                                 // COMMISSION EARNED USD
+      prize,                                // COMMISSION EARNED USD
+      occExport(e)                          // EMPLOYMENT % (100 = full time)
     ]);
   });
 
   var ws=XLSX.utils.aoa_to_sheet(rows);
   // Colonne numeriche: larghezza
-  ws['!cols']=[{wch:22},{wch:16},{wch:16},{wch:10},{wch:22},{wch:22},{wch:18},{wch:18},{wch:8},{wch:22},{wch:20},{wch:22},{wch:26},{wch:20}];
+  ws['!cols']=[{wch:22},{wch:16},{wch:16},{wch:10},{wch:22},{wch:22},{wch:18},{wch:18},{wch:8},{wch:22},{wch:20},{wch:22},{wch:26},{wch:20},{wch:18}];
   var wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"USA Commissions");
   XLSX.writeFile(wb,"USA_Commissions_"+getPdfSubfolder().fileBase+".xlsx");

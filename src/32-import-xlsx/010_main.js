@@ -120,6 +120,33 @@ function hdrFind(hdrs,cands,opt){
   return -1;
 }
 
+// === OCCUPAZIONE (full-time / part-time) ===
+// e.po = % di occupazione: 100 = full-time, <100 = part-time (es. 60). Assente = dato non presente nel file HR
+// (allora l'app non mostra nulla: mai assumere "full-time" per un dato che non c'e'). e.pt = tipo part-time Zucchetti.
+function occNum(v){
+  if(typeof v==="number")return isFinite(v)?v:null;
+  var s=String(v==null?"":v).replace("%","").replace(",",".").replace(/[^\d.\-]/g,"");
+  var n=parseFloat(s);return isNaN(n)?null:n;
+}
+// Zucchetti (Italia e vecchio estero): percentuale_ptime (0 = full-time) + tipo_parttime_descrizione (No/Orizzontale/Verticale/Misto)
+function occFromZucchetti(pct,descr){
+  var p=occNum(pct),d=String(descr==null?"":descr).trim(),dl=d.toLowerCase();
+  var dTipo=(dl===""||dl==="no"||dl==="si"||dl==="sì")?"":d; // "si/no" non sono un tipo di part-time
+  // Valori tra 0 e 1 = frazione (file ritoccati a mano, es. 0,857): un part-time all'1% non esiste, quindi x100
+  if(p!=null&&p>0&&p<=1)p=p*100;
+  if(p!=null&&p>=100)return{po:100,pt:""};
+  if(p!=null&&p>0)return{po:Math.round(p*100)/100,pt:dTipo};
+  if(dl!==""&&dl!=="no")return null; // part-time dichiarato ma senza percentuale: sconosciuto
+  return{po:100,pt:""}; // 0, "No" o cella vuota con la colonna presente = full-time
+}
+// Workday: FTE (1 = full-time, 0.8 = 80%) + Time Type (Full time / Part time)
+function occFromWorkday(fte,ttype){
+  var f=occNum(fte);
+  if(f!=null&&f>0)return{po:Math.min(100,Math.round(f*10000)/100),pt:""};
+  if(wdNorm(ttype)==="FULL TIME")return{po:100,pt:""};
+  return null;
+}
+
 // === WORKDAY: nuovo export HR (estero dal preventivo ottobre 2026, poi Italia) ===
 // Colonne per nome header (identificate dal nome, non dall'indice). Stipendio = Prorated Monthly Salary (quello
 // effettivamente pagato, come il vecchio CODICE_INTERNO), BDG = Amount del piano "Budget Amount" (mensile).
@@ -134,7 +161,8 @@ function wdDetect(hdr){
   if(col("employee id")<0||col("cost center")<0||col("primary job title")<0)return null;
   var W={id:col("employee id"),first:col("first name"),last:col("last name"),title:col("primary job title"),company:col("company"),cc:col("cost center"),
     sal:col("prorated monthly salary"),salCur:col("currency",0),salFreq:col("frequency",0),
-    hire:col("hire date"),term:col("termination date - all"),mail:col("emails")};
+    hire:col("hire date"),term:col("termination date - all"),mail:col("emails"),
+    fte:col("fte"),ttype:col("time type")}; // occupazione: facoltative (se mancano la % non si importa, nessun errore)
   // BDG: export di ottobre 2026 = colonne dedicate "Budget Amount / Budget Currency / Budget Frequency";
   // export di preventivo = piano "Compensation Plan"=Budget Amount con "Amount" e secondo "Frequency".
   if(col("budget amount")>=0){
@@ -142,7 +170,7 @@ function wdDetect(hdr){
   }else{
     W.plan=col("compensation plan");W.amt=col("amount");W.amtCur=-1;W.amtFreq=col("frequency",1);
   }
-  var missing=[];for(var k in W){if(W[k]<0&&k!=="plan"&&k!=="amtCur")missing.push(k);}
+  var missing=[];for(var k in W){if(W[k]<0&&k!=="plan"&&k!=="amtCur"&&k!=="fte"&&k!=="ttype")missing.push(k);}
   if(W.plan<0&&col("budget amount")<0)missing.push("plan");
   return{W:W,missing:missing};
 }
@@ -215,7 +243,7 @@ function wdParseAnagrafica(json,hdrRow,W,o){
     var em=String(row[W.mail]||"").match(/[^\s;,()<>]+@[^\s;,()<>]+/);
     var email=em?em[0]:"";
 
-    imported.push({
+    var emp={
       si:cdc,s:storeName,m:eid,
       c:cognome.toUpperCase(),n:nome.toUpperCase(),
       j:job,f:job,rl:sal,ib:bdg,
@@ -226,7 +254,10 @@ function wdParseAnagrafica(json,hdrRow,W,o){
       cu:cuInfo.cu,ex:cuInfo.ex,
       mp:email,
       mf:fc?fc.toLowerCase().replace(/ /g,'.')+'@boggi.com':''
-    });
+    };
+    var oc=occFromWorkday(W.fte>=0?row[W.fte]:null,W.ttype>=0?row[W.ttype]:null);
+    if(oc)emp.po=oc.po;
+    imported.push(emp);
   }
   return{imported:imported,errors:errors};
 }
@@ -329,6 +360,13 @@ function loadAnagraficaExcel(file){
           var s=String(cell||'').toLowerCase().replace(/[\s\n\r_]+/g,'');
           if(s.indexOf('azienda')>=0&&s.indexOf('costi')>=0)ZC.bdg=ci;
           if(s.indexOf('foglio')>=0&&s.indexOf('presenz')>=0)ZC.bdgFb=ci;
+        });
+        // Occupazione (full/part-time): colonne Zucchetti percentuale_ptime e tipo_parttime_descrizione, solo per nome header
+        var ocPctCol=-1,ocDescCol=-1;
+        (json[hdrRow]||[]).forEach(function(cell,ci){
+          var s=String(cell||'').toLowerCase().replace(/[\s\n\r_]+/g,'');
+          if(s==='percentualeptime')ocPctCol=ci;
+          if(s==='tipoparttimedescrizione')ocDescCol=ci;
         });
         // Valid base job codes from incentive plan
         var validBaseJobs=PRIZE_MODE==="seasonal"?["SM","VSM"]:["SM","VSM","SSA","SSAP","SA","JSA","SCS"];
@@ -448,6 +486,7 @@ function loadAnagraficaExcel(file){
             cf:cf,// codice fiscale extra field
             ibFromAY:ibFromAY// true se BDG viene da colonna AY (→ trasferta, non premio di risultato)
           };
+          if(ocPctCol>=0){var _oc=occFromZucchetti(row[ocPctCol],ocDescCol>=0?row[ocDescCol]:"");if(_oc){emp.po=_oc.po;if(_oc.pt)emp.pt=_oc.pt;}}
           itImported.push(emp);
         }
         showImportReport(itImported,itErrors,sheet,file.name,cutoffStr);
@@ -522,6 +561,9 @@ function loadAnagraficaExcel(file){
       var C_HIRE  =_intFind("data assunzione","data inizio rapporto","hire date","start date");  if(C_HIRE<0){C_HIRE=7;_fixCol("data assunzione",7);}
       var C_TERM  =_intFind("data cessazione","data fine rapporto","termination date","end date"); if(C_TERM<0)C_TERM=-1;
       var C_EMAIL =_intFind("residenza email","e mail","email");                                  if(C_EMAIL<0){C_EMAIL=113;_fixCol("email",113);}
+      // Occupazione (full/part-time): percentuale_ptime + tipo_parttime_descrizione (vecchio formato Zucchetti estero)
+      var C_OCP=-1,C_OCD=-1;
+      INT_HDR.forEach(function(cell,ci){var _h=_intNorm(cell);if(_h==="percentuale ptime")C_OCP=ci;if(_h==="tipo parttime descrizione")C_OCD=ci;});
       var C_FC    =-1;
       INT_HDR.forEach(function(cell,ci){var s=String(cell||"").toLowerCase().replace(/[\s\n\r]+/g,"");if(s==="fc"||s.indexOf("fieldcoach")>=0||s.indexOf("field coach")>=0)C_FC=ci;});
 
@@ -650,6 +692,7 @@ function loadAnagraficaExcel(file){
           errors.push({row:ri+1,name:fullName,reason:"Dept store ("+cdc+") escluso dal Mid-Season — premio solo a fine stagione"});
           continue;
         }
+        if(C_OCP>=0){var _oc=occFromZucchetti(row[C_OCP],C_OCD>=0?row[C_OCD]:"");if(_oc){emp.po=_oc.po;if(_oc.pt)emp.pt=_oc.pt;}}
         imported.push(emp);
       }
 
@@ -683,6 +726,9 @@ function showImportReport(imported,errors,sheet,filename,cutoffStr){
   h+='<div style="display:flex;gap:16px;margin-bottom:12px">';
   h+='<div style="background:#f0faf2;border:1px solid #d4edda;border-radius:6px;padding:10px 16px;flex:1;text-align:center"><div style="font-size:24px;font-weight:800;color:#2d7a3a">'+imported.length+'</div><div style="font-size:10px;color:#6b6560">Importabili</div></div>';
   h+='<div style="background:'+(errors.length?"#fef6f0":"#f0faf2")+';border:1px solid '+(errors.length?"#f8d7da":"#d4edda")+';border-radius:6px;padding:10px 16px;flex:1;text-align:center"><div style="font-size:24px;font-weight:800;color:'+(errors.length?"#cf5b5b":"#2d7a3a")+'">'+errors.length+'</div><div style="font-size:10px;color:#6b6560">Esclusi</div></div></div>';
+  // Occupazione (full/part-time): riepilogo per verificare che la colonna del file sia stata letta
+  var _ocKnown=imported.filter(function(e){return e.po!=null;}).length,_ocPT=imported.filter(function(e){return e.po!=null&&e.po<99.995;}).length;
+  if(imported.length)h+='<div style="font-size:10px;color:#6b6560;margin:-4px 0 10px">Occupazione: '+(_ocKnown?'<b>'+_ocPT+'</b> part-time e <b>'+(_ocKnown-_ocPT)+'</b> full-time'+(_ocKnown<imported.length?' — <span style="color:#cf5b5b">'+(imported.length-_ocKnown)+' senza dato</span>':''):'<span style="color:#cf5b5b">colonna non trovata nel file (percentuale_ptime / FTE): la % non viene importata</span>')+'</div>';
 
   // Seasonal Italia: riepilogo Brian & Barry / Double B (KPI dedicati da FW26). L'anteprima mostra solo
   // i primi 20 importati, quindi questi negozi non si vedrebbero: elenco completo qui.
