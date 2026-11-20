@@ -1477,12 +1477,13 @@ function paramsMigrate(p){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.124'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.125'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.125: % occupazione — l'export Excel USA torna com'era (nessuna colonna in più): la % di occupazione resta solo negli export Mensile Italia e Internazionale (Export Excel e Export Consuntivo IT)",
   "9.124: % occupazione (full-time / part-time) in modalità Mensile, Italia e Internazionale — si importa con l'anagrafica (Zucchetti: percentuale_ptime; Workday: FTE), compare nel tab Calcolo premi (colonna «Occ.»: FT oppure PT con la %) e come ultima colonna «% OCCUPAZIONE» negli export Excel (100 = full-time). Il report d'import indica quanti part-time ha letto. Non cambia nessun calcolo",
   "9.123: Coefficiente Inventari — i Dept stores (SM/VSM) lo ricevono solo da dicembre 2026, non da novembre: fino a novembre il loro premio è pieno anche se il file inventari li contiene (data modificabile in Configurazione, Date di attivazione regole). Gli altri negozi e i FC restano com'erano",
   "9.122: FC+VM — i VM con premi di negozio singoli (non di area) ottengono il premio se il consuntivo (con esubero e SAS) raggiunge il 99,5% del target, come l'area (soglia modificabile in Configurazione, «Soglia 100%» FC+VM); prima serviva il 100%. Vale dalla policy SAS (luglio 2026) in poi",
@@ -3549,8 +3550,7 @@ function exportExcelUSA(){
     "QUARTERLY BONUS (%)",
     "COMMISSION MULTIPLIER (%)",
     "QUARTERLY BONUS EARNED (USD)",
-    "COMMISSION EARNED (USD)",
-    "EMPLOYMENT % (100 = FULL TIME)"
+    "COMMISSION EARNED (USD)"
   ];
   var rows=[headers];
 
@@ -3572,8 +3572,7 @@ function exportExcelUSA(){
         nd.qb>0?Math.round(nd.qb*10000)/100:"",
         100,                                  // nessun moltiplicatore 40/60: rate pieno (rate bonus se store a target)
         nd.qi?nd.quarterly:"",
-        nd.prize,
-        occExport(e)
+        nd.prize
       ]);
       return;
     }
@@ -3607,14 +3606,13 @@ function exportExcelUSA(){
       "",                                   // QUARTERLY BONUS %
       Math.round(mult*10000)/100,           // COMMISSION MULTIPLIER %
       "",                                   // QUARTERLY BONUS EARNED USD
-      prize,                                // COMMISSION EARNED USD
-      occExport(e)                          // EMPLOYMENT % (100 = full time)
+      prize                                 // COMMISSION EARNED USD
     ]);
   });
 
   var ws=XLSX.utils.aoa_to_sheet(rows);
   // Colonne numeriche: larghezza
-  ws['!cols']=[{wch:22},{wch:16},{wch:16},{wch:10},{wch:22},{wch:22},{wch:18},{wch:18},{wch:8},{wch:22},{wch:20},{wch:22},{wch:26},{wch:20},{wch:18}];
+  ws['!cols']=[{wch:22},{wch:16},{wch:16},{wch:10},{wch:22},{wch:22},{wch:18},{wch:18},{wch:8},{wch:22},{wch:20},{wch:22},{wch:26},{wch:20}];
   var wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"USA Commissions");
   XLSX.writeFile(wb,"USA_Commissions_"+getPdfSubfolder().fileBase+".xlsx");

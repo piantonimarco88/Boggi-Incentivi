@@ -85,3 +85,16 @@ test("tab Calcolo premi ed export Excel: colonna occupazione (FT / PT con la %)"
     assert.ok(rows.slice(1).every(x => x.length === h.length), fn + ": righe e intestazione allineate");
   }
 });
+
+test("export USA: nessuna colonna di occupazione (gli USA non sono toccati)", () => {
+  const app = loadBundle();
+  app.run(`PRIZE_MODE="mensile";REGION="international";MODE="consuntivo";CFG_YEAR=2026;CFG_MONTH=11;
+    STORE_FLAGS={};initStoreFlags();D.t={"9001":{to:100000}};D.c={"9001":{sc:105000}};D.usa={};AGG={};
+    E=[{m:"U1",c:"A",n:"B",f:"SA",j:"SA",si:9001,s:"9001 NY",ib:0,rl:3000,en:240,cu:"USD",ex:1,ml:0,ps:"NO",po:60}];
+    var __rows=null;XLSX={utils:{aoa_to_sheet:function(r){__rows=r;return {}},book_new:function(){return {}},book_append_sheet:function(){}},writeFile:function(){}};
+    exportExcelUSA();`);
+  const rows = JSON.parse(app.run("JSON.stringify(__rows)"));
+  assert.strictEqual(rows[0].length, 14);
+  assert.strictEqual(rows[0][13], "COMMISSION EARNED (USD)");
+  assert.ok(rows.every(r => r.length === 14));
+});

@@ -652,8 +652,7 @@ function exportExcelUSA(){
     "QUARTERLY BONUS (%)",
     "COMMISSION MULTIPLIER (%)",
     "QUARTERLY BONUS EARNED (USD)",
-    "COMMISSION EARNED (USD)",
-    "EMPLOYMENT % (100 = FULL TIME)"
+    "COMMISSION EARNED (USD)"
   ];
   var rows=[headers];
 
@@ -675,8 +674,7 @@ function exportExcelUSA(){
         nd.qb>0?Math.round(nd.qb*10000)/100:"",
         100,                                  // nessun moltiplicatore 40/60: rate pieno (rate bonus se store a target)
         nd.qi?nd.quarterly:"",
-        nd.prize,
-        occExport(e)
+        nd.prize
       ]);
       return;
     }
@@ -710,14 +708,13 @@ function exportExcelUSA(){
       "",                                   // QUARTERLY BONUS %
       Math.round(mult*10000)/100,           // COMMISSION MULTIPLIER %
       "",                                   // QUARTERLY BONUS EARNED USD
-      prize,                                // COMMISSION EARNED USD
-      occExport(e)                          // EMPLOYMENT % (100 = full time)
+      prize                                 // COMMISSION EARNED USD
     ]);
   });
 
   var ws=XLSX.utils.aoa_to_sheet(rows);
   // Colonne numeriche: larghezza
-  ws['!cols']=[{wch:22},{wch:16},{wch:16},{wch:10},{wch:22},{wch:22},{wch:18},{wch:18},{wch:8},{wch:22},{wch:20},{wch:22},{wch:26},{wch:20},{wch:18}];
+  ws['!cols']=[{wch:22},{wch:16},{wch:16},{wch:10},{wch:22},{wch:22},{wch:18},{wch:18},{wch:8},{wch:22},{wch:20},{wch:22},{wch:26},{wch:20}];
   var wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"USA Commissions");
   XLSX.writeFile(wb,"USA_Commissions_"+getPdfSubfolder().fileBase+".xlsx");
