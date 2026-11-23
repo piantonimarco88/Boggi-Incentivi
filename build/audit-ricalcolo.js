@@ -22,6 +22,9 @@
 // Uso:
 //   node build/audit-ricalcolo.js --audit "Incentivi Ottobre.xlsx" --mensile sessione_mensile.json \
 //        --fcvm sessione_fcvm.json --out-dir <cartella> [--pagato "Incentivi_consuntivo_<mese>.xlsx"] [--tag OTTOBRE_2026] //        [--periodo "Ottobre 2026"] [--pagamento "Novembre 2026"]
+//   --includi-regola-vm (facoltativo): nel file «Aggiunte FC+VM» importabile include anche la differenza dovuta alla regola 99,5%
+//   dei VM con negozi singoli (v9.122), da usare quando il mese era già stato pagato con la vecchia regola (es. Belmonte, CHF 100).
+//   Senza l'opzione quella differenza resta fuori dal file (è comunque nel file principale, colonna «Regola 99,5% VM»).
 //   --pagato (facoltativo): file «Incentivi consuntivo» realmente consegnato/pagato (colonna «TOTALE INCENTIVO EROGATO (LC)»).
 //   Serve a verificare che la sessione di partenza dia gli stessi premi: dove un override manuale 100%/60% della sessione
 //   non c'è più nel pagato, viene tolto (come nel pagato) prima del confronto; le altre differenze di base sono elencate
@@ -300,9 +303,11 @@ function main() {
   const bM = buildWorkbook(X, posM, { ...metaBase, mode: "mensile", scenario: "Dati inventari corretti dall'Audit — negozi (SM/VSM)" });
   const fileM = path.join(a["out-dir"], "AGGIUNTE_AUDIT_NEGOZI_" + tag + ".xlsx");
   fs.writeFileSync(fileM, Buffer.from(X.write(bM.wb, { type: "array", bookType: "xlsx" })));
-  const toItems = o => { const out = {}; Object.keys(o).forEach(m => { const v = o[m]; out[m] = { m: v.m, c: v.c, n: v.n, si: "", s: "", j: v.j, cu: v.cu, ex: v.ex, pct: v.pct, dept: false, items: v.total ? { tot: v.total } : {} }; }); return out; };
-  const posF = diffRows(toItems(oldFc), toItems(newFc));
-  const bF = buildWorkbook(X, posF, { ...metaBase, mode: "fcvm", sessione: path.basename(a.fcvm), scenario: "Dati inventari corretti dall'Audit — aree FC (esclusa la regola 99,5% VM)" });
+  // con --includi-regola-vm il «prima» esclude i premi dei negozi singoli che la vecchia regola (100%) non avrebbe riconosciuto
+  const inclRule = !!a["includi-regola-vm"];
+  const toItems = (o, minusRule) => { const out = {}; Object.keys(o).forEach(m => { const v = o[m], t = round2(v.total - (minusRule ? v.adj995 || 0 : 0)); out[m] = { m: v.m, c: v.c, n: v.n, si: "", s: "", j: v.j, cu: v.cu, ex: v.ex, pct: v.pct, dept: false, items: t ? { tot: t } : {} }; }); return out; };
+  const posF = diffRows(toItems(oldFc, inclRule), toItems(newFc, false));
+  const bF = buildWorkbook(X, posF, { ...metaBase, mode: "fcvm", sessione: path.basename(a.fcvm), scenario: inclRule ? "Dati inventari corretti dall'Audit — aree FC + regola 99,5% VM (negozi singoli)" : "Dati inventari corretti dall'Audit — aree FC (esclusa la regola 99,5% VM)" });
   const fileF = path.join(a["out-dir"], "AGGIUNTE_AUDIT_FCVM_" + tag + ".xlsx");
   fs.writeFileSync(fileF, Buffer.from(X.write(bF.wb, { type: "array", bookType: "xlsx" })));
 

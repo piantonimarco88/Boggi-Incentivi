@@ -122,3 +122,22 @@ test("audit-ricalcolo: area divisa non assegnabile (task che non coincidono) -> 
   assert.ok(!fs.existsSync(path.join(tmp, "RICALCOLO_INVENTARI_AUDIT_T.xlsx")));
   fs.rmSync(tmp, { recursive: true, force: true });
 });
+
+test("audit-ricalcolo --includi-regola-vm: i VM con negozio singolo al 99,6% (regola 99,5%) entrano nel file Aggiunte FC+VM solo con l'opzione", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "audit-"));
+  const M = loadBundle(); M.run(MENSILE);
+  const F = loadBundle(); F.run(FCVM);
+  F.run(`FC_EMP["V1"]={m:"V1",c:"BELMONTE",n:"VM",j:"VM",ib:0,cu:"CHF",ex:1.4,ml:0,ps:"NO",bdg_stores:[{sid:"3001",ib:100,s:"3001 FACTORY"}]};
+    FC_TARGETS["3001"]={to_eur:100000};FC_RESULTS["3001"]={sc_eur:99600};`);
+  assert.strictEqual(F.run("calcFcVmPremio('V1').totalPremioLC"), 100, "con la regola 99,5% il negozio è raggiunto");
+  M.run("saveSession()"); const m = path.join(tmp, "m.json"); fs.writeFileSync(m, M.lastBlobText());
+  F.run("saveSession()"); const f = path.join(tmp, "f.json"); fs.writeFileSync(f, F.lastBlobText());
+  const audit = path.join(tmp, "audit.xlsx"); auditXlsx(audit);
+  const X = xlsxLib();
+  const aggF = tag => rowsOf(X, path.join(tmp, "AGGIUNTE_AUDIT_FCVM_" + tag + ".xlsx"), "Aggiunte").slice(1).map(r => [r[0], r[4], r[5]]);
+  execFileSync(process.execPath, [TOOL, "--audit", audit, "--mensile", m, "--fcvm", f, "--out-dir", tmp, "--tag", "A"], { stdio: "pipe" });
+  execFileSync(process.execPath, [TOOL, "--audit", audit, "--mensile", m, "--fcvm", f, "--out-dir", tmp, "--tag", "B", "--includi-regola-vm"], { stdio: "pipe" });
+  assert.deepStrictEqual(aggF("A"), [["F1", "EUR", 400]], "senza opzione: solo inventari");
+  assert.deepStrictEqual(aggF("B").map(r => r.join("|")).sort(), ["F1|EUR|400", "V1|CHF|100"], "con opzione: anche la regola VM");
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
