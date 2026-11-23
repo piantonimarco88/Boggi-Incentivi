@@ -277,3 +277,31 @@ test("diff-aggiunte --dept-senza-inventari: ricostruisce il «prima» con il coe
   assert.strictEqual(rows.length - 1, 3, "differenza per i 3 SM/VSM Dept (SM Rossi, VSM Smith, SM Verdi)");
   fs.rmSync(tmp, { recursive: true, force: true });
 });
+
+test("Aggiunta «Visual In Store»: import dalla colonna, premio, export Excel e tracciato pagamenti (cod. 235)", () => {
+  const app = loadBundle();
+  app.run(`PRIZE_MODE="mensile";REGION="italia";MODE="consuntivo";CFG_YEAR=2026;CFG_MONTH=11;
+    STORE_FLAGS={};initStoreFlags();D.t={"1201":{to:100000}};D.c={"1201":{sc:105000}};MONTHLY_SYLY={};
+    DEMOLT_RESULT_STORE={};VL={};AGG={};
+    E=[{m:"7000001",c:"A",n:"A",f:"SA",j:"SA",si:1201,s:"1201 T",ib:500,rl:500,en:210,cu:"EUR",ex:1,ml:0,ps:"NO"},
+       {m:"7000003",c:"C",n:"C",f:"SA",j:"SA",si:1201,s:"1201 T",ib:500,rl:500,en:210,cu:"EUR",ex:1,ml:0,ps:"NO"}];`);
+  const base = app.run("calcE(E[1])");
+  app.ctx._rows = [["Matricola", "Valuta", "Visual In Store", "BDG (Lordo)"], ["7000001", "EUR", 16, null]];
+  const p = JSON.parse(app.run("JSON.stringify(aggParseRows(_rows))"));
+  assert.deepStrictEqual(p.items[0].vals, { vi: 16 });
+  app.ctx._items = p.items;
+  app.run("aggApplyItems(_items)");
+  assert.strictEqual(app.run("aggTotal('7000001')"), 16);
+  // il premio sale di 16 rispetto al collega identico
+  assert.strictEqual(Math.round((app.run("calcE(E[0])") - base) * 100) / 100, 16);
+  // tracciato Zucchetti: cod. 235 PREMIO VMS = 16
+  app.run("exportTracciatoPagamenti()");
+  const lines = app.lastBlobText().split("\n").map(l => l.split(";"));
+  assert.deepStrictEqual(lines.filter(r => r[1] === "7000001" && r[6] === "235").map(r => parseInt(r[7], 10) / 100), [16]);
+  assert.deepStrictEqual(lines.filter(r => r[1] === "7000003" && r[6] === "235"), []);
+  // export Excel consuntivo IT: colonna VISUAL IN STORE (ultima)
+  app.run(`var __rows=null;XLSX={utils:{aoa_to_sheet:function(r){__rows=r;return {}},book_new:function(){return {}},book_append_sheet:function(){}},writeFile:function(){}};exportExcelConsuntivoIT();`);
+  const rows = JSON.parse(app.run("JSON.stringify(__rows)"));
+  assert.strictEqual(rows.find(x => x[3] === "7000001")[21], 16);
+  assert.strictEqual(rows.find(x => x[3] === "7000003")[21], 0);
+});

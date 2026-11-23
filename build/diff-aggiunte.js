@@ -32,9 +32,9 @@ const { loadBundle } = require("./bundle-harness");
 // Voci importabili nel tab Aggiunte (stesse chiavi di AGG_KEYS) e voci che il tab non gestisce
 const AGG_COLS = [
   ["rb", "BDG (Lordo)"], ["rbn", "BDG (Netto)"], ["rd", "Digital"], ["rs", "SY"], ["rp", "Privilege"],
-  ["rsa", "SAS"], ["rdc", "DCC"], ["rcs", "CS"], ["ra", "Articoli"], ["pq", "QTY Dept"],
+  ["rsa", "SAS"], ["rdc", "DCC"], ["rcs", "CS"], ["ra", "Articoli"], ["pq", "QTY Dept"], ["vi", "Visual In Store"],
 ];
-const NON_IMPORT = { vi: "Visual In Store" };
+const NON_IMPORT = {}; // dalla v9.126 anche Visual In Store è importabile (AGG_COLS): nessuna voce fuori dal tab Aggiunte
 
 function parseArgs(argv) {
   const a = { _: [] };
@@ -142,7 +142,7 @@ function buildWorkbook(XLSX, rows, meta) {
     sorted.forEach(r => {
       if (r.diff.tot) a1.push([String(r.m), r.c, r.n, r.j, r.cu, r.diff.tot]);
       const eur = round2(r.totPos * r.ex);
-      totLoc[r.cu] = round2((totLoc[r.cu] || 0) + r.totPos); totEur = round2(totEur + eur);
+      if (r.totPos > 0) { totLoc[r.cu] = round2((totLoc[r.cu] || 0) + r.totPos); totEur = round2(totEur + eur); }
       a2.push([String(r.m), r.c, r.n, r.j, r.cu, r.ex, r.pctNew == null ? r.pct : r.pctNew, r.oldTot, r.newTot, r.totPos, eur]);
     });
   } else {
@@ -154,7 +154,7 @@ function buildWorkbook(XLSX, rows, meta) {
     sorted.forEach(r => {
       if (hasImp(r)) a1.push([String(r.m), r.c, r.n, r.s, r.j, r.cu].concat(AGG_COLS.map(c => r.diff[c[0]] || null)));
       const eur = round2(r.totPos * r.ex);
-      totLoc[r.cu] = round2((totLoc[r.cu] || 0) + r.totPos); totEur = round2(totEur + eur);
+      if (r.totPos > 0) { totLoc[r.cu] = round2((totLoc[r.cu] || 0) + r.totPos); totEur = round2(totEur + eur); }
       a2.push([r.s, String(r.m), r.c, r.n, r.j, r.cu, r.ex, r.pct == null ? null : r.pct, r.oldTot, r.newTot]
         .concat(AGG_COLS.map(c => r.diff[c[0]] || null)).concat(vk.map(k => r.diff[k] || null)).concat([r.totPos, eur]));
     });
@@ -174,7 +174,7 @@ function buildWorkbook(XLSX, rows, meta) {
   a3.push(["Come usarlo: nell'app, sessione del mese di pagamento, tab «" + tabName + "» → «Importa aggiunte (Excel)» e scegli questo file (foglio «Aggiunte»). Gli importi si SOMMANO alle aggiunte già presenti e NON risentono di regole, policy o malattia."]);
   a3.push(["Importi in valuta locale del dipendente, come nel tab. Non importarlo due volte: raddoppia gli importi."]);
   if (meta.note) meta.note.forEach(t => a3.push([t]));
-  if (nonImp.length) a3.push([""], ["ATTENZIONE: differenze su voci che il tab Aggiunte non gestisce (da inserire a mano):"], ...nonImp.map(r => ["  " + r.m + " " + r.c + " " + r.n, vk.map(k => NON_IMPORT[k] + " " + (r.diff[k] || 0)).join("; ")]));
+  if (nonImp.length) a3.push([""], ["ATTENZIONE: differenze su voci che il tab Aggiunte non ha (NON importabili, da gestire a parte):"], ...nonImp.map(r => ["  " + r.m + " " + r.c + " " + r.n, vk.map(k => NON_IMPORT[k] + " " + (r.diff[k] || 0)).join("; ")]));
   if (negRows.length) a3.push([""], ["Voci che nel ricalcolo SCENDONO (ignorate, non si recuperano):"], ...negRows.map(r => ["  " + r.m + " " + r.c + " " + r.n, JSON.stringify(r.neg)]));
 
   const wb = XLSX.utils.book_new();
@@ -244,4 +244,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { diffRows, AGG_COLS };
+module.exports = { diffRows, AGG_COLS, NON_IMPORT, openSession, itemsOf, modeOf, round2, buildWorkbook };

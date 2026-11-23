@@ -524,8 +524,8 @@ function exportTracciatoPagamenti(){
         if(!e.ibFromAY)val+=(_agg.rb||0);
       } else if(p.k){
         if(p.k==="vi"||isOn(e.j,p.k)){val=getVal(e,p.k)*sm}
-        // Aggiunta manuale per questo tipo premio (tutti tranne vi che non ha AGG_KEY)
-        if(p.k!=="vi")val+=(_agg[p.k]||0);
+        // Aggiunta manuale per questo tipo premio (dalla v9.126 anche Visual In Store, cod. 235)
+        val+=(_agg[p.k]||0);
       } else if(p.cod===380){
         if(e.ibFromAY){
           val=getVal(e,"rb")*sm;

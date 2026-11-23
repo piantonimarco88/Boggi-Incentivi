@@ -10,7 +10,7 @@ function rAgg(){
   var _focusCF=_fEl?_fEl.getAttribute("data-aggcf"):null;
 
   var h='<div style="font-size:12px;color:#6b6560;margin-bottom:14px"><b>Aggiunte manuali</b> \u2014 Importi inseriti qui si <b>sommano</b> ai premi calcolati e <b>non risentono</b> di regole, policy o malattia.</div>';
-  h+='<div class="flt" style="margin-bottom:12px"><input placeholder="Cerca matricola, nome, negozio..." id="aggQ" value="'+esc(aggFilter)+'" style="padding:8px 12px;border-radius:6px;border:1px solid #d5d0c8;font-size:12px;flex:1;min-width:200px"><label class="exp-btn btn-amber" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;white-space:nowrap" title="Importa da Excel: una riga per dipendente (Matricola + colonne BDG (Lordo), BDG (Netto), Digital, SY, Privilege, SAS, DCC, CS, Articoli, QTY Dept). Gli importi si sommano a quelli presenti.">&#128194; Importa aggiunte (Excel)<input type="file" accept=".xlsx,.xlsm,.xls" onchange="loadAggiunteExcel(this)" style="display:none"></label></div>';
+  h+='<div class="flt" style="margin-bottom:12px"><input placeholder="Cerca matricola, nome, negozio..." id="aggQ" value="'+esc(aggFilter)+'" style="padding:8px 12px;border-radius:6px;border:1px solid #d5d0c8;font-size:12px;flex:1;min-width:200px"><label class="exp-btn btn-amber" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;white-space:nowrap" title="Importa da Excel: una riga per dipendente (Matricola + colonne BDG (Lordo), BDG (Netto), Digital, SY, Privilege, SAS, DCC, CS, Articoli, QTY Dept, Visual In Store). Gli importi si sommano a quelli presenti.">&#128194; Importa aggiunte (Excel)<input type="file" accept=".xlsx,.xlsm,.xls" onchange="loadAggiunteExcel(this)" style="display:none"></label></div>';
 
   // Sort per store ID poi matricola
   var sorted=E.slice();
@@ -75,7 +75,7 @@ function rAgg(){
 
   if(sorted.length>500)h+='<tr><td colspan="'+_nCols+'" style="padding:8px;text-align:center;color:#a09a92;font-size:11px">Mostrando 500 su '+sorted.length+'. Usa la ricerca per filtrare.</td></tr>';
   h+='</tbody></table></div>';
-  h+='<div class="wb" style="margin-top:16px"><div style="font-size:11px;font-weight:700;color:#856404;margin-bottom:4px">\u2139 Come funzionano le Aggiunte</div><div style="font-size:11px;color:#856404;line-height:1.5">I valori inseriti qui vengono <b>sommati</b> ai premi calcolati normalmente. Non sono soggetti a regole di policy, soglie di fatturato, n\u00e9 al moltiplicatore malattia. Compaiono nella lettera come sezione separata "Aggiunte / Manual Adjustments". Le aggiunte vengono salvate nella sessione. Con «Importa aggiunte (Excel)» si caricano in blocco da un file con una riga per dipendente (colonna Matricola, Valuta facoltativa e una colonna per voce: BDG (Lordo), BDG (Netto), Digital, SY, Privilege, SAS, DCC, CS, Articoli, QTY Dept): gli importi si <b>sommano</b> a quelli già presenti.</div></div>';
+  h+='<div class="wb" style="margin-top:16px"><div style="font-size:11px;font-weight:700;color:#856404;margin-bottom:4px">\u2139 Come funzionano le Aggiunte</div><div style="font-size:11px;color:#856404;line-height:1.5">I valori inseriti qui vengono <b>sommati</b> ai premi calcolati normalmente. Non sono soggetti a regole di policy, soglie di fatturato, n\u00e9 al moltiplicatore malattia. Compaiono nella lettera come sezione separata "Aggiunte / Manual Adjustments". Le aggiunte vengono salvate nella sessione. Con «Importa aggiunte (Excel)» si caricano in blocco da un file con una riga per dipendente (colonna Matricola, Valuta facoltativa e una colonna per voce: BDG (Lordo), BDG (Netto), Digital, SY, Privilege, SAS, DCC, CS, Articoli, QTY Dept, Visual In Store): gli importi si <b>sommano</b> a quelli già presenti.</div></div>';
 
   document.getElementById("p5").innerHTML=h;
 
@@ -206,7 +206,7 @@ function loadVisualExcel(input){
 // policy o malattia). Foglio letto: «Aggiunte» se esiste, altrimenti il primo.
 var AGG_HDR_ALIASES={
   rb:["bdg lordo","bdg"],rbn:["bdg netto"],rd:["digital"],rs:["sy","shopper yield"],rp:["privilege"],
-  rsa:["sas"],rdc:["dcc"],rcs:["cs","customer service"],ra:["articoli","venduto"],pq:["qty dept","qty"]
+  rsa:["sas"],rdc:["dcc"],rcs:["cs","customer service"],ra:["articoli","venduto"],pq:["qty dept","qty"],vi:["visual in store","visual","vms"]
 };
 function _aggNormHdr(s){return String(s==null?"":s).toLowerCase().replace(/[^a-z0-9]+/g," ").trim();}
 // Parsing puro (testabile): rows = array di righe (array di celle). Ritorna {cols,items,problems}.

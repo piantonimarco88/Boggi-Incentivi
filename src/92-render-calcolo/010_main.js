@@ -151,7 +151,7 @@ function exportExcel(){
     var at=aggTotal(e.m);
     // Add aggiunte per-KPI
     var ag=AGG[e.m]||{};
-    rb+=(ag.rb||0);rbn+=(ag.rbn||0);rd+=(ag.rd||0);rs+=(ag.rs||0);rp+=(ag.rp||0);rsa+=(ag.rsa||0);rdc+=(ag.rdc||0);rcs+=(ag.rcs||0);ra+=(ag.ra||0);pq+=(ag.pq||0);
+    rb+=(ag.rb||0);rbn+=(ag.rbn||0);rd+=(ag.rd||0);rs+=(ag.rs||0);rp+=(ag.rp||0);rsa+=(ag.rsa||0);rdc+=(ag.rdc||0);rcs+=(ag.rcs||0);ra+=(ag.ra||0);pq+=(ag.pq||0);vi+=(ag.vi||0);
     var totLordo=rb+rbn+rd+rs+rp+rsa+rdc+rcs+ra+vi+pq+wg;
     var totLC=totLordo;var totEUR=totLC*ex;
     // ── Massimali: ogni KPI calcolato in preventivo (target=100%, sm=1) ─────
@@ -268,7 +268,7 @@ function exportExcelConsuntivoIT(){
     var ra=PARAMS.artEnabled&&isOn(e.j,"ra")?getVal(e,"ra")*sm:0;
     var vi=(getVal(e,"vi")||0)*sm;
     var ag=AGG[e.m]||{};
-    rb+=(ag.rb||0);rbn+=(ag.rbn||0);rd+=(ag.rd||0);rs+=(ag.rs||0);rp+=(ag.rp||0);rsa+=(ag.rsa||0);rdc+=(ag.rdc||0);rcs+=(ag.rcs||0);ra+=(ag.ra||0);
+    rb+=(ag.rb||0);rbn+=(ag.rbn||0);rd+=(ag.rd||0);rs+=(ag.rs||0);rp+=(ag.rp||0);rsa+=(ag.rsa||0);rdc+=(ag.rdc||0);rcs+=(ag.rcs||0);ra+=(ag.ra||0);vi+=(ag.vi||0);
     rows.push([CFG_MONTH,e.si,e.s,e.m,e.c,e.n,e.f||e.j,e.rl,e.ib,e.ib,e.ib,rb,rbn,rd,rs,rp,rsa,rdc,rcs,ra,e.ml||0,vi,occExport(e)]);
   });
   var ws=XLSX.utils.aoa_to_sheet(rows);
