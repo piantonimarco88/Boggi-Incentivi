@@ -1785,6 +1785,13 @@ function loadResultsExcel(file){
         var cMatrArt=fH("matricola","matr");
         if(cImportoIncent>=0&&cMatrArt>=0&&type==="unknown"){type="articoli_incent";bestSheet=sn;bestJson=json;bestHeaders=headers;bestDataStart=dStart;continue}
 
+        // Articoli incentivati per categoria: una riga per negozio+categoria con flag 1/0
+        // ("Codice","Store","Categoria","Incentivo (1 = sì, 0 = no)") → n. categorie incentivate per negozio (D.c[sid].ac)
+        var cCatFl=fH("categoria","category");
+        var cFlagFl=fH("incentivo (1","incentivo");
+        var cCodFl=cSid>=0?cSid:fH("codice","cod");
+        if(cCatFl>=0&&cFlagFl>=0&&cCodFl>=0&&cFlagFl!==cCodFl&&type==="unknown"){type="articoli_flag";bestSheet=sn;bestJson=json;bestHeaders=headers;bestDataStart=dStart;continue}
+
         // Italia malattie v1: cognome + giorni di malattia (no matricola)
         var cGiorni=fH("giorni di malattia","giorni malattia","giorni");
         var cCogn=fH("cognome3","cognome");
@@ -1999,6 +2006,50 @@ function loadResultsExcel(file){
           imported++;
         }
         report="Premi articoli incentivati: "+imported+" righe · "+matched+" abbinate · "+(notFound>0?notFound+" non trovate":"tutte abbinate")+(skipped>0?" · "+skipped+" righe vuote/zero ignorate":"")+".\n\nImporto assegnato individualmente a ciascun dipendente (campo premio articoli).";
+      }
+
+      else if(type==="articoli_flag"){
+        // Articoli incentivati per categoria: una riga per negozio+categoria, flag 1 = la categoria riceve l'incentivo.
+        // Il premio e' "% BDG x n. categorie incentivate" (getVal "ra"), quindi qui si scrive solo il conteggio D.c[sid].ac.
+        // Il conteggio SOSTITUISCE quello gia' presente (ricaricare lo stesso file non lo raddoppia); un negozio con tutte
+        // le categorie a 0 va a 0. Chi ha un importo individuale (e.ra) lo mantiene: ha la precedenza.
+        var cCodF=fH("store id","store_id");if(cCodF<0)cCodF=fH("codice","cod");
+        var cCatF=fH("categoria","category"),cFlagF=fH("incentivo (1","incentivo");
+        var perSt={},badCode=0,badFlag=0,dupCat=0,catSeen={};
+        for(var ri=dataStart;ri<json.length;ri++){
+          var row=json[ri];if(!row)continue;
+          var sidRaw=row[cCodF];if(sidRaw==null||String(sidRaw).trim()==="")continue;
+          var sidF=parseInt(sidRaw,10);if(isNaN(sidF)||sidF<=0){badCode++;continue;}
+          var catF=String(row[cCatF]==null?"":row[cCatF]).trim().toLowerCase();if(!catF)continue;
+          var flS=String(row[cFlagF]==null?"":row[cFlagF]).trim().toLowerCase(),on;
+          if(flS==="1"||flS==="si"||flS==="sì"||flS==="yes"||flS==="true")on=1;
+          else if(flS==="0"||flS==="no"||flS==="false"||flS==="")on=0;
+          else{badFlag++;continue;}
+          var kF=String(sidF);
+          if(!perSt[kF])perSt[kF]={cats:{}};
+          if(perSt[kF].cats.hasOwnProperty(catF))dupCat++;
+          perSt[kF].cats[catF]=Math.max(perSt[kF].cats[catF]||0,on);
+          catSeen[catF]=1;
+        }
+        var nWith=0,nCat=0,fileSids=Object.keys(perSt);
+        fileSids.forEach(function(k){
+          var n=0;for(var c in perSt[k].cats)n+=perSt[k].cats[c];
+          if(!D.c[k])D.c[k]={sc:0,es:0,pd:0,cr:0,sy:0,nf:0,qc:0,s4:0,dv:0};
+          D.c[k].ac=n;if(n>0)nWith++;nCat+=n;imported++;
+        });
+        // Controlli sull'anagrafica caricata: negozi del file assenti, negozi senza riga nel file
+        var empSids={};E.forEach(function(e){empSids[String(e.si)]=1;});
+        var notInE=fileSids.filter(function(k){return !empSids[k];});
+        var noRow=Object.keys(empSids).filter(function(k){return !perSt[k]&&!isNaN(parseInt(k,10))&&parseInt(k,10)<=6500;});
+        var lst=function(a){return a.slice(0,10).join(", ")+(a.length>10?" … (+"+(a.length-10)+")":"");};
+        report="Articoli incentivati (per categoria): "+imported+" negozi letti (foglio: "+bestSheet+") · categorie: "+Object.keys(catSeen).join(", ")+
+          "\n"+nWith+" negozi con almeno una categoria incentivata · "+nCat+" categorie incentivate in totale · "+(imported-nWith)+" negozi a zero."+
+          "\nIl premio per negozio = "+(PARAMS.artPct*100)+"% del BDG × n. categorie incentivate (il conteggio sostituisce quello precedente)."+
+          (notInE.length&&E.length?"\nℹ "+notInE.length+" negozi del file non sono nell'anagrafica caricata (normale se il file contiene sia Italia sia Internazionale)":"")+
+          (noRow.length&&E.length?"\n⚠ "+noRow.length+" negozi in anagrafica senza riga nel file (articoli = 0): "+lst(noRow):"")+
+          (badFlag>0?"\n⚠ "+badFlag+" righe ignorate: valore incentivo non 1/0":"")+
+          (badCode>0?"\n⚠ "+badCode+" righe ignorate: codice negozio non valido":"")+
+          (dupCat>0?"\nℹ "+dupCat+" righe duplicate (stesso negozio e categoria): conta una sola volta, vale 1 se almeno una riga è 1":"");
       }
 
       else if(type==="malattie_it"){
