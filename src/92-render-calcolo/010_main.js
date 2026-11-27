@@ -40,7 +40,8 @@ function rC(){
   function thS(col,label){var ar=cSort.col===col?(cSort.dir>0?"\u25b2":"\u25bc"):"\u25b4";return'<th data-col="'+col+'"'+(cSort.col===col?' class="sorted"':"")+">"+label+' <span class="arrow">'+ar+"</span></th>"}
   h+='<div class="scroll-wrap"><table id="ctbl"><thead><tr>'+thS("m","Matr.")+thS("c","Cognome")+thS("n","Nome")+thS("si_m","Negozio")+thS("j","Ruolo")+'<th style="cursor:default" title="Occupazione: Full-time o Part-time con la % (dall\'anagrafica HR)">Occ.</th><th>Val.</th>'+thS("ml","Mal.")+'<th style="cursor:default;color:#c9a96e" title="Premio BDG moltiplicatore ridotto ('+Math.round(PARAMS.bdg60mult*100)+'%)">Rid.</th>';
   if(MODE==="consuntivo"&&typeof demoltActive==="function"&&demoltActive())h+='<th style="cursor:default;color:#a07d2c" title="Coefficiente Inventari (SM/VSM): riduzione premio da % completamento inventari + accuracy">Coef.</th>';
-  IT.forEach(function(it){if(it.k==="ra"&&!PARAMS.artEnabled)return;h+=thS(it.k,it.l)});h+='<th>Agg.</th>'+thS("tl","TOTALE")+(MODE==="consuntivo"?'<th style="cursor:default;font-size:9px;text-align:center" title="Riconosci premio BDG al 100%">100%</th><th style="cursor:default;font-size:9px;text-align:center" title="Riconosci Molt. ridotto ('+Math.round(PARAMS.bdg60mult*100)+'%)">B60</th><th style="cursor:default;font-size:9px;text-align:center" title="Riconosci Workgame ('+Math.round((PARAMS.workgamePct||0)*100)+'% BDG)">WG</th>':'')+' <th style="cursor:default">PS</th>'+(REGION!=="italia"?'<th style="cursor:default">&#128231;</th>':'')+'<th style="cursor:default" title="Salva il PDF della lettera nella cartella dei PDF">PDF</th>'+"</tr></thead><tbody>";
+  if(MODE==="consuntivo"&&subNewActive())h+='<th style="cursor:default;color:#5bb98c" title="Matrice Subscription (da gen. 2027): coefficiente sul BDG in base al Subscription rate del negozio rispetto al target">Sub.</th>';
+  IT.forEach(function(it){if(it.k==="ra"&&!PARAMS.artEnabled)return;if(itHidden(it.k))return;h+=thS(it.k,it.l)});h+='<th>Agg.</th>'+thS("tl","TOTALE")+(MODE==="consuntivo"?'<th style="cursor:default;font-size:9px;text-align:center" title="Riconosci premio BDG al 100%">100%</th><th style="cursor:default;font-size:9px;text-align:center" title="Riconosci Molt. ridotto ('+Math.round(PARAMS.bdg60mult*100)+'%)">B60</th><th style="cursor:default;font-size:9px;text-align:center" title="Riconosci Workgame ('+Math.round((PARAMS.workgamePct||0)*100)+'% BDG)">WG</th>':'')+' <th style="cursor:default">PS</th>'+(REGION!=="italia"?'<th style="cursor:default">&#128231;</th>':'')+'<th style="cursor:default" title="Salva il PDF della lettera nella cartella dei PDF">PDF</th>'+"</tr></thead><tbody>";
   fl.forEach(function(e){var t=calcE(e),cu=e.cu||"EUR",ml=e.ml||0,sm=sickMult(ml),at=aggTotal(e.m);
     var mlc=ml===0?"ml-0":ml<SICK_50?"ml-0":ml<SICK_0?"ml-low":"ml-high";
     var psOn=e.ps==="SI";
@@ -63,7 +64,13 @@ function rC(){
       var _demColor=_demR&&_demR.pct!=null?(_demR.pct>=0.95?"#2d7a3a":(_demR.pct>=0.70?"#c9a96e":"#cf5b5b")):"#d5d0c8";
       h+='<td style="text-align:center;font-size:13px" title="'+esc(_demTip)+'">'+(_demR&&_demR.pct!=null?'<span style="color:'+_demColor+'">&#11044;</span>':'—')+"</td>";
     }
-    IT.forEach(function(it){if(it.k==="ra"&&!PARAMS.artEnabled)return;var on=it.k==="vi"?true:isOn(e.j,it.k),raw=getVal(e,it.k),val=on?raw*sm:0;
+    if(MODE==="consuntivo"&&subNewActive()){
+      var _subA=subApplies(e),_subI=_subA?subInfo(e.si):null;
+      var _subTip=!_subA?"Matrice Subscription non applicata (Dept store, USA o ruolo senza Privilege)":(_subI.has?("Subscription "+fPct(_subI.rate)+" su target "+fPct(_subI.target)+" = "+(Math.round(_subI.ratio*1000)/10)+"% del target \u2192 "+Math.round(_subI.coeff*100)+"% del BDG"):"Dato Subscription non disponibile per questo negozio: nessuna riduzione");
+      var _subColor=!_subA||!_subI.has?"#d5d0c8":(_subI.coeff>=1?"#2d7a3a":(_subI.coeff>=0.7?"#c9a96e":"#cf5b5b"));
+      h+='<td style="text-align:center;font-size:13px" title="'+esc(_subTip)+'">'+(_subA&&_subI.has?'<span style="color:'+_subColor+'">&#11044;</span>':'\u2014')+"</td>";
+    }
+    IT.forEach(function(it){if(it.k==="ra"&&!PARAMS.artEnabled)return;if(itHidden(it.k))return;var on=it.k==="vi"?true:isOn(e.j,it.k),raw=getVal(e,it.k),val=on?raw*sm:0;
       // SAS azzerato per soglia % accettati non raggiunta \u2192 mostra "0" in rosso con tooltip
       if(it.k==="rsa"&&on&&!psOn&&sasZeroByAcc(e)){
         var cnSA=(D.c[String(e.si)]||{}).sa;
@@ -124,6 +131,24 @@ try{ rC(); }catch(_e){ try{_afterScripts(rC)}catch(_e2){} }
 try{ updateAggiunteTabVisibility(); }catch(_e){ try{_afterScripts(updateAggiunteTabVisibility)}catch(_e2){} }
 
 // === EXPORT EXCEL (matching TESTATA template) ===
+// Colonne «matrice Subscription» in coda agli Excel mensili (da gen. 2027). Mai in mezzo alle colonne storiche:
+// chi legge il file per posizione (HR, statistiche) non slitta. Valori in valuta locale, dopo malattia dove indicato.
+function subExportHeaders(){
+  return subNewActive()?["BDG PRE-MATRICE SUBSCRIPTION","SUBSCRIPTION TARGET","SUBSCRIPTION RISULTATO","% RAGG. TARGET SUBSCRIPTION","COEFF. SUBSCRIPTION","RIDUZIONE SUBSCRIPTION","COEFF. INVENTARI"]:[];
+}
+function subExportValues(e){
+  if(!subNewActive())return [];
+  var st=premioSteps(e),ap=MODE==="consuntivo"&&subApplies(e)&&isOn(e.j,"rb"),si=ap?subInfo(e.si):null;
+  return [
+    isOn(e.j,"rb")?st.bdgRaw:"",
+    si&&si.target>0?si.target:"",
+    si&&si.rate>0?si.rate:"",
+    si&&si.has?si.ratio:"",
+    ap?(si.has?st.subC:1):"",
+    ap?Math.round((st.bdgRaw-st.bdgSub)*st.sm*100)/100:"",
+    st.invPct!=null?st.invPct:""
+  ];
+}
 function exportExcel(){
   var headers=["MONTH","STORE ID","DESCR FILIALE","MATRICOLA DIPENDENTE","COGNOME","NOME","TIPO CONTRATTO","JOB","RML","CONCATENA","IMPORTO BDG","IMPORTO BDG1","BDG","FIELD COACH","FIELD","STORE ID2","DESCR FILIALE2","CF","TOTALE STIPENDIO COSTO AZIENDA","TOTALE INCENTIVO LORDO","TOTALE INCENTIVO COSTO AZIENDA","RISULTATO PREMIO BDG (LORDO)","RISULTATO PREMIO BDG (NETTO)","RISULTATO PREMIO DIGITAL","RISULTATO SHOPPER YIELD","RISULTATO NUOVE PRIVILEGE","RISULTATO SAS","RISULTATO DCC","RISULTATO CUSTOMER SERVICE","RISULTATO ARTICOLI INCENTIVATI","MALATTIE","VISUAL IN STORE","TOTALE INCENTIVO LORDO","TOTALE INCENTIVO NETTO","TOTALE INCENTIVO COSTO AZIENDA","TARGET TOP SA","FATTURATO PERSONALE CY TOP SA","INCENTIVO TOP SALES ADVISOR","INCENTIVO SEMESTRALE","TOTALE INCENTIVO EROGATO (LC)","TOTALE INCENTIVO EROGATO (EURO)","TOTALE COSTO AZIENDA","TOP SALES ADVISOR","ENTE","RML EURO","RISULTATO PREMIO BDG (LORDO) EURO","RISULTATO PREMIO BDG (NETTO) EURO","RISULTATO PREMIO DIGITAL EURO","RISULTATO SHOPPER YIELD EURO","RISULTATO NUOVE PRIVILEGE EURO","RISULTATO SAS EURO","RISULTATO DCC EURO","RISULTATO CUSTOMER SERVICE EURO","RISULTATO ARTICOLI INCENTIVATI EURO","VISUAL IN STORE EURO","MALATTIE","DOPPIO BDG","DOPPIO BDG LC","DOPPIO BDG EURO","TOP SALES ADVISOR EURO","SEMESTRALE EURO",
     // Massimali erogabili (premio se tutti i target raggiunti al 100%, senza riduzione malattia)
@@ -131,7 +156,7 @@ function exportExcel(){
     "MASSIMALE BDG EURO","MASSIMALE DIGITAL EURO","MASSIMALE SHOPPER YIELD EURO","MASSIMALE NUOVE PRIVILEGE EURO","MASSIMALE SAS EURO","MASSIMALE DCC EURO","MASSIMALE CUSTOMER SERVICE EURO","MASSIMALE ARTICOLI INCENTIVATI EURO","MASSIMALE VISUAL IN STORE EURO","MASSIMALE TOTALE EURO",
     // % occupazione dall'anagrafica HR: 100 = full-time, <100 = part-time (vuoto = dato non presente)
     "% OCCUPAZIONE"
-  ];
+  ].concat(subExportHeaders());
   var rows=[headers];
   E.forEach(function(e){
     if(e.ps==="SI")return;
@@ -237,7 +262,7 @@ function exportExcel(){
       // Massimali EURO
       mRb*ex, mRd*ex, mRs*ex, mRp*ex, mRsa*ex, mRdc*ex, mRcs*ex, mRa*ex, mVi*ex, mTot*ex,
       occExport(e)              // % OCCUPAZIONE (100 = full-time)
-    ];
+    ].concat(subExportValues(e));
     rows.push(r);
   });
   var ws=XLSX.utils.aoa_to_sheet(rows);
@@ -247,7 +272,7 @@ function exportExcel(){
 }
 
 function exportExcelConsuntivoIT(){
-  var headers=["MONTH","STORE ID","DESCR FILIALE","MATRICOLA DIPENDENTE","COGNOME","NOME","JOB","RML","IMPORTO BDG","IMPORTO BDG1","BDG","RISULTATO PREMIO BDG (LORDO)","RISULTATO PREMIO BDG (NETTO)","RISULTATO PREMIO DIGITAL","RISULTATO SHOPPER YIELD","RISULTATO NUOVE PRIVILEGE","RISULTATO SAS","RISULTATO DCC","RISULTATO CUSTOMER SERVICE","RISULTATO ARTICOLI INCENTIVATI","MALATTIE","VISUAL IN STORE","% OCCUPAZIONE"];
+  var headers=["MONTH","STORE ID","DESCR FILIALE","MATRICOLA DIPENDENTE","COGNOME","NOME","JOB","RML","IMPORTO BDG","IMPORTO BDG1","BDG","RISULTATO PREMIO BDG (LORDO)","RISULTATO PREMIO BDG (NETTO)","RISULTATO PREMIO DIGITAL","RISULTATO SHOPPER YIELD","RISULTATO NUOVE PRIVILEGE","RISULTATO SAS","RISULTATO DCC","RISULTATO CUSTOMER SERVICE","RISULTATO ARTICOLI INCENTIVATI","MALATTIE","VISUAL IN STORE","% OCCUPAZIONE"].concat(subExportHeaders());
   var rows=[headers];
   E.forEach(function(e){
     if(e.ps==="SI")return;
@@ -269,7 +294,7 @@ function exportExcelConsuntivoIT(){
     var vi=(getVal(e,"vi")||0)*sm;
     var ag=AGG[e.m]||{};
     rb+=(ag.rb||0);rbn+=(ag.rbn||0);rd+=(ag.rd||0);rs+=(ag.rs||0);rp+=(ag.rp||0);rsa+=(ag.rsa||0);rdc+=(ag.rdc||0);rcs+=(ag.rcs||0);ra+=(ag.ra||0);vi+=(ag.vi||0);
-    rows.push([CFG_MONTH,e.si,e.s,e.m,e.c,e.n,e.f||e.j,e.rl,e.ib,e.ib,e.ib,rb,rbn,rd,rs,rp,rsa,rdc,rcs,ra,e.ml||0,vi,occExport(e)]);
+    rows.push([CFG_MONTH,e.si,e.s,e.m,e.c,e.n,e.f||e.j,e.rl,e.ib,e.ib,e.ib,rb,rbn,rd,rs,rp,rsa,rdc,rcs,ra,e.ml||0,vi,occExport(e)].concat(subExportValues(e)));
   });
   var ws=XLSX.utils.aoa_to_sheet(rows);
   var wb=XLSX.utils.book_new();
@@ -410,6 +435,15 @@ function exportSasJsonFcvm(){
   _downloadJson(payload,"sas_fcvm_"+_sessionFileTag()+".json");
 }
 
+// Info Subscription di un negozio per il JSON statistiche (null se la matrice non vale: prima di gen. 2027, Dept, USA, ruoli senza Privilege)
+function _statsSub(sid,k){
+  if(!subNewActive())return null;
+  var emp=null;for(var i=0;i<E.length;i++){if(String(E[i].si)===String(sid)&&subApplies(E[i])){emp=E[i];break;}}
+  if(!emp)return null;
+  var si=subInfo(sid);
+  if(!si.has)return k==="status"?"nodata":null;
+  return k==="status"?"applied":(k==="target"?si.target:(k==="rate"?si.rate:(k==="ratio"?si.ratio:(k==="coeff"?si.coeff:null))));
+}
 // ── Export dati JSON per statistiche esterne (schema concordato col progetto statistiche,
 // bottone "Esporta dati JSON per statistiche") ─────────────────────────────────────────────
 // Export indipendente da exportSasJsonStores/Fcvm (che restano invariati): stessa base di
@@ -471,7 +505,8 @@ function exportStatsJsonStores(){
       esito:esito,esitoLabel:esitoLabel,determinante:determinante,
       demoltStatus:demStatus,demoltPct:demStatus==="applied"?demR.pct:null,
       demoltCompl:demStatus==="applied"&&demR.compl!=null?demR.compl:null,
-      demoltAcc:demStatus==="applied"&&demR.acc!=null?demR.acc:null};
+      demoltAcc:demStatus==="applied"&&demR.acc!=null?demR.acc:null,
+      subStatus:_statsSub(sid,"status"),subTarget:_statsSub(sid,"target"),subRate:_statsSub(sid,"rate"),subRatio:_statsSub(sid,"ratio"),subCoeff:_statsSub(sid,"coeff")};
   });
   var columns=[
     {key:"kind",label:"Tipo",type:"mono"},
@@ -499,7 +534,12 @@ function exportStatsJsonStores(){
     {key:"esito",label:"Esito",type:"esitochip"},
     {key:"demoltPct",label:"Coef. Inventari (SM/VSM)",type:"pct0"},
     {key:"demoltCompl",label:"Inventari — % completamento",type:"pct0"},
-    {key:"demoltAcc",label:"Inventari — Accuracy",type:"pct0"}
+    {key:"demoltAcc",label:"Inventari — Accuracy",type:"pct0"},
+    {key:"subStatus",label:"Matrice Subscription — stato (applied/nodata; vuoto = non applicabile o prima di gen. 2027)",type:"text"},
+    {key:"subTarget",label:"Subscription rate — target",type:"pct0"},
+    {key:"subRate",label:"Subscription rate — risultato",type:"pct0"},
+    {key:"subRatio",label:"Subscription — % raggiungimento target",type:"pct0"},
+    {key:"subCoeff",label:"Coef. Subscription sul BDG",type:"pct0"}
   ];
   var payload={
     meta:{kind:"negozi",title:"Dati per Statistiche",

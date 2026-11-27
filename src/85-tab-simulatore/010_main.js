@@ -33,6 +33,8 @@ var _SIM_DEBOUNCE_TIMER=null;
 // ── Calc mensile ──────────────────────────────────────────────────────────
 function _simComputePayout(simParams){
   if(typeof PARAMS==="undefined"||!Array.isArray(E))return null;
+  // slider delle fasce Subscription (subC0..): riportati sulle fasce della copia di parametri simulata
+  if(simParams.subBands)for(var _bi=0;_bi<simParams.subBands.length;_bi++){if(simParams["subC"+_bi]!==undefined)simParams.subBands[_bi].c=simParams["subC"+_bi];}
   var orig=PARAMS; try{ PARAMS=simParams;
     var tot=0,n=0,byR={};
     E.forEach(function(e){
@@ -193,6 +195,7 @@ function rSimulatore(){
   }
   _SIM_ORIG_PARAMS=JSON.parse(JSON.stringify(PARAMS));
   _SIM_CURRENT=JSON.parse(JSON.stringify(PARAMS));
+  (PARAMS.subBands||[]).forEach(function(b,i){_SIM_ORIG_PARAMS["subC"+i]=b.c;_SIM_CURRENT["subC"+i]=b.c;});
 
   var h='<div style="padding:12px">';
   h+='<div style="background:#faf9f7;border:1px solid #e5e1db;border-radius:6px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#6b6560;line-height:1.5">';
@@ -214,13 +217,18 @@ function rSimulatore(){
   // togliamo dal simulatore invece di lasciarli come controlli morti.
   var simDefs=SIM_PARAM_DEFS.filter(function(p){return !(sasNewActive()&&(p.k==="sasRate"||p.k==="sasMax"));})
     .map(function(p){return(sasNewActive()&&p.group==="SAS/DCC")?Object.assign({},p,{group:"DCC"}):p;});
+  // Da gen. 2027 Digital, SY e Privilege non sono piu' premi: al posto dei loro slider ci sono i coefficienti delle fasce Subscription
+  if(subNewActive()){
+    simDefs=simDefs.filter(function(p){return !(p.k==="digPct"||p.k==="syPct"||p.k==="privPct");});
+    (PARAMS.subBands||[]).forEach(function(b,i){simDefs.push({k:"subC"+i,label:"Subscription \u2014 fascia "+String.fromCharCode(65+i)+" ("+subBandLbl(i)+"): % BDG",min:0,max:1,step:0.05,suffix:"",decimals:2,group:"Subscription"});});
+  }
   var groups={};
   simDefs.forEach(function(p){if(!groups[p.group])groups[p.group]=[];groups[p.group].push(p);});
   Object.keys(groups).forEach(function(g){
     h+='<div style="margin-bottom:14px"><div style="font-size:10px;color:#8a8680;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:6px">'+esc(g)+'</div>';
     h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px">';
     groups[g].forEach(function(p){
-      var v=PARAMS[p.k];
+      var v=(PARAMS[p.k]!==undefined)?PARAMS[p.k]:_SIM_CURRENT[p.k];
       h+='<div style="background:#faf9f7;border:1px solid #e5e1db;border-radius:4px;padding:8px 10px">';
       h+='<div style="display:flex;justify-content:space-between;font-size:11px;color:#6b6560;margin-bottom:4px">';
       h+='<span>'+esc(p.label)+'</span><span id="simVal_'+p.k+'" style="font-family:\'DM Sans\',monospace;color:#2c2925;font-weight:600">'+_simFmt(v,p)+'</span></div>';

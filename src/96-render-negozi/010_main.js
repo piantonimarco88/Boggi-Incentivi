@@ -23,6 +23,7 @@ function rStores(){
   h+='</div>';
 
   h+='<div style="background:#f0ede7;border:1px solid #d5d0c8;border-radius:6px;padding:8px 14px;margin-bottom:12px;font-size:10px;color:#6b6560">';
+  if(subNewActive())h+='<div style="font-size:10px;color:#856404;background:#fff8ee;border-left:3px solid #c9a96e;padding:5px 10px;margin-bottom:6px">Da gen. 2027 Digital, SY e Privilege non sono pi\u00f9 premi a s\u00e9: <b>No Privilege</b> esclude il negozio dalla matrice Subscription; <b>No Digital</b>, <b>Tipo Digital</b> e <b>No SY</b> valgono solo per i mesi fino a dicembre 2026.</div>';
   h+='<b>Legenda:</b> <span class="bg bg-d" style="font-size:9px">DEPT</span> = Dept Store (prioritario: QTY attivo, SY/Digital/Privilege disattivati) \u00b7 ';
   h+='<b>No SAS</b> = SAS disattivato \u00b7 <b>No Digital</b> = Digital disattivato \u00b7 <b>No SY</b> = Shopper Yield disattivato \u00b7 <b>No Privilege</b> = Privilege disattivato \u00b7 ';
   h+='DEPT \u00e8 esclusivo (ignora altri flag).</div>';
@@ -76,9 +77,14 @@ function rStores(){
     var _isNoPriv=sf.noPriv;
     if(!isSeasStores){
       _kpiActive.push('<span style="color:#c9a96e;font-weight:700">BDG</span>');
+      if(subNewActive()){
+        // da gen. 2027: niente Digital/SY/Privilege a se'; la matrice Subscription vale per i negozi non Dept e non "No Privilege"
+        if(!_isDept&&!_isNoPriv)_kpiActive.push('<span style="color:#5bb98c">Matrice Sub.</span>');
+      }else{
       if(!_isDept&&!_isNoDig)_kpiActive.push('<span style="color:#8b7ec8">Digital</span>');
       if(!_isDept&&!_isNoSy)_kpiActive.push('<span style="color:#5ba4cf">SY</span>');
       if(!_isDept&&!_isNoPriv)_kpiActive.push('<span style="color:#5bb98c">Priv.</span>');
+      }
       if(!_isDept)_kpiActive.push('<span style="color:#cf5b5b">DCC</span>');// SCS only but show
       if(!_isNoSas)_kpiActive.push('<span style="color:#d4a94e">SAS</span>');// SCS only
       if(!_isDept)_kpiActive.push('<span style="color:#cf8b4e">Art.</span>');

@@ -1,4 +1,7 @@
-var PARAMS={bdg100:0.995,kpi100:0.995,bdg60:0.95,bdg60mult:0.6,digMinClassic:0.03,digMinMobility:0.05,digPct:0.3,syPct:0.03,privPct:0.02,sasRate:2,sasMax:200,dccRate:0.002,dccMax:100,qtyPct:0.5,artPct:0.3,artEnabled:true,workgamePct:0.30};
+var PARAMS={bdg100:0.995,kpi100:0.995,bdg60:0.95,bdg60mult:0.6,digMinClassic:0.03,digMinMobility:0.05,digPct:0.3,syPct:0.03,privPct:0.02,sasRate:2,sasMax:200,dccRate:0.002,dccMax:100,qtyPct:0.5,artPct:0.3,artEnabled:true,workgamePct:0.30,
+  // Matrice Subscription (da gen. 2027, mensile ITA+INT): fasce di risultato÷target del negozio ordinate dalla piu' alta;
+  // c = coefficiente sul BDG. Editabili in Configurazione; vive in PARAMS cosi' si salva con sessione/configurazione.
+  subBands:[{f:0.995,c:1},{f:0.95,c:0.8},{f:0.90,c:0.6},{f:0,c:0.4}]};
 // Il vecchio gate "% min SAS accettati" (giugno 2026, vecchia policy interim) è stato
 // rimosso: dispatch a luglio 2026 con la nuova logica a matrice. Le due funzioni
 // restano come stub no-op per non rompere i call site nelle lettere/calcolo.
@@ -79,6 +82,63 @@ function sasReserveCalc(base,target,recognized,reserveIn){
   var used=usedFromReserveIn+usedFromRecognized;
   var avail=recognized+reserveIn;
   return {avail:avail,gap:gap,used:used,reserveOut:recognized-usedFromRecognized,num:base+used};
+}
+
+// ============================================================
+// NUOVA LOGICA PREMI MENSILI (da Gennaio 2027, solo mensile ITA+INT)
+// ------------------------------------------------------------
+// Spariscono i premi a se' Digital, Shopper Yield e Privilege. Catena di calcolo:
+//   BDG (fatturato + SAS) -> paracadute 60% -> coefficiente SUBSCRIPTION (solo BDG)
+//   -> + altri premi (DCC, Visual, Articoli, QTY Dept) -> coefficiente INVENTARI (tutte le voci)
+//   -> malattia sulla cifra finale.
+// Subscription: risultato / target Subscription rate del negozio (target Privilege, tg.pr; risultato cn.nf)
+// -> fascia in PARAMS.subBands -> coefficiente sul BDG. Dept stores, USA e ruoli senza Privilege esclusi.
+// Dato mancante (target o risultato assenti) -> coefficiente 1 (nessuna riduzione), come l'Inventari.
+// ============================================================
+var SUB_START_YEAR=2027, SUB_START_MONTH=1;
+function subNewActive(){
+  if(PRIZE_MODE!=="mensile")return false;
+  return (CFG_YEAR>SUB_START_YEAR)||(CFG_YEAR===SUB_START_YEAR&&CFG_MONTH>=SUB_START_MONTH);
+}
+// Indice della fascia (0 = migliore) per un rapporto risultato/target. Tolleranza 1e-9 sul bordo.
+function subBandIdx(ratio){
+  var b=PARAMS.subBands||[];
+  for(var i=0;i<b.length;i++){if(ratio+1e-9>=b[i].f)return i;}
+  return Math.max(0,b.length-1);
+}
+// Info Subscription di un negozio: {has,target,rate,ratio,idx,coeff}. has=false -> coeff 1.
+function subInfo(sid){
+  sid=String(sid);
+  var tg=D.t[sid]||{},cn=D.c[sid]||{},tgt=tg.pr||0,res=cn.nf||0;
+  if(!(tgt>0)||!(res>0)||!(PARAMS.subBands&&PARAMS.subBands.length))return {has:false,target:tgt,rate:res,ratio:null,idx:-1,coeff:1};
+  var ratio=res/tgt,idx=subBandIdx(ratio);
+  return {has:true,target:tgt,rate:res,ratio:ratio,idx:idx,coeff:PARAMS.subBands[idx].c};
+}
+// Il ruolo ha la matrice? (colonna "Privilege" della tabella ruoli, riletta come "Matrice Subscription")
+function subRoleOn(j){
+  if(typeof TC==="undefined")return true;
+  if(TC[j])return TC[j].Privilege!==false;
+  if(j&&j.indexOf("SM VSM")>=0){var alt=j.replace("SM VSM","SM");if(TC[alt])return TC[alt].Privilege!==false;}
+  return true;
+}
+// La matrice si applica a questo dipendente (calcolo mensile nuova logica)? Mai Dept, mai USA.
+function subApplies(e){
+  if(!subNewActive()||!e)return false;
+  if(typeof isUSA==="function"&&isUSA(e.si,e))return false;
+  if(typeof isD==="function"&&isD(e.si))return false;
+  return subRoleOn(e.j);
+}
+// Coefficiente Subscription del dipendente (1 = nessuna riduzione). Solo consuntivo.
+function subCoeffFor(e){
+  if(MODE!=="consuntivo"||!subApplies(e))return 1;
+  return subInfo(e.si).coeff;
+}
+function subBandLbl(i){
+  var b=PARAMS.subBands||[],f=b[i]?b[i].f:0,nx=i>0&&b[i-1]?b[i-1].f:null;
+  var p=function(x){return (Math.round(x*1000)/10).toString().replace(".",",");};
+  if(i===0)return "≥ "+p(f)+"%";
+  if(i===b.length-1)return "< "+p(nx)+"%";
+  return p(f)+" – "+p(nx)+"%";
 }
 
 // === SAS → fatturato (SEASONAL, da SS26) ===================================

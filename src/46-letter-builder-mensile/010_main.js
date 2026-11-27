@@ -260,6 +260,7 @@ function demoltVoceNote(dr,lang){
 }
 
 function buildLetter(e){
+  if(typeof subNewActive==="function"&&subNewActive())return buildLetterSub(e); // nuova logica da gen. 2027 (020_letter_sub.js)
   var cu=e.cu||"EUR",sid=String(e.si),tg=D.t[sid]||{},cn=D.c[sid]||{},tc=calcE(e),sm=sickMult(e.ml),dp=isD(e.si);
   var _rlLt=e.rl||e.ib||0;var pctSal=_rlLt>0?((tc/_rlLt)*100).toFixed(2):"0";var lang=trLang(e);
   var mN=getMonthName(lang);

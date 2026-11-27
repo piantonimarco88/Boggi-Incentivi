@@ -25,12 +25,15 @@ function rA(){
   var arr=[];for(var k in gr){var v=gr[k];arr.push({nm:k,n:v.n,t:v.t,b:v.b,d:v.d,sy:v.sy,p:v.p,sa:v.sa,ar:v.ar,vi:v.vi,ag:v.ag,wg:v.wg,av:v.n>0?v.t/v.n:0,ml:v.n>0?v.ml/v.n:0})}
   arr.sort(function(a,b){var va=a[aSort.col]||0,vb=b[aSort.col]||0;if(typeof va==="string")return va.toLowerCase()<vb.toLowerCase()?-aSort.dir:aSort.dir;return(va-vb)*aSort.dir});
   var mx=1;arr.forEach(function(a){if(a.t>mx)mx=a.t});var ta=0,wi=0,ridCount=0;E.forEach(function(e){var ct=calcEUR(e);ta+=ct;if(ct>0)wi++;if(ct>0&&isRidotto(e))ridCount++;});
+  // Riduzione totale dovuta alla matrice Subscription (da gen. 2027, consuntivo): BDG prima − BDG dopo, EUR, dopo malattia
+  var _subRid=0,_subCard=subNewActive()&&MODE==="consuntivo";
+  if(_subCard)E.forEach(function(e){if(e.ps==="SI"||!subApplies(e))return;var st=premioSteps(e);_subRid+=(st.bdgRaw-st.bdgSub)*st.sm*(e.ex||1);});
   var hasUSAEmps=E.some(function(e){return e.cu==="USD";});
   var h='<div class="gb">';
   var aGroups=[{k:"role",l:"Per Ruolo"},{k:"fc",l:"Per Field Coach"},{k:"store",l:"Per Negozio"},{k:"type",l:"Regular vs Dept"}];
   if(hasUSAEmps)aGroups.push({k:"usa",l:"\ud83c\uddfa\ud83c\uddf8 USA"});
   aGroups.forEach(function(g){h+='<button class="gbtn'+(aG===g.k?" on":"")+'" data-g="'+g.k+'">'+g.l+"</button>"});h+="</div>";
-  h+='<div class="cg">';[{l:"Totale Erogato",v:fcEUR(ta),c:"#2c2925"},{l:"Dipendenti",v:E.length,c:"#5ba4cf"},{l:"Con Incentivo",v:wi,c:"#2d7a3a"},{l:"Senza Incentivo",v:E.length-wi,c:"#cf5b5b"},{l:"Media/Dip",v:fcEUR(ta/E.length),c:"#9b6ec9"},{l:"Gg Malattia",v:totalMl,c:"#d4a94e"},{l:"Premio 50%",v:ml50,c:"#856404"},{l:"Premio 0%",v:ml0,c:"#721c24"},{l:"BDG Ridotto ("+Math.round(PARAMS.bdg60mult*100)+"%)",v:ridCount,c:"#c9a96e"}].forEach(function(c){
+  h+='<div class="cg">';[{l:"Totale Erogato",v:fcEUR(ta),c:"#2c2925"},{l:"Dipendenti",v:E.length,c:"#5ba4cf"},{l:"Con Incentivo",v:wi,c:"#2d7a3a"},{l:"Senza Incentivo",v:E.length-wi,c:"#cf5b5b"},{l:"Media/Dip",v:fcEUR(ta/E.length),c:"#9b6ec9"},{l:"Gg Malattia",v:totalMl,c:"#d4a94e"},{l:"Premio 50%",v:ml50,c:"#856404"},{l:"Premio 0%",v:ml0,c:"#721c24"},{l:"BDG Ridotto ("+Math.round(PARAMS.bdg60mult*100)+"%)",v:ridCount,c:"#c9a96e"}].concat(_subCard?[{l:"Riduzione Matrice Subscription",v:fcEUR(_subRid),c:"#5bb98c"}]:[]).forEach(function(c){
     h+='<div class="cd"><div style="font-size:9px;color:#a09a92;font-weight:600;text-transform:uppercase;letter-spacing:1px">'+c.l+'</div><div style="font-size:18px;font-weight:800;margin-top:3px;color:'+c.c+'">'+c.v+"</div></div>"});h+="</div>";
   h+='<div class="wg"><div class="wg-title">% Raggiungimento KPI \u2014 EUR</div><div class="wg-grid">';
   IT.forEach(function(it){if(it.k==="ra"&&!PARAMS.artEnabled)return;var s=kpiStats[it.k];if(!s||s.eligible===0)return;var pct=Math.round(s.achieved/s.eligible*100);
@@ -51,9 +54,10 @@ function rA(){
   }
   function thS(c,l){var ar=aSort.col===c?(aSort.dir>0?"\u25b2":"\u25bc"):"\u25b4";return'<th data-ac="'+c+'"'+(aSort.col===c?' class="sorted"':"")+">"+l+' <span class="arrow">'+ar+"</span></th>"}
   var showWG=MODE==="consuntivo";
-  h+='<div style="overflow-x:auto"><table id="atbl"><thead><tr>'+thS("nm","Gruppo")+thS("n","N")+thS("t","Tot \u20ac")+"<th></th>"+thS("av","Media")+thS("b","BDG")+thS("d","Dig")+thS("sy","SY")+thS("p","Priv")+thS("sa","SAS")+(PARAMS.artEnabled?thS("ar","Art"):"")+thS("vi","Vis")+thS("ag","Agg")+(showWG?thS("wg","WG"):"")+thS("ml","Mal\u00d8")+"</tr></thead><tbody>";
+  h+='<div style="overflow-x:auto"><table id="atbl"><thead><tr>'+thS("nm","Gruppo")+thS("n","N")+thS("t","Tot \u20ac")+"<th></th>"+thS("av","Media")+thS("b","BDG")+(subNewActive()?"":thS("d","Dig")+thS("sy","SY")+thS("p","Priv"))+thS("sa","SAS")+(PARAMS.artEnabled?thS("ar","Art"):"")+thS("vi","Vis")+thS("ag","Agg")+(showWG?thS("wg","WG"):"")+thS("ml","Mal\u00d8")+"</tr></thead><tbody>";
   arr.forEach(function(a){var pc=Math.min(a.t/mx*100,100);h+='<tr><td style="font-weight:600;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(a.nm)+'</td><td style="color:#8a8680">'+a.n+'</td><td class="mn b">'+fcEUR(a.t)+'</td><td><div class="mb"><div class="mf" style="width:'+pc+'%;background:#c9a96e"></div></div></td><td class="mn" style="color:#8a8680">'+fcEUR(a.av)+"</td>";
     var kpiCols=PARAMS.artEnabled?[a.b,a.d,a.sy,a.p,a.sa,a.ar,a.vi,a.ag]:[a.b,a.d,a.sy,a.p,a.sa,a.vi,a.ag];
+    if(subNewActive())kpiCols.splice(1,3); // Digital, SY e Privilege non sono piu' premi (da gen. 2027)
     if(showWG)kpiCols=kpiCols.concat([a.wg]);
     kpiCols.forEach(function(v){h+='<td class="mn" style="color:'+(v>0?"#2d7a3a":"#d5d0c8")+'">'+fcEUR(v)+"</td>"});
     h+='<td class="mn" style="color:'+(a.ml>0?"#856404":"#d5d0c8")+'">'+a.ml.toFixed(1)+"</td></tr>"});

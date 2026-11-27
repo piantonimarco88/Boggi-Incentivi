@@ -132,6 +132,11 @@ function rSources(){try{
       {l:"Target Privilege",ok:Object.keys(D.t||{}).some(function(k){return(D.t[k].pr||0)>0}),v:"OK"},
       {l:"SY LY Last Year",ok:Object.keys(MONTHLY_SYLY).length>0,v:Object.keys(MONTHLY_SYLY).length>0?(Object.keys(MONTHLY_SYLY).length+" store"):"Da caricare"}
     ];
+    // Da gen. 2027 (nuova logica mensile): il target SY non serve piu' al premio (resta SY risultato + SY LY per il paracadute);
+    // il target Privilege diventa il target Subscription Rate della matrice.
+    if(typeof subNewActive==='function'&&subNewActive()){
+      checks=checks.filter(function(c){return c.l!=="Target SY";}).map(function(c){return c.l==="Target Privilege"?{l:"Target Subscription Rate",ok:c.ok,v:c.v}:c;});
+    }
     if(!isIT)checks.push({l:"Target QTY",ok:Object.keys(D.t||{}).some(function(k){return(D.t[k].qt||0)>0}),v:"OK"});
     // Anagrafica USA: visibile sia in preventivo che consuntivo (solo internazionale)
     if(!isIT){
@@ -141,6 +146,11 @@ function rSources(){try{
     // Visual In Store: sempre visibile P+C; obbligatorio solo per internazionale
     var hasVL=Object.keys(VL).length>0;
     checks.push({l:"\ud83c\udfa8 Visual In Store",ok:isIT?true:hasVL,v:hasVL?Object.keys(VL).length+" dip.":(isIT?"Opzionale":"Da caricare")});
+    // Preventivo nuova logica: la lettera mostra il massimo previsto degli Articoli incentivati (categorie dal file)
+    if(isP&&typeof subNewActive==='function'&&subNewActive()&&PARAMS.artEnabled){
+      var hasArtP=Object.keys(D.c||{}).some(function(k){return(D.c[k].ac||0)>0});
+      checks.push({l:"Articoli incentivati (file categorie)",ok:true,v:hasArtP?"OK":"Opzionale — senza file la lettera mostra solo il massimo per categoria"});
+    }
     if(!isP){
       var hasCons=Object.keys(D.c).length>0;
       var hasSC=hasCons&&Object.keys(D.c).some(function(k){return(D.c[k].sc||0)>0});
@@ -153,7 +163,10 @@ function rSources(){try{
       checks.push({l:"Risultati BDG",ok:hasSC,v:hasSC?Object.keys(D.c).length+" neg.":"Da caricare"});
       checks.push({l:_sasNew?"SAS (valore→fatturato)":"SAS",ok:hasSAS,v:hasSAS?"OK":"Da caricare"});
       checks.push({l:"Malattie",ok:hasMal,v:hasMal?"OK":"Da caricare"});
-      checks.push({l:"% Digital (cons.)",ok:hasDigC,v:hasDigC?"OK":"Da caricare"});
+      if(typeof subNewActive==='function'&&subNewActive()){
+        var hasNFc=hasCons&&Object.keys(D.c).some(function(k){return(D.c[k].nf||0)>0});
+        checks.push({l:"Subscription rate (cons.)",ok:hasNFc,v:hasNFc?"OK":"Da caricare"});
+      }else checks.push({l:"% Digital (cons.)",ok:hasDigC,v:hasDigC?"OK":"Da caricare"});
       checks.push({l:"Esubero",ok:hasCons&&Object.keys(D.c).some(function(k){return(D.c[k].es||0)>0}),v:"OK"});
       // Diagnostico: la riserva SAS mese prec. (colonna "riserva"/"sas reserve" nel
       // file SAS) è opzionale — se assente la lettera semplicemente non mostra la
@@ -295,9 +308,10 @@ function rSources(){try{
     // Mensile rules summary
     sh+='<div style="font-size:10px;color:#6b6560;line-height:1.8">';
     sh+="<b>BDG:</b> 100% a &ge;"+(PARAMS.bdg100*100)+"% store | "+(PARAMS.bdg60mult*100)+"% a &ge;"+(PARAMS.bdg60*100)+"% &nbsp;&#183;&nbsp; <b>Soglia KPI (SY/Priv/QTY):</b> &ge;"+(PARAMS.kpi100*100)+"%";
+    if(subNewActive()){sh+=" &nbsp;&#183;&nbsp; <b>Matrice Subscription:</b> "+(PARAMS.subBands||[]).map(function(b,i){return subBandLbl(i)+" \u2192 "+Math.round(b.c*100)+"%";}).join(" | ")+" sul BDG <span style='color:#a09a92'>(Digital, SY e Privilege non sono pi\u00f9 premi a s\u00e9)</span><br>";}else{
     sh+=" &nbsp;&#183;&nbsp; <b>Digital:</b> "+(PARAMS.digPct*100)+"% BDG se &ge;"+(PARAMS.digMinClassic*100)+"% (classico) / "+(PARAMS.digMinMobility*100)+"% (mobility)";var mobCount=Object.keys(STORE_FLAGS).filter(function(s){return STORE_FLAGS[s]&&STORE_FLAGS[s].digType==="mobility"&&STORE_FLAGS[s].digMinMob>0;}).length;if(mobCount>0)sh+=" <span style='color:#8b7ec8'>("+mobCount+" store con % personalizzata)</span>";
     sh+=" &nbsp;&#183;&nbsp; <b>SY:</b> "+(PARAMS.syPct*100)+"%";
-    sh+=" &nbsp;&#183;&nbsp; <b>Privilege:</b> "+(PARAMS.privPct*100)+"%<br>";
+    sh+=" &nbsp;&#183;&nbsp; <b>Privilege:</b> "+(PARAMS.privPct*100)+"%<br>";}
     sh+="<b>SAS:</b> &euro;"+PARAMS.sasRate+" max &euro;"+PARAMS.sasMax;
     sh+=" &nbsp;&#183;&nbsp; <b>DCC:</b> "+(PARAMS.dccRate*100).toFixed(1)+"% max &euro;"+PARAMS.dccMax;
     if(PARAMS.artEnabled)sh+=" &nbsp;&#183;&nbsp; <b>Art.Inc:</b> "+(PARAMS.artPct*100)+"% BDG/cat";

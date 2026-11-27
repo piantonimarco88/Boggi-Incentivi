@@ -9,7 +9,7 @@ function rAgg(){
   var _focusK=_fEl?_fEl.getAttribute("data-k"):null;
   var _focusCF=_fEl?_fEl.getAttribute("data-aggcf"):null;
 
-  var h='<div style="font-size:12px;color:#6b6560;margin-bottom:14px"><b>Aggiunte manuali</b> \u2014 Importi inseriti qui si <b>sommano</b> ai premi calcolati e <b>non risentono</b> di regole, policy o malattia.</div>';
+  var h='<div style="font-size:12px;color:#6b6560;margin-bottom:14px"><b>Aggiunte manuali</b> \u2014 Importi inseriti qui si <b>sommano</b> ai premi calcolati e <b>non risentono</b> di regole, policy o malattia.'+(subNewActive()?' <span style="color:#856404">Da gen. 2027 Digital, SY e Privilege non sono pi\u00f9 premi mensili: usare queste colonne solo per conguagli di mesi precedenti (nel tracciato vanno ancora nei cod. 244/226/227).</span>':'')+'</div>';
   h+='<div class="flt" style="margin-bottom:12px"><input placeholder="Cerca matricola, nome, negozio..." id="aggQ" value="'+esc(aggFilter)+'" style="padding:8px 12px;border-radius:6px;border:1px solid #d5d0c8;font-size:12px;flex:1;min-width:200px"><label class="exp-btn btn-amber" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;white-space:nowrap" title="Importa da Excel: una riga per dipendente (Matricola + colonne BDG (Lordo), BDG (Netto), Digital, SY, Privilege, SAS, DCC, CS, Articoli, QTY Dept, Visual In Store). Gli importi si sommano a quelli presenti.">&#128194; Importa aggiunte (Excel)<input type="file" accept=".xlsx,.xlsm,.xls" onchange="loadAggiunteExcel(this)" style="display:none"></label></div>';
 
   // Sort per store ID poi matricola

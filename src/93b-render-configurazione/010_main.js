@@ -102,7 +102,8 @@ function rT(){try{
     if(inpS50f)inpS50f.onchange=function(){SICK_50=parseInt(this.value)||1;markDirty();rC();rA();rT();};
     var inpS0f=document.getElementById("sick0_fcvm");
     if(inpS0f)inpS0f.onchange=function(){SICK_0=parseInt(this.value)||2;markDirty();rC();rA();rT();};
-    // SAS matrix bindings (celle + soglie fasce + etichetta velocità) — condivisi col mensile
+    cfgSubMatrixBind();
+  // SAS matrix bindings (celle + soglie fasce + etichetta velocità) — condivisi col mensile
     var _svlF=document.getElementById("sasVelLabel");if(_svlF)_svlF.onchange=function(){SAS_MATRIX.velLabel=this.value;markDirty();};
     document.querySelectorAll(".sas-cell").forEach(function(inp){inp.onchange=function(){
       var r=parseInt(inp.getAttribute("data-sasr")),c=parseInt(inp.getAttribute("data-sasc")),v=parseFloat(inp.value);
@@ -403,7 +404,9 @@ function rT(){try{
   h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title">\ud83d\udcca Parametri di Calcolo</div>';
   h+='<div style="font-size:11px;font-weight:700;color:#c9a96e;margin:8px 0 6px;text-transform:uppercase;letter-spacing:1px">Budget</div>';
   h+=pRow("bdg100","Soglia 100% Store","Soglia % fatturato negozio per riconoscere il premio BDG pieno",PARAMS.bdg100*100,"%",0.01)+pRow("kpi100","Soglia 100% KPI","Soglia per riconoscere raggiunto il target di SY, Privilege e QTY (es. 99,5% = accetta 99,5% del target)",PARAMS.kpi100*100,"%",0.01)+pRow("bdg60","Soglia ridotto","Paracadute: % minima fatturato per erogare il premio ridotto (store normali: richiede SY CY > SY LY; Dept Store: richiede QTY target raggiunto)",PARAMS.bdg60*100,"%",0.01)+pRow("bdg60mult","Molt. ridotto","Paracadute — % del massimale erogata: prima linea se SY CY > SY LY, Dept Store se target QTY raggiunto",PARAMS.bdg60mult*100,"%",0.01)+pRow("workgamePct","Workgame (% BDG)","Bonus manuale come % del premio BDG personale",(PARAMS.workgamePct||0)*100,"%",0.1);
-  h+='<div style="font-size:11px;font-weight:700;color:#8b7ec8;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">Digital</div>';
+  h+=cfgSubMatrixHtml();
+  var _retired=subNewActive()?' <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#a09a92">\u2014 non pi\u00f9 un premio a s\u00e9 nel periodo corrente (vale per i mesi fino a dicembre 2026)</span>':'';
+  h+='<div style="font-size:11px;font-weight:700;color:#8b7ec8;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">Digital'+_retired+'</div>';
   h+=pRow("digMinClassic","% min Digital Classico","Soglia digitale per store classici",PARAMS.digMinClassic*100,"%",0.01)+pRow("digMinMobility","% min Digital Mobilit\u00e0","Soglia digitale per store mobilit\u00e0",PARAMS.digMinMobility*100,"%",0.01)+pRow("digPct","Premio (% BDG)","",PARAMS.digPct*100,"%",0.01);
   // Sezione negozi mobilità con % target per-store
   var mobStores=Object.keys(STORE_FLAGS).filter(function(sid){return STORE_FLAGS[sid]&&STORE_FLAGS[sid].digType==="mobility";});
@@ -432,9 +435,9 @@ function rT(){try{
     });
     h+='</div></div>';
   }
-  h+='<div style="font-size:11px;font-weight:700;color:#5ba4cf;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">SY</div>';
+  h+='<div style="font-size:11px;font-weight:700;color:#5ba4cf;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">SY'+_retired+'</div>';
   h+=pRow("syPct","% RLM","",PARAMS.syPct*100,"%",0.01);
-  h+='<div style="font-size:11px;font-weight:700;color:#5bb98c;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">Privilege</div>';
+  h+='<div style="font-size:11px;font-weight:700;color:#5bb98c;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">Privilege'+_retired+'</div>';
   h+=pRow("privPct","% RLM","",PARAMS.privPct*100,"%",0.01);
   h+='<div style="font-size:11px;font-weight:700;color:#d4a94e;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px">SAS</div>';
   if(sasNewActive()){
@@ -497,7 +500,10 @@ function rT(){try{
   h+='<div class="cfg-row"><span class="cfg-label">Giorni per 50%</span><input class="cfg-input" type="number" id="sick50" value="'+SICK_50+'" min="1" max="30"></div>';
   h+='<div class="cfg-row"><span class="cfg-label">Giorni per 0%</span><input class="cfg-input" type="number" id="sick0" value="'+SICK_0+'" min="1" max="31"></div></div>';
   h+='<div class="wg" style="margin-bottom:20px"><div class="wg-title" style="display:flex;justify-content:space-between;align-items:center">\ud83d\udd00 KPI per Ruolo<button id="toggleKPI" style="font-size:9px;padding:3px 10px;border:1px solid #d5d0c8;border-radius:4px;background:#faf9f7;color:#6b6560;cursor:pointer">Mostra varianti \u25bc</button></div><div style="overflow-x:auto"><table><thead class="tg-h"><tr><th>RUOLO</th>';
-  KP.forEach(function(k){if(k==="Visual")return;h+="<th>"+k+"</th>"});h+="</tr></thead><tbody>";
+  KP.forEach(function(k){if(k==="Visual")return;
+    if(subNewActive()&&k==="Privilege")h+='<th title="Da gen. 2027: ON = il ruolo ha la matrice Subscription sul BDG (la colonna Privilege non è più un premio)">Matrice Sub.</th>';
+    else if(subNewActive()&&(k==="Digital"||k==="SY"))h+='<th title="Non più un premio a sé da gen. 2027: la colonna vale solo per i mesi precedenti" style="color:#a09a92">'+k+'*</th>';
+    else h+="<th>"+k+"</th>"});h+="</tr></thead><tbody>";
   var baseRoles=["SM","VSM","SSA","SSAP","SA","JSA","SCS"];
   RL.forEach(function(r,ri){
     var isBase=baseRoles.indexOf(r)>=0;
@@ -754,6 +760,48 @@ function cfgRatesBind(){
   };});
 }
 
+// === Matrice Subscription (da gen. 2027, mensile ITA+INT) ====================
+// Fasce di risultato÷target Subscription rate del negozio -> coefficiente sul BDG. Vivono in PARAMS.subBands
+// (si salvano con sessione/configurazione come ogni parametro). Ultima fascia sempre da 0%.
+function cfgSubMatrixHtml(){
+  var b=PARAMS.subBands||[];
+  var h='<div style="margin:14px 0 6px;padding:12px 14px;background:#faf8f4;border:1px solid #ece7df;border-radius:7px">';
+  h+='<div style="font-size:11px;font-weight:700;color:#5bb98c;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">Matrice Subscription <span style="font-weight:600;color:#a07d2c;text-transform:none;letter-spacing:0">— da '+["","gen","feb","mar","apr","mag","giu","lug","ago","set","ott","nov","dic"][SUB_START_MONTH]+' '+SUB_START_YEAR+' (data in «Date di attivazione regole»)</span></div>';
+  h+='<div style="font-size:10px;color:#8a8680;line-height:1.5;margin-bottom:8px">Mensile Italia + Internazionale. Conferma o riduce il premio di fatturato (BDG) in base al risultato Subscription rate del negozio rispetto al target (lo stesso target del vecchio Privilege). Si applica dopo l\'eventuale paracadute e prima del Coefficiente Inventari; non agisce su Articoli, Visual, DCC e QTY. Esclusi Dept stores, USA e ruoli senza Privilege. Se manca il target o il risultato il coefficiente è 100%.</div>';
+  h+='<table style="border-collapse:collapse;font-size:11px;margin-bottom:6px"><thead><tr><th style="padding:3px 8px;text-align:left;color:#8a8680">Fascia</th><th style="padding:3px 8px;color:#8a8680">Risultato ÷ target ≥</th><th style="padding:3px 8px;color:#8a8680">% BDG riconosciuta</th><th></th></tr></thead><tbody>';
+  b.forEach(function(x,i){
+    var last=i===b.length-1;
+    h+='<tr><td style="padding:3px 8px;font-weight:700;color:#6b6560">'+String.fromCharCode(65+i)+'</td>';
+    h+='<td style="padding:3px 8px;text-align:right">'+(last?'<span style="color:#a09a92">0 %</span>':'<input class="cfg-input" style="width:70px" type="number" step="0.1" min="0" max="200" data-subf="'+i+'" value="'+Math.round(x.f*1000)/10+'"> %')+'</td>';
+    h+='<td style="padding:3px 8px;text-align:right"><input class="cfg-input" style="width:70px" type="number" step="1" min="0" max="100" data-subc="'+i+'" value="'+Math.round(x.c*1000)/10+'"> %</td>';
+    h+='<td style="padding:3px 8px">'+(b.length>2&&!last?'<button data-subdel="'+i+'" style="font-size:10px;color:#cf5b5b;border:none;background:none;cursor:pointer" title="Elimina la fascia">✕</button>':'')+'</td></tr>';
+  });
+  h+='</tbody></table><button class="exp-btn" data-subadd="1" style="font-size:10px;padding:3px 10px">+ fascia</button> <button class="exp-btn" data-subreset="1" style="font-size:10px;padding:3px 10px" title="Ripristina 99,5 / 95 / 90 → 100 / 80 / 60 / 40">Valori iniziali</button>';
+  return h+'</div>';
+}
+function _subNormalize(){
+  var b=PARAMS.subBands||[];
+  b.forEach(function(x){x.f=Math.max(0,Math.min(2,isNaN(x.f)?0:x.f));x.c=Math.max(0,Math.min(1,isNaN(x.c)?0:x.c));});
+  b.sort(function(x,y){return y.f-x.f;});
+  if(b.length)b[b.length-1].f=0; // l'ultima fascia raccoglie tutto cio' che sta sotto
+  PARAMS.subBands=b;
+}
+function cfgSubMatrixBind(){
+  function after(){markDirty();autoSave();rC();rA();rT();}
+  document.querySelectorAll("input[data-subf]").forEach(function(inp){inp.onchange=function(){
+    var i=parseInt(inp.getAttribute("data-subf"),10),v=parseFloat(String(inp.value).replace(",","."));
+    if(isNaN(v)){rT();return;}PARAMS.subBands[i].f=v/100;_subNormalize();after();};});
+  document.querySelectorAll("input[data-subc]").forEach(function(inp){inp.onchange=function(){
+    var i=parseInt(inp.getAttribute("data-subc"),10),v=parseFloat(String(inp.value).replace(",","."));
+    if(isNaN(v)){rT();return;}PARAMS.subBands[i].c=v/100;_subNormalize();after();};});
+  document.querySelectorAll("button[data-subdel]").forEach(function(btn){btn.onclick=function(){
+    PARAMS.subBands.splice(parseInt(btn.getAttribute("data-subdel"),10),1);_subNormalize();after();};});
+  var add=document.querySelector("button[data-subadd]");
+  if(add)add.onclick=function(){var b=PARAMS.subBands;var pen=b.length>1?b[b.length-2].f:1;b.splice(b.length-1,0,{f:Math.max(0,Math.round(pen*1000-50)/1000),c:b[b.length-1].c});_subNormalize();after();};
+  var rst=document.querySelector("button[data-subreset]");
+  if(rst)rst.onclick=function(){PARAMS.subBands=[{f:0.995,c:1},{f:0.95,c:0.8},{f:0.90,c:0.6},{f:0,c:0.4}];after();};
+}
+
 // === Date di attivazione regole e coefficienti seasonal (v9.113) ============
 // Prima scritti nel codice: ora modificabili qui e salvati in sessione/configurazione
 // (rule_cfg e seas_cfg). Default = valori storici.
@@ -771,6 +819,7 @@ function cfgRulesSectionHtml(){
   h+='<div style="font-size:10px;color:#8a8680;margin-bottom:6px">Dal mese indicato in poi vale la regola nuova; prima resta la precedente.</div>';
   h+=row("SAS nuova policy","SAS \u2192 fatturato (mensile e FC+VM); SAS individuale ritirato",sel("sas",r.sas[0],r.sas[1]));
   h+=row("USA nuova logica","Vendite personali \u00d7 rate/bonus target + trimestrale",sel("usa",r.usa[0],r.usa[1]));
+  h+=row("Nuova logica premi mensili (Matrice Subscription)","Mensile ITA+INT: Digital, SY e Privilege non sono pi\u00f9 premi a s\u00e9; il BDG viene confermato o ridotto dalla matrice Subscription",sel("sub",r.sub[0],r.sub[1]));
   h+=row("Coefficiente Inventari","Riduzione premio SM/VSM e FC in base agli inventari",sel("demolt",r.demolt[0],r.demolt[1]));
   h+=row("Coefficiente Inventari — Dept stores","Dal mese indicato il coefficiente si applica anche agli SM/VSM dei Dept stores (prima no)",sel("demoltDept",r.demoltDept[0],r.demoltDept[1]));
   h+=row("Fasce DCC eseguiti FC = negozio","Le fasce % completamento dei FC diventano quelle del negozio",sel("demoltFc",r.demoltFc[0],r.demoltFc[1]));
@@ -789,7 +838,7 @@ function cfgRulesBind(){
     if(JSON.stringify(_ruleCfgGet())===before){alert("Data non valida (anno 2020-2100).");}
     markDirty();autoSave();rC();rA();rT();
   }
-  ["sas","usa","demolt","demoltFc","demoltDept"].forEach(function(id){
+  ["sas","usa","sub","demolt","demoltFc","demoltDept"].forEach(function(id){
     var m=document.querySelector('[data-rule-m="'+id+'"]'),y=document.querySelector('[data-rule-y="'+id+'"]');
     if(m)m.onchange=function(){upd(id);};if(y)y.onchange=function(){upd(id);};
   });

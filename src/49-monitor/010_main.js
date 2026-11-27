@@ -28,7 +28,7 @@ function _buildMensileSnap(){
   E.forEach(function(e){
     if(e.ps==="SI")return;
     var ex=e.ex||1,sm=sickMult(e.ml);
-    var vi,rd,rp,rs,ra,rsa,rdc,rb,rcs;
+    var vi,rd,rp,rs,ra,rsa,rdc,rb,rcs,subRid=0;
     if(isUSA(e.si,e)){
       // USA: single aggregate prize (no individual KPI breakdown)
       vi=calcUSA(e)+aggTotal(e.m);
@@ -48,6 +48,8 @@ function _buildMensileSnap(){
       // BDG (rb): include tutti i dipendenti (ibFromAY inclusi — il flag cambia solo il codice
       // Zucchetti 225→380, non l'importo del premio che calcE calcola ugualmente)
       rb=isOn(e.j,"rb")?getVal(e,"rb")*sm:0;
+      // riduzione dovuta alla matrice Subscription (da gen. 2027, solo consuntivo), dopo malattia
+      if(oldMode==="consuntivo"&&isOn(e.j,"rb")&&subApplies(e)){var _stSub=premioSteps(e);subRid=(_stSub.bdgRaw-_stSub.bdgSub)*sm;}
       rb+=workgameAmt(e,oldMode);
       var ag=AGG[e.m]||{};
       vi+=(ag.vi||0);rd+=(ag.rd||0);rp+=(ag.rp||0);rs+=(ag.rs||0);
@@ -71,6 +73,7 @@ function _buildMensileSnap(){
       ra_eur:Math.round(ra*ex*100)/100,rsa_eur:Math.round(rsa*ex*100)/100,
       rdc_eur:Math.round(rdc*ex*100)/100,rcs_eur:Math.round(rcs*ex*100)/100,
       pq_eur:Math.round(pq*ex*100)/100,
+      sub_rid_eur:Math.round(subRid*ex*100)/100,
       fcvm_actual_eur:0,seasonal_eur:0
     });
   });
@@ -169,7 +172,7 @@ function _mBuildEnteRow(rows,year,month,ente){
   var Ev=Math.round(rb+vi+rd+rp+rs+ra+rsa+rdc+rcs+pq+fcvm+seas);
   var G=_mSum(rows,'massimale_eur'),H=_mSum(rows,'fcvm_massimale_eur');
   var rbMass=_mSum(rows,'rb_massimale_eur');
-  return[year,month,ente,Math.round(D),Ev,D>0?Ev/D:0,Math.round(rb),Math.round(rbMass),Math.round(G),Math.round(H),0,Math.round(vi),0,Math.round(rd),Math.round(rp),0,0,Math.round(rs),Math.round(ra),0,0,Math.round(rsa),Math.round(rdc),Math.round(rcs),0,Math.round(seas)];
+  return[year,month,ente,Math.round(D),Ev,D>0?Ev/D:0,Math.round(rb),Math.round(rbMass),Math.round(G),Math.round(H),0,Math.round(vi),0,Math.round(rd),Math.round(rp),0,0,Math.round(rs),Math.round(ra),0,0,Math.round(rsa),Math.round(rdc),Math.round(rcs),0,Math.round(seas),Math.round(_mSum(rows,'sub_rid_eur'))];
 }
 
 function _mBuildStoreRow(rows,year,month,ente,sid,sname){
@@ -181,7 +184,7 @@ function _mBuildStoreRow(rows,year,month,ente,sid,sname){
   var Ev=Math.round(rb+vi+rd+rp+rs+ra+rsa+rdc+rcs+pq+fcvm+seas);
   var G=_mSum(rows,'massimale_eur'),H=_mSum(rows,'fcvm_massimale_eur');
   var rbMass=_mSum(rows,'rb_massimale_eur');
-  return[year,month,ente,sid,sname||"",Math.round(D),Ev,D>0?Ev/D:0,Math.round(rb),Math.round(rbMass),Math.round(G),Math.round(H),0,Math.round(vi),0,Math.round(rd),Math.round(rp),0,0,Math.round(rs),Math.round(ra),0,0,Math.round(rsa),Math.round(rdc),Math.round(rcs),0,Math.round(seas)];
+  return[year,month,ente,sid,sname||"",Math.round(D),Ev,D>0?Ev/D:0,Math.round(rb),Math.round(rbMass),Math.round(G),Math.round(H),0,Math.round(vi),0,Math.round(rd),Math.round(rp),0,0,Math.round(rs),Math.round(ra),0,0,Math.round(rsa),Math.round(rdc),Math.round(rcs),0,Math.round(seas),Math.round(_mSum(rows,'sub_rid_eur'))];
 }
 
 function _mBuildMatRow(r){
@@ -189,7 +192,7 @@ function _mBuildMatRow(r){
   var D=r.gross_salary_eur||0;
   return[r.year,r.month,r.ente,r.store_id,r.store_name||"",r.matricola,r.cognome,r.nome,r.job,
     Math.round(D),Ev,D>0?Ev/D:0,Math.round(r.rb_eur||0),Math.round(r.rb_massimale_eur||0),Math.round(r.massimale_eur),Math.round(r.fcvm_massimale_eur||0),
-    0,Math.round(r.vi_eur),0,Math.round(r.rd_eur),Math.round(r.rp_eur),0,0,Math.round(r.rs_eur),Math.round(r.ra_eur),0,0,Math.round(r.rsa_eur),Math.round(r.rdc_eur),Math.round(r.rcs_eur||0),0,Math.round(r.seasonal_eur)];
+    0,Math.round(r.vi_eur),0,Math.round(r.rd_eur),Math.round(r.rp_eur),0,0,Math.round(r.rs_eur),Math.round(r.ra_eur),0,0,Math.round(r.rsa_eur),Math.round(r.rdc_eur),Math.round(r.rcs_eur||0),0,Math.round(r.seasonal_eur),Math.round(r.sub_rid_eur||0)];
 }
 
 function exportMonitorExcel(){
@@ -220,7 +223,7 @@ function exportMonitorExcel(){
     "New Privilege Incentive Boost (1) "+yr,"New Privilege Incentive Boost (2) "+yr,
     "Shopper Yield Incentive "+yr,"Item Incentive "+yr,"Live Connect Incentive "+yr,
     "MTM Incentive "+yr,"Sas Incentive "+yr,"Dcc Incentive "+yr,
-    "Customer Incentive "+yr,"Top sales advisor Incentive "+yr,"Seasonal Incentive "+yr];
+    "Customer Incentive "+yr,"Top sales advisor Incentive "+yr,"Seasonal Incentive "+yr,"Subscription Matrix Reduction "+yr];
   var storeHdrs=baseHdrs.slice(0,3).concat(["Store ID","Store Name"]).concat(baseHdrs.slice(3));
   var matHdrs=baseHdrs.slice(0,3).concat(["Store ID","Store Name","Matricola","Cognome","Nome","Job"]).concat(baseHdrs.slice(3));
 

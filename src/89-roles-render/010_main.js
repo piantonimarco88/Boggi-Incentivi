@@ -73,6 +73,14 @@ function gR(e){
         case "vi":if(paid)R.push({t:"success",x:fc(vS,cu)+" \u2014 Visual."});break;
         case "pq":if(paid)R.push({t:"success",x:fc(vS,cu)+" \u2014 QTY "+(cn.qc||0)+" \u2265 "+(Math.ceil((tg.qt||0)*PARAMS.kpi100))+" (soglia "+(PARAMS.kpi100*100)+"% di "+(tg.qt||0)+")."});else R.push({t:"fail",x:fc(0,cu)+" \u2014 QTY "+(cn.qc||0)+" < "+(Math.ceil((tg.qt||0)*PARAMS.kpi100))+" (soglia "+(PARAMS.kpi100*100)+"% di "+(tg.qt||0)+")."});break;
       }});
+    // Matrice Subscription (da gen. 2027): spiega il coefficiente applicato al BDG
+    if(subNewActive()&&subApplies(e)){
+      var sI=subInfo(sid),stp=premioSteps(e);
+      if(stp.bdgRaw>0){
+        if(!sI.has)R.push({t:"info",x:"Matrice Subscription: dato non disponibile per il negozio (target o risultato mancanti) \u2192 nessuna riduzione del BDG."});
+        else R.push({t:sI.coeff>=1?"success":"partial",x:"Matrice Subscription: "+fPct(sI.rate)+" su target "+fPct(sI.target)+" = "+(Math.round(sI.ratio*1000)/10)+"% del target (fascia "+subBandLbl(sI.idx)+") \u2192 "+Math.round(sI.coeff*100)+"% del BDG ("+fc(stp.bdgRaw,cu)+" \u2192 "+fc(stp.bdgSub,cu)+")."});
+      }
+    }
     if(sm<1)R.push({t:"warn",x:e.ml+" gg malattia \u2192 "+(sm*100)+"%"})}
   // Aggiunte (always shown if present)
   var at=aggTotal(e.m);

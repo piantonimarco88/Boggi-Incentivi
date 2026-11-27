@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="it"><head><meta charset="utf-8">
+<title>Proposta — Premi mensili da gennaio 2027 (matrice Subscription)</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:"DM Sans",Segoe UI,Arial,sans-serif;background:#f5f4f1;color:#2c2925;margin:0;padding:0 0 60px}
+header{background:#2c2925;color:#f5f4f1;padding:26px 40px}
+header h1{margin:0;font-size:20px;letter-spacing:.5px;color:#c9a96e}
+header p{margin:6px 0 0;font-size:12px;color:#a09a92}
+main{max-width:1280px;margin:0 auto;padding:0 24px}
+h2{font-size:15px;color:#a07d2c;text-transform:uppercase;letter-spacing:1.5px;margin:38px 0 10px;border-bottom:1px solid #d5d0c8;padding-bottom:6px}
+h3{font-size:13px;margin:18px 0 6px}
+p,li{font-size:12.5px;line-height:1.6}
+.flow{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch;margin:12px 0}
+.step{flex:1;min-width:170px;background:#fff;border:1px solid #d5d0c8;border-radius:8px;padding:12px 14px}
+.step b{display:block;font-size:11px;color:#a07d2c;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.step.new{border-color:#c9a96e;background:#fffaf0}
+.arrow{align-self:center;color:#c9a96e;font-size:20px}
+table.t{border-collapse:collapse;width:100%;background:#fff;font-size:11.5px;margin:8px 0}
+table.t th{background:#2c2925;color:#f5f4f1;text-align:left;padding:7px 10px;font-weight:600}
+table.t td{border-bottom:1px solid #e5e1db;padding:6px 10px;vertical-align:top}
+table.t tr:nth-child(even) td{background:#faf9f7}
+.tag{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:9px}
+.tg-r{background:#f8d7da;color:#721c24}.tg-g{background:#d4edda;color:#1b5e29}.tg-y{background:#fff3cd;color:#856404}.tg-b{background:#e8f0fe;color:#1a3a7a}
+.q{background:#fff;border-left:4px solid #c9a96e;padding:8px 14px;margin:8px 0;border-radius:0 6px 6px 0}
+.mock{display:block;margin-top:14px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;margin:8px 0 40px}.pair .lt{max-width:100%}.rdesc{font-size:12px;color:#6b6560;text-transform:none;letter-spacing:0;font-weight:400;margin:3px 0 4px}.ph{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:4px 12px;border-radius:4px;display:inline-block;margin-bottom:8px}.nav{position:sticky;top:0;background:#f5f4f1;padding:8px 0;z-index:5;border-bottom:1px solid #d5d0c8}.nav a{display:inline-block;margin:2px 6px 2px 0;padding:3px 12px;border:1px solid #c9a96e;border-radius:12px;font-size:11.5px;font-weight:600;color:#a07d2c;text-decoration:none;background:#fff}@media(max-width:1000px){.pair{grid-template-columns:1fr}}
+.cap{font-size:11px;font-weight:700;color:#8a8680;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+/* stile lettere (copia dell'app) */
+.lt{background:#fff;border:1px solid #d5d0c8;overflow:hidden;max-width:760px;margin:0 auto;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+.lt-top{background:#2c2925;padding:24px 32px;display:flex;justify-content:space-between;align-items:center}
+.lt-logo{font-size:9px;letter-spacing:6px;color:#c9a96e;text-transform:uppercase;font-weight:700}
+.lt-date{font-size:11px;color:#a09a92}
+.lt-body{padding:24px 28px;color:#4e4b48}
+.lt-greeting{font-size:19px;font-weight:700;margin-bottom:14px;color:#2c2925}
+.lt-info{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#e5e1db;margin-bottom:20px;border:1px solid #e5e1db}
+.lt-info-item{padding:8px 12px;background:#faf9f7}
+.lt-info-label{font-size:8px;color:#a09a92;font-weight:600;text-transform:uppercase;letter-spacing:1.5px}
+.lt-info-val{font-size:12px;font-weight:600;color:#2c2925;margin-top:2px}
+.lt-kpi{margin-top:10px;border:1px solid #e5e1db;border-radius:6px;overflow:hidden;margin-bottom:18px}
+.lt-kpi-head{background:#faf9f7;padding:6px 14px;font-size:9px;font-weight:700;color:#8a8680;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e5e1db;display:grid;grid-template-columns:1fr 60px 60px 60px 24px;gap:4px}
+.lt-kpi-row{padding:5px 14px;font-size:11px;display:grid;grid-template-columns:1fr 60px 60px 60px 24px;gap:4px;align-items:center}
+.lt-section{margin-bottom:14px;border:1px solid #e5e1db;border-radius:6px;overflow:hidden}
+.lt-sec-head{background:#faf9f7;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e5e1db}
+.lt-sec-num{font-size:10px;font-weight:800;color:#c9a96e;margin-right:6px}
+.lt-sec-title{font-size:12px;font-weight:700;color:#2c2925}
+.lt-sec-badge{font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px}
+.lt-sec-body{padding:10px 14px}
+.lt-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:11px}
+.lt-row-label{color:#8a8680;font-weight:500}
+.lt-row-val{font-weight:600;color:#2c2925}
+.lt-row-cur{color:#a09a92;font-size:9px;margin-right:3px}
+.lt-total{background:#2c2925;color:#f5f4f1;padding:18px 28px;display:flex;justify-content:space-between;align-items:center}
+.lt-total-label{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#a09a92}
+.lt-total-val{font-size:24px;font-weight:800;color:#c9a96e}
+.lt-total-pct{font-size:11px;color:#a09a92;margin-top:2px}
+.lt-footer{padding:14px 28px;font-size:9px;color:#b0a99f;text-align:center;border-top:1px solid #e5e1db;line-height:1.5}
+.cfg{background:#fff;border:1px solid #d5d0c8;border-radius:8px;padding:16px 20px;max-width:640px}
+.cfg input{width:64px;padding:3px 6px;border:1px solid #d5d0c8;border-radius:4px;font-size:12px;text-align:right}
+.new-badge{font-size:9px;background:#c9a96e;color:#fff;border-radius:8px;padding:1px 7px;margin-left:6px;vertical-align:middle}
+</style></head><body>
+<header><h1>PREMI MENSILI DA GENNAIO 2027 — MATRICE SUBSCRIPTION</h1>
+<p>Proposta di modifica app, import, report, export, tracciati e lettere · solo premi mensili Italia + Internazionale · importi nei mockup illustrativi (i BDG reali arrivano dall'anagrafica)</p></header>
+<main>
+
+<h2>1. La nuova catena di calcolo (mensile ITA + INT, da gennaio 2027)</h2>
+<div class="flow">
+ <div class="step"><b>① Premio BDG</b>% fatturato negozio + valore SAS riconosciuto (con riserva), come oggi.</div><div class="arrow">→</div>
+ <div class="step"><b>② Paracadute</b>Solo se il negozio non arriva al 100%: SY migliorata (Dept: QTY) → BDG al 60%. Sempre visibile in lettera.</div><div class="arrow">→</div>
+ <div class="step new"><b>③ Matrice Subscription <span class="new-badge">NUOVA</span></b>Conferma o riduce il BDG (solo il BDG).</div><div class="arrow">→</div>
+ <div class="step"><b>④ + Altri premi</b>DCC (cassiere), Visual In Store, Articoli incentivati (e QTY Dept), sommati al BDG → <b>premio maturato</b>.</div><div class="arrow">→</div>
+ <div class="step"><b>⑤ Matrice Inventari</b>Come oggi: coefficiente su tutte le voci (SM/VSM; Dept da dic. 2026) → premio da erogare.</div><div class="arrow">→</div>
+ <div class="step"><b>⑥ Malattia</b>Applicata alla cifra finale. Workgame e aggiunte manuali restano fuori, come oggi.</div>
+</div>
+<p><b>Spariscono come premi a sé:</b> Digital (30% BDG), Shopper Yield (3% RML), Privilege/Subscription (2% RML). <b>Restano come dati:</b> SY risultato + SY anno precedente (servono al paracadute), Subscription target + risultato (servono alla matrice). Fuori perimetro e invariati: USA, Dept (logiche proprie), FC+VM, Seasonal.</p>
+<p><i>Nota:</i> l'Inventari riduce <b>tutte le voci</b> come oggi. Essendo un coefficiente moltiplicativo, applicarlo al premio maturato (BDG dopo Subscription + altri premi) dà lo stesso risultato che applicarlo voce per voce: per questo in lettera compare dopo gli altri premi, mantenendo la sequenza richiesta (BDG → paracadute → Subscription → Inventari → malattia). La Subscription invece agisce solo sul BDG. I mesi fino a dicembre 2026 restano calcolati come oggi (test golden).</p>
+
+<h2>2. Decisioni di progetto proposte</h2>
+<table class="t"><tr><th style="width:30%">Tema</th><th>Proposta</th></tr>
+<tr><td>Punto unico di calcolo</td><td>Il coefficiente Subscription si applica in <code>getVal()</code> (88-calc-engine), come l'Inventari: <code>raw × coeffSub × coeffInventari</code>. Tab calcolo, lettera, Excel, tracciato, monitor, analisi lo ereditano senza duplicare formule (regola «coerenza agente↔tab»).</td></tr>
+<tr><td>Spegnimento Digital/SY/Privilege</td><td>Per data, nello stesso punto di <code>isOn()</code> già usato per il SAS di luglio 2026 (<code>sasNewActive</code>): da gen. 2027 le tre voci valgono 0 a prescindere dal TC salvato in sessione. I mesi 2026 restano identici (test golden).</td></tr>
+<tr><td>Cutoff configurabile</td><td>Data di avvio modificabile in Configurazione (come Inventari/Dept): <code>subMatrixActive()</code> = mensile + (anno,mese) ≥ 2027-01. Il preventivo di gennaio 2027 è già con la nuova logica.</td></tr>
+<tr><td>A chi si applica</td><td>Tutti i ruoli di negozio con BDG nei negozi «normali» dove oggi il Privilege è attivo. Non: Dept stores (oggi senza Privilege), negozi/ruoli «NO PRIVILEGE», USA. Negozio senza target Subscription o senza risultato → coefficiente 100% (nessuna penalità senza dato, come l'Inventari).</td></tr>
+<tr><td>Su cosa si applicano le matrici</td><td><b>Subscription:</b> solo sul premio BDG (dopo l'eventuale paracadute). <b>Inventari:</b> su tutte le voci, come oggi (applicato nel punto unico di calcolo, voce per voce, equivalente al coefficiente sul premio maturato). Override manuali 60%/100% valgono prima delle matrici. La malattia si applica alla cifra finale.</td></tr>
+<tr><td>Struttura matrice</td><td>Prima versione a <b>una dimensione</b>: asse = «Subscription rate risultato ÷ target» (usa <code>cn.nf</code>/<code>tg.pr</code>, già importati), N fasce editabili con soglia e coefficiente. Predisposta per una seconda dimensione (stesso schema 3×3 di <code>DEMOLT_MATRIX_STORE</code>) se serve (domanda D2).</td></tr>
+<tr><td>Persistenza</td><td><code>SUB_MATRIX</code> in sessione, salvataggio configurazione e <code>markDirty()</code> (attenzione al bug noto di <code>FCVM_PARAMS</code>: non ripeterlo), con default se manca nei vecchi salvataggi.</td></tr>
+</table>
+
+<h2>3. Mappa degli interventi</h2>
+<h3>App (calcolo e schermate)</h3>
+<table class="t"><tr><th style="width:22%">Modulo</th><th>Modifica</th></tr>
+<tr><td>50-params / nuovo 33-sub-matrix</td><td><code>SUB_MATRIX</code>, <code>subMatrixActive()</code>, <code>subPct(sid)</code>, <code>subApplies(e)</code>, <code>SUB_RESULT</code> per negozio (rate, target, %, coeff).</td></tr>
+<tr><td>88-calc-engine</td><td><code>getVal()</code>: coefficiente su <code>rb</code>; <code>isOn()</code>: rd/rs/rp = false da gen. 2027; preventivo senza rd/rs/rp.</td></tr>
+<tr><td>80-roles-config</td><td>Colonna «Privilege» → «Matrice Subscription» (on/off per ruolo); colonne Digital e SY nascoste da 2027 (restano per i mesi 2026).</td></tr>
+<tr><td>93b Configurazione</td><td>Nuova card «Matrice Subscription» (mockup §5); blocchi Digital/SY/Privilege marcati «solo fino a dic. 2026».</td></tr>
+<tr><td>92 Calcolo premi</td><td>Colonne Digital/SY/Priv. nascoste; nuova colonna «Sub.» accanto a «Coef.»; pannello riga: BDG pieno → dopo Sub → dopo Inventari.</td></tr>
+<tr><td>96 Negozi</td><td>Da 2027 flag No Digital / Tipo Digital / No SY non più rilevanti; mostra per negozio Sub target, risultato, % e coefficiente.</td></tr>
+<tr><td>89 Motivazioni · 93 Analisi · 85 Simulatore</td><td>Spiegazione BDG con matrice; analisi per gruppo con riga «riduzione Subscription»; slider % Digital/SY/Privilege sostituiti da simulazione delle fasce Subscription.</td></tr>
+<tr><td>49 Monitor · 90 Storico</td><td>Snapshot con coefficiente Sub per dipendente; storico confrontabile (Dig/SY/Priv a 0 dal 2027).</td></tr>
+<tr><td>94 / 20 Aggiunte</td><td>Voci Digital/SY/Privilege non selezionabili da gen. 2027; se il file le valorizza, avviso in import.</td></tr>
+</table>
+
+<h3>Import (tab Fonte Dati)</h3>
+<table class="t"><tr><th style="width:22%">File</th><th>Modifica</th></tr>
+<tr><td>Target mensile (preventivo)</td><td>Target Subscription rate: <b>ancora necessario</b> (etichetta «Target Privilege» → «Target Subscription Rate»). Target Digital e target SY non più usati per il premio: parsing tollerante, check di completezza nascosti da 2027. Target SY LY resta (paracadute).</td></tr>
+<tr><td>Consuntivo mensile</td><td>Risultato Subscription rate: necessario (colonna «subscription/fidelity», oggi «Consuntivo Privilege»). Risultato SY resta (paracadute). «% Digital cons.» e target Digital mobility per negozio: non più richiesti.</td></tr>
+<tr><td>Inventari</td><td>Nessun cambio (stesso file, stesse regole, Dept da dic. 2026).</td></tr>
+<tr><td>Nuovi file</td><td>Nessuno, <b>se</b> la matrice usa solo rate vs target. Una seconda dimensione (es. rate vs anno precedente) richiederebbe un nuovo dato.</td></tr>
+<tr><td>Pannello controlli import</td><td>Nuovi controlli: negozi con premio BDG ma senza dato Subscription (coefficiente 100% forzato), rate fuori scala (>100% o formato 0-100 vs 0-1), target mancante.</td></tr>
+</table>
+
+<h3>Export, tracciati, report</h3>
+<table class="t"><tr><th style="width:24%">Output</th><th>Modifica proposta</th></tr>
+<tr><td>Excel consuntivo ITA / completo (<code>exportExcelConsuntivoIT</code>, <code>exportExcel</code>)</td><td>Colonne RISULTATO DIGITAL / SHOPPER YIELD / NUOVE PRIVILEGE e relativi MASSIMALI <b>mantenute nella stessa posizione con valore 0</b> (file letto da HR e statistiche: nessuno slittamento). Nuove colonne <b>solo in coda</b>: BDG PRE-MATRICE · SUBSCRIPTION TARGET · SUBSCRIPTION RISULTATO · % RAGG. · COEFF. SUBSCRIPTION · RIDUZIONE SUBSCRIPTION · COEFF. INVENTARI. Excel USA: invariato (come v9.125).</td></tr>
+<tr><td>Tracciato pagamenti Zucchetti</td><td>Nessuna nuova causale: il BDG (cod. 225) è già netto della matrice. I cod. 244 (Digital), 226 (SY), 227 (Privilege) non vengono più emessi dal 2027 (il codice scarta già gli importi a 0). <b>Da confermare con Payroll</b> che non servano righe a zero. Trasferte 380, VMS 235, SAS 228, DCC 230, Venduto 249 invariati.</td></tr>
+<tr><td>Tracciato lettere · Mail CSV · PowerShell · PDF</td><td>Invariati (cambia solo il contenuto della lettera).</td></tr>
+<tr><td>Monitor Excel</td><td>Header «Digital / New Privilege / Shopper Yield Incentive» mantenuti (zero) per continuità con gli anni; nuova colonna «Subscription — riduzione».</td></tr>
+<tr><td>Export JSON Statistiche / SAS</td><td>Aggiunti campi per negozio: subTarget, subResult, subPct, subCoeff, subRiduzione€ (e per riga dipendente). Lo SY paracadute resta come oggi.</td></tr>
+<tr><td>Dashboard statistiche.html</td><td>Fase 2 (progetto separato): COMP cDigital/cShopper/cPrivilege devono diventare <b>date-aware</b> nelle regole di eleggibilità, altrimenti la «% Frequenza» dal 2027 mostrerebbe 0% reale; leve What-if (digPct/syPct/privPct) sostituite da leva «fasce Subscription»; Alert e Lament1 (strumenti agentici) allineati alle nuove componenti.</td></tr>
+</table>
+
+<h3>Test e rilascio</h3>
+<p>Nuovo <code>test/sub-matrix.test.js</code> (fasce, bordi, assenza dato, ruoli, Dept/USA esclusi, override prima della matrice, composizione con Inventari e malattia); i premi congelati <code>calc-golden.json</code> pre-2027 devono restare identici; nuovo golden gennaio 2027; test su tracciato (nessuna riga 244/226/227) ed Excel (colonne in coda). Modifiche solo in <code>src/</code>, poi bump <code>APP_VERSION</code> (altrimenti l'exe non vede l'aggiornamento) e <code>release.js</code>.</p>
+
+<h2>4. Mockup lettere (italiano · valori d'esempio)</h2>
+<p>Per ogni ruolo: <b>preventivo a sinistra</b>, <b>consuntivo a destra</b>, con lo stesso scenario. Importi illustrativi; i BDG pieni per ruolo sono quelli indicati (SM 450 · VSM 375 · SSAP 375 · SSA 300 · SA 225 · JSA 150).</p><div class="nav"><a href="#r-SM">SM</a><a href="#r-VSM">VSM</a><a href="#r-SSAP">SSAP</a><a href="#r-SSA">SSA</a><a href="#r-SA">SA</a><a href="#r-JSA">JSA</a><a href="#r-SCS">SCS</a><a href="#r-DEPT">DEPT</a><a href="#r-H">Cosa cambia</a></div><div class="mock" id="mock"></div>
+
+<h2>5. Mockup Configurazione</h2>
+<div class="cfg">
+ <div style="font-size:11px;font-weight:700;color:#5bb98c;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Matrice Subscription Rate <span class="new-badge">da gen. 2027</span></div>
+ <p style="margin:0 0 10px;color:#6b6560">Conferma o riduce il premio di fatturato (BDG) in base al risultato Subscription rate del negozio, prima dell'applicazione della matrice Inventari.</p>
+ <div class="lt-row"><span class="lt-row-label">Attiva da (anno / mese)</span><span><input value="2027"> / <input value="1"></span></div>
+ <div class="lt-row"><span class="lt-row-label">Indicatore</span><span class="lt-row-val">Subscription rate risultato ÷ target negozio</span></div>
+ <table class="t" style="margin-top:10px"><tr><th>Fascia (rate ÷ target)</th><th>Da ≥</th><th>Coefficiente sul BDG</th></tr>
+  <tr><td>A</td><td><input value="99,5"> %</td><td><input value="100"> %</td></tr>
+  <tr><td>B</td><td><input value="95"> %</td><td><input value="80"> %</td></tr>
+  <tr><td>C</td><td><input value="90"> %</td><td><input value="60"> %</td></tr>
+  <tr><td>D</td><td><input value="0"> %</td><td><input value="40"> %</td></tr>
+ </table>
+ <div class="lt-row"><span class="lt-row-label">Se manca target o risultato</span><span class="lt-row-val">Coefficiente 100% (nessuna riduzione)</span></div>
+ <div class="lt-row"><span class="lt-row-label">Si applica a</span><span class="lt-row-val">☑ BDG &nbsp; ☐ Visual In Store &nbsp; ☐ Articoli incentivati</span></div>
+ <div class="lt-row"><span class="lt-row-label">Ruoli</span><span class="lt-row-val">Colonna «Matrice Subscription» nella tabella ruoli</span></div>
+ <p style="margin:10px 0 0;font-size:11px;color:#a09a92">Anteprima: negozio con rate 22,6% su target 24,0% → 94,2% → fascia C → BDG × 60%.</p>
+</div>
+
+<h2>6. Decisioni confermate</h2>
+<table class="t"><tr><th style="width:8%">#</th><th>Decisione</th></tr>
+<tr><td>D1</td><td>I BDG individuali vengono aumentati a monte per compensare Digital/SY/Privilege: è un dato d'import in anagrafica, nessuna modifica nell'app. (Nei mockup gli importi BDG sono illustrativi.) Attenzione: dal luglio 2026 agli SCS era acceso il SY per compensare il SAS ritirato; dal 2027 anche quello sparisce, quindi l'aumento BDG degli SCS deve coprire anche questo.</td></tr>
+<tr><td>D2</td><td>Matrice Subscription a un solo asse (risultato ÷ target del negozio), fasce 99,5 / 95 / 90 → 100 / 80 / 60 / 40%, modificabili in Configurazione; target = target Privilege attuale; dato mancante → 100%.</td></tr>
+<tr><td>D3</td><td>La matrice agisce solo sul BDG; Visual In Store e Articoli incentivati invariati.</td></tr>
+<tr><td>D4</td><td>Cascata a step: BDG → paracadute → coefficiente Subscription → altre voci → matrice Inventari.</td></tr>
+<tr><td>D5</td><td>Dept stores fuori dalla matrice Subscription; Inventari Dept da dicembre 2026 invariato.</td></tr>
+<tr><td>D6</td><td>BDG cod. 225 = unica riga già netta delle due matrici; cod. 244/226/227 non più emessi.</td></tr>
+<tr><td>D8</td><td>Ordine di calcolo mostrato in lettera dall'alto in basso: BDG + SAS → paracadute (se &lt;100%) → Subscription → altri premi (DCC / Visual / Articoli / QTY Dept) = premio maturato → Inventari su tutte le voci (come oggi) → malattia sulla cifra finale.</td></tr><tr><td>D9</td><td>Consuntivo: il box Malattia è sempre visibile per tutti i ruoli, Dept inclusi (USA esclusi), anche con 0 giorni. Preventivo: box Articoli incentivati e Visual In Store sempre mostrati, se attivi, con il premio massimo previsto (rientrano nel massimo potenziale). Per gli Articoli in preventivo serve un nuovo calcolo del massimo (oggi è 0).</td></tr><tr><td>D10</td><td>BDG pieno (100%) usati negli esempi: SM 450 · VSM 375 · SSAP 375 · SSA 300 · SA 225 · JSA 150 (SCS: 150, non indicato; anche SCS e SA possono essere nella lista Visual In Store). Nella realtà arrivano dall'anagrafica per ciascun dipendente.</td></tr><tr><td>D7</td><td>Statistiche (fase 2): nessuna riclassifica del 2026, Digital/SY/Privilege esclusi dalle frequenze dal 2027 con nota di discontinuità.</td></tr></table>
+</main>
+<script>
+function esc(s){return s}
+function sec(n,t,p,body){return '<div class="lt-section"><div class="lt-sec-head"><div><span class="lt-sec-num">'+n+')</span><span class="lt-sec-title">'+t+'</span></div>'+(p===null?'':'<span class="lt-sec-badge" style="'+(p?'background:#d4edda;color:#1b5e29':'background:#f8d7da;color:#721c24')+'">'+(p?'✓':'✗')+'</span>')+'</div><div class="lt-sec-body">'+body+'</div></div>'}
+function row(l,v){return '<div class="lt-row"><span class="lt-row-label">'+l+'</span><span class="lt-row-val">'+v+'</span></div>'}
+function pd(l,v,ok){return '<div class="lt-row" style="border-top:1px solid #e5e1db;padding-top:6px;margin-top:4px"><span class="lt-row-label" style="font-weight:700">'+l+'</span><span class="lt-row-val" style="font-weight:800;color:'+(ok?'#2d7a3a':'#b0a99f')+'"><span class="lt-row-cur">€</span>'+v+'</span></div>'}
+function cur(v){return '<span class="lt-row-cur">€</span>'+v}
+function head(name,store,fn,sal,pre){
+ return '<div class="lt"><div class="lt-top"><div class="lt-logo">BOGGI MILANO</div><div style="text-align:right"><div class="lt-date">Gennaio 2027</div>'+(pre?'<div style="font-size:9px;color:#c9a96e;font-weight:700"> (PREVENTIVO)</div>':'')+'</div></div><div class="lt-body"><div class="lt-greeting">Ciao '+name+',</div><div class="lt-info">'+
+ [['Matricola','000123'],['Mese / anno','Gennaio 2027'],['Negozio',store],['Nome',name],['Funzione',fn],['Retribuzione mensile lorda','€ '+sal]].map(function(x){return '<div class="lt-info-item"><div class="lt-info-label">'+x[0]+'</div><div class="lt-info-val">'+x[1]+'</div></div>'}).join('')+'</div>'
+}
+/* Box matrice Subscription — stesso stile del box Inventari/SAS (sfondo #faf8f4, cella risultato #c9a96e) */
+function subBox(hit,info){
+ var bands=[['≥ 99,5%',100],['95 – 99,5%',80],['90 – 95%',60],['< 90%',40]];
+ var h='<div style="margin-top:10px;padding:11px 14px;background:#faf8f4;border:1px solid #ece7df;border-radius:7px"><div style="font-size:12px;font-weight:700;color:#a07d2c;margin-bottom:4px">MATRICE SUBSCRIPTION</div>'+
+ '<div style="font-size:10px;color:#8a8680;line-height:1.45;margin-bottom:8px">Il premio di fatturato viene confermato o ridotto in base al risultato Subscription rate del negozio rispetto al target.</div>'+
+ '<table style="border-collapse:collapse;font-size:11px;margin:0 auto '+(info?'9px':'0')+'"><thead><tr><th style="padding:3px 11px;color:#a09a92;text-align:right">Subscription rate ÷ target</th><th style="padding:3px 11px;color:#8a8680">% BDG riconosciuta</th></tr></thead><tbody>';
+ bands.forEach(function(b,i){var on=(hit===i);h+='<tr><td style="padding:3px 11px;text-align:right;color:#6b6560;font-weight:700">'+b[0]+'</td><td style="padding:3px 11px;text-align:center;'+(on?'background:#c9a96e;color:#fff;font-weight:700;border-radius:3px':'color:#9a958d')+'">'+b[1]+'</td></tr>'});
+ h+='</tbody></table>';
+ if(info)h+=info;
+ return h+'</div>';
+}
+function invBox(hitA,hitB,info){
+ var A=['≥90%','70-90%','<70%'],B=['<95%','95-98%','≥98%'],g=[[50,65,80],[60,75,90],[70,85,100]];
+ var h='<div style="margin-top:10px;padding:11px 14px;background:#faf8f4;border:1px solid #ece7df;border-radius:7px"><div style="font-size:12px;font-weight:700;color:#a07d2c;margin-bottom:4px">COEFFICIENTE INVENTARI</div><div style="font-size:10px;color:#8a8680;line-height:1.45;margin-bottom:8px">Riduzione del premio in base alla % di completamento degli inventari giornalieri (completati/mandati) e all\'accuracy mensile.</div><div style="font-size:10px;font-weight:700;color:#8a8680;text-align:center;margin-bottom:3px">Accuracy →</div><table style="border-collapse:collapse;font-size:11px;margin:0 auto '+(info?'9px':'0')+'"><thead><tr><th style="padding:3px 9px;color:#a09a92;text-align:right">↓ % Completamento</th>'+B.map(function(x){return '<th style="padding:3px 11px;color:#8a8680">'+x+'</th>'}).join('')+'</tr></thead><tbody>';
+ [0,1,2].forEach(function(ai){var ri=2-ai;h+='<tr><td style="padding:3px 9px;text-align:right;color:#6b6560;font-weight:700">'+A[ai]+'</td>';[0,1,2].forEach(function(c){var on=(hitA===ri&&hitB===c);h+='<td style="padding:3px 11px;text-align:center;'+(on?'background:#c9a96e;color:#fff;font-weight:700;border-radius:3px':'color:#9a958d')+'">'+g[ri][c]+'</td>'});h+='</tr>'});
+ h+='</tbody></table>'+(info||'')+'</div>';return h;
+}
+function kv(l,v){return '<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0"><span style="color:#8a8680">'+l+'</span><span style="font-weight:600;color:#2c2925">'+v+'</span></div>'}
+function note(t,c){return '<div style="font-size:9px;margin-top:6px;padding:4px 8px;background:'+(c||'#fff3e0')+';border-left:3px solid #c9a96e;color:#856404;border-radius:0 4px 4px 0">'+t+'</div>'}
+function tot(label,val,sub,dim){return '<div class="lt-total"'+(dim?' style="opacity:.6"':'')+'><div><div class="lt-total-label">'+label+'</div>'+(sub?'<div class="lt-total-pct">'+sub+'</div>':'')+'</div><div class="lt-total-val">'+val+'</div></div>'}
+function foot(){return '<div class="lt-footer"><div style="font-weight:600;margin-bottom:6px">GLI INCENTIVI EROGATI SEGUONO LA REGOLA…</div>(disclaimer standard invariato)</div></div>'}
+
+var M=[];
+var N=0;
+function st(t,badge,body){N++;return sec(N,t,badge,body)}
+function run(l,v,ok){return pd(l,v,ok!==false)}
+function F(n){return Math.round(n).toLocaleString('it-IT')}
+function cr(n){return cur(F(n))}
+function pctS(x){return (Math.round(x*100)/100).toFixed(2).replace('.',',')+'%'}
+function paraBox(lines){return '<div style="margin-top:8px;padding:9px 12px;background:#fff8ee;border-left:3px solid #c9a96e;border-radius:0 5px 5px 0;font-size:10.5px;color:#856404">'+lines.map(function(x){return '<div style="padding:1px 0">'+x+'</div>'}).join('')+'</div>'}
+var KPI=function(a){var t=a[0],py=a[1],r=a[2];return '<div class="lt-kpi"><div class="lt-kpi-head"><span>KPI SPRINT</span><span style="text-align:right">TARGET</span><span style="text-align:right">PY</span><span style="text-align:right">RESULT</span><span></span></div><div class="lt-kpi-row"><span>SY</span><span style="text-align:right">'+t+'</span><span style="text-align:right;color:#b0a99f">'+py+'</span><span style="text-align:right;font-weight:600">'+r+'</span><span>'+(parseFloat(r.replace(',','.'))>=parseFloat(t.replace(',','.'))?'✅':'❌')+'</span></div></div>'};
+var TIT='<div style="font-size:12px;font-weight:700;color:#2c2925;margin-bottom:14px">Risultati Gennaio 2027 e incentivi — come si arriva al tuo premio</div>';
+var PRE='<div style="font-size:12px;font-weight:700;color:#856404;margin-bottom:16px;background:#fff3cd;padding:10px 14px;border-radius:6px">Di seguito il premio massimo potenziale per Gennaio 2027 e come verrà calcolato</div>';
+var PARA_TXT='<div style="font-size:10.5px;color:#6b6560;line-height:1.5">Se il negozio chiude tra il 95% e il 99,5% del target e la SY supera quella dell\'anno precedente, il BDG viene riconosciuto al 60%.</div>';
+var PARA_TXT_D='<div style="font-size:10.5px;color:#6b6560;line-height:1.5">Se il negozio chiude tra il 95% e il 99,5% del target e raggiunge il target pezzi (QTY), il BDG viene riconosciuto al 60%.</div>';
+function sasBox(fatt,sas){return '<div style="margin-top:10px;padding:11px 14px;background:#faf8f4;border:1px solid #ece7df;border-radius:7px"><div style="font-size:12px;font-weight:700;color:#a07d2c;margin-bottom:6px">SAS → FATTURATO</div>'+kv('Valore SAS gestito',cur('42.000'))+kv('% riconosciuta (matrice accettazione × velocità)','63%')+kv('SAS riconosciuto',cur(sas))+kv('Utilizzato per il target',cur(sas))+'</div>'}
+function malBody(prev,r){return r.mal?(row('Premio prima della malattia',cr(prev))+row('Giorni di malattia nel mese','1 gg → 50% (esempio)')+run('PREMIO DOPO MALATTIA',F(prev*0.5))):(row('Premio prima della malattia',cr(prev))+row('Giorni di malattia nel mese','0 gg → 100% (nessuna riduzione)')+run('PREMIO DOPO MALATTIA',F(prev)))}
+function artPre(n,max){return '<div style="font-size:10.5px;color:#6b6560;line-height:1.5;margin-bottom:4px">Premio per ogni categoria incentivata: 30% del BDG. Le categorie incentivate nel mese vengono comunicate con il file Articoli incentivati.</div>'+row('FORMULA','30% BDG × N. categorie')+row('Max per categoria',cur(String(max).replace('.',',')))+row('Categorie incentivate previste',String(n))+run('INCENTIVO MAX PREVISTO',String(n*max).replace('.',','))}
+function visPre(a){return row('EXTRA BDG VISUAL IN STORE — negozio',a.store)+run('INCENTIVO MAX PREVISTO',String(a.amt))}
+
+function calc(r){
+ var b=r.state==='full'?r.bdg:(r.state==='para'?r.bdg*0.6:0);
+ var afterSub=(r.sub&&b>0)?b*r.sub.c:b;
+ var art=r.art?r.art*0.3*r.bdg:0,vis=r.vis||0,dcc=r.dcc||0,qty=r.qty?r.bdg*0.5:0;
+ var altri=art+vis+dcc+qty,mat=afterSub+altri,inv=r.inv?mat*r.inv.c:mat,fin=inv*(r.mal?0.5:1);
+ return {b:b,afterSub:afterSub,art:art,vis:vis,dcc:dcc,qty:qty,altri:altri,mat:mat,inv:inv,fin:fin};
+}
+function consuntivo(r){
+ N=0;var c=calc(r),full=r.state==='full';
+ var h=head(r.name,r.store,r.fn,F(r.sal),false);
+ if(r.sy)h+=KPI(r.sy);
+ h+=TIT;
+ var body=row('TARGET',cur(r.tgt));
+ if(r.fatt)body+=row('FATTURATO',cur(r.fatt))+row('SAS riconosciuto',cur(r.sasV));
+ body+=row('SALDO FINALE',cur(r.saldo))+row('Store',r.pct+(full?' — target raggiunto':' — target 100% non raggiunto'));
+ if(r.fatt)body+=sasBox(r.fatt,r.sasV);
+ body+=row('INCENTIVO BDG PIENO',cr(r.bdg))+pd('PREMIO BDG A QUESTO PASSAGGIO',F(full?r.bdg:0),full);
+ h+=st('PREMIO BDG — FATTURATO + SAS',full,body);
+ if(!full){
+  if(r.state==='para'){
+   var lines=['Negozio tra 95% e 99,5% del target → paracadute applicabile',r.dept?'QTY risultato 5.310 ≥ target 5.200 ✓':'SY risultato '+r.sy[2]+' &gt; SY anno precedente '+r.sy[1]+' ✓','Moltiplicatore ridotto al 60%'];
+   h+=st('PARACADUTE',true,paraBox(lines)+row('BDG '+F(r.bdg)+' × 60%',cr(c.b))+run('PREMIO BDG A QUESTO PASSAGGIO',F(c.b)));
+  }else h+=st('PARACADUTE',false,paraBox(['Negozio sotto il 95% del target → paracadute non applicabile']));
+ }
+ if(r.sub){
+  if(c.b>0){
+   h+=st('MATRICE SUBSCRIPTION',true,subBox(r.sub.band,kv('Subscription rate — target',r.sub.t)+kv('Subscription rate — risultato',r.sub.r)+kv('% raggiungimento target',r.sub.p+' ('+r.sub.bl+')')+kv('% BDG riconosciuta',Math.round(r.sub.c*100)+'%'))+row('BDG '+F(c.b)+' × '+Math.round(r.sub.c*100)+'%',cr(c.afterSub))+run('PREMIO BDG A QUESTO PASSAGGIO',F(c.afterSub)));
+  }else h+=st('MATRICE SUBSCRIPTION',null,'<div style="font-size:10.5px;color:#a09a92;font-style:italic">Nessun premio BDG su cui applicare la matrice.</div>');
+ }
+ if(c.altri>0){
+  var al='';
+  if(c.art)al+=row('ARTICOLI INCENTIVATI — '+r.art+(r.art>1?' categorie':' categoria')+' × 30% BDG',cr(c.art));
+  if(c.vis)al+=row('EXTRA BDG VISUAL IN STORE — negozio ✅',cr(c.vis));
+  if(c.dcc)al+=row('DCC — 0,2% × € 41.250 (max € 100)',cr(c.dcc));
+  if(c.qty)al+=row('QTY — 50% BDG, target pezzi raggiunto',cr(c.qty));
+  h+=st('ALTRI PREMI',true,al+run('TOTALE ALTRI PREMI',F(c.altri)));
+ }
+ var fin=tot('Questo mese hai guadagnato','€ '+F(c.fin),pctS(c.fin/r.sal*100)+' SUL SALARIO');
+ if(r.inv){
+  h+='</div>'+tot('Premio maturato (BDG '+F(c.afterSub)+' + altri premi '+F(c.altri)+')','€ '+F(c.mat),'',true)+
+   '<div style="padding:0 28px;background:#fff">'+invBox(r.inv.ri,r.inv.ci,kv('% Completamento',r.inv.compl)+kv('Accuracy',r.inv.acc)+kv('% premio riconosciuta (su tutte le voci)',Math.round(r.inv.c*100)+'%'))+'<div style="text-align:center;font-size:12px;font-weight:700;color:#a07d2c;margin:8px 0">€ '+F(c.mat)+' × '+Math.round(r.inv.c*100)+'% →</div></div>'+
+   tot('Premio dopo Inventari','€ '+F(c.inv),'',true)+
+   '<div style="padding:12px 28px 0;background:#fff">'+st('MALATTIA',!r.mal,malBody(c.inv,r))+'</div>'+fin+foot();
+ }else{
+  h+=st('MALATTIA',!r.mal,malBody(c.mat,r))+'</div>'+fin+foot();
+ }
+ return h;
+}
+function preventivo(r){
+ N=0;var h=head(r.name,r.store,r.fn,F(r.sal),true)+PRE;
+ var tot_=r.bdg,parts=['BDG '+F(r.bdg)];
+ h+=st('PREMIO BDG — FATTURATO + SAS',null,row('TARGET',cur(r.tgt))+row('INCENTIVO BDG MAX',cr(r.bdg))+'<div style="font-size:10px;color:#8a8680">Il valore dei SAS riconosciuto contribuisce al raggiungimento del target (con riserva).</div>');
+ h+=st('PARACADUTE',null,r.dept?PARA_TXT_D:PARA_TXT);
+ if(r.sub)h+=st('MATRICE SUBSCRIPTION',null,'<div style="font-size:10px;color:#8a8680;margin-bottom:2px">Target Subscription rate del negozio: '+r.sub.t+'</div>'+subBox(-1,''));
+ if(r.art){var m=0.3*r.bdg;h+=st('ARTICOLI INCENTIVATI',null,artPre(r.art,m));tot_+=r.art*m;parts.push('Articoli '+F(r.art*m));}
+ if(r.vis){h+=st('EXTRA BDG VISUAL IN STORE',null,visPre({store:r.store,amt:r.vis}));tot_+=r.vis;parts.push('Visual '+r.vis);}
+ if(r.dcc){h+=st('DCC',null,row('FORMULA','0,2% max € 100')+run('INCENTIVO MAX PREVISTO','100'));tot_+=100;parts.push('DCC 100');}
+ if(r.qty){h+=st('QTY',null,row('FORMULA','50% BDG')+run('INCENTIVO MAX PREVISTO',F(r.bdg*0.5)));tot_+=r.bdg*0.5;parts.push('QTY '+F(r.bdg*0.5));}
+ if(r.inv)h+=st('MATRICE INVENTARI (su tutte le voci)',null,invBox(-1,-1,''));
+ return h+'</div>'+tot('Massimo premio potenziale','€ '+F(tot_),parts.join(' + '))+foot();
+}
+
+var R=[
+ {k:'SM',lbl:'Store Manager',name:'Luca',fn:'SM',sal:3100,bdg:450,store:'1105 ROMA VIA DEL CORSO',tgt:'1.480.000',fatt:'1.471.260',sasV:'26.500',saldo:'1.497.760',pct:'101,2%',state:'full',sy:['96,0','95,1','98,4'],
+  sub:{band:2,t:'26,0%',r:'24,5%',p:'94,2%',c:0.6,bl:'fascia 90 – 95%'},art:1,inv:{ri:1,ci:0,c:0.6,compl:'82,0% (70 – 90%)',acc:'93,5% (< 95%)'},
+  desc:'Negozio al 101,2% (nessun paracadute). Subscription al 94,2% del target → 60% del BDG. 1 categoria Articoli. Inventari al 60%.'},
+ {k:'VSM',lbl:'Vice Store Manager',name:'Giulia',fn:'VSM',sal:2600,bdg:375,store:'1105 ROMA VIA DEL CORSO',tgt:'1.540.000',fatt:'1.480.000',sasV:'26.500',saldo:'1.506.500',pct:'97,8%',state:'para',sy:['96,0','95,1','98,4'],
+  sub:{band:1,t:'26,0%',r:'25,5%',p:'98,1%',c:0.8,bl:'fascia 95 – 99,5%'},art:2,vis:45,inv:{ri:1,ci:2,c:0.9,compl:'85,2% (70 – 90%)',acc:'98,4% (≥ 98%)'},
+  desc:'Negozio al 97,8% con paracadute (SY migliorata) → 60%. Subscription 80%. 2 categorie Articoli + Visual In Store. Inventari al 90%.'},
+ {k:'SSAP',lbl:'Senior Sales Advisor Plus',name:'Davide',fn:'SSAP',sal:2100,bdg:375,store:'1301 TORINO VIA ROMA',tgt:'980.000',saldo:'999.600',pct:'102,0%',state:'full',sy:['84,0','80,2','85,1'],
+  sub:{band:1,t:'25,0%',r:'24,8%',p:'99,2%',c:0.8,bl:'fascia 95 – 99,5%'},mal:1,
+  desc:'Negozio al 102%. Subscription al 99,2% → 80% (appena sotto la soglia 99,5%). Nessun altro premio. 1 giorno di malattia → 50%.'},
+ {k:'SSA',lbl:'Senior Sales Advisor',name:'Mario',fn:'SSA',sal:1850,bdg:300,store:'1234 MILANO CORSO',tgt:'812.000',saldo:'821.704',pct:'101,2%',state:'full',sy:['84,0','80,2','85,1'],
+  sub:{band:2,t:'24,0%',r:'22,6%',p:'94,2%',c:0.6,bl:'fascia 90 – 95%'},art:1,
+  desc:'Negozio al 101,2%. Subscription al 94,2% → 60%. 1 categoria Articoli. Nessuna malattia.'},
+ {k:'SA',lbl:'Sales Advisor',name:'Anna',fn:'SA',sal:1500,bdg:225,store:'1301 TORINO VIA ROMA',tgt:'700.000',saldo:'651.000',pct:'93,0%',state:'none',sy:['90,0','88,0','86,4'],
+  sub:{band:3,t:'24,0%',r:'20,1%',p:'83,8%',c:0.4,bl:'fascia &lt; 90%'},art:2,vis:35,
+  desc:'Negozio al 93%: BDG a zero, paracadute non applicabile, matrice Subscription senza effetto. Restano 2 categorie Articoli + Visual In Store (il SA può essere in lista Visual).'},
+ {k:'JSA',lbl:'Junior Sales Advisor',name:'Chiara',fn:'JSA',sal:1350,bdg:150,store:'1234 MILANO CORSO',tgt:'640.000',saldo:'642.600',pct:'100,4%',state:'full',sy:['84,0','80,2','85,1'],
+  sub:{band:0,t:'22,0%',r:'22,4%',p:'101,8%',c:1,bl:'fascia ≥ 99,5%'},art:1,vis:30,
+  desc:'Negozio al 100,4%. Subscription a target → 100%. 1 categoria Articoli + Visual In Store.'},
+ {k:'SCS',lbl:'Addetto Cassa',name:'Sara',fn:'SCS',sal:1620,bdg:150,store:'1234 MILANO CORSO',tgt:'812.000',saldo:'821.704',pct:'101,2%',state:'full',
+  sub:{band:0,t:'24,0%',r:'24,3%',p:'101,3%',c:1,bl:'fascia ≥ 99,5%'},dcc:83,vis:30,
+  desc:'BDG di esempio 150 (non indicato in tabella). Subscription a target → 100%. DCC + Visual In Store. Nessun SY né SAS individuale.'},
+ {k:'DEPT',lbl:'Dept Store (es. SSA Dept)',name:'Elena',fn:'SSA DEPT',sal:1900,bdg:300,store:'2001 DEPT STORE',tgt:'640.000',saldo:'618.500',pct:'96,6%',state:'para',dept:true,
+  qty:true,inv:{ri:1,ci:2,c:0.9,compl:'88,0% (70 – 90%)',acc:'98,6% (≥ 98%)'},
+  desc:'Dept Store: paracadute QTY → 60%. Nessuna matrice Subscription. QTY aggiunta; Inventari al 90% su tutte le voci.'}
+];
+R.forEach(function(r){
+ M.push(['<span id="r-'+r.k+'"></span><span style="font-size:14px;color:#2c2925;letter-spacing:.5px">'+r.k+' — '+r.lbl+' · BDG pieno € '+F(r.bdg)+'</span><div class="rdesc">'+r.desc+'</div>',
+  '<div class="pair"><div><span class="ph" style="background:#fff3cd;color:#856404">Preventivo</span>'+preventivo(r)+'</div><div><span class="ph" style="background:#d4edda;color:#1b5e29">Consuntivo</span>'+consuntivo(r)+'</div></div>']);
+});
+M.push(['<span id="r-H"></span>Cosa cambia rispetto alla lettera di dicembre 2026',
+ '<div class="lt" style="max-width:760px"><div class="lt-body"><div class="lt-section"><div class="lt-sec-head"><span class="lt-sec-title">Confronto strutturale</span></div><div class="lt-sec-body">'+
+ row('Sezioni DIGITAL · PRIVILEGE · SY TARGET','<span class="tag tg-r">rimosse</span>')+row('Riga SY nel box KPI SPRINT','<span class="tag tg-g">resta (paracadute)</span>')+
+ row('Una sezione per passaggio, dall\'alto in basso','<span class="tag tg-y">nuovo</span>')+row('Paracadute: sezione dedicata se target &lt; 100%','<span class="tag tg-y">nuovo (prima solo una nota)</span>')+
+ row('Box Subscription','<span class="tag tg-y">nuovo</span>')+row('Box Inventari su tutte le voci, dopo il premio maturato','<span class="tag tg-g">come oggi (perimetro invariato)</span>')+
+ row('Premio maturato: BDG dopo Subscription + altri premi','<span class="tag tg-y">nuovo</span>')+row('Malattia sempre presente nel consuntivo (tutti i ruoli, Dept inclusi, esclusi USA)','<span class="tag tg-y">nuovo (prima solo un avviso se &gt; 0 gg)</span>')+row('Preventivo: box Articoli e Visual In Store con massimo previsto (se attivi)','<span class="tag tg-y">nuovo</span>')+
+ row('Traduzioni EN · FR · DE · ES','<span class="tag tg-b">da produrre</span>')+
+ '</div></div></div></div>']);
+document.getElementById('mock').innerHTML=M.map(function(m){return '<div><div class="cap">'+m[0]+'</div>'+m[1]+'</div>'}).join('');
+</script></body></html>

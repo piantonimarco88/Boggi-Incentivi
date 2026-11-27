@@ -157,6 +157,9 @@ var VL=D.vl||{};// loaded from JSON, editable
 var KM={"rb":"BDG","rd":"Digital","rs":"SY","rp":"Privilege","rsa":"SAS","rdc":"DCC","rcs":"CS","ra":"Articoli","vi":"Visual","pq":"QTY Dept"};
 function isOn(j,k){
   var kn=KM[k];if(!kn)return true;
+  // Nuova logica mensile da gen. 2027: Digital, SY e Privilege non sono piu' premi a se' (restano come DATI: SY per il
+  // paracadute, Subscription per la matrice). Override per data -> robusto rispetto al TC salvato in sessione.
+  if(subNewActive()&&(kn==="Digital"||kn==="SY"||kn==="Privilege"))return false;
   // Regole SAS da luglio 2026 (mensile + FC+VM): il vecchio premio SAS
   // individuale è ritirato per tutti; agli SCS si accende SY per compensare.
   // Override basato su data → robusto rispetto a TC salvato in sessione.
@@ -197,6 +200,9 @@ function storePctOf(sid){return storeSasInfo(sid).pct;}
 // (_getValRaw ha molteplici return sparsi nello switch, rifattorizzarla sarebbe rischioso).
 function getVal(e,kpiKey){
   var raw=_getValRaw(e,kpiKey);
+  // Matrice Subscription (da gen. 2027): coefficiente sul solo BDG, dopo l'eventuale paracadute 60% e gli override
+  // manuali, PRIMA del Coefficiente Inventari che segue sotto.
+  if(MODE==="consuntivo"&&kpiKey==="rb"&&raw>0&&subNewActive()){var _sc=subCoeffFor(e);if(_sc<1)raw=Math.round(raw*_sc*100)/100;}
   if(MODE==="consuntivo"&&typeof demoltAppliesStore==="function"&&demoltAppliesStore(e)){
     var dr=DEMOLT_RESULT_STORE[String(e.si)];
     if(dr&&dr.pct!=null)return Math.round(raw*dr.pct*100)/100;
@@ -205,11 +211,12 @@ function getVal(e,kpiKey){
 }
 function _getValRaw(e,kpiKey){
   if(isUSA(e.si,e))return 0; // USA employees use calcUSA(), not individual KPI
+  if((kpiKey==="rd"||kpiKey==="rs"||kpiKey==="rp")&&subNewActive())return 0; // premi a se' ritirati da gen. 2027
   var sid=String(e.si),tg=D.t[sid]||{},cn=D.c[sid]||{},v=D.v[e.m]||{},dp=isD(e.si);
   if(MODE==="preventivo"){var _rl=e.rl||e.ib||0;switch(kpiKey){
     case "rb":return e.ib;case "rd":return Math.round(e.ib*PARAMS.digPct*100)/100;
     case "rs":return Math.round(_rl*PARAMS.syPct*100)/100;case "rp":return Math.round(_rl*PARAMS.privPct*100)/100;
-    case "rsa":return PARAMS.sasMax;case "rdc":return PARAMS.dccMax;case "rcs":return 0;case "ra":return 0;case "vi":{var _vle=VL[e.m];if(!_vle)return 0;if(Array.isArray(_vle)){var _vs=0;_vle.forEach(function(x){_vs+=x.amt||0;});return _vs;}return Number(_vle)||0;}
+    case "rsa":return PARAMS.sasMax;case "rdc":return PARAMS.dccMax;case "rcs":return 0;case "ra":{if(!subNewActive()||!PARAMS.artEnabled)return 0;if((e.ra||0)>0)return e.ra;var _acP=(D.c[sid]||{}).ac||0;return _acP>0?Math.round(e.ib*PARAMS.artPct*_acP*100)/100:0}case "vi":{var _vle=VL[e.m];if(!_vle)return 0;if(Array.isArray(_vle)){var _vs=0;_vle.forEach(function(x){_vs+=x.amt||0;});return _vs;}return Number(_vle)||0;}
     case "pq":return dp?Math.round(e.ib*PARAMS.qtyPct*100)/100:0;default:return 0}}
   if(!tg.to&&!cn.sc)return 0;var storePct=storePctOf(sid);
   switch(kpiKey){
@@ -283,6 +290,26 @@ function isRidotto(e){
 }
 // calcE: normal calc + aggiunte. Returns 0 if premio sospeso in consuntivo
 function calcE(e){if(MODE==="consuntivo"&&e.ps==="SI")return 0;if(isUSA(e.si,e)){if(MODE==="preventivo")return 0;return calcUSA(e)+aggTotal(e.m);}var t=0,sm=sickMult(e.ml);IT.forEach(function(it){if(it.k==="vi")return;if(it.k==="ra"&&!PARAMS.artEnabled)return;if(isOn(e.j,it.k))t+=getVal(e,it.k)});t+=getVal(e,"vi");var result=Math.round(t*sm*100)/100+aggTotal(e.m);result+=workgameAmt(e);return result}
+// Colonne/sezioni dei premi ritirati da gen. 2027 (Digital, SY, Privilege): da nascondere nelle schermate e negli output.
+function itHidden(k){return (k==="rd"||k==="rs"||k==="rp")&&subNewActive();}
+// Cascata di calcolo della nuova logica mensile (da gen. 2027) per lettera, tab calcolo ed export: usa le STESSE funzioni di
+// calcE (_getValRaw/getVal), nessuna formula duplicata. Importi in valuta locale, prima di aggiunte e Workgame.
+//   bdgPieno = BDG nominale; bdgRaw = dopo paracadute/override; subC/bdgSub = coefficiente e BDG dopo Subscription;
+//   altri = {ra,vi,rdc,rsa,pq,rcs}; maturato = bdgSub + altri; invPct = coefficiente Inventari (null = non applicato);
+//   dopoInv = totale dopo Inventari (somma di getVal); sm = moltiplicatore malattia; finale = dopo malattia.
+function premioSteps(e){
+  var sid=String(e.si),r2=function(x){return Math.round(x*100)/100;};
+  var on=function(k){return k==="vi"?true:isOn(e.j,k)&&!(k==="ra"&&!PARAMS.artEnabled);};
+  var bdgRaw=on("rb")?_getValRaw(e,"rb"):0;
+  var subC=bdgRaw>0?subCoeffFor(e):1,bdgSub=subC<1?r2(bdgRaw*subC):bdgRaw;
+  var altri={},sumAltri=0,dopoInv=0;
+  ["rsa","rdc","rcs","ra","vi","pq"].forEach(function(k){var v=on(k)?_getValRaw(e,k):0;altri[k]=v;sumAltri+=v;dopoInv+=on(k)?getVal(e,k):0;});
+  dopoInv+=on("rb")?getVal(e,"rb"):0;
+  var dr=(MODE==="consuntivo"&&typeof demoltAppliesStore==="function"&&demoltAppliesStore(e))?DEMOLT_RESULT_STORE[sid]:null;
+  var sm=sickMult(e.ml);
+  return {bdgPieno:on("rb")?(e.ib||0):0,bdgRaw:bdgRaw,subC:subC,bdgSub:bdgSub,altri:altri,sumAltri:sumAltri,maturato:r2(bdgSub+sumAltri),
+    invPct:(dr&&dr.pct!=null)?dr.pct:null,dopoInv:r2(dopoInv),sm:sm,finale:r2(dopoInv*sm)};
+}
 // Workgame (v9.113): UNICA formula, usata da calcolo, tab, analisi, monitor, lettera, export e
 // tracciato pagamenti (prima ricopiata in 7 punti). In consuntivo, con la spunta Workgame e il
 // BDG attivo per il ruolo: % workgame del BDG nominale, al centesimo, fuori da malattia e
