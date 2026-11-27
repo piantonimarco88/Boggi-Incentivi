@@ -1319,6 +1319,60 @@ T('Tab SAS: 3 colonne inventari — negozi: Coef + Compl. + Accuracy; FC: Coef +
   }catch(e){return 'EXCEPTION: '+e.message;}
   finally{sb.sasView='negozi';sb.document.getElementById=prevGet;sb.makeSortTable=prevMst;sb.allData=rows;}});
 
+// ── 12. nuova logica premi mensili da gen. 2027 (fase 2: matrice Subscription) ──────────
+T('compEligible: Digital/SY/Subscription non eleggibili dal 2027 (niente 0% reale), restano nel 2026; BDG sempre', ()=>{
+  const old={job:'SA',store:'1201 X',_tipo:'mensile',monthKey:202612}, nw={job:'SA',store:'1201 X',_tipo:'mensile',monthKey:202701};
+  for(const k of ['cDigital','cShopper','cPrivilege']){
+    if(sb.compEligible({k},old)!==true)return k+' dic-2026 doveva essere eleggibile';
+    if(sb.compEligible({k},nw)!==false)return k+' gen-2027 non doveva essere eleggibile';}
+  return sb.compEligible({k:'cBdg'},nw)===true?true:'cBdg gen-2027 deve restare eleggibile';});
+T('whatifAgg: mesi dal 2027 senza massimale Digital/SY/Subscription; la leva matrice riscala il BDG pagato della fascia', ()=>{
+  const row=monthKey=>({job:'SA',matricola:'M1',monthKey,cBdg:80,cDigital:0,cShopper:0,cPrivilege:0,mBdg:100,rml_period:1000,erogato:80,massimale:100,year:2027,subCoeff:0.8});
+  const def={base:{SA:150},sy:0.03,sub:0.02,dig:0.30,sas:2,dcc:0.002,subB:[1,0.8,0.6,0.4]};
+  const dflt=sb.whatifAgg([row(202701)],def,1,'SA',0)['2027'];
+  if(dflt.erS!==dflt.erR||dflt.maS!==dflt.maR)return 'parametri di default: nessuna variazione attesa';
+  const p=Object.assign({},def,{dig:0.60,sy:0.06,sub:0.04});           // leve ritirate: nessun effetto sul 2027
+  const r1=sb.whatifAgg([row(202701)],p,1,'SA',0)['2027'];
+  if(r1.maS!==r1.maR||r1.erS!==r1.erR)return 'Digital/SY/Subscription non devono avere effetto dal 2027';
+  const p2=Object.assign({},def,{subB:[1,0.4,0.6,0.4]});                // fascia B 80% -> 40%: BDG pagato 80 -> 40
+  const r2=sb.whatifAgg([row(202701)],p2,1,'SA',0)['2027'];
+  if(Math.abs((r2.erS-r2.erR)-(-40))>1e-9)return 'delta atteso -40, avuto '+(r2.erS-r2.erR);
+  const r3=sb.whatifAgg([Object.assign(row(202701),{subCoeff:0.7})],p2,1,'SA',0)['2027']; // coefficiente non predefinito: non toccato
+  return r3.erS===r3.erR?true:'coefficiente fuori fascia predefinita non deve cambiare';});
+T('whatifAgg: nel 2026 Digital/SY/Subscription hanno ancora effetto sul massimale (regressione)', ()=>{
+  const row={job:'SA',matricola:'M1',monthKey:202611,cBdg:100,cDigital:30,cShopper:30,cPrivilege:20,mBdg:100,rml_period:1000,erogato:180,massimale:250,year:2026};
+  const def={base:{SA:150},sy:0.03,sub:0.02,dig:0.30,sas:2,dcc:0.002};
+  const by=sb.whatifAgg([row],Object.assign({},def,{dig:0.60}),1,'SA',0)['2026'];
+  return by.maS>by.maR?true:'il Digital 2026 deve alzare il massimale scenario';});
+T('previsione: dal 2027 solo BDG(+SAS/DCC), BDG atteso = frequenza x max x coefficiente matrice', ()=>{
+  const fc=sb.fForecast('SA',1000,{bdg:100},12,null,true,0.8);
+  const ks=fc.per.map(x=>x.k).join();
+  if(ks!=='bdg')return 'componenti attese solo bdg, avute '+ks;
+  if(Math.abs(fc.per[0].exp-150*0.8)>1e-9)return 'BDG atteso '+fc.per[0].exp+' (atteso 120)';
+  const old=sb.fForecast('SA',1000,{bdg:100,digital:100,sy:100,sub:100},12,null,false,1);
+  return old.per.length===4?true:'prima del 2027 restano 4 componenti, avute '+old.per.length;});
+T('fFrequencies: i mesi dal 2027 non contano per Digital/SY/Subscription', ()=>{
+  const a=sb.fFrequencies([{monthKey:202611,rml_period:1000,cDigital:45,cShopper:30,cPrivilege:20,cBdg:150},{monthKey:202701,rml_period:1000,cDigital:0,cShopper:0,cPrivilege:0,cBdg:150}],'SA');
+  return (a.digital===100&&a.sy===100&&a.sub===100)?true:'frequenze '+JSON.stringify(a)+' (il mese 2027 non deve abbassare la media)';});
+T('import: colonne matrice Subscription (BDG pre-matrice, coefficiente, riduzione, % raggiungimento)', ()=>{
+  const raw=[{'MONTH':1,'ENTE':210,'TOTALE INCENTIVO EROGATO (LC)':260,'MASSIMALE TOTALE EURO':600,'MATRICOLA DIPENDENTE':'1234567','DESCR FILIALE':'1201 TEST','COGNOME':'PROVA','NOME':'UNO','JOB':'SA','RML':1500,'RML EURO':1500,
+    'RISULTATO PREMIO BDG (LORDO)':300,'BDG PRE-MATRICE SUBSCRIPTION':500,'COEFF. SUBSCRIPTION':0.6,'RIDUZIONE SUBSCRIPTION':200,'% RAGG. TARGET SUBSCRIPTION':0.942}];
+  const r=sb.parseRows(raw,'Incentivi_consuntivo_GENNAIO_2027.xlsx',{})[0];
+  if(!r)return 'riga scartata';
+  if(r.subCoeff!==0.6||r.subRid!==200||r.subPre!==500||Math.abs(r.subRatio-0.942)>1e-9)return JSON.stringify({c:r.subCoeff,rid:r.subRid,pre:r.subPre,ra:r.subRatio});
+  const raw2=[Object.assign({},raw[0],{'COEFF. SUBSCRIPTION':'','% RAGG. TARGET SUBSCRIPTION':'','RIDUZIONE SUBSCRIPTION':''})];
+  const r2=sb.parseRows(raw2,'Incentivi_consuntivo_GENNAIO_2027.xlsx',{})[0];
+  return (r2.subCoeff===null&&r2.subRid===0)?true:'celle vuote: coefficiente null e riduzione 0';});
+T('stima malattia: dal 2027 il Digital non entra nella ricostruzione', ()=>{
+  const mk=(mk_,m,mal)=>({matricola:m,cognome:'C'+m,nome:'N',job:'SA',store:'1201 X',monthKey:mk_,year:Math.floor(mk_/100),_tipo:'mensile',_nazione:'Italia',mBdg:100,cBdg:mal?0:100,cDigital:mal?0:30,malattie:mal,rml_period:1000,erogato:100,massimale:130});
+  const prev=sb.allData;
+  try{
+    sb.allData=[mk(202611,'a',3),mk(202611,'b',0),mk(202611,'c',0),mk(202701,'a',3),mk(202701,'b',0),mk(202701,'c',0)];
+    sb._malYears=new Set([2026]);sb._malMonths=new Set();const c26=sb._malCompute().total;
+    sb._malYears=new Set([2027]);const c27=sb._malCompute().total;
+    return (c26>c27)?true:'2026 (BDG+Digital)='+c26+' deve superare 2027 (solo BDG)='+c27;
+  }finally{sb.allData=prev;sb._malYears=new Set();sb._malMonths=new Set();}});
+
 // ── esito ──────────────────────────────────────────────────────
 (async()=>{
   for(const {name,fn} of asyncTests){
