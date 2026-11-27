@@ -158,8 +158,10 @@ function wdNorm(s){return String(s==null?"":s).replace(/\s+/g," ").trim().toUppe
 function wdDetect(hdr){
   var H=(hdr||[]).map(function(c){return wdNorm(c).toLowerCase();});
   function col(name,nth){var n=0;for(var i=0;i<H.length;i++){if(H[i]===name){if(n===(nth||0))return i;n++;}}return -1;}
-  if(col("employee id")<0||col("cost center")<0||col("primary job title")<0)return null;
-  var W={id:col("employee id"),first:col("first name"),last:col("last name"),title:col("primary job title"),company:col("company"),cc:col("cost center"),
+  // Cost Center: export di ottobre = colonna unica "Cost Center" ("1103 CRANS"); export di novembre = "Cost Center - ID" + "Cost Center - Name"
+  var ccCol=col("cost center"),ccIdCol=col("cost center - id"),ccNameCol=col("cost center - name");
+  if(col("employee id")<0||(ccCol<0&&ccIdCol<0)||col("primary job title")<0)return null;
+  var W={id:col("employee id"),first:col("first name"),last:col("last name"),title:col("primary job title"),company:col("company"),cc:ccCol>=0?ccCol:ccIdCol,ccName:ccCol>=0?-1:ccNameCol,
     sal:col("prorated monthly salary"),salCur:col("currency",0),salFreq:col("frequency",0),
     hire:col("hire date"),term:col("termination date - all"),mail:col("emails"),
     fte:col("fte"),ttype:col("time type")}; // occupazione: facoltative (se mancano la % non si importa, nessun errore)
@@ -170,7 +172,7 @@ function wdDetect(hdr){
   }else{
     W.plan=col("compensation plan");W.amt=col("amount");W.amtCur=-1;W.amtFreq=col("frequency",1);
   }
-  var missing=[];for(var k in W){if(W[k]<0&&k!=="plan"&&k!=="amtCur"&&k!=="fte"&&k!=="ttype")missing.push(k);}
+  var missing=[];for(var k in W){if(W[k]<0&&k!=="plan"&&k!=="amtCur"&&k!=="fte"&&k!=="ttype"&&k!=="ccName")missing.push(k);}
   if(W.plan<0&&col("budget amount")<0)missing.push("plan");
   return{W:W,missing:missing};
 }
@@ -192,7 +194,7 @@ function wdParseAnagrafica(json,hdrRow,W,o){
     if(PRIZE_MODE==="seasonal"&&job!=="SM"&&job!=="VSM"){ko("Seasonal: ruolo '"+title+"' escluso (solo SM/VSM)");continue}
 
     // Cost Center = "<id negozio> <descrizione>"
-    var ccRaw=String(row[W.cc]||"").trim();
+    var ccRaw=(String(row[W.cc]==null?"":row[W.cc]).trim()+" "+(W.ccName>=0?String(row[W.ccName]==null?"":row[W.ccName]).trim():"")).trim();
     var ccm=ccRaw.match(/^(\d+)\s*(.*)$/);
     if(!ccm){ko(ccRaw?"Centro di costo '"+ccRaw+"' non di negozio — escluso":"Centro di costo mancante — escluso");continue}
     var cdc=parseInt(ccm[1],10);
@@ -306,7 +308,8 @@ function loadAnagraficaExcel(file){
       for(var ri=0;ri<Math.min(5,json.length);ri++){
         var row=json[ri];if(!row)continue;
         var rowStr=row.map(function(c){return String(c||"").toLowerCase()}).join("|");
-        if(rowStr.indexOf("cognome")>=0||rowStr.indexOf("id empl")>=0){hdrRow=ri;break}
+        // "employee id" = export Workday (da novembre 2026 la riga 1 e' un banner "Salary Plan Assignments", le intestazioni sono alla riga 2)
+        if(rowStr.indexOf("cognome")>=0||rowStr.indexOf("id empl")>=0||rowStr.indexOf("employee id")>=0){hdrRow=ri;break}
       }
 
       // Hire date cutoff: giorno 5 del mese corrente dei premi

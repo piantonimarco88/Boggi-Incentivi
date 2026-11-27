@@ -1537,12 +1537,13 @@ function paramsMigrate(p){
 initTC();
 var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.128'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.129'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.129: Anagrafica Workday estero — riconosce il nuovo export di novembre 2026: intestazioni alla riga 2 (riga 1 = banner «Salary Plan Assignments») e centro di costo diviso in «Cost Center - ID» + «Cost Center - Name» (il formato di ottobre con «Cost Center» unico funziona ancora)",
   "9.128: Nuova logica premi MENSILI da gennaio 2027 (Italia e Internazionale) — Digital, SY e Privilege non sono più premi a sé. Catena: BDG (fatturato + SAS) → paracadute 60% → NUOVA matrice Subscription (risultato÷target del negozio → coefficiente sul solo BDG; fasce 99,5/95/90% → 100/80/60/40%, modificabili in Configurazione) → altri premi (DCC, Visual, Articoli, QTY) → Coefficiente Inventari su tutte le voci → malattia. Lettera riscritta passo per passo (5 lingue), con il box Malattia sempre presente e, in preventivo, Articoli e Visual con il massimo previsto. Tab Calcolo con colonna «Sub.»; Excel con nuove colonne solo in coda; tracciato senza cod. 244/226/227; Dept, USA, FC+VM e Seasonal invariati. Fino a dicembre 2026 tutto resta come prima",
   "9.127: Articoli incentivati — si importa anche il file per categoria (colonne Codice, Store, Categoria, «Incentivo (1 = sì, 0 = no)»): per ogni negozio conta le categorie a 1 (Blazer, Pantaloni…) e il premio resta % BDG × n. categorie. Il conteggio sostituisce quello precedente (ricaricare il file non lo raddoppia); il report segnala negozi in anagrafica senza riga nel file e righe non valide. Gli altri formati articoli non cambiano",
   "9.126: Aggiunte — nuova voce «Visual In Store» nel tab Aggiunte (anche da «Importa aggiunte (Excel)», colonna «Visual In Store»); finisce nella lettera, negli export Excel, nel Monitor e nel tracciato pagamenti (cod. 235 Premio VMS)",
@@ -8246,8 +8247,10 @@ function wdNorm(s){return String(s==null?"":s).replace(/\s+/g," ").trim().toUppe
 function wdDetect(hdr){
   var H=(hdr||[]).map(function(c){return wdNorm(c).toLowerCase();});
   function col(name,nth){var n=0;for(var i=0;i<H.length;i++){if(H[i]===name){if(n===(nth||0))return i;n++;}}return -1;}
-  if(col("employee id")<0||col("cost center")<0||col("primary job title")<0)return null;
-  var W={id:col("employee id"),first:col("first name"),last:col("last name"),title:col("primary job title"),company:col("company"),cc:col("cost center"),
+  // Cost Center: export di ottobre = colonna unica "Cost Center" ("1103 CRANS"); export di novembre = "Cost Center - ID" + "Cost Center - Name"
+  var ccCol=col("cost center"),ccIdCol=col("cost center - id"),ccNameCol=col("cost center - name");
+  if(col("employee id")<0||(ccCol<0&&ccIdCol<0)||col("primary job title")<0)return null;
+  var W={id:col("employee id"),first:col("first name"),last:col("last name"),title:col("primary job title"),company:col("company"),cc:ccCol>=0?ccCol:ccIdCol,ccName:ccCol>=0?-1:ccNameCol,
     sal:col("prorated monthly salary"),salCur:col("currency",0),salFreq:col("frequency",0),
     hire:col("hire date"),term:col("termination date - all"),mail:col("emails"),
     fte:col("fte"),ttype:col("time type")}; // occupazione: facoltative (se mancano la % non si importa, nessun errore)
@@ -8258,7 +8261,7 @@ function wdDetect(hdr){
   }else{
     W.plan=col("compensation plan");W.amt=col("amount");W.amtCur=-1;W.amtFreq=col("frequency",1);
   }
-  var missing=[];for(var k in W){if(W[k]<0&&k!=="plan"&&k!=="amtCur"&&k!=="fte"&&k!=="ttype")missing.push(k);}
+  var missing=[];for(var k in W){if(W[k]<0&&k!=="plan"&&k!=="amtCur"&&k!=="fte"&&k!=="ttype"&&k!=="ccName")missing.push(k);}
   if(W.plan<0&&col("budget amount")<0)missing.push("plan");
   return{W:W,missing:missing};
 }
@@ -8280,7 +8283,7 @@ function wdParseAnagrafica(json,hdrRow,W,o){
     if(PRIZE_MODE==="seasonal"&&job!=="SM"&&job!=="VSM"){ko("Seasonal: ruolo '"+title+"' escluso (solo SM/VSM)");continue}
 
     // Cost Center = "<id negozio> <descrizione>"
-    var ccRaw=String(row[W.cc]||"").trim();
+    var ccRaw=(String(row[W.cc]==null?"":row[W.cc]).trim()+" "+(W.ccName>=0?String(row[W.ccName]==null?"":row[W.ccName]).trim():"")).trim();
     var ccm=ccRaw.match(/^(\d+)\s*(.*)$/);
     if(!ccm){ko(ccRaw?"Centro di costo '"+ccRaw+"' non di negozio — escluso":"Centro di costo mancante — escluso");continue}
     var cdc=parseInt(ccm[1],10);
@@ -8394,7 +8397,8 @@ function loadAnagraficaExcel(file){
       for(var ri=0;ri<Math.min(5,json.length);ri++){
         var row=json[ri];if(!row)continue;
         var rowStr=row.map(function(c){return String(c||"").toLowerCase()}).join("|");
-        if(rowStr.indexOf("cognome")>=0||rowStr.indexOf("id empl")>=0){hdrRow=ri;break}
+        // "employee id" = export Workday (da novembre 2026 la riga 1 e' un banner "Salary Plan Assignments", le intestazioni sono alla riga 2)
+        if(rowStr.indexOf("cognome")>=0||rowStr.indexOf("id empl")>=0||rowStr.indexOf("employee id")>=0){hdrRow=ri;break}
       }
 
       // Hire date cutoff: giorno 5 del mese corrente dei premi

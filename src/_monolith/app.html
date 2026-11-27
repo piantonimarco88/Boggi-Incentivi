@@ -216,12 +216,13 @@ td{padding:4px 5px;border-bottom:1px solid #eae7e1}
 /*BUNDLE_INSERT:60-fcvm-state*/
 /*BUNDLE_INSERT:70-fcvm-calc*//*BUNDLE_INSERT:80-roles-config*/var SICK_50=1,SICK_0=2;
 // Month/Year config (1-12)
-var APP_VERSION='9.128'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
+var APP_VERSION='9.129'; // Auto-update: il wrapper .exe legge questa riga per confrontare versioni
 // Changelog breve mostrato IN-APP (banner a comparsa quando la versione cambia rispetto
 // all'ultima vista su questo PC — vedi _showChangelogBanner più sotto). Si aggiorna da solo
 // col resto di app.html, nessun rebuild/reinstall del wrapper .exe necessario.
 // Aggiungere UNA riga in cima ad ogni bump di APP_VERSION; tenere solo le ultime ~8 per restare corti.
 var APP_CHANGELOG=[
+  "9.129: Anagrafica Workday estero — riconosce il nuovo export di novembre 2026: intestazioni alla riga 2 (riga 1 = banner «Salary Plan Assignments») e centro di costo diviso in «Cost Center - ID» + «Cost Center - Name» (il formato di ottobre con «Cost Center» unico funziona ancora)",
   "9.128: Nuova logica premi MENSILI da gennaio 2027 (Italia e Internazionale) — Digital, SY e Privilege non sono più premi a sé. Catena: BDG (fatturato + SAS) → paracadute 60% → NUOVA matrice Subscription (risultato÷target del negozio → coefficiente sul solo BDG; fasce 99,5/95/90% → 100/80/60/40%, modificabili in Configurazione) → altri premi (DCC, Visual, Articoli, QTY) → Coefficiente Inventari su tutte le voci → malattia. Lettera riscritta passo per passo (5 lingue), con il box Malattia sempre presente e, in preventivo, Articoli e Visual con il massimo previsto. Tab Calcolo con colonna «Sub.»; Excel con nuove colonne solo in coda; tracciato senza cod. 244/226/227; Dept, USA, FC+VM e Seasonal invariati. Fino a dicembre 2026 tutto resta come prima",
   "9.127: Articoli incentivati — si importa anche il file per categoria (colonne Codice, Store, Categoria, «Incentivo (1 = sì, 0 = no)»): per ogni negozio conta le categorie a 1 (Blazer, Pantaloni…) e il premio resta % BDG × n. categorie. Il conteggio sostituisce quello precedente (ricaricare il file non lo raddoppia); il report segnala negozi in anagrafica senza riga nel file e righe non valide. Gli altri formati articoli non cambiano",
   "9.126: Aggiunte — nuova voce «Visual In Store» nel tab Aggiunte (anche da «Importa aggiunte (Excel)», colonna «Visual In Store»); finisce nella lettera, negli export Excel, nel Monitor e nel tracciato pagamenti (cod. 235 Premio VMS)",
