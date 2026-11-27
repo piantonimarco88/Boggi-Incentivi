@@ -69,10 +69,10 @@ table.t tr:nth-child(even) td{background:#faf9f7}
  <div class="step new"><b>③ Matrice Subscription <span class="new-badge">NUOVA</span></b>Conferma o riduce il BDG (solo il BDG).</div><div class="arrow">→</div>
  <div class="step"><b>④ + Altri premi</b>DCC (cassiere), Visual In Store, Articoli incentivati (e QTY Dept), sommati al BDG → <b>premio maturato</b>.</div><div class="arrow">→</div>
  <div class="step"><b>⑤ Matrice Inventari</b>Come oggi: coefficiente su tutte le voci (SM/VSM; Dept da dic. 2026) → premio da erogare.</div><div class="arrow">→</div>
- <div class="step"><b>⑥ Malattia</b>Applicata alla cifra finale. Workgame e aggiunte manuali restano fuori, come oggi.</div>
+ <div class="step"><b>⑥ Assenze</b>Applicata alla cifra finale. Workgame e aggiunte manuali restano fuori, come oggi.</div>
 </div>
 <p><b>Spariscono come premi a sé:</b> Digital (30% BDG), Shopper Yield (3% RML), Privilege/Subscription (2% RML). <b>Restano come dati:</b> SY risultato + SY anno precedente (servono al paracadute), Subscription target + risultato (servono alla matrice). Fuori perimetro e invariati: USA, Dept (logiche proprie), FC+VM, Seasonal.</p>
-<p><i>Nota:</i> l'Inventari riduce <b>tutte le voci</b> come oggi. Essendo un coefficiente moltiplicativo, applicarlo al premio maturato (BDG dopo Subscription + altri premi) dà lo stesso risultato che applicarlo voce per voce: per questo in lettera compare dopo gli altri premi, mantenendo la sequenza richiesta (BDG → paracadute → Subscription → Inventari → malattia). La Subscription invece agisce solo sul BDG. I mesi fino a dicembre 2026 restano calcolati come oggi (test golden).</p>
+<p><i>Nota:</i> l'Inventari riduce <b>tutte le voci</b> come oggi. Essendo un coefficiente moltiplicativo, applicarlo al premio maturato (BDG dopo Subscription + altri premi) dà lo stesso risultato che applicarlo voce per voce: per questo in lettera compare dopo gli altri premi, mantenendo la sequenza richiesta (BDG → paracadute → Subscription → Inventari → assenze). La Subscription invece agisce solo sul BDG. I mesi fino a dicembre 2026 restano calcolati come oggi (test golden).</p>
 
 <h2>2. Decisioni di progetto proposte</h2>
 <table class="t"><tr><th style="width:30%">Tema</th><th>Proposta</th></tr>
@@ -80,7 +80,7 @@ table.t tr:nth-child(even) td{background:#faf9f7}
 <tr><td>Spegnimento Digital/SY/Privilege</td><td>Per data, nello stesso punto di <code>isOn()</code> già usato per il SAS di luglio 2026 (<code>sasNewActive</code>): da gen. 2027 le tre voci valgono 0 a prescindere dal TC salvato in sessione. I mesi 2026 restano identici (test golden).</td></tr>
 <tr><td>Cutoff configurabile</td><td>Data di avvio modificabile in Configurazione (come Inventari/Dept): <code>subMatrixActive()</code> = mensile + (anno,mese) ≥ 2027-01. Il preventivo di gennaio 2027 è già con la nuova logica.</td></tr>
 <tr><td>A chi si applica</td><td>Tutti i ruoli di negozio con BDG nei negozi «normali» dove oggi il Privilege è attivo. Non: Dept stores (oggi senza Privilege), negozi/ruoli «NO PRIVILEGE», USA. Negozio senza target Subscription o senza risultato → coefficiente 100% (nessuna penalità senza dato, come l'Inventari).</td></tr>
-<tr><td>Su cosa si applicano le matrici</td><td><b>Subscription:</b> solo sul premio BDG (dopo l'eventuale paracadute). <b>Inventari:</b> su tutte le voci, come oggi (applicato nel punto unico di calcolo, voce per voce, equivalente al coefficiente sul premio maturato). Override manuali 60%/100% valgono prima delle matrici. La malattia si applica alla cifra finale.</td></tr>
+<tr><td>Su cosa si applicano le matrici</td><td><b>Subscription:</b> solo sul premio BDG (dopo l'eventuale paracadute). <b>Inventari:</b> su tutte le voci, come oggi (applicato nel punto unico di calcolo, voce per voce, equivalente al coefficiente sul premio maturato). Override manuali 60%/100% valgono prima delle matrici. Le assenze si applicano alla cifra finale.</td></tr>
 <tr><td>Struttura matrice</td><td>Prima versione a <b>una dimensione</b>: asse = «Subscription rate risultato ÷ target» (usa <code>cn.nf</code>/<code>tg.pr</code>, già importati), N fasce editabili con soglia e coefficiente. Predisposta per una seconda dimensione (stesso schema 3×3 di <code>DEMOLT_MATRIX_STORE</code>) se serve (domanda D2).</td></tr>
 <tr><td>Persistenza</td><td><code>SUB_MATRIX</code> in sessione, salvataggio configurazione e <code>markDirty()</code> (attenzione al bug noto di <code>FCVM_PARAMS</code>: non ripeterlo), con default se manca nei vecchi salvataggi.</td></tr>
 </table>
@@ -119,7 +119,7 @@ table.t tr:nth-child(even) td{background:#faf9f7}
 </table>
 
 <h3>Test e rilascio</h3>
-<p>Nuovo <code>test/sub-matrix.test.js</code> (fasce, bordi, assenza dato, ruoli, Dept/USA esclusi, override prima della matrice, composizione con Inventari e malattia); i premi congelati <code>calc-golden.json</code> pre-2027 devono restare identici; nuovo golden gennaio 2027; test su tracciato (nessuna riga 244/226/227) ed Excel (colonne in coda). Modifiche solo in <code>src/</code>, poi bump <code>APP_VERSION</code> (altrimenti l'exe non vede l'aggiornamento) e <code>release.js</code>.</p>
+<p>Nuovo <code>test/sub-matrix.test.js</code> (fasce, bordi, assenza dato, ruoli, Dept/USA esclusi, override prima della matrice, composizione con Inventari e assenze); i premi congelati <code>calc-golden.json</code> pre-2027 devono restare identici; nuovo golden gennaio 2027; test su tracciato (nessuna riga 244/226/227) ed Excel (colonne in coda). Modifiche solo in <code>src/</code>, poi bump <code>APP_VERSION</code> (altrimenti l'exe non vede l'aggiornamento) e <code>release.js</code>.</p>
 
 <h2>4. Mockup lettere (italiano · valori d'esempio)</h2>
 <p>Per ogni ruolo: <b>preventivo a sinistra</b>, <b>consuntivo a destra</b>, con lo stesso scenario. Importi illustrativi; i BDG pieni per ruolo sono quelli indicati (SM 450 · VSM 375 · SSAP 375 · SSA 300 · SA 225 · JSA 150).</p><div class="nav"><a href="#r-SM">SM</a><a href="#r-VSM">VSM</a><a href="#r-SSAP">SSAP</a><a href="#r-SSA">SSA</a><a href="#r-SA">SA</a><a href="#r-JSA">JSA</a><a href="#r-SCS">SCS</a><a href="#r-DEPT">DEPT</a><a href="#r-H">Cosa cambia</a></div><div class="mock" id="mock"></div>
@@ -150,7 +150,7 @@ table.t tr:nth-child(even) td{background:#faf9f7}
 <tr><td>D4</td><td>Cascata a step: BDG → paracadute → coefficiente Subscription → altre voci → matrice Inventari.</td></tr>
 <tr><td>D5</td><td>Dept stores fuori dalla matrice Subscription; Inventari Dept da dicembre 2026 invariato.</td></tr>
 <tr><td>D6</td><td>BDG cod. 225 = unica riga già netta delle due matrici; cod. 244/226/227 non più emessi.</td></tr>
-<tr><td>D8</td><td>Ordine di calcolo mostrato in lettera dall'alto in basso: BDG + SAS → paracadute (se &lt;100%) → Subscription → altri premi (DCC / Visual / Articoli / QTY Dept) = premio maturato → Inventari su tutte le voci (come oggi) → malattia sulla cifra finale.</td></tr><tr><td>D9</td><td>Consuntivo: il box Malattia è sempre visibile per tutti i ruoli, Dept inclusi (USA esclusi), anche con 0 giorni. Preventivo: box Articoli incentivati e Visual In Store sempre mostrati, se attivi, con il premio massimo previsto (rientrano nel massimo potenziale). Per gli Articoli in preventivo serve un nuovo calcolo del massimo (oggi è 0).</td></tr><tr><td>D10</td><td>BDG pieno (100%) usati negli esempi: SM 450 · VSM 375 · SSAP 375 · SSA 300 · SA 225 · JSA 150 (SCS: 150, non indicato; anche SCS e SA possono essere nella lista Visual In Store). Nella realtà arrivano dall'anagrafica per ciascun dipendente.</td></tr><tr><td>D7</td><td>Statistiche (fase 2): nessuna riclassifica del 2026, Digital/SY/Privilege esclusi dalle frequenze dal 2027 con nota di discontinuità.</td></tr></table>
+<tr><td>D8</td><td>Ordine di calcolo mostrato in lettera dall'alto in basso: BDG + SAS → paracadute (se &lt;100%) → Subscription → altri premi (DCC / Visual / Articoli / QTY Dept) = premio maturato → Inventari su tutte le voci (come oggi) → assenze sulla cifra finale.</td></tr><tr><td>D9</td><td>Consuntivo: le assenze (ex «malattia») compaiono con il riquadro minimale di sempre («Assenze: N gg → %»), solo quando riducono il premio, per tutti i ruoli, Dept inclusi (USA esclusi). Preventivo: box Articoli incentivati e Visual In Store sempre mostrati, se attivi, con il premio massimo previsto (rientrano nel massimo potenziale). Per gli Articoli in preventivo serve un nuovo calcolo del massimo (oggi è 0).</td></tr><tr><td>D10</td><td>BDG pieno (100%) usati negli esempi: SM 450 · VSM 375 · SSAP 375 · SSA 300 · SA 225 · JSA 150 (SCS: 150, non indicato; anche SCS e SA possono essere nella lista Visual In Store). Nella realtà arrivano dall'anagrafica per ciascun dipendente.</td></tr><tr><td>D7</td><td>Statistiche (fase 2): nessuna riclassifica del 2026, Digital/SY/Privilege esclusi dalle frequenze dal 2027 con nota di discontinuità.</td></tr></table>
 </main>
 <script>
 function esc(s){return s}
@@ -198,7 +198,7 @@ var PRE='<div style="font-size:12px;font-weight:700;color:#856404;margin-bottom:
 var PARA_TXT='<div style="font-size:10.5px;color:#6b6560;line-height:1.5">Se il negozio chiude tra il 95% e il 99,5% del target e la SY supera quella dell\'anno precedente, il BDG viene riconosciuto al 60%.</div>';
 var PARA_TXT_D='<div style="font-size:10.5px;color:#6b6560;line-height:1.5">Se il negozio chiude tra il 95% e il 99,5% del target e raggiunge il target pezzi (QTY), il BDG viene riconosciuto al 60%.</div>';
 function sasBox(fatt,sas){return '<div style="margin-top:10px;padding:11px 14px;background:#faf8f4;border:1px solid #ece7df;border-radius:7px"><div style="font-size:12px;font-weight:700;color:#a07d2c;margin-bottom:6px">SAS → FATTURATO</div>'+kv('Valore SAS gestito',cur('42.000'))+kv('% riconosciuta (matrice accettazione × velocità)','63%')+kv('SAS riconosciuto',cur(sas))+kv('Utilizzato per il target',cur(sas))+'</div>'}
-function malBody(prev,r){return r.mal?(row('Premio prima della malattia',cr(prev))+row('Giorni di malattia nel mese','1 gg → 50% (esempio)')+run('PREMIO DOPO MALATTIA',F(prev*0.5))):(row('Premio prima della malattia',cr(prev))+row('Giorni di malattia nel mese','0 gg → 100% (nessuna riduzione)')+run('PREMIO DOPO MALATTIA',F(prev)))}
+var ABS=function(r){return '<div style="background:#fff3cd;border:1px solid #c9a96e;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:#856404">Assenze: <b>1 gg</b> → 50%</div>'};
 function artPre(n,max){return '<div style="font-size:10.5px;color:#6b6560;line-height:1.5;margin-bottom:4px">Premio per ogni categoria incentivata: 30% del BDG. Le categorie incentivate nel mese vengono comunicate con il file Articoli incentivati.</div>'+row('FORMULA','30% BDG × N. categorie')+row('Max per categoria',cur(String(max).replace('.',',')))+row('Categorie incentivate previste',String(n))+run('INCENTIVO MAX PREVISTO',String(n*max).replace('.',','))}
 function visPre(a){return row('EXTRA BDG VISUAL IN STORE — negozio',a.store)+run('INCENTIVO MAX PREVISTO',String(a.amt))}
 
@@ -244,9 +244,9 @@ function consuntivo(r){
   h+='</div>'+tot('Premio maturato (BDG '+F(c.afterSub)+' + altri premi '+F(c.altri)+')','€ '+F(c.mat),'',true)+
    '<div style="padding:0 28px;background:#fff">'+invBox(r.inv.ri,r.inv.ci,kv('% Completamento',r.inv.compl)+kv('Accuracy',r.inv.acc)+kv('% premio riconosciuta (su tutte le voci)',Math.round(r.inv.c*100)+'%'))+'<div style="text-align:center;font-size:12px;font-weight:700;color:#a07d2c;margin:8px 0">€ '+F(c.mat)+' × '+Math.round(r.inv.c*100)+'% →</div></div>'+
    tot('Premio dopo Inventari','€ '+F(c.inv),'',true)+
-   '<div style="padding:12px 28px 0;background:#fff">'+st('MALATTIA',!r.mal,malBody(c.inv,r))+'</div>'+fin+foot();
+   (r.mal?'<div style="padding:12px 28px 0;background:#fff">'+ABS(r)+'</div>':'')+fin+foot();
  }else{
-  h+=st('MALATTIA',!r.mal,malBody(c.mat,r))+'</div>'+fin+foot();
+  h+=(r.mal?ABS(r):'')+'</div>'+fin+foot();
  }
  return h;
 }
@@ -273,10 +273,10 @@ var R=[
   desc:'Negozio al 97,8% con paracadute (SY migliorata) → 60%. Subscription 80%. 2 categorie Articoli + Visual In Store. Inventari al 90%.'},
  {k:'SSAP',lbl:'Senior Sales Advisor Plus',name:'Davide',fn:'SSAP',sal:2100,bdg:375,store:'1301 TORINO VIA ROMA',tgt:'980.000',saldo:'999.600',pct:'102,0%',state:'full',sy:['84,0','80,2','85,1'],
   sub:{band:1,t:'25,0%',r:'24,8%',p:'99,2%',c:0.8,bl:'fascia 95 – 99,5%'},mal:1,
-  desc:'Negozio al 102%. Subscription al 99,2% → 80% (appena sotto la soglia 99,5%). Nessun altro premio. 1 giorno di malattia → 50%.'},
+  desc:'Negozio al 102%. Subscription al 99,2% → 80% (appena sotto la soglia 99,5%). Nessun altro premio. 1 giorno di assenza → 50%.'},
  {k:'SSA',lbl:'Senior Sales Advisor',name:'Mario',fn:'SSA',sal:1850,bdg:300,store:'1234 MILANO CORSO',tgt:'812.000',saldo:'821.704',pct:'101,2%',state:'full',sy:['84,0','80,2','85,1'],
   sub:{band:2,t:'24,0%',r:'22,6%',p:'94,2%',c:0.6,bl:'fascia 90 – 95%'},art:1,
-  desc:'Negozio al 101,2%. Subscription al 94,2% → 60%. 1 categoria Articoli. Nessuna malattia.'},
+  desc:'Negozio al 101,2%. Subscription al 94,2% → 60%. 1 categoria Articoli. Nessuna assenza.'},
  {k:'SA',lbl:'Sales Advisor',name:'Anna',fn:'SA',sal:1500,bdg:225,store:'1301 TORINO VIA ROMA',tgt:'700.000',saldo:'651.000',pct:'93,0%',state:'none',sy:['90,0','88,0','86,4'],
   sub:{band:3,t:'24,0%',r:'20,1%',p:'83,8%',c:0.4,bl:'fascia &lt; 90%'},art:2,vis:35,
   desc:'Negozio al 93%: BDG a zero, paracadute non applicabile, matrice Subscription senza effetto. Restano 2 categorie Articoli + Visual In Store (il SA può essere in lista Visual).'},
@@ -299,7 +299,7 @@ M.push(['<span id="r-H"></span>Cosa cambia rispetto alla lettera di dicembre 202
  row('Sezioni DIGITAL · PRIVILEGE · SY TARGET','<span class="tag tg-r">rimosse</span>')+row('Riga SY nel box KPI SPRINT','<span class="tag tg-g">resta (paracadute)</span>')+
  row('Una sezione per passaggio, dall\'alto in basso','<span class="tag tg-y">nuovo</span>')+row('Paracadute: sezione dedicata se target &lt; 100%','<span class="tag tg-y">nuovo (prima solo una nota)</span>')+
  row('Box Subscription','<span class="tag tg-y">nuovo</span>')+row('Box Inventari su tutte le voci, dopo il premio maturato','<span class="tag tg-g">come oggi (perimetro invariato)</span>')+
- row('Premio maturato: BDG dopo Subscription + altri premi','<span class="tag tg-y">nuovo</span>')+row('Malattia sempre presente nel consuntivo (tutti i ruoli, Dept inclusi, esclusi USA)','<span class="tag tg-y">nuovo (prima solo un avviso se &gt; 0 gg)</span>')+row('Preventivo: box Articoli e Visual In Store con massimo previsto (se attivi)','<span class="tag tg-y">nuovo</span>')+
+ row('Premio maturato: BDG dopo Subscription + altri premi','<span class="tag tg-y">nuovo</span>')+row('Assenze: riquadro minimale identico a oggi, solo se riducono il premio (tutti i ruoli, Dept inclusi, esclusi USA)','<span class="tag tg-g">invariato (parola «assenze»)</span>')+row('Preventivo: box Articoli e Visual In Store con massimo previsto (se attivi)','<span class="tag tg-y">nuovo</span>')+
  row('Traduzioni EN · FR · DE · ES','<span class="tag tg-b">da produrre</span>')+
  '</div></div></div></div>']);
 document.getElementById('mock').innerHTML=M.map(function(m){return '<div><div class="cap">'+m[0]+'</div>'+m[1]+'</div>'}).join('');

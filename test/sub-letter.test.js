@@ -29,10 +29,9 @@ test("consuntivo 2027: cascata BDG -> Subscription -> altri premi -> malattia, s
   assert.ok(t.includes("MATRICE SUBSCRIPTION"));
   assert.ok(t.includes("PREMIO BDG A QUESTO PASSAGGIO"));
   assert.ok(t.includes("ALTRI PREMI"));
-  assert.ok(t.includes("MALATTIA"));
   assert.ok(!/DIGITAL TARGET|PRIVILEGE|SY TARGET/.test(t), "sezioni ritirate");
   // ordine delle sezioni dall'alto in basso
-  const order = ["MATRICE SUBSCRIPTION", "ALTRI PREMI", "MALATTIA"].map(k => t.indexOf(k));
+  const order = ["MATRICE SUBSCRIPTION", "ALTRI PREMI"].map(k => t.indexOf(k));
   assert.ok(order.every((x, i) => x >= 0 && (i === 0 || x > order[i - 1])), "ordine: " + order);
   // 500 -> 300 (Subscription 60%) + Articoli 150 = 450
   assert.ok(/450/.test(t));
@@ -53,13 +52,22 @@ test("paracadute: sezione visibile se il negozio non e' al 100% (applicato) e no
   assert.ok(text(letter(app2, "S06")).includes("non applicabile"), "sotto il 95%");
 });
 
-test("il box Malattia e' sempre presente nel consuntivo per tutti i ruoli, Dept compresi; mai in preventivo", () => {
+test("assenze: riquadro minimale come nella lettera storica (N gg -> %), per tutti i ruoli Dept compresi; mai la parola malattia; mai in preventivo", () => {
   const app = app_(2027, 1);
-  for (const m of ["S01", "S02", "S07", "S10", "S13"]) assert.ok(text(letter(app, m)).includes("MALATTIA"), m);
-  const t11 = text(letter(app, "S11"));            // 1 giorno di malattia -> 50%
-  assert.ok(t11.includes("50%"));
+  app.run('E[6].ml=1;E[9].ml=1;'); // un Dept e un SM con 1 giorno -> 50%
+  for (const m of ["S11", "S07", "S10"]) {
+    const html = letter(app, m), t = text(html);
+    assert.ok(t.includes("Assenze: 1 gg") && t.includes("50%"), m);
+    assert.ok(html.includes("background:#fff3cd"), m + ": stessa grafica del riquadro storico");
+    assert.ok(!/malatti/i.test(t), m + ": nessuna parola 'malattia'");
+  }
+  assert.ok(!text(letter(app, "S01")).includes("Assenze"), "nessuna assenza: nessun riquadro");
   const p = app_(2027, 1, "preventivo");
-  for (const m of ["S01", "S07", "S10"]) assert.ok(!text(letter(p, m)).includes("MALATTIA"), "prev " + m);
+  p.run('E[10].ml=1;');
+  assert.ok(!text(letter(p, "S11")).includes("Assenze"), "preventivo");
+  const en = app_(2027, 1, "consuntivo", "INGLESE");
+  en.run('E[10].ml=1;');
+  assert.ok(text(letter(en, "S11")).includes("Absences: 1 gg"));
 });
 
 test("Dept store: nessuna matrice Subscription, QTY tra gli altri premi", () => {
@@ -76,7 +84,7 @@ test("SM con Coefficiente Inventari: premio maturato -> matrice -> premio dopo I
   assert.ok(t.includes("COEFFICIENTE INVENTARI"));
   assert.ok(t.includes("Premio maturato") && t.includes("Premio dopo Inventari"));
   assert.ok(t.indexOf("Premio maturato") < t.indexOf("COEFFICIENTE INVENTARI"));
-  assert.ok(t.indexOf("Premio dopo Inventari") < t.indexOf("MALATTIA"));
+  assert.ok(!/malatti/i.test(t));
   // totale della lettera = calcE (BDG 600*0,5 + Articoli 300*0,5)
   assert.strictEqual(app.run('calcE(E[9])'), 450);
 });

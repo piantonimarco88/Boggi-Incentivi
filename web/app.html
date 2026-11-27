@@ -5240,7 +5240,7 @@ function buildSeasonalDeptLetter(e){
 // LETTERA MENSILE — NUOVA LOGICA PREMI (da gennaio 2027, mensile ITA+INT)
 // Una sezione per passaggio, dall'alto in basso:
 //   BDG + SAS -> paracadute (se non al 100%) -> matrice Subscription -> altri premi (DCC, Visual, Articoli, QTY)
-//   = premio maturato -> Coefficiente Inventari (tutte le voci) -> malattia -> aggiunte/Workgame -> totale.
+//   = premio maturato -> Coefficiente Inventari (tutte le voci) -> assenze -> aggiunte/Workgame -> totale.
 // Usa le stesse funzioni di calcolo di calcE (premioSteps): nessuna formula duplicata. Richiamata da buildLetter()
 // quando subNewActive(); prima di gennaio 2027 la lettera resta quella storica.
 // ============================================================
@@ -5255,7 +5255,7 @@ var _SUB_LT={
     ovRid:"Override ridotto applicato manualmente — BDG riconosciuto al {m}% (negozio: {s}%)",ov100:"Override 100% applicato manualmente — BDG pieno riconosciuto (negozio: {s}%)",
     stepBdg:"PREMIO BDG A QUESTO PASSAGGIO",bdgFull:"INCENTIVO BDG PIENO",bdgMax:"INCENTIVO BDG MAX",bdgX:"BDG {x} × {p}%",
     altriTitle:"ALTRI PREMI",altriTot:"TOTALE ALTRI PREMI",artRow:"ARTICOLI INCENTIVATI — {n} cat. × {p}% BDG",artInd:"ARTICOLI INCENTIVATI (individuale)",visRow:"EXTRA BDG VISUAL IN STORE",dccRow:"DCC — {p}% × {v} (max {m})",qtyRow:"QTY — target {t}, risultato {r}",csRow:"CUSTOMER SERVICE",sasRow:"SAS",
-    malTitle:"MALATTIA",malBefore:"Premio prima della malattia",malDays:"Giorni di malattia nel mese",malNone:"nessuna riduzione",malAfter:"PREMIO DOPO MALATTIA",afterInv:"Premio dopo Inventari",
+    absLbl:"Assenze",afterInv:"Premio dopo Inventari",
     preMax:"INCENTIVO MAX PREVISTO",preCat:"Max per categoria",preCatN:"Categorie incentivate previste",preTbd:"da comunicare",preArtNote:"Premio per ogni categoria incentivata: {p}% del BDG. Le categorie incentivate nel mese vengono comunicate con il file Articoli incentivati.",preFormula:"FORMULA",preVisNote:"EXTRA BDG VISUAL IN STORE",preBdgNote:"Il valore dei SAS riconosciuto contribuisce al raggiungimento del target (con riserva).",
     prevBanner:"Di seguito il premio massimo potenziale per {m} e come verrà calcolato",storeLbl:"Negozio"},
   INGLESE:{
@@ -5268,7 +5268,7 @@ var _SUB_LT={
     ovRid:"Reduced override manually applied — BDG recognised at {m}% (store: {s}%)",ov100:"100% override manually applied — full BDG granted (store: {s}%)",
     stepBdg:"BDG PRIZE AT THIS STEP",bdgFull:"FULL BDG INCENTIVE",bdgMax:"BDG INCENTIVE MAX",bdgX:"BDG {x} × {p}%",
     altriTitle:"OTHER INCENTIVES",altriTot:"TOTAL OTHER INCENTIVES",artRow:"INCENTIVISED ITEMS — {n} cat. × {p}% BDG",artInd:"INCENTIVISED ITEMS (individual)",visRow:"EXTRA BDG VISUAL IN STORE",dccRow:"DCC — {p}% × {v} (max {m})",qtyRow:"QTY — target {t}, result {r}",csRow:"CUSTOMER SERVICE",sasRow:"SAS",
-    malTitle:"SICK LEAVE",malBefore:"Prize before sick leave",malDays:"Sick days in the month",malNone:"no reduction",malAfter:"PRIZE AFTER SICK LEAVE",afterInv:"Prize after Inventory coefficient",
+    absLbl:"Absences",afterInv:"Prize after Inventory coefficient",
     preMax:"EXPECTED MAX INCENTIVE",preCat:"Max per category",preCatN:"Expected incentivised categories",preTbd:"to be communicated",preArtNote:"Prize for each incentivised category: {p}% of BDG. The categories incentivised in the month are communicated with the incentivised-items file.",preFormula:"FORMULA",preVisNote:"EXTRA BDG VISUAL IN STORE",preBdgNote:"The recognised SAS value contributes to reaching the target (with reserve).",
     prevBanner:"Below is the maximum potential bonus for {m} and how it will be calculated",storeLbl:"Store"},
   FRANCESE:{
@@ -5281,7 +5281,7 @@ var _SUB_LT={
     ovRid:"Override réduit appliqué manuellement — BDG reconnu à {m}% (magasin : {s}%)",ov100:"Override 100% appliqué manuellement — BDG complet accordé (magasin : {s}%)",
     stepBdg:"PRIME BDG À CETTE ÉTAPE",bdgFull:"PRIME BDG COMPLÈTE",bdgMax:"PRIME BDG MAX",bdgX:"BDG {x} × {p}%",
     altriTitle:"AUTRES PRIMES",altriTot:"TOTAL AUTRES PRIMES",artRow:"ARTICLES INCITÉS — {n} cat. × {p}% BDG",artInd:"ARTICLES INCITÉS (individuel)",visRow:"EXTRA BDG VISUAL IN STORE",dccRow:"DCC — {p}% × {v} (max {m})",qtyRow:"QTY — objectif {t}, résultat {r}",csRow:"CUSTOMER SERVICE",sasRow:"SAS",
-    malTitle:"MALADIE",malBefore:"Prime avant maladie",malDays:"Jours de maladie dans le mois",malNone:"aucune réduction",malAfter:"PRIME APRÈS MALADIE",afterInv:"Prime après Coefficient Inventaires",
+    absLbl:"Absences",afterInv:"Prime après Coefficient Inventaires",
     preMax:"PRIME MAX PRÉVUE",preCat:"Max par catégorie",preCatN:"Catégories incitées prévues",preTbd:"à communiquer",preArtNote:"Prime pour chaque catégorie incitée : {p}% du BDG. Les catégories incitées du mois sont communiquées avec le fichier des articles incités.",preFormula:"FORMULE",preVisNote:"EXTRA BDG VISUAL IN STORE",preBdgNote:"La valeur SAS reconnue contribue à l'atteinte de l'objectif (avec réserve).",
     prevBanner:"Ci-dessous le bonus potentiel maximum pour {m} et son mode de calcul",storeLbl:"Magasin"},
   TEDESCO:{
@@ -5294,7 +5294,7 @@ var _SUB_LT={
     ovRid:"Reduzierter Override manuell angewendet — BDG zu {m}% anerkannt (Store: {s}%)",ov100:"100 %-Override manuell angewendet — volles BDG gewährt (Store: {s}%)",
     stepBdg:"BDG-PRÄMIE IN DIESEM SCHRITT",bdgFull:"VOLLE BDG-PRÄMIE",bdgMax:"BDG-PRÄMIE MAX",bdgX:"BDG {x} × {p}%",
     altriTitle:"WEITERE PRÄMIEN",altriTot:"SUMME WEITERE PRÄMIEN",artRow:"GEFÖRDERTE ARTIKEL — {n} Kat. × {p}% BDG",artInd:"GEFÖRDERTE ARTIKEL (individuell)",visRow:"EXTRA BDG VISUAL IN STORE",dccRow:"DCC — {p}% × {v} (max {m})",qtyRow:"QTY — Ziel {t}, Ergebnis {r}",csRow:"CUSTOMER SERVICE",sasRow:"SAS",
-    malTitle:"KRANKHEIT",malBefore:"Prämie vor Krankheit",malDays:"Krankheitstage im Monat",malNone:"keine Kürzung",malAfter:"PRÄMIE NACH KRANKHEIT",afterInv:"Prämie nach Inventur-Koeffizient",
+    absLbl:"Abwesenheiten",afterInv:"Prämie nach Inventur-Koeffizient",
     preMax:"ERWARTETE MAX-PRÄMIE",preCat:"Max pro Kategorie",preCatN:"Erwartete geförderte Kategorien",preTbd:"wird mitgeteilt",preArtNote:"Prämie je geförderter Kategorie: {p}% des BDG. Die im Monat geförderten Kategorien werden mit der Datei der geförderten Artikel mitgeteilt.",preFormula:"FORMEL",preVisNote:"EXTRA BDG VISUAL IN STORE",preBdgNote:"Der anerkannte SAS-Wert trägt zur Zielerreichung bei (mit Reserve).",
     prevBanner:"Nachfolgend der maximale potenzielle Bonus für {m} und die Berechnung",storeLbl:"Store"},
   SPAGNOLO:{
@@ -5307,7 +5307,7 @@ var _SUB_LT={
     ovRid:"Override reducido aplicado manualmente — BDG reconocido al {m}% (tienda: {s}%)",ov100:"Override 100% aplicado manualmente — BDG completo reconocido (tienda: {s}%)",
     stepBdg:"PREMIO BDG EN ESTE PASO",bdgFull:"INCENTIVO BDG COMPLETO",bdgMax:"INCENTIVO BDG MÁX",bdgX:"BDG {x} × {p}%",
     altriTitle:"OTROS PREMIOS",altriTot:"TOTAL OTROS PREMIOS",artRow:"ARTÍCULOS INCENTIVADOS — {n} cat. × {p}% BDG",artInd:"ARTÍCULOS INCENTIVADOS (individual)",visRow:"EXTRA BDG VISUAL IN STORE",dccRow:"DCC — {p}% × {v} (máx {m})",qtyRow:"QTY — objetivo {t}, resultado {r}",csRow:"CUSTOMER SERVICE",sasRow:"SAS",
-    malTitle:"ENFERMEDAD",malBefore:"Premio antes de la enfermedad",malDays:"Días de enfermedad en el mes",malNone:"sin reducción",malAfter:"PREMIO TRAS ENFERMEDAD",afterInv:"Premio tras Coeficiente Inventarios",
+    absLbl:"Ausencias",afterInv:"Premio tras Coeficiente Inventarios",
     preMax:"INCENTIVO MÁX PREVISTO",preCat:"Máx por categoría",preCatN:"Categorías incentivadas previstas",preTbd:"por comunicar",preArtNote:"Premio por cada categoría incentivada: {p}% del BDG. Las categorías incentivadas del mes se comunican con el archivo de artículos incentivados.",preFormula:"FÓRMULA",preVisNote:"EXTRA BDG VISUAL IN STORE",preBdgNote:"El valor SAS reconocido contribuye a alcanzar el objetivo (con reserva).",
     prevBanner:"A continuación el bono potencial máximo para {m} y cómo se calculará",storeLbl:"Tienda"}
 };
@@ -5472,13 +5472,12 @@ function buildLetterSub(e){
     if(isOn(e.j,"pq")&&stp.altri.pq>0)h+=S("QTY",null,ltRow(T.preFormula,Math.round(PARAMS.qtyPct*100)+"% BDG")+(tg.qt?ltRow(tr(e,"target","TARGET"),"QTY "+tg.qt):"")+secPd(T.preMax,Math.round(stp.altri.pq),cu,true));
   }
 
-  // ── Chiusura: Inventari / malattia / aggiunte / Workgame / totale ───────
+  // ── Chiusura: Inventari / assenze / aggiunte / Workgame / totale ───────
   var post='';var postN=function(title,p,body,hideB){return S(title,p,body,hideB);};
-  var smTxt=(sm*100)+"%";
-  var malBody=function(){return ltRow(T.malBefore,_lm(stp.dopoInv,cu))+ltRow(T.malDays,(e.ml||0)+' → '+(sm<1?smTxt:T.malNone))+secPd(T.malAfter,Math.round(stp.finale),cu,stp.finale>0);};
+  // Assenze: stessa grafica minimale della lettera storica (riquadro giallo "N gg -> %"), solo se riducono il premio
+  var absBox=function(){return '<div style="background:#fff3cd;border:1px solid #c9a96e;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:#856404">'+esc(T.absLbl)+': <b>'+e.ml+" gg</b> → "+(sm*100)+"%</div>";};
   var afterSteps=function(){
     var x='';
-    if(!isP)x+=postN(T.malTitle,sm>=1,malBody());
     var at=aggTotal(e.m);
     if(at>0){sN++;x+=secHd(sN,"AGGIUNTE / MANUAL ADJUSTMENTS",true,isP);var ag=AGG[e.m];AGG_KEYS.forEach(function(ak){if(ag[ak.k]>0)x+=ltRow(ak.l,'<span class="lt-row-cur">'+cu+"</span>"+ag[ak.k])});x+=secPd("TOTAL ADJUSTMENTS",Math.round(at),cu,true)+"</div></div>";}
     if(workgameOn(e)){
@@ -5487,6 +5486,7 @@ function buildLetterSub(e){
       var wgDesc={"ITALIANO":"Hai raggiunto l'obiettivo Workgame del mese. Il bonus corrisponde al "+Math.round((PARAMS.workgamePct||0)*100)+"% del tuo premio BDG nominale.","INGLESE":"You have achieved the Workgame target for the month. The bonus corresponds to "+Math.round((PARAMS.workgamePct||0)*100)+"% of your personal BDG prize.","FRANCESE":"Vous avez atteint l'objectif Workgame du mois. Le bonus correspond a "+Math.round((PARAMS.workgamePct||0)*100)+"% de votre prime BDG personnelle.","TEDESCO":"Sie haben das Workgame-Ziel des Monats erreicht. Der Bonus entspricht "+Math.round((PARAMS.workgamePct||0)*100)+"% Ihrer personlichen BDG-Pramie.","SPAGNOLO":"Has alcanzado el objetivo Workgame del mes. El bono corresponde al "+Math.round((PARAMS.workgamePct||0)*100)+"% de tu premio BDG personal."};
       sN++;x+=secHd(sN,wgLbls[lang]||wgLbls["INGLESE"],true,isP);x+=ltRow(wgDesc[lang]||wgDesc["INGLESE"],"");x+=secPd(tr(e,"inc_paid","INCENTIVE PAID"),wgAmt,cu,true)+"</div></div>";
     }
+    if(!isP&&(e.ml||0)>0&&sm<1)x+=absBox(); // come nella lettera storica: dopo aggiunte e Workgame
     return x;
   };
   var totalLabel=isP?(lang==="ITALIANO"?"MASSIMO PREMIO POTENZIALE":((SEAS_TR[lang]||{}).max_bonus||"MAXIMUM POTENTIAL BONUS")):esc(tr(e,"earned","THIS MONTH YOU HAVE EARNED THE"));
