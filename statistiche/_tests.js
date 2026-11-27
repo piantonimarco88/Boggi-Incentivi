@@ -1373,6 +1373,19 @@ T('stima malattia: dal 2027 il Digital non entra nella ricostruzione', ()=>{
     return (c26>c27)?true:'2026 (BDG+Digital)='+c26+' deve superare 2027 (solo BDG)='+c27;
   }finally{sb.allData=prev;sb._malYears=new Set();sb._malMonths=new Set();}});
 
+T('card Matrice Subscription: nascosta prima del 2027; dal 2027 riduzione totale, mesi-persona ridotti e distribuzione per fascia', ()=>{
+  const get=id=>sb.document.getElementById(id);
+  sb.renderSubCard([{monthKey:202612,subCoeff:null}]);
+  if(get('kSubCard').style.display!=='none')return 'card visibile con soli mesi 2026';
+  sb.renderSubCard([{monthKey:202701,subCoeff:null},{monthKey:202701,subCoeff:1,subRid:0},{monthKey:202701,subCoeff:0.6,subRid:120},{monthKey:202701,subCoeff:0.6,subRid:80},{monthKey:202701,subCoeff:0.8,subRid:50},{monthKey:202701,subCoeff:0.7,subRid:10}]);
+  if(get('kSubCard').style.display!=='')return 'card nascosta con dati 2027';
+  if(!/260/.test(get('kSubRid').textContent))return 'riduzione totale attesa 260: '+get('kSubRid').textContent;
+  if(!/4 su 5/.test(get('kSubSub').textContent))return 'mesi-persona ridotti attesi 4 su 5: '+get('kSubSub').textContent;
+  const bar=get('kSubBar').innerHTML;
+  if(!bar.includes('A 20%')||!bar.includes('B 20%')||!bar.includes('C 40%')||!bar.includes('A'))return 'distribuzione fasce: '+bar;
+  sb.renderSubCard([{monthKey:202701,subCoeff:null}]);
+  return /nessun dato/.test(get('kSubSub').textContent)?true:'senza coefficienti: messaggio atteso';});
+
 // ── esito ──────────────────────────────────────────────────────
 (async()=>{
   for(const {name,fn} of asyncTests){

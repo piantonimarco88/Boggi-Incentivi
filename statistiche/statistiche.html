@@ -462,6 +462,13 @@ header{background:linear-gradient(135deg,#0f0f1e,#1a1a2e);color:#fff;padding:14p
     <div class="kpi-sub" id="kIncSub">% premio / RML periodo</div>
     <div id="ksInc"></div>
   </div>
+  <!-- Matrice Subscription (da gen. 2027): visibile solo se nel perimetro filtrato ci sono mesi dal 2027 -->
+  <div class="kpi" id="kSubCard" style="border-left-color:#14b8a6;display:none" title="Da gennaio 2027 il BDG è confermato o ridotto in base al Subscription rate del negozio vs target (fascia A ≥99,5% · B 95–99,5% · C 90–95% · D <90%). Mostra la riduzione totale in € e quante mese-persona sono in ciascuna fascia. Dept, USA e ruoli senza Privilege non hanno la matrice.">
+    <div class="kpi-lbl">Matrice Subscription (dal 2027)</div>
+    <div class="kpi-val" id="kSubRid">—</div>
+    <div class="kpi-sub" id="kSubSub">—</div>
+    <div id="kSubBar"></div>
+  </div>
 </div>
 
 <!-- CHARTS -->
@@ -2441,6 +2448,26 @@ function renderKpis(){
   g('kInc',avgInc!=null?avgInc.toFixed(1)+'%':'—');
   g('kIncSub',avgInc!=null?withRml.length+' dip. con RML':'nessun RML');
   try{renderKpiSparks();renderDashInsight();}catch(e){}
+  try{renderSubCard();}catch(e){}
+}
+// Card «Matrice Subscription» (da gen. 2027): riduzione totale del BDG e distribuzione per fascia sul perimetro filtrato.
+// Righe = mese-persona dal 2027 con coefficiente (Dept/USA/ruoli senza Privilege non hanno la matrice). Fasce A-D = coefficienti
+// predefiniti 100/80/60/40 (WHATIF_DEF.subB); coefficienti diversi (fasce modificate in app) finiscono in «Altro».
+function renderSubCard(rows){
+  const card=document.getElementById('kSubCard'); if(!card) return;
+  rows=rows||filteredRaw;
+  if(!rows.some(isSubEra)){card.style.display='none';return;}
+  card.style.display='';
+  const bar=document.getElementById('kSubBar');
+  const el=rows.filter(r=>isSubEra(r)&&r.subCoeff!=null);
+  if(!el.length){g('kSubRid','—');g('kSubSub','nessun dato Subscription nel perimetro');if(bar)bar.innerHTML='';return;}
+  const rid=el.reduce((a,r)=>a+(r.subRid||0),0);
+  const nRid=el.filter(r=>r.subCoeff<0.995).length;
+  const cnt=[0,0,0,0,0]; el.forEach(r=>{const b=subBandOfCoeff(r.subCoeff);cnt[b<0?4:b]++;});
+  g('kSubRid',rid>0?'−€ '+fmt(rid):'€ 0');
+  g('kSubSub',nRid.toLocaleString('it-IT')+' su '+el.length.toLocaleString('it-IT')+' mesi-persona ridotti ('+(nRid/el.length*100).toFixed(0)+'%)');
+  const cols=['#22c55e','#84cc16','#f59e0b','#ef4444','#cbd5e1'], lbl=['A ≥99,5%','B 95–99,5%','C 90–95%','D <90%','Altro'];
+  if(bar)bar.innerHTML='<div style="display:flex;height:8px;border-radius:4px;overflow:hidden;margin-top:7px">'+cnt.map((c,i)=>c?'<div title="'+lbl[i]+': '+c.toLocaleString('it-IT')+' mesi-persona ('+(c/el.length*100).toFixed(0)+'%)" style="width:'+(c/el.length*100)+'%;background:'+cols[i]+'"></div>':'').join('')+'</div><div style="font-size:9px;color:#9ca3af;margin-top:3px">'+cnt.map((c,i)=>c?lbl[i].split(' ')[0]+' '+(c/el.length*100).toFixed(0)+'%':'').filter(Boolean).join(' · ')+'</div>';
 }
 function g(id,v){document.getElementById(id).textContent=v;}
 
